@@ -1,0 +1,15 @@
+# Mac OS 9.2.2 screenshots and captures: Apple material, never published
+/reference/
+
+# sandbox, builds, screenshots from test runs
+/dev/build/
+/build/
+/test/
+
+# makepkg output
+/packaging/src/
+/packaging/pkg/
+*.pkg.tar.*
+*.log
+
+__pycache__/
