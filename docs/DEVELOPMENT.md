@@ -154,6 +154,23 @@ via `tools/sprite.py`), `style/platinum/progress.h` (progress bar column
 profiles) and `style/platinum/tabs.h` (tab edges row by row, via
 `tools/tabs.py`). It needs `reference/`.
 
+## Install and uninstall
+
+```bash
+dev/test-install.sh
+```
+
+Runs `install.sh` and `uninstall.sh` in a throwaway home
+(`dev/build/test-home`) that starts as a Breeze setup with its own panel
+layout: every XDG folder points there, D-Bus is a private session, the
+runtime folder is its own, and a stand-in `systemctl` only logs (so nothing
+reaches the real Plasma, KWin or systemd session). It checks dry runs,
+what install puts where, that `--apply` copies the config files once and
+switches (the global theme, the widget style through `kdedefaults`, the
+button order), and that uninstall puts every config file back byte for
+byte and removes everything it installed. It uses `dev/build/styleshot`
+(from `dev/check-style.sh`) to check the installed style plugin loads.
+
 ## Measure and compare
 
 `tools/compare.py` works on reference captures and sandbox renders alike.

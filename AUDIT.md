@@ -3,7 +3,38 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: thirteen checks so far (decoration, style batches 1-7, real-app pass, Plasma menu bar x2, dock, first live test; 2026-11-21). Open findings: 3 (P3).
+Status: fourteen checks so far (decoration, style batches 1-7, real-app pass, Plasma menu bar x2, dock, install scripts, first live test; 2026-11-21). Open findings: 3 (P3).
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — install and uninstall scripts
+
+Audited: `install.sh`, `uninstall.sh`, `scripts/common.sh` in a throwaway
+home (`dev/test-install.sh`); working tree after 160b3b6. Not run on the
+user's desktop.
+
+Findings: none open. Found and fixed during development: the global theme
+skipped the widget style before a re-login (now gets `QT_PLUGIN_PATH`);
+install reported a switch even when `plasma-apply-lookandfeel` failed;
+uninstall left empty `plasma-workspace/env` folders.
+
+### Checks
+
+`dev/test-install.sh`: 31 of 31: dry runs change nothing; install puts the
+7 recorded parts in place and leaves the config files alone; the login
+script adds the plugin folder once; the installed style plugin loads;
+`--apply` copies the config files (noting absent ones), applies the global
+theme (widget style via `kdedefaults`), sets the button order; a second
+`--apply` keeps the first copies; uninstall puts every config file back
+byte for byte, removes `kdedefaults` (absent before), every installed file
+and the record, keeps the replaced files, and only asked systemd whether
+Plasma was running.
+
+### Limits
+
+Throwaway home without a running Plasma: the panel layout switch
+(`--resetLayout` talks to plasmashell) and the shell restart on uninstall
+weren't exercised; a real session is the user's call. Restoring whole
+files also undoes settings the user changed while the theme was on (they
+are kept in `~/.local/state/macos9-theme-uninstalled-*`).
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — the dock
 

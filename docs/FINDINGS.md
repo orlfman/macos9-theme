@@ -174,4 +174,10 @@ check layout and shadow in the nested KWin (`dev/kwin-test.sh`,
   look different with one Plasma style. The dock's apps (icontasks) also
   get the panel's full thickness, so the task frames carry their own inset
   (transparent margins inside the frame) to stay off the dock's border.
+- `plasma-apply-lookandfeel` only sets a widget style Qt can find: on a
+  first install the login script that adds our plugin folder hasn't run
+  yet, so `install.sh --apply` passes `QT_PLUGIN_PATH` to it. Without a
+  display it aborts (the install test uses `QT_QPA_PLATFORM=offscreen`).
+- `systemctl --user` reaches the real user session even inside a private
+  D-Bus session; tests need their own `XDG_RUNTIME_DIR` and a stand-in.
 

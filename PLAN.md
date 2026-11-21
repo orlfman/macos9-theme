@@ -15,12 +15,12 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | colors     | colors/                   | nobody     | Platinum.colors done (sandbox-checked) |
 | decoration | decoration/               | nobody     | plugin works in nested KWin; frame pixel exact (AUDIT.md) |
 | style      | style/                    | nobody     | batches 1-7 + tooltips done (pixel exact); real apps checked headless (Dolphin, Kate, System Settings: Qt Quick follows it); open: Qt Quick menus/tooltips/switches (AUDIT 3), editable combo, size grip |
-| plasma     | plasma/                   | nobody     | menu bar, global theme, dock done (headless; corners/bar/title exact); next: Apple menu icon, clock/divider spacing; install script must set the button order |
+| plasma     | plasma/                   | nobody     | menu bar, global theme, dock done (headless; corners/bar/title exact); next: Apple menu icon, clock/divider spacing |
 | icons      | icons/                    | nobody     | not started |
 | cursors    | cursors/                  | nobody     | not started |
 | gtk        | gtk/                      | nobody     | not started |
 | extras     | extras/, wallpapers/      | nobody     | not started |
-| packaging  | install.sh, uninstall.sh, packaging/ | nobody | not started |
+| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh done (user scope, whole-file backups; tested in a throwaway home, 31/31); not run on the real desktop yet |
 
 ## Goal
 

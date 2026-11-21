@@ -2,6 +2,33 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — packaging: install and uninstall scripts
+
+Claimed `packaging` (and `shared` for scripts/dev/docs), released at the
+end. Over Remote Control. Nothing was installed on the user's desktop.
+
+- `install.sh`: builds the style and decoration plugins and installs them
+  under `~/.local/lib/qt6/plugins`, a Plasma login script
+  (`~/.config/plasma-workspace/env/macos9-theme.sh`) that adds that folder
+  to `QT_PLUGIN_PATH`, the color scheme, Plasma style, menu bar widget and
+  global theme; records everything in `~/.local/state/macos9-theme`.
+  `--apply` copies the config files the switch touches (whole files:
+  kdeglobals, kwinrc, plasmarc, kcminputrc, ksplashrc, the panel layout,
+  plasmashellrc, kdedefaults/), applies the global theme with the plugin
+  folder on `QT_PLUGIN_PATH`, and sets the button order. `--dry-run`.
+- `uninstall.sh`: keeps the current config files in
+  `~/.local/state/macos9-theme-uninstalled-DATE`, puts back the copies
+  (removing files that didn't exist), removes every recorded file and the
+  folders it made, restarts plasmashell through systemd if it runs.
+- `scripts/common.sh` (adapted from windows2000-union), `dev/test-install.sh`
+  (throwaway home, private D-Bus and runtime folder, stand-in systemctl):
+  31 of 31.
+- README: install / uninstall instructions. docs/DEVELOPMENT.md,
+  docs/FINDINGS.md.
+
+Not done: a run on the real desktop (the user's call, at the PC); the
+panel layout switch and the shell restart only run with Plasma.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — plasma: the dock
 
 Claimed `plasma` (and `shared` for dev/docs), released at the end. Over
