@@ -151,6 +151,16 @@ void drawScrollTrack(QPainter *p, const QRect &r)
     }
 }
 
+// Mac OS 9 had no right-to-left controls. Pop-up menus, spin boxes and
+// group boxes in a right-to-left layout use Fusion's mirrored layout and
+// drawing (consistently, so clicks match what's drawn) instead of a
+// Platinum layout that doesn't mirror (AUDIT.md finding 19).
+bool rtlFallback(QStyle::ComplexControl control, const QStyleOption *option)
+{
+    return option && option->direction == Qt::RightToLeft
+        && (control == QStyle::CC_ComboBox || control == QStyle::CC_SpinBox || control == QStyle::CC_GroupBox);
+}
+
 // Layout of a vertical bar in r (rects for the parts).
 struct ScrollLayout {
     QRect subLine, addLine, groove, slider, subPage, addPage;
@@ -162,10 +172,17 @@ ScrollLayout scrollLayout(const QRect &r, const QStyleOptionSlider *o, bool hori
     const int length = horizontal ? r.width() : r.height();
     const int thick = horizontal ? r.height() : r.width();
     const int track = std::max(0, length - ScrollArrows);
-    const int range = o->maximum - o->minimum;
-    int len = range > 0 ? int(qint64(track) * o->pageStep / (range + o->pageStep)) : track;
-    len = std::clamp(len, std::min(ScrollThumbMin, track), track);
-    const int pos = range > 0 ? int(qint64(track - len) * (o->sliderPosition - o->minimum) / range) : 0;
+    // 64-bit: maximum - minimum alone can overflow an int.
+    const qint64 range = qint64(o->maximum) - o->minimum;
+    const qint64 page = std::max(0, o->pageStep);
+    const qint64 fit = range > 0 ? qint64(track) * page / (range + page) : track;
+    const int len = int(std::clamp<qint64>(fit, std::min(ScrollThumbMin, track), track));
+    const qint64 value = std::clamp<qint64>(o->sliderPosition, o->minimum, o->maximum);
+    int pos = range > 0 ? int(qint64(track - len) * (value - o->minimum) / range) : 0;
+    // A reversed bar (inverted appearance) runs backwards.
+    if (o->upsideDown) {
+        pos = track - len - pos;
+    }
     auto make = [&](int along, int size) {
         return horizontal ? QRect(r.x() + along, r.y(), size, thick) : QRect(r.x(), r.y() + along, thick, size);
     };
@@ -773,6 +790,9 @@ QRect Style::subElementRect(SubElement element, const QStyleOption *option, cons
 
 QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex *option, SubControl sub, const QWidget *widget) const
 {
+    if (rtlFallback(control, option)) {
+        return QProxyStyle::subControlRect(control, option, sub, widget);
+    }
     if (control == CC_GroupBox) {
         if (const auto *gb = qstyleoption_cast<const QStyleOptionGroupBox *>(option)) {
             const QRect r = gb->rect;
@@ -856,19 +876,25 @@ QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex *o
         return QProxyStyle::subControlRect(control, option, sub, widget);
     }
     const ScrollLayout l = scrollLayout(sb->rect, sb, sb->orientation == Qt::Horizontal);
+    // The layout's parts are where they are drawn (sub* first along the
+    // bar). On a reversed bar the value grows the other way, so the part
+    // before the thumb and the first arrow move it towards larger values:
+    // clicks then always page and step towards where you click (AUDIT.md
+    // finding 32; Qt's own styles move the thumb away there).
+    const bool reversed = sb->upsideDown;
     switch (sub) {
     case SC_ScrollBarSubLine:
-        return l.subLine;
+        return reversed ? l.addLine : l.subLine;
     case SC_ScrollBarAddLine:
-        return l.addLine;
+        return reversed ? l.subLine : l.addLine;
     case SC_ScrollBarGroove:
         return l.groove;
     case SC_ScrollBarSlider:
         return l.slider;
     case SC_ScrollBarSubPage:
-        return l.subPage;
+        return reversed ? l.addPage : l.subPage;
     case SC_ScrollBarAddPage:
-        return l.addPage;
+        return reversed ? l.subPage : l.addPage;
     default:
         return QProxyStyle::subControlRect(control, option, sub, widget);
     }
@@ -918,8 +944,11 @@ void Style::drawScrollBar(const QStyleOptionSlider *o, QPainter *p, const QWidge
     drawScrollTrack(p, l.subPage.adjusted(0, 1, 0, 0));
     drawScrollTrack(p, l.addPage);
     drawScrollThumb(p, l.slider, down(SC_ScrollBarSlider));
-    drawScrollArrow(p, l.subLine, true, down(SC_ScrollBarSubLine));
-    drawScrollArrow(p, l.addLine, false, down(SC_ScrollBarAddLine));
+    // The first arrow (up or left) steps towards smaller values, or larger
+    // ones on a reversed bar (see subControlRect).
+    const bool reversed = o->upsideDown;
+    drawScrollArrow(p, l.subLine, true, down(reversed ? SC_ScrollBarAddLine : SC_ScrollBarSubLine));
+    drawScrollArrow(p, l.addLine, false, down(reversed ? SC_ScrollBarSubLine : SC_ScrollBarAddLine));
     p->restore();
 }
 
@@ -948,13 +977,18 @@ void Style::drawSlider(const QStyleOptionSlider *o, QPainter *p, const QWidget *
     drawSprite(p, g.right() - gr.w + 1, g.y(), gr);
     // Tick marks under the thumb's center for each interval.
     if ((o->subControls & SC_SliderTickmarks) && (o->tickPosition & QSlider::TicksBelow) && enabled) {
-        int interval = o->tickInterval > 0 ? o->tickInterval : o->singleStep;
         const int travel = std::max(0, r.width() - 2 * SliderInset - SliderThumbWidth);
-        if (interval <= 0 || (o->maximum > o->minimum && QStyle::sliderPositionFromValue(o->minimum, o->maximum, o->minimum + interval, travel) < 3)) {
+        // 64-bit, and at least 3 px apart: never more ticks than pixels.
+        const qint64 range = qint64(o->maximum) - o->minimum;
+        qint64 interval = o->tickInterval > 0 ? o->tickInterval : o->singleStep;
+        if (interval <= 0 || (range > 0 && qint64(travel) * interval / range < 3)) {
             interval = std::max(1, o->pageStep);
         }
-        for (int v = o->minimum; v <= o->maximum; v += interval) {
-            const int cx = r.x() + SliderInset + QStyle::sliderPositionFromValue(o->minimum, o->maximum, v, travel, o->upsideDown) + SliderThumbWidth / 2;
+        if (range > 0 && qint64(travel) * interval / range < 3) {
+            interval = range * 3 / std::max(1, travel) + 1;
+        }
+        for (qint64 v = o->minimum; v <= o->maximum; v += interval) {
+            const int cx = r.x() + SliderInset + QStyle::sliderPositionFromValue(o->minimum, o->maximum, int(v), travel, o->upsideDown) + SliderThumbWidth / 2;
             const int ty = l.ticks.y();
             p->fillRect(QRect(cx - 1, ty, 2, 1), White);
             p->fillRect(QRect(cx - 1, ty + 1, 1, SliderTickHeight - 1), White);
@@ -1121,6 +1155,10 @@ void Style::drawToolButton(const QStyleOptionToolButton *tb, QPainter *painter, 
 
 void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex *option, QPainter *painter, const QWidget *widget) const
 {
+    if (rtlFallback(control, option)) {
+        QProxyStyle::drawComplexControl(control, option, painter, widget);
+        return;
+    }
     if (control == CC_ComboBox) {
         if (const auto *cb = qstyleoption_cast<const QStyleOptionComboBox *>(option); cb && !cb->editable) {
             painter->save();
@@ -1409,6 +1447,13 @@ void Style::drawControl(ControlElement element, const QStyleOption *option, QPai
                     flags |= Qt::TextHideMnemonic;
                 }
                 proxy()->drawItemText(painter, area, flags, pal, true, tab->text, QPalette::WindowText);
+                if (tab->state & State_HasFocus) {
+                    QStyleOptionFocusRect focus;
+                    focus.QStyleOption::operator=(*tab);
+                    const QRect text = proxy()->itemTextRect(tab->fontMetrics, area, flags, true, tab->text);
+                    focus.rect = text.adjusted(-3, -1, 3, 1).intersected(area);
+                    proxy()->drawPrimitive(PE_FrameFocusRect, &focus, painter, widget);
+                }
             } else {
                 // Icon tabs (KDE settings pages): Qt's icon + text layout,
                 // in the same area and color.
@@ -1417,6 +1462,20 @@ void Style::drawControl(ControlElement element, const QStyleOption *option, QPai
                 label.palette.setColor(QPalette::WindowText, color);
                 label.palette.setColor(QPalette::Disabled, QPalette::WindowText, color);
                 QProxyStyle::drawControl(element, &label, painter, widget);
+            }
+            return;
+        }
+        break;
+    case CE_PushButton:
+        // Fusion leaves the focus rectangle to its own bevel; draw it here
+        // (PE_FrameFocusRect: only while the keyboard moves the focus).
+        if (const auto *b = qstyleoption_cast<const QStyleOptionButton *>(option)) {
+            QProxyStyle::drawControl(element, option, painter, widget);
+            if (b->state & State_HasFocus) {
+                QStyleOptionFocusRect focus;
+                focus.QStyleOption::operator=(*b);
+                focus.rect = proxy()->subElementRect(SE_PushButtonFocusRect, b, widget);
+                proxy()->drawPrimitive(PE_FrameFocusRect, &focus, painter, widget);
             }
             return;
         }
@@ -1441,8 +1500,20 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption *option, 
 {
     switch (element) {
     case PE_FrameFocusRect:
-        // Mac OS 9 shows no focus rectangle on buttons and toggles.
+        // Mac OS 9 shows no focus rectangle on buttons, toggles and tabs.
+        // Not Mac OS 9: while the keyboard moves the focus (Tab), a 1 px
+        // ring in the text field's focus color (#6666CC) shows where it is,
+        // so keyboard use stays possible (AUDIT.md finding 16). Mouse use
+        // never shows it.
         if (qobject_cast<const QAbstractButton *>(widget) || qobject_cast<const QTabBar *>(widget)) {
+            if ((option->state & State_KeyboardFocusChange) && (option->state & State_HasFocus) && option->rect.isValid()) {
+                painter->save();
+                painter->setRenderHint(QPainter::Antialiasing, false);
+                painter->setPen(QColor(0x66, 0x66, 0xCC));
+                painter->setBrush(Qt::NoBrush);
+                painter->drawRect(option->rect.adjusted(0, 0, -1, -1));
+                painter->restore();
+            }
             return;
         }
         break;
@@ -1556,6 +1627,20 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption *option, 
         const bool enabled = option->state & State_Enabled;
         const bool on = option->state & State_On;
         const bool pressed = option->state & State_Sunken;
+        if (option->state & State_NoChange) {
+            // Partly checked (a mixed selection). Not captured: Mac OS 9's
+            // mixed box, a short horizontal bar in the empty box, here 6x2
+            // px centered in the 12 px box (derived, AUDIT.md finding 17).
+            if (enabled) {
+                drawSprite(painter, x, y, pressed ? Sprites::CheckOffPressed : Sprites::CheckOff);
+            } else {
+                painter->setPen(gray(0x88));
+                painter->drawRect(QRect(x, y, RadioSize - 1, RadioSize - 1));
+            }
+            painter->fillRect(QRect(x + 3, y + 5, 6, 2), enabled ? Black : gray(0x88));
+            painter->restore();
+            return;
+        }
         if (!enabled) {
             if (on) {
                 drawSprite(painter, x, y, Sprites::CheckOnDisabled);
@@ -1639,6 +1724,47 @@ bool Style::eventFilter(QObject *object, QEvent *event)
     return QProxyStyle::eventFilter(object, event);
 }
 
+namespace
+{
+// What polish changes on a widget, kept so unpolish can put it back when
+// the style changes at run time (AUDIT.md finding 18).
+constexpr const char *KeptMargins = "_platinum_margins";
+constexpr const char *KeptTranslucent = "_platinum_translucent";
+constexpr const char *KeptFrame = "_platinum_frame";
+constexpr const char *KeptFill = "_platinum_fill";
+constexpr const char *KeptViewportFill = "_platinum_viewport_fill";
+
+void keep(QWidget *w, const char *name, const QVariant &value)
+{
+    if (!w->property(name).isValid()) {
+        w->setProperty(name, value);
+    }
+}
+
+// Calls `restore` with the kept value, then forgets it.
+template<typename T, typename F>
+void giveBack(QWidget *w, const char *name, F restore)
+{
+    const QVariant v = w->property(name);
+    if (v.isValid()) {
+        restore(v.value<T>());
+        w->setProperty(name, QVariant());
+    }
+}
+
+void makeTranslucent(QWidget *w)
+{
+    keep(w, KeptTranslucent, w->testAttribute(Qt::WA_TranslucentBackground));
+    w->setAttribute(Qt::WA_TranslucentBackground);
+}
+
+void setMargins(QWidget *w, const QMargins &m)
+{
+    keep(w, KeptMargins, QVariant::fromValue(w->contentsMargins()));
+    w->setContentsMargins(m);
+}
+} // namespace
+
 void Style::polish(QWidget *widget)
 {
     QProxyStyle::polish(widget);
@@ -1646,19 +1772,22 @@ void Style::polish(QWidget *widget)
         widget->installEventFilter(this);
     }
     if (widget->inherits("QTipLabel")) {
-        widget->setAttribute(Qt::WA_TranslucentBackground);
+        makeTranslucent(widget);
     }
     if (widget->inherits("QComboBoxPrivateContainer")) {
         // Pop-up menu lists look like menus (popup-open.png): the panel is
         // painted by eventFilter, the list sits inside the black line and
         // shows it through.
-        widget->setAttribute(Qt::WA_TranslucentBackground);
-        widget->setContentsMargins(1, 1, 2, 2);
+        makeTranslucent(widget);
+        setMargins(widget, QMargins(1, 1, 2, 2));
         widget->installEventFilter(this);
     }
     if (auto *view = qobject_cast<QAbstractItemView *>(widget);
         view && view->parentWidget() && view->parentWidget()->inherits("QComboBoxPrivateContainer")) {
         // The list is created after its container is polished.
+        keep(view, KeptFrame, int(view->frameShape()));
+        keep(view, KeptFill, view->autoFillBackground());
+        keep(view, KeptViewportFill, view->viewport()->autoFillBackground());
         view->setFrameShape(QFrame::NoFrame);
         view->setAutoFillBackground(false);
         view->viewport()->setAutoFillBackground(false);
@@ -1666,11 +1795,12 @@ void Style::polish(QWidget *widget)
     if (auto *menu = qobject_cast<QMenu *>(widget)) {
         // The drop shadow's outer corners stay see-through, and the shadow
         // takes one more column and row on the right and bottom.
-        menu->setAttribute(Qt::WA_TranslucentBackground);
-        menu->setContentsMargins(0, 0, 1, 1);
+        makeTranslucent(menu);
+        setMargins(menu, QMargins(0, 0, 1, 1));
     }
     // Busy progress bars need repaints to move the barber pole.
-    if (auto *bar = qobject_cast<QProgressBar *>(widget)) {
+    if (auto *bar = qobject_cast<QProgressBar *>(widget);
+        bar && !bar->findChild<QTimer *>(QStringLiteral("platinum-barber-pole"), Qt::FindDirectChildrenOnly)) {
         auto *timer = new QTimer(bar);
         timer->setObjectName(QStringLiteral("platinum-barber-pole"));
         timer->setInterval(100);
@@ -1685,16 +1815,15 @@ void Style::polish(QWidget *widget)
 
 void Style::unpolish(QWidget *widget)
 {
-    if (qobject_cast<QTabWidget *>(widget)) {
+    if (qobject_cast<QTabWidget *>(widget) || widget->inherits("QComboBoxPrivateContainer")) {
         widget->removeEventFilter(this);
     }
-    if (widget->inherits("QComboBoxPrivateContainer")) {
-        widget->removeEventFilter(this);
-        widget->setContentsMargins(0, 0, 0, 0);
-    }
-    if (auto *menu = qobject_cast<QMenu *>(widget)) {
-        menu->setAttribute(Qt::WA_TranslucentBackground, false);
-        menu->setContentsMargins(0, 0, 0, 0);
+    giveBack<bool>(widget, KeptTranslucent, [widget](bool on) { widget->setAttribute(Qt::WA_TranslucentBackground, on); });
+    giveBack<QMargins>(widget, KeptMargins, [widget](const QMargins &m) { widget->setContentsMargins(m); });
+    if (auto *view = qobject_cast<QAbstractItemView *>(widget)) {
+        giveBack<int>(view, KeptFrame, [view](int shape) { view->setFrameShape(QFrame::Shape(shape)); });
+        giveBack<bool>(view, KeptFill, [view](bool on) { view->setAutoFillBackground(on); });
+        giveBack<bool>(view, KeptViewportFill, [view](bool on) { view->viewport()->setAutoFillBackground(on); });
     }
     if (auto *bar = qobject_cast<QProgressBar *>(widget)) {
         delete bar->findChild<QTimer *>(QStringLiteral("platinum-barber-pole"), Qt::FindDirectChildrenOnly);

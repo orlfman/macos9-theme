@@ -148,6 +148,12 @@ def clear(raw, rows, cols):
 extra = clear("TrianglePressedRaw", range(11, 17), range(9, 17)) + fix("CheckOffPressedRaw", "CheckOff", range(10, 12)) + fix("RadioOffPressedRaw", "RadioOff", range(8, 12)) \
     + merge("PopupArrowPressedA", "PopupArrowPressedB", {0, 1}, "PopupArrowPressed")
 text = text.replace("} // namespace Platinum::Sprites", extra + "} // namespace Platinum::Sprites")
+# The raw crops still hold mouse-pointer pixels and are only needed to make
+# the clean sprites above: leave them out of the header (AUDIT.md finding 25).
+import re
+for raw in ("TrianglePressedRaw", "CheckOffPressedRaw", "RadioOffPressedRaw", "PopupArrowPressedA", "PopupArrowPressedB"):
+    text, count = re.subn(r"// %s: measured[^\n]*\nconst Sprite %s = \{[^}]*\}\};\n\n?" % (raw, raw), "", text)
+    assert count == 1, raw
 open(sys.argv[2], "w").write(text)
 EOF
 rm "$out/sprites.h.tmp"

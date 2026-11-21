@@ -285,7 +285,8 @@ Union facts from there that matter for Platinum (verify again on 6.8.3): Qt
 Widgets output draws no `outline`/`box-shadow` (one bevel layer only), scroll
 bars get **no arrow buttons**, no dotted lines, `background-image` is stretched
 and can crash the Qt Widgets style without `mask`. Platinum needs scroll bar
-arrows, so the application style choice is an open decision in `PLAN.md`.
+arrows, which is why the application style is a C++ QStyle (decided
+2026-11-20, `PLAN.md`).
 
 ## Machine facts
 

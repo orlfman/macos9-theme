@@ -10,6 +10,9 @@
 // the Window List (the divider); adds the dock at the bottom,
 // and gives every desktop a plain color close to the Mac OS 9 default
 // desktop pattern's average (the pattern itself is Apple artwork).
+// Both panels go on the main screen only (screen 0, which Plasma 6 keeps as
+// the primary one), as on Mac OS 9; other screens get none (the user's
+// choice, PLAN.md decision 10).
 //
 // Used by dev/plasma-test.sh (evaluated inside a sandboxed plasmashell);
 // later the look-and-feel package's layout. SPDX-License-Identifier: BSD-2-Clause

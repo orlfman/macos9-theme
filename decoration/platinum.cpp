@@ -479,10 +479,20 @@ Button::Button(QObject *parent, const QVariantList &args)
 KDecoration3::DecorationButton *Button::create(DecorationButtonType type, KDecoration3::Decoration *decoration, QObject *parent)
 {
     auto *d = qobject_cast<Decoration *>(decoration);
-    if (!d || type == DecorationButtonType::Custom || type == DecorationButtonType::Spacer) {
+    // Only Mac OS 9's three boxes. Other buttons someone adds in System
+    // Settings (window menu, on all desktops, keep above, help, ...) have no
+    // Platinum look and would otherwise all look like the close box, so
+    // they're left out (AUDIT.md finding 20).
+    switch (type) {
+    case DecorationButtonType::Close:
+    case DecorationButtonType::Maximize:
+    case DecorationButtonType::Minimize:
+    case DecorationButtonType::Shade:
+        break;
+    default:
         return nullptr;
     }
-    return new Button(type, d, parent);
+    return d ? new Button(type, d, parent) : nullptr;
 }
 
 void Button::paint(QPainter *painter, const QRectF &repaintArea)

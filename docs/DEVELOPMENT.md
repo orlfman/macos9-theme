@@ -1,16 +1,27 @@
 # Development: sandbox and comparison
 
 How to try the theme without installing it, and how to check it against the
-Mac OS 9 reference. Commands run from the repository root. Everything here
-runs in `dev/build/sandbox` (its own XDG folders, no D-Bus to your session,
-offscreen rendering or a headless nested KWin), so your real desktop is never
-touched. Renders go to `dev/shots/` (git-ignored).
+Mac OS 9 reference. Commands run from the repository root. Renders go to
+`dev/shots/` (git-ignored).
+
+How isolated each tool is (AUDIT.md finding 24):
+
+- `dev/run.sh` and everything built on it (`shoot.sh`, `app-test.sh`,
+  `kwin-test.sh`, `plasma-test.sh`, `live-test.sh`, `check-*.sh`): their own
+  XDG config, data, cache and state folders in `dev/build/sandbox`, and
+  either no D-Bus at all or a private one (`dbus-run-session`). They keep
+  your real `HOME` and `XDG_RUNTIME_DIR`, so a program that writes to
+  `~/something` directly, or talks to your systemd user session
+  (`systemctl --user`), could still reach your real setup. None of the
+  programs they start are known to do that; it's a limit, not a seen
+  problem.
+- `dev/test-install.sh` and `dev/test-install-live.sh`: fully separate:
+  `env -i`, their own `HOME`, every XDG folder and `XDG_RUNTIME_DIR` in a
+  throwaway home, a private D-Bus and a stand-in `systemctl`.
 
 The `dev/` tooling is adapted from the user's own windows2000-union project
 (`/mnt/storage1/local/projects/windows2000-union`, BSD-2-Clause); its
 `docs/DEVELOPMENT.md` has the full list of what Union 6.8 can and can't draw.
-The decoration test tools (decoshot, damagetest, test-deco, shoot-deco) are
-added with the decoration.
 
 ## Build the test programs
 
@@ -161,15 +172,44 @@ dev/test-install.sh
 ```
 
 Runs `install.sh` and `uninstall.sh` in a throwaway home
-(`dev/build/test-home`) that starts as a Breeze setup with its own panel
-layout: every XDG folder points there, D-Bus is a private session, the
-runtime folder is its own, and a stand-in `systemctl` only logs (so nothing
-reaches the real Plasma, KWin or systemd session). It checks dry runs,
-what install puts where, that `--apply` copies the config files once and
-switches (the global theme, the widget style through `kdedefaults`, the
-button order), and that uninstall puts every config file back byte for
-byte and removes everything it installed. It uses `dev/build/styleshot`
-(from `dev/check-style.sh`) to check the installed style plugin loads.
+(`dev/build/test-home`): `env -i`, its own `HOME` and XDG folders, a
+private D-Bus session, its own runtime folder, and a stand-in `systemctl`
+that only logs (so nothing reaches the real Plasma, KWin or systemd
+session). Every scenario starts from a fresh Breeze home with a panel
+layout and GTK files of its own. It covers dry runs, what install puts
+where, the login script (including leaving the decoration out after a
+KDecoration upgrade), `--apply` and repeats, uninstall putting every
+config and GTK file back byte for byte, and the failure cases from AUDIT.md
+findings 4-14 and 27-31: things already in the way of a target, a linked
+config folder, a file where a folder is needed, an install that fails or
+is interrupted at a dozen points, an uninstall that fails or is
+interrupted at 16 points and is run again, a failing theme switch,
+switching in System Settings instead of `--apply`, Platinum already
+selected before the install, `~/.config` or a GTK folder link pointed
+elsewhere between install and uninstall, files that only look like
+leftovers, a different data or config folder at uninstall time, a
+leftover half-made backup, a held lock, and a home path with spaces and
+quotes. The plugins are built once and
+handed to install.sh through `M9_PREBUILT` (tests only). It uses
+`dev/build/styleshot` (from `dev/check-style.sh`) to check the installed
+style plugin loads.
+
+```bash
+dev/test-install-live.sh
+```
+
+The same against a running Plasma: a headless nested KWin with two
+virtual screens, `plasmashell`, `kded6` (with its GTK settings sync) and
+the activity manager, in a throwaway home (`dev/build/test-home-live`). It
+puts a panel of the user's own on each screen, runs `install.sh` and
+`install.sh --apply`, lists what the switch changed (Plasma's GTK sync
+rewrites `gtk-3.0`, `gtk-4.0`, `xsettingsd` and `~/.gtkrc-2.0`), then
+runs `uninstall.sh` and checks that it stopped the shell (the old process
+is gone) and started a new one (the `kquitapp6` path; the systemd path
+can't be tested without your real user session), that both panels are
+back on their screens with their widgets and a widget setting of the
+user's (a clock with seconds), and that every config and GTK file is back
+byte for byte.
 
 ## Measure and compare
 

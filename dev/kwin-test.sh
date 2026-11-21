@@ -10,6 +10,8 @@
 #   M9_SIZE        virtual screen size (default 1100x620)
 #   VT_MAXIMIZED=1 opens one maximized window instead, into kwin-SCHEME-max.png
 #   VT_SINGLE=1    opens one window titled "Mac OS", into kwin-SCHEME-single.png
+#   M9_BUTTONS_LEFT / M9_BUTTONS_RIGHT  title bar button order with the
+#                  platinum decoration (default X / AI)
 #
 # Adapted from the user's windows2000-union project (BSD-2-Clause).
 set -euo pipefail
@@ -33,8 +35,8 @@ kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key theme "
 if [[ ${M9_DECORATION:-} == platinum ]]; then
     # Mac OS 9 layout: close box on the left, zoom and collapse on the right
     # (collapse = minimize: Wayland windows can't be shaded in KWin 6.8).
-    kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key ButtonsOnLeft X
-    kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key ButtonsOnRight AI
+    kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key ButtonsOnLeft "${M9_BUTTONS_LEFT:-X}"
+    kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key ButtonsOnRight "${M9_BUTTONS_RIGHT:-AI}"
 else
     kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key ButtonsOnLeft --delete
     kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key ButtonsOnRight --delete

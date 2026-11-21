@@ -181,3 +181,36 @@ check layout and shadow in the nested KWin (`dev/kwin-test.sh`,
 - `systemctl --user` reaches the real user session even inside a private
   D-Bus session; tests need their own `XDG_RUNTIME_DIR` and a stand-in.
 
+
+## Installing and undoing (2026-11-21, Claude Code, from Codex's audit)
+
+- Applying a global theme with kded6 running makes Plasma's GTK sync
+  (kded `gtkconfig`) rewrite `~/.config/gtk-3.0/{gtk.css,colors.css}`,
+  `gtk-4.0/colors.css` (and `gtk.css`, `window_decorations.css`,
+  `assets/` where present), `xsettingsd/xsettingsd.conf` and
+  `~/.gtkrc-2.0`. Seen in `dev/test-install-live.sh`. Copying the files
+  back doesn't make it sync again (no KConfig change notification); a
+  re-login does.
+- plasmashell writes its panel layout
+  (`plasma-org.kde.plasma.desktop-appletsrc`) from memory, including when
+  it quits. A layout file restored while it runs can be overwritten, so it
+  has to be stopped first. `kquitapp6 plasmashell` stops it over the
+  session bus. Restarting it rebuilds the restored panels on their
+  screens, two screens included (live test).
+- Plasma's scripting API puts a `new Panel` on screen 0. Moving it to
+  another screen means setting `lastScreen` in the layout file while the
+  shell is stopped.
+- `libkdecorations3.so.6` keeps its soname across 6.x releases, so a
+  decoration built for one version would still load into another. The
+  login script compares the resolved library files with the ones it was
+  built against and leaves the decoration off the plugin path when they
+  differ.
+- Qt's own styles don't swap a scroll bar's page and arrow parts when it's
+  reversed (`invertedAppearance`, `upsideDown` in the option): clicking
+  the track moves the thumb away from the click. Right-to-left horizontal
+  bars aren't `upsideDown` at all; Qt mirrors them with `visualRect`.
+- Qt sets `State_KeyboardFocusChange` only when focus moves by a real Tab
+  key event (or a shortcut), not on `setFocus(Qt::TabFocusReason)` alone.
+  Fusion draws no `PE_FrameFocusRect` for push buttons (its bevel does
+  that), so a style that replaces the bevel has to draw it in
+  `CE_PushButton`.

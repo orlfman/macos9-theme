@@ -2,6 +2,117 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for Codex's findings #27–#33
+
+Verified and fixed all seven (AUDIT.md has the per-finding table).
+
+- **Uninstall can be run again safely (#27):** `uninstall.sh` takes each
+  entry off the install record as soon as it's done. What it can't do stays
+  on the record; it then exits 1 and says to run it again. A file it put
+  back is never removed by a later run. New test: uninstall interrupted at
+  16 points and run again leaves the home as before the install.
+- **Platinum already selected (#28):** install copies the settings as they
+  are before changing anything, so uninstall puts that state back.
+- **Folder links pointed elsewhere (#29):** the record and the config copy
+  keep where each path led; both scripts stop before any change if that
+  differs now.
+- **Leftovers by record only (#30):** temporary copies are recorded before
+  they're made; nothing is removed just because of its name.
+- **Same XDG folders (#31):** the record keeps the data and config folders;
+  install and uninstall refuse to run with different ones (record format 3).
+- **Reversed scroll bars (#32):** clicks on the track and arrows now move
+  towards the click.
+- **Live test (#33):** checks that the shell process was replaced and that
+  panel widgets and a widget setting come back.
+- **#21 closed by the user's decision:** the menu bar and the dock stay
+  on the main screen only (PLAN.md decision 10; comment in
+  `plasma/layout.js`).
+- Also: a second uninstall no longer leaves an empty state folder with a
+  lock file. README, DEVELOPMENT.md, FINDINGS.md and AUDIT-REQUEST.md
+  updated; #26 widened to right-to-left scroll bars (they don't mirror).
+
+Checks: style 131/131, Plasma 7/7, install 155/155, live 14/14. Not run on
+the real desktop; the systemd restart path is still untested.
+
+## 2026-11-21, Codex (GPT-6) — retest the packaging and theme audit fixes
+
+Added #27–#33 to AUDIT.md after reviewing the working tree over `ece4355`.
+All four suites passed (131 style regions, 7 Plasma comparisons, 94 install
+checks and 10 running-shell checks). Both plugins rendered under ASan/UBSan.
+A failed uninstall followed by a retry erased a restored user login hook in
+a disposable home. An already-selected Platinum theme could also be reset
+without a backup. Hold the real install pending packaging fixes and retry
+coverage. The actual desktop and systemd restart remain untested.
+
+This pass edited only AUDIT.md and CHANGELOG.md. The earlier implementation
+edits and new live test were present before this audit. All remain uncommitted.
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for Codex's pre-install audit
+
+Verified Codex's findings #4–#25 and fixed all but the ones that are the
+user's call (AUDIT.md has the per-finding table).
+
+- **Packaging (#4–#14), rebuilt:** `scripts/common.sh`, `install.sh`,
+  `uninstall.sh`.
+  - Install checks everything it can before the first write. It writes the
+    record before each change and moves aside anything in its way (put back
+    on uninstall).
+  - The config copy is taken at install and frozen at the switch. It covers
+    the GTK files Plasma's GTK sync rewrites.
+  - Install refuses symbolic links in the copy list, holds a lock, and
+    fails the run if the theme switch fails.
+  - Uninstall removes only recorded install targets of the recorded kind.
+    It stops Plasma's shell while it restores the layout (the shell saves
+    its layout on quit), starts it again, and keeps the copy it put back.
+  - The plugins moved to `~/.local/lib/macos9-theme/`. The login script
+    leaves the decoration off the plugin path when KDecoration was upgraded
+    since the build.
+  - Dry runs list every step.
+- **Tests:** `dev/test-install.sh` rewritten: 11 scenarios, 94 checks,
+  including install interrupted at 12 points. New
+  `dev/test-install-live.sh`: nested KWin with two screens, plasmashell and
+  kded6, 10 checks.
+- **Style (#15–#19)** in `style/platinum/platinumstyle.cpp`:
+  - 64-bit scroll bar and tick math.
+  - A keyboard-only focus ring (#6666CC, not Mac OS 9).
+  - A mixed check box (derived).
+  - polish/unpolish put widget settings back.
+  - Right-to-left: scroll bars honor `upsideDown`; pop-up menus, spin boxes
+    and group boxes use Fusion. Menu items don't mirror yet (new finding
+    #26).
+- **Decoration (#20):** only the close, zoom and collapse boxes are created.
+  `dev/kwin-test.sh` takes `M9_BUTTONS_LEFT` and `M9_BUTTONS_RIGHT`.
+- **Plasma (#22):** readable selection text roles in `plasma/make-plasma.py`
+  (regenerated `plasma/platinum/colors`).
+- **#25:** `tools/gen-style-data.sh` no longer writes the raw crops with
+  pointer pixels to `sprites.h` (the clean sprites are unchanged). README
+  wording on provenance fixed.
+- **Docs (#24):** `docs/DEVELOPMENT.md` (isolation per tool, both install
+  tests), `README.md` (install, undo, upgrade), `AGENTS.md` and `PLAN.md`
+  stale lines, `docs/FINDINGS.md` (new "Installing and undoing" section).
+
+**Checks:**
+- check-style: 131 of 131 regions.
+- check-plasma: 7 of 7.
+- test-install: 94 of 94.
+- test-install-live: 10 of 10.
+- ASan+UBSan style runs clean.
+- No build warnings.
+
+**Not verified:**
+- uninstall's systemd path for the shell
+- a real login
+- anything on the user's screens
+
+**Left for the user:**
+- #21: one screen gets the menu bar and the dock (as on Mac OS 9), or every
+  screen gets a menu bar.
+- #25 before publishing.
+
+**Still open:** #3, #23, #26 (P3).
+
+The work is uncommitted at the time of writing.
+
 ## 2026-11-21, Codex (GPT-6) — independent pre-install audit
 
 Added findings #4–#25 and updated the open list in AUDIT.md at commit

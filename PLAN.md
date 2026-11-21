@@ -12,17 +12,17 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 
 | Component  | Folder(s)                 | Claimed by | Status      |
 |------------|---------------------------|------------|-------------|
-| shared     | docs, tools, dev, scripts | nobody     | dev/ sandbox + tools/compare.py done (step 2) |
+| shared     | docs, tools, dev, scripts | nobody | dev/ sandbox + tools/compare.py done; test-install-live.sh added; docs fixed (AUDIT 24) |
 | reference  | reference/, docs/REFERENCE.md | nobody | capture pass done (81 captures, CAPTURES.md); measurements partial |
 | colors     | colors/                   | nobody     | Platinum.colors done (sandbox-checked) |
-| decoration | decoration/               | nobody     | plugin works in nested KWin; frame pixel exact (AUDIT.md) |
-| style      | style/                    | nobody     | batches 1-7 + tooltips done (pixel exact); real apps checked headless (Dolphin, Kate, System Settings: Qt Quick follows it); open: Qt Quick menus/tooltips/switches (AUDIT 3), editable combo, size grip |
-| plasma     | plasma/                   | nobody     | menu bar, global theme, dock done (headless; corners/bar/title exact); next: Apple menu icon, clock/divider spacing |
+| decoration | decoration/               | nobody | plugin works in nested KWin; frame pixel exact; only the three Mac OS 9 boxes are created (AUDIT 20) |
+| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math); open: Qt Quick menus/tooltips/switches (AUDIT 3), RTL menus (AUDIT 26), editable combo, size grip |
+| plasma     | plasma/                   | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); open: one screen only (AUDIT 21, user decision), resize limit (AUDIT 23); next: Apple menu icon, clock/divider spacing |
 | icons      | icons/                    | nobody     | not started |
 | cursors    | cursors/                  | nobody     | not started |
 | gtk        | gtk/                      | nobody     | not started |
 | extras     | extras/, wallpapers/      | nobody     | not started |
-| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh done (user scope, whole-file backups; tested in a throwaway home, 31/31); not run on the real desktop yet |
+| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's two audits (#4-#14, #27-#31 fixed: moved-aside targets, record written first and taken off step by step so a retry never redoes a step, GTK files in the backup, shell stopped while restoring, decoration version guard, paths checked against where they led, recorded temporaries, same XDG folders required); test-install 155/155, test-install-live 14/14 (running Plasma, two screens); not run on the real desktop yet |
 
 ## Goal
 
@@ -82,6 +82,11 @@ Open decisions need the user. Record the answer here with the date.
    already sits on the bottom screen edge), apps as bevel buttons like the
    Launcher control panel (running = raised bevel, active = selected
    bevel, pinned but not running = bare icon).
+10. **Screens.** **Decided 2026-11-21 (user):** "Menu bar and dock on
+    master monitor": the menu bar and the dock go on the main screen only,
+    as on Mac OS 9, and other screens get no panel (AUDIT.md finding 21).
+    In Plasma 6 the primary screen is always screen 0, where the layout
+    script's new panels go.
 
 ## Components
 
@@ -141,12 +146,12 @@ measurements.
 
 ## Open questions
 
-- Which Mac OS 9.2.2 media/emulator does the user have?
 - Include Mac OS 9 sound set equivalents? (Can't ship Apple sounds.)
 - Before going public: the style's check box and radio sprites and button
   corners (`style/platinum/sprites.h`, `slices.h`) are measured pixel by
   pixel from the captures. They're tiny generic UI shapes, but redrawing
   the check mark and radio dot by hand is the safe choice for a public
   release.
-- Window shade (collapse) vs minimize: KWin supports shading; check that the
-  collapse box can trigger it and how it looks.
+- Window shade (collapse) vs minimize: settled for Wayland (KWin 6.8 doesn't
+  shade Wayland windows, so the collapse box minimizes; docs/FINDINGS.md).
+  X11 shading is untested.
