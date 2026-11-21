@@ -14,7 +14,7 @@ mkdir -p dev/build dev/shots
 # shellcheck disable=SC2046
 g++ -std=c++17 -O1 -fPIC dev/styleshot.cpp -o dev/build/styleshot $(pkg-config --cflags --libs Qt6Widgets)
 shot=dev/shots/styleshot.png
-QSTYLE=Platinum dev/run.sh platinum breeze dev/build/styleshot "$shot" > /dev/null 2>&1
+PLATINUM_BARBER_PHASE=4 QSTYLE=Platinum dev/run.sh platinum breeze dev/build/styleshot "$shot" > /dev/null 2>&1
 
 failed=0
 total=0
@@ -62,6 +62,32 @@ check vbar-top scroll-vertical-inactive.png@787,249,16,346 560,11,16,346
 check vbar-mid disclosure-triangles.png@492,175,16,322 600,11,16,322
 # Horizontal: its left edge is the window's content line.
 check hbar disclosure-triangles.png@105,496,388,16 11,380,388,16
+
+# Pop-up menus (label area skipped: top/bottom 3 rows, left 6 columns, and
+# the 22-column arrow box). The pressed capture's body is under its menu.
+popup_check() { # name ref.png rx ry ox oy W
+    local n=$1 img=$2 rx=$3 ry=$4 ox=$5 oy=$6 W=$7
+    check "$n-top" "$img@$rx,$ry,$W,3" "$ox,$oy,$W,3"
+    check "$n-bottom" "$img@$rx,$((ry + 17)),$W,3" "$ox,$((oy + 17)),$W,3"
+    check "$n-left" "$img@$rx,$ry,6,20" "$ox,$oy,6,20"
+    check "$n-arrow" "$img@$((rx + W - 22)),$ry,22,20" "$((ox + W - 22)),$oy,22,20"
+}
+popup_check popup appearance-2-appearance.png 591 257 10 430 180
+check popup-pressed-arrow-a popup-open.png@751,298,20,20 360,430,20,20
+check popup-pressed-arrow-b popup-open-no-hover.png@749,298,12,20 358,430,12,20
+popup_check popup-disabled appearance-4-desktop.png 710 451 390 430 194
+
+# Sliders: the whole slider with ticks; the pressed one's thumb only (the
+# capture also has the drag ghost); the disabled one.
+check slider controls-general-controls.png@726,438,91,23 10,520,91,23
+check slider-pressed-thumb slider-pressed.png@764,438,15,16 158,520,15,16
+check slider-disabled controls-memory.png@672,483,140,16 230,520,140,16
+
+# Progress bars: 55 %, empty (copy window), barber pole stripes (inside
+# the frame; Sherlock draws its own frame around it).
+check progress-55 progress-determinate-55.png@590,276,188,14 10,560,188,14
+check progress-0 progress-copy-window.png@590,276,188,14 220,560,188,14
+check progress-busy-stripes progress-indeterminate-a.png@1077,473,60,10 432,562,60,10
 
 echo "$((total - failed)) of $total regions pixel exact"
 exit $((failed > 0))

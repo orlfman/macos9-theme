@@ -3,7 +3,42 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: two checks so far (decoration, style batch 1; 2026-11-20). Open findings: none.
+Status: three checks so far (decoration, style batches 1-2; 2026-11-20). Open findings: none.
+
+## 2026-11-20, Claude Code (Claude Opus 5.5) — style batch 2 fidelity check
+
+Audited: `style/platinum/` pop-up menus, sliders and progress bars, working
+tree before commit. Reference: captures named in `dev/check-style.sh`.
+
+Findings: none open. Fixed during development: the pop-up body's own right
+corners showed through the arrow box's transparent corners (the body now
+stops where the box starts); both open-menu captures have the pointer over
+the pressed arrow box, in different columns, so the pressed box is merged
+from the two (columns 0-1 from popup-open-no-hover, the rest from
+popup-open) and each part is checked against the capture where it's clean.
+
+### Checks
+
+`dev/check-style.sh`: 47 of 47 regions pixel exact. New: pop-up normal and
+disabled (top/bottom 3 rows, left 6 columns, arrow box), pressed arrow box
+(two clean parts), slider with ticks (whole 91×23 slider), pressed thumb,
+disabled slider (140×16), progress bar at 55 % and empty (188×14 each),
+barber pole stripes (60×10, phase pinned with `PLATINUM_BARBER_PHASE=4`).
+The gallery renders its real combo boxes, sliders and progress bar with the
+style, without warnings.
+
+### Limits
+
+- Pop-up labels and the label position not compared (no Charcoal); the
+  pressed pop-up's body is hidden by its menu in both captures, so the body
+  isn't checked pressed.
+- The slider drag ghost isn't implemented (Qt moves the thumb live); vertical
+  sliders are drawn transposed, not captured.
+- The barber pole's speed (20 px/s) comes from two frames 0.2 s apart; its
+  animation isn't checked frame by frame. Its frame comes from the
+  determinate bar (Sherlock draws its own).
+- Editable combo boxes and the opened pop-up list are still Fusion.
+- Offscreen at 1x only; nothing installed.
 
 ## 2026-11-20, Claude Code (Claude Opus 5.5) — style batch 1 fidelity check
 

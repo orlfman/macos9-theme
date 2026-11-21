@@ -10,7 +10,7 @@ namespace Platinum
 
 struct Sprite {
     int w, h;
-    std::array<int, 14 * 12> data;
+    std::array<int, 24 * 24> data; // up to 24x24
 };
 
 inline void drawSprite(QPainter *p, int x, int y, const Sprite &s)

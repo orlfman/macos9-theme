@@ -2,6 +2,30 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-20, Claude Code (Claude Opus 5.5) — step 4: application style, batch 2
+
+Claimed `style`, released at the end. Tabs moved to their own batch: their
+slanted, overlapping edges need clean ends from several captures.
+
+- Pop-up menus (non-editable combo boxes): measured body 9-slice plus a
+  22-column arrow box sprite, normal / pressed / disabled; label black or
+  `#777777`. The pressed box is merged from two captures (pointer in each).
+- Sliders: 7-row groove from measured end pieces and a stretched middle
+  column (disabled: 5 rows, no outer lines), 15×16 thumb sprites (normal,
+  pressed, disabled), tick marks (white, black, `#888888`) under the
+  thumb's center; vertical sliders transposed.
+- Progress bars: drawn column by column from profiles measured in the 55 %
+  frame (frame, fill start, fill middle, fill end, black divider, 2-column
+  trough shadow, trough, last column); 0 % matches the empty copy window.
+  The barber pole uses the measured stripe ramps, 8 px Lavender / 8 px
+  gray, slanting one pixel per row, moving 20 px/s; busy bars get a
+  100 ms repaint timer from `polish()`. No text, as in Mac OS 9.
+- `tools/gen-style-data.sh` also writes `progress.h` and the new sprites;
+  `dev/styleshot.cpp` and `dev/check-style.sh` cover the new widgets.
+
+Checks: 47 of 47 regions pixel exact; the gallery renders. Limits in
+AUDIT.md.
+
 ## 2026-11-20, Claude Code (Claude Opus 5.5) — step 4: application style, batch 1
 
 Claimed `style`, released at the end (more batches to come).

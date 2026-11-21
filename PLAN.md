@@ -14,7 +14,7 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | reference  | reference/, docs/REFERENCE.md | nobody | capture pass done (81 captures, CAPTURES.md); measurements partial |
 | colors     | colors/                   | nobody     | Platinum.colors done (sandbox-checked) |
 | decoration | decoration/               | nobody     | plugin works in nested KWin; frame pixel exact (AUDIT.md) |
-| style      | style/                    | nobody     | batch 1 done: scroll bars, push buttons, check boxes, radios (pixel exact); rest still Fusion |
+| style      | style/                    | nobody     | batches 1-2 done (pixel exact): scroll bars, buttons, toggles, pop-ups, sliders, progress; next: tabs |
 | plasma     | plasma/                   | nobody     | not started |
 | icons      | icons/                    | nobody     | not started |
 | cursors    | cursors/                  | nobody     | not started |

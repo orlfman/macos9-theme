@@ -27,6 +27,15 @@ constexpr int ButtonTextPadding = 12;
 constexpr int CheckWidth = 14;      // 12 px box + 2 px check overhang
 constexpr int CheckHeight = 12;
 constexpr int RadioSize = 12;
+constexpr int PopupHeight = 20;
+constexpr int PopupArrowWidth = 22;  // the arrow box, divider included
+constexpr int SliderThumbWidth = 15;
+constexpr int SliderThumbHeight = 16;
+constexpr int SliderInset = 3;       // thumb travel starts 3 px inside the groove
+constexpr int SliderGrooveTop = 3;   // groove (with its outer lines) below the thumb's top
+constexpr int SliderGrooveHeight = 7;
+constexpr int SliderTickHeight = 7;
+constexpr int ProgressHeight = 14;
 } // namespace Metrics
 
 class Style : public QProxyStyle
@@ -45,9 +54,14 @@ public:
     void drawControl(ControlElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const override;
     void drawPrimitive(PrimitiveElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const override;
     int styleHint(StyleHint hint, const QStyleOption *option, const QWidget *widget, QStyleHintReturn *returnData) const override;
+    void polish(QWidget *widget) override;
+    void unpolish(QWidget *widget) override;
+    using QProxyStyle::polish;
+    using QProxyStyle::unpolish;
 
 private:
     void drawScrollBar(const QStyleOptionSlider *option, QPainter *painter, const QWidget *widget) const;
+    void drawSlider(const QStyleOptionSlider *option, QPainter *painter, const QWidget *widget) const;
 };
 
 } // namespace Platinum

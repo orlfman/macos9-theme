@@ -46,6 +46,56 @@ void toggle(QPainter &p, const char *name, QStyle::PrimitiveElement e, const QPo
     report(name, o.rect);
 }
 
+void popup(QPainter &p, const char *name, const QRect &r, QStyle::State state)
+{
+    QStyleOptionComboBox o;
+    o.initFrom(host);
+    o.rect = r;
+    o.state = state | QStyle::State_Active;
+    o.editable = false;
+    o.subControls = QStyle::SC_All;
+    if (state & QStyle::State_Sunken) {
+        o.activeSubControls = QStyle::SC_ComboBoxArrow;
+    }
+    style->drawComplexControl(QStyle::CC_ComboBox, &o, &p, host);
+    report(name, r);
+}
+
+void slider(QPainter &p, const char *name, const QRect &r, QStyle::State state, int max, int value, bool ticks)
+{
+    QStyleOptionSlider o;
+    o.initFrom(host);
+    o.rect = r;
+    o.orientation = Qt::Horizontal;
+    o.minimum = 0;
+    o.maximum = max;
+    o.singleStep = 1;
+    o.pageStep = 1;
+    o.tickInterval = 1;
+    o.sliderPosition = o.sliderValue = value;
+    o.tickPosition = ticks ? QSlider::TicksBelow : QSlider::NoTicks;
+    o.subControls = QStyle::SC_All;
+    o.state = state | QStyle::State_Active | QStyle::State_Horizontal;
+    if (state & QStyle::State_Sunken) {
+        o.activeSubControls = QStyle::SC_SliderHandle;
+    }
+    style->drawComplexControl(QStyle::CC_Slider, &o, &p, host);
+    report(name, r);
+}
+
+void progress(QPainter &p, const char *name, const QRect &r, int min, int max, int value)
+{
+    QStyleOptionProgressBar o;
+    o.initFrom(host);
+    o.rect = r;
+    o.minimum = min;
+    o.maximum = max;
+    o.progress = value;
+    o.state = QStyle::State_Enabled | QStyle::State_Horizontal;
+    style->drawControl(QStyle::CE_ProgressBar, &o, &p, host);
+    report(name, r);
+}
+
 void scrollbar(QPainter &p, const char *name, const QRect &r, Qt::Orientation orientation, int value, int page)
 {
     QStyleOptionSlider o;
@@ -78,7 +128,7 @@ int main(int argc, char **argv)
     QWidget w;
     host = &w;
     std::printf("style %s\n", qPrintable(style->name()));
-    QImage img(700, 420, QImage::Format_RGB32);
+    QImage img(700, 640, QImage::Format_RGB32);
     img.fill(QColor(0xDD, 0xDD, 0xDD));
     QPainter p(&img);
     using S = QStyle;
@@ -132,6 +182,20 @@ int main(int argc, char **argv)
     scrollbar(p, "vbar-top", QRect(560, 10, 16, 347), Qt::Vertical, 0, 975);
     scrollbar(p, "vbar-mid", QRect(600, 10, 16, 323), Qt::Vertical, 252, 708);
     scrollbar(p, "hbar", QRect(10, 380, 389, 16), Qt::Horizontal, 0, 1266);
+    // Pop-ups sit on the #EEEEEE panel of the Appearance control panel.
+    p.fillRect(QRect(5, 420, 690, 80), QColor(0xEE, 0xEE, 0xEE));
+    popup(p, "popup", QRect(10, 430, 180, 20), on);
+    popup(p, "popup-pressed", QRect(200, 430, 180, 20), on | S::State_Sunken);
+    popup(p, "popup-disabled", QRect(390, 430, 194, 20), S::State_None);
+    // Sliders like General Controls (91 px, 3 ticks, middle) and Memory.
+    slider(p, "slider", QRect(10, 520, 91, 23), on, 2, 1, true);
+    slider(p, "slider-pressed", QRect(120, 520, 91, 23), on | S::State_Sunken, 2, 1, true);
+    slider(p, "slider-disabled", QRect(230, 520, 140, 16), S::State_None, 2, 0, false);
+    // Progress bars like the copy window: 188 px, 55 % (101 of 184 inner
+    // columns) and empty; the barber pole pinned to the first Sherlock frame.
+    progress(p, "progress-55", QRect(10, 560, 188, 14), 0, 184, 101);
+    progress(p, "progress-0", QRect(220, 560, 188, 14), 0, 184, 0);
+    progress(p, "progress-busy", QRect(430, 560, 188, 14), 0, 0, 0);
     p.end();
     return img.save(QString::fromLocal8Bit(argv[1])) ? 0 : 1;
 }
