@@ -140,3 +140,6 @@ current item). Measured.
 | Submenu placement | `menu-submenu.png` (Apple menu > Control Panels) | the parent item stays highlighted `#333399`; the submenu's top black edge (y=131) sits 1 px above the parent item's highlight (y=132), so first items line up; its left black edge (x=201) starts right at the parent menu's right edge |
 | Menu inner edge, top/left | `menu-submenu.png` (x=202, y=132) | 1 px `#FFFFFF` highlight inside the black border, then `#DDDDDD` |
 | Apple menu | `menu-submenu.png` | "About This Computer" alone above a separator; every item has a 16 px icon; submenu arrows on folders |
+| Finder selection rectangle (marquee) | `finder-marquee-many.png` (corner near (683,378)) | 1 px dotted line made by **inverting every other pixel** (black dots on white, yellowish where it crosses an icon), like the window drag outline; icons inside darken and their names invert as soon as the rectangle touches them |
+| Finder name being edited | `finder-rename.png` ("Sherlock 2") | name sits in a 1 px black-framed edit box, text selected with the `#CCCCFF` highlight (black text), icon stays darkened |
+| Pop-up window tab (closed) | `finder-popup-tab.png` (x≈632–818, y=1061–1080, column x=720) | sits on the bottom screen edge; rounded top corners; black edge, `#FFFFFF` highlight, `#CCCCCC` fill; folder icon + title in the large system font |

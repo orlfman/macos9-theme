@@ -174,7 +174,19 @@ checked), `menu-contextual` (plain menu, Help first, opens at the click
 point). A scrolling menu is optional and skipped (nothing is long enough at
 1920×1080).
 
-Next: commit; then CAPTURES.md group 7 (Finder and desktop).
+Group 7 (Finder and desktop) finished; icon view, icon selection, desktop
+pattern, and both Trash icons were already covered. New: `finder-marquee-many`
+/ `-partial` (burst; the selection rectangle is a dotted line of inverted
+pixels, like the window drag outline), `finder-button-view` (square bevel
+buttons), `finder-rename` (black-framed edit box, `#CCCCFF` selection),
+`finder-popup-open` / `-zoom-outline` / `-tab` (pop-up windows dock to the
+bottom edge, animate as a gray zoom outline, and close to a rounded
+`#CCCCCC` tab; the tab hid behind the Control Strip until dragged), and four
+Control Strip frames from a burst (volume slider pop-up, module menus that
+open upward). Launcher and spring-loaded folders are optional and skipped.
+Bursts pruned to the useful frames.
+
+Next: commit; then CAPTURES.md group 8 (help, cursors, misc).
 
 ## 2026-11-19, Claude Code (Claude Opus 5.5) — project setup
 

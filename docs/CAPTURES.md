@@ -331,21 +331,41 @@ Smart Scrolling is on (both arrows at one end, proportional thumb).
 
 ## 7. Finder and desktop (B) — Plasma, icons
 
-- [ ] `finder-icon-view`: icon view window with several items.
-- [ ] `finder-icon-selected`: icons selected (icon darkening, name
-      highlight) in a window and on the desktop.
-- [ ] `finder-marquee`: drag a selection rectangle and hold (delay).
-- [ ] `finder-button-view`: View > as Buttons.
-- [ ] `finder-rename`: an icon name being edited.
-- [ ] `finder-popup-window`: a pop-up window (tab at the bottom of the
-      screen; View > as Pop-up Window), both closed tab and open.
+- [x] `finder-icon-view`: icon view window with several items
+      (`window-document-active.png`).
+- [x] `finder-icon-selected`: icons selected (icon darkening, name
+      highlight) in a window and on the desktop (window: `dialog-get-info.png`;
+      desktop: `dialog-get-info-inactive.png`, Starcraft zip).
+- [x] `finder-marquee`: drag a selection rectangle and hold (delay). Done
+      2026-11-20 by burst (the single `--delay` try missed):
+      `finder-marquee-many.png`, `finder-marquee-partial.png`.
+- [x] `finder-button-view`: View > as Buttons. Done 2026-11-20: each item
+      is a square bevel button (normal bevel-button look) with the icon in
+      it and the name below; no selection visible in this shot.
+- [x] `finder-rename`: an icon name being edited. Done 2026-11-20
+      (Sherlock 2): black-framed box, `#CCCCFF` selection, darkened icon.
+- [x] `finder-popup-window`: a pop-up window (tab at the bottom of the
+      screen; View > as Pop-up Window), both closed tab and open. Burst
+      2026-11-20: `finder-popup-open.png` (drawer docked at the bottom),
+      `finder-popup-zoom-outline.png` (the move animates as a thin gray
+      zoom outline). The closed tab was hidden behind the Control Strip at
+      the bottom left. Closed tab: `finder-popup-tab.png` (dragged to the
+      middle, 2026-11-20). The same shot shows the Control Strip collapsed
+      to its end tab at the bottom left.
 - [ ] `finder-spring-loaded`: optional, a spring-loaded folder opening
       during a drag (delay).
-- [ ] `desktop-pattern-tile`: the empty desktop (the 128×128 tile;
+- [x] `desktop-pattern-tile` (`desktop-first-check.png`): the empty desktop (the 128×128 tile;
       `desktop-first-check.png` mostly covers it).
-- [ ] `desktop-trash-full`: Trash icon empty and full.
-- [ ] `control-strip`: Control Strip expanded, collapsed, and one module
-      pop-up open.
+- [x] `desktop-trash-full`: Trash icon empty and full (empty:
+      `desktop-first-check.png`; full: `dialog-modal-alert.png`).
+- [x] `control-strip`: Control Strip expanded, collapsed, and one module
+      pop-up open. Burst 2026-11-20: `control-strip-volume.png` (module
+      pressed dark, a vertical volume slider pops up above it with a gray,
+      not Lavender, thumb), `control-strip-sound-menu.png`,
+      `control-strip-web-sharing-menu.png`,
+      `control-strip-file-sharing-menu.png` (module menus open upward,
+      normal menu style, disabled italic header line). Expanded: almost
+      every capture; collapsed: `finder-popup-tab.png`.
 - [ ] `launcher`: optional, Launcher control panel window.
 
 ## 8. Help, cursors, misc (C)
