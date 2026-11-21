@@ -13,9 +13,9 @@ demo, at commit c2e581f plus the uncommitted test scripts.
 
 ### Findings
 
-1. **P2, fixed (working tree, 2026-11-21): tabs without a pane in document
-   mode.** Dolphin's settings (`dolphin-settings-tab-lines-seam.png` in the
-   user's `~/Pictures/Screenshots/testing/`) use a document-mode
+1. **P2, fixed (853468b, 2026-11-21): tabs without a pane in document
+   mode.** Dolphin's settings
+   (`reference/testing/dolphin-settings-tab-lines-seam.png`) use a document-mode
    `QTabWidget`, for which Qt draws no pane: the tabs' pane rows (black,
    `#CCCCCC`, white) and the current tab's `#EEEEEE` opening ended loose
    over the `#DDDDDD` window, a white seam under the tabs. Reference:
@@ -29,7 +29,8 @@ demo, at commit c2e581f plus the uncommitted test scripts.
    padding was right); they now use the Platinum label area and colors
    with Qt's icon + text layout, and `PM_TabBarTabVSpace` is 0.
 2. **P3, open (menu batch): checked menu items with an icon.** Dolphin's
-   view-mode menu (`dolphin-menu-icon-selected-close-to-border.png`): the
+   view-mode menu
+   (`reference/testing/dolphin-menu-icon-selected-close-to-border.png`): the
    checked first item gets Fusion's sunken frame around its icon, touching
    the menu's top border. Reference: `menu-view-checked.png` (Mac OS 9 marks
    checked items with a check mark, no icon frame). Menus are still Fusion;

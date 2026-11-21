@@ -85,6 +85,11 @@ Create folders when their step starts, not ahead of time.
   is committed or a capture group is finished; that's the user's standing
   request, since `/home` has no other backup. Same identity and
   `Co-Authored-By:` rules.
+- `reference/testing/` (same private repo): the user's screenshots of
+  problems found while testing our theme (`dev/live-test.sh`), copied from
+  `~/Pictures/Screenshots/testing/`, each listed in `testing/INDEX.tsv`
+  with its `AUDIT.md` finding number. Cite them in findings by that path.
+  They show our theme, not Mac OS 9: never measure from them.
 
 ## Working together (multiple agents)
 
