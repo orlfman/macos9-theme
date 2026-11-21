@@ -26,6 +26,15 @@ config=$dev/build/sandbox/home-$scheme/config
 mkdir -p "$config"
 kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key library "${M9_DECORATION:-org.kde.breeze}"
 kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key theme ""
+if [[ ${M9_DECORATION:-} == platinum ]]; then
+    # Mac OS 9 layout: close box on the left, zoom and collapse on the right
+    # (collapse = minimize: Wayland windows can't be shaded in KWin 6.8).
+    kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key ButtonsOnLeft X
+    kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key ButtonsOnRight AI
+else
+    kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key ButtonsOnLeft --delete
+    kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key ButtonsOnRight --delete
+fi
 
 if [[ -d $project/decoration/build/plugins ]]; then
     export QT_PLUGIN_PATH=$project/decoration/build/plugins

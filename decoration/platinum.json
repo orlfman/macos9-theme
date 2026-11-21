@@ -1,0 +1,16 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "orlfman"
+            }
+        ],
+        "Description": "Platinum window frames measured from a classic 1999 desktop: an etched gray title bar with pinstripes, a close box on the left, zoom and collapse boxes on the right, and a hard one pixel shadow.",
+        "EnabledByDefault": true,
+        "Name": "Platinum"
+    },
+    "org.kde.kdecoration3": {
+        "blur": false,
+        "recommendedBorderSize": "Normal"
+    }
+}

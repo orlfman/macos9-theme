@@ -2,6 +2,34 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-20, Claude Code (Claude Opus 5.5) — step 4: window decoration plugin
+
+Claimed `decoration`, released at the end.
+
+- `decoration/platinum.{h,cpp,json}` + `build.sh`: a KDecoration3 plugin,
+  structure adapted from the user's windows2000-union decoration. 6 px
+  frame with raised and sunken bevels, 22-row title bar, close / zoom /
+  collapse boxes (normal and pressed), etched pinstripes, centered icon and
+  title (condensed, then dropped when too long), flat inactive look with
+  `#555555` lines, hard 1 px drop shadow (black / `#555555`). All metrics in
+  `Metrics` in `platinum.h` (true 1x). Builds with no warnings.
+- Measured on the way: the full window frame, inactive lines `#555555`,
+  pressed box ramp `#44`→`#CC` capped at `#99` on its last row/column.
+  REFERENCE.md "Window frame".
+- Found: Wayland windows report `isShadeable() == false` in KWin 6.8.3, so
+  the Shade button never shows; the minimize button now wears the collapse
+  box and the Mac layout is `X` | `AI`. KWin's decoration preview ignores
+  the button layout, draws no shadow and is 1 px smaller. FINDINGS.md.
+- `dev/`: `decoshot.cpp`, `decoration.qml`, `shoot-deco.sh` from
+  windows2000-union, adapted; `kwin-test.sh` / `app-test.sh` set the Mac
+  layout with `M9_DECORATION=platinum`; `VT_SINGLE=1` for one window.
+  DEVELOPMENT.md section "The window decoration".
+
+Checks: every frame region compared is pixel exact against the captures,
+active (nested KWin, KWrite), inactive and pressed (preview). Details and
+limits in AUDIT.md: title text, the drop shadow, maximized and X11 windows
+aren't verified, nothing is installed, and the user hasn't seen it.
+
 ## 2026-11-20, Claude Code (Claude Opus 5.5) — step 4: color scheme
 
 Claimed `colors`, released at the end.

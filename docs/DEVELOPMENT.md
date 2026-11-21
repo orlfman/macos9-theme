@@ -55,6 +55,34 @@ windows (or any app) screenshotted by Spectacle. `M9_STYLE`, `M9_DECORATION`
 `VT_MAXIMIZED=1` for a maximized window. When `decoration/build/plugins`
 exists, it's on `QT_PLUGIN_PATH`.
 
+## The window decoration
+
+```bash
+decoration/build.sh
+```
+
+```bash
+dev/shoot-deco.sh platinum
+```
+
+```bash
+M9_DECORATION=platinum VT_SINGLE=1 M9_SIZE=900x500 dev/kwin-test.sh platinum
+```
+
+```bash
+M9_DECORATION=platinum dev/app-test.sh kwrite kwrite platinum
+```
+
+`decoration/build.sh` builds `decoration/build/plugins/org.kde.kdecoration3/platinum.so`
+(moc + g++, no install). `dev/shoot-deco.sh` renders `dev/decoration.qml`
+through KWin's own decoration preview: active, inactive, a long title and
+pressed boxes, at the reference window's size (but see docs/FINDINGS.md: no
+button layout, no shadow, 1 px smaller). With `M9_DECORATION=platinum`,
+`kwin-test.sh` and `app-test.sh` load the plugin and set the Mac layout
+(close left, zoom and collapse right); `VT_SINGLE=1` opens one window titled
+"Mac OS". The nested KWin's background is black, so the black drop shadow
+doesn't show there.
+
 ## Measure and compare
 
 `tools/compare.py` works on reference captures and sandbox renders alike.

@@ -80,3 +80,26 @@ works on 6.8).
 ### Not evaluated
 
 Kvantum isn't installed here; it wasn't tested.
+
+## Decoration plugin (2026-11-20, Claude Code)
+
+### Wayland windows can't be shaded, so the collapse box is the minimize button
+
+A probe in the plugin logged `window()->isShadeable()` as `0` for a Wayland
+window in the nested KWin 6.8.3, so KDecoration never shows a Shade button
+(layout letter `L`) there; the collapse box was missing in both the test
+window and KWrite. The plugin draws both the Shade and the Minimize button
+as the collapse box, and the Mac layout is `ButtonsOnLeft=X`,
+`ButtonsOnRight=AI` (zoom, collapse). It looks identical; clicking it
+minimizes instead of rolling the window up. Not checked: X11 apps, where
+shading works.
+
+### KWin's decoration preview: no button layout, no shadow, 1 px smaller
+
+`org.kde.kwin.private.kdecoration` (used by `dev/decoration.qml`) has no
+button layout setting (the `Settings` type exposes only `bridge`, `settings`,
+`borderSizesIndex`) and ignores the sandbox kwinrc, so previews use KDE's
+default buttons. It doesn't draw the drop shadow (the compositor does), and
+a 416×246 item came out 415×245. Use it for inactive and pressed states;
+check layout and shadow in the nested KWin (`dev/kwin-test.sh`,
+`dev/app-test.sh` with `M9_DECORATION=platinum`).

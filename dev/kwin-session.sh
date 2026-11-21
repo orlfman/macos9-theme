@@ -4,7 +4,9 @@
 # screen into $VT_OUT, then exits, which ends the nested KWin.
 dev=$(dirname "$(readlink -f "$0")")
 qml=/usr/lib/qt6/bin/qml
-if [[ ${VT_MAXIMIZED:-0} == 1 ]]; then
+if [[ ${VT_SINGLE:-0} == 1 ]]; then
+    "$qml" "$dev/kwin-window.qml" -- "Mac OS" &
+elif [[ ${VT_MAXIMIZED:-0} == 1 ]]; then
     "$qml" "$dev/kwin-window.qml" -- maximized "Home — Dolphin" &
 else
     "$qml" "$dev/kwin-window.qml" -- "Konsole" &

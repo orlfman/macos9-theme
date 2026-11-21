@@ -9,6 +9,7 @@
 #                  ../decoration/build/plugins exists it's put on QT_PLUGIN_PATH
 #   M9_SIZE        virtual screen size (default 1100x620)
 #   VT_MAXIMIZED=1 opens one maximized window instead, into kwin-SCHEME-max.png
+#   VT_SINGLE=1    opens one window titled "Mac OS", into kwin-SCHEME-single.png
 #
 # Adapted from the user's windows2000-union project (BSD-2-Clause).
 set -euo pipefail
@@ -19,6 +20,8 @@ scheme=${1:-breeze}
 mkdir -p "$dev/shots"
 suffix=
 [[ ${VT_MAXIMIZED:-0} == 1 ]] && suffix=-max
+[[ ${VT_SINGLE:-0} == 1 ]] && suffix=-single
+export VT_SINGLE=${VT_SINGLE:-0}
 export VT_OUT=$dev/shots/kwin-$scheme$suffix.png
 rm -f "$VT_OUT"
 
@@ -27,6 +30,15 @@ config=$dev/build/sandbox/home-$scheme/config
 mkdir -p "$config"
 kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key library "${M9_DECORATION:-org.kde.breeze}"
 kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key theme ""
+if [[ ${M9_DECORATION:-} == platinum ]]; then
+    # Mac OS 9 layout: close box on the left, zoom and collapse on the right
+    # (collapse = minimize: Wayland windows can't be shaded in KWin 6.8).
+    kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key ButtonsOnLeft X
+    kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key ButtonsOnRight AI
+else
+    kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key ButtonsOnLeft --delete
+    kwriteconfig6 --file "$config/kwinrc" --group org.kde.kdecoration2 --key ButtonsOnRight --delete
+fi
 
 if [[ -d $project/decoration/build/plugins ]]; then
     export QT_PLUGIN_PATH=$project/decoration/build/plugins

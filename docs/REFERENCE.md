@@ -157,3 +157,26 @@ current item). Measured.
 
 `colors/Platinum.colors` is built from these and the tables above; its header
 lists which keys are measured and which aren't.
+
+## Window frame (decoration)
+
+From `window-document-active.png` / `window-document-inactive.png` (Mac OS
+window, x 426–841, y 410–655) and the pressed captures. All implemented in
+`decoration/platinum.cpp`; checks in AUDIT.md.
+
+| Part | Active | Inactive |
+|------|--------|----------|
+| Outer edge | black | `#555555` |
+| Raised bevel (1 px) | white top/left (top row ends 2 px before the right edge), `#999999` right/bottom (from row 2 / col 2) | none |
+| Face | `#CCCCCC`, 2 px on the sides and bottom | `#DDDDDD`, 4 px |
+| Sunken bevel around the content | `#999999` top/left, white right/bottom | none |
+| Content line | black, 1 px | `#555555` |
+| Drop shadow | black, 1 px right and bottom, starting 2 px in from the top-right and bottom-left corners | `#555555`, same shape |
+| Title bar | 22 rows above the content (rows 0–19 bar, 20 sunken bevel, 21 content line) | same, flat |
+| Boxes | 13×13 at 4 px from the edges, zoom and collapse 3 px apart; etched `#888888`/white edge, `#222222` frame, 9×9 inside: white/`#CCCCCC` highlight, `#888888` shadow, ramp `#99`→`#FF` in 2 px diagonal steps | not drawn |
+| Pressed box | inside: ramp `#44`→`#CC` in 2 px steps, last row and column capped at `#99`, no highlight; glyph unchanged | — |
+| Glyphs | zoom: `#222222` lines at col 7 rows 2–7 and row 7 cols 2–7; collapse: rows 5 and 7, cols 2–10 | — |
+| Pinstripes | 6 white rows from row 4, each with a `#777777` row under it shifted 1 px right; from 5 px after the close box to 5 px before the zoom box | none |
+| Title | window icon (16 px) + 4 px + text, centered on the window, stripes stop 5 px before/after; text black | text `#777777`, icon dimmed |
+
+Each side is 6 px from the outer edge to the content line inclusive.
