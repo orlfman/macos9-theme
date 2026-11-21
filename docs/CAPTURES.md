@@ -37,20 +37,57 @@ Priority: **A** = needed for colors, decoration, and the application style
 
 Use a Finder window (open the Mac OS hard disk) and a SimpleText window.
 
-- [ ] `window-document-active`: Finder window, front, with scroll bars and
-      size box visible.
-- [ ] `window-document-inactive`: same window behind another window.
-- [ ] `window-close-pressed`: hold the mouse on the close box (delay).
-- [ ] `window-zoom-pressed`: hold on the zoom box (delay).
-- [ ] `window-collapse-pressed`: hold on the collapse box (delay).
-- [ ] `window-collapsed`: window collapsed (window-shaded) to its title bar.
-- [ ] `window-long-title`: a window whose title is long enough to squeeze
+- [x] `window-document-active`: Finder window, front, with scroll bars and
+      size box visible. Done 2026-11-20; content fits, so the scroll bars
+      show no thumb (also serves as `scroll-nothing-to-scroll`).
+- [x] `window-document-inactive`: same window behind another window.
+      Done 2026-11-20 (deactivated by clicking the desktop).
+- [x] `window-close-pressed`: hold the mouse on the close box (delay).
+      Done 2026-11-20; cursor covers the box's lower-right corner.
+- [x] `window-zoom-pressed`: hold on the zoom box (delay). Done
+      2026-11-20; cursor covers the bottom edge, glyph visible.
+- [x] `window-collapse-pressed`: hold on the collapse box (delay). Done
+      2026-11-20; the window sits ~15 px lower/right than in the earlier
+      shots (moved or zoomed between captures).
+- [x] `window-collapsed`: window collapsed (window-shaded) to its title bar.
+      Done 2026-11-20 (active, collapsed title bar only).
+- [x] `window-long-title`: a window whose title is long enough to squeeze
       the pinstripes (rename a folder to something long and open it).
-- [ ] `window-dragging`: drag a window by the title bar and hold (delay); is
-      it a live move or an outline?
-- [ ] `window-resizing`: drag the size box and hold (delay).
-- [ ] `window-simpletext`: a SimpleText document window (a non-Finder app
-      window, for comparison).
+      Done 2026-11-20: 31-character folder name in a narrow window. The
+      title is drawn **condensed** (tighter letter spacing) and the
+      pinstripes shrink to a few px on each side; not truncated yet.
+- [x] `window-long-title-2`: same window narrower still, until the title is
+      truncated with "…" (does it condense first, then truncate? is there a
+      minimum pinstripe width?). Done 2026-11-20 with a folder named
+      `window-long-title-2` (0 items) in a very narrow window: the title
+      text is **dropped entirely**, no "…"; the folder icon stays centered
+      and pinstripes remain on both sides. Whether an ellipsis stage exists
+      at in-between widths is not checked. Bonus: the inactive
+      "This Is A Very Long Folder Name" window in the same shot shows a
+      condensed inactive (gray) title.
+- [x] `window-dragging`: drag a window by the title bar and hold (delay); is
+      it a live move or an outline? Done 2026-11-20: **outline**, the
+      window stays put. The outline is a 1 px dotted frame of the window's
+      size made by inverting every other pixel (`#63639C` desktop →
+      `#9C9C63`, exact RGB inversion), corner at (697,486). Whether KWin
+      can do an outline move at all is still to check (FINDINGS).
+- [x] `window-resizing`: drag the size box and hold (delay). Done
+      2026-11-20: also an **outline** of the new size, same inverted-pixel
+      dots, window unchanged until release. Not one rectangle: lines at
+      y=487 (top) and y=508 (title bar bottom), and a double frame on the
+      right/bottom (x=1377 and 1383, y=975 and 981), so the outer frame
+      plus an inner rectangle 6 px in, i.e. a sketch of the window's frame
+      and title bar. Left edge mostly hidden behind the window.
+- [x] `window-simpletext`: a SimpleText document window (a non-Finder app
+      window, for comparison). Done 2026-11-20: unsaved "untitled" has no
+      title icon and no header; vertical scroll bar plus an empty
+      horizontal bar strip; SimpleText's menus and the application menu
+      (SimpleText) in the menu bar; three inactive Finder windows behind.
+- [x] `window-simpletext-narrow`: the same window at its smallest. Done
+      2026-11-20: SimpleText stops shrinking at about 140 px wide, where
+      the short title "untitled" still fits with a few pixels of
+      pinstripes, so the dropped-title case can't be reached here (an
+      app minimum size, not a title rule).
 
 ## 2. Dialogs and alerts (A) — decoration + style
 

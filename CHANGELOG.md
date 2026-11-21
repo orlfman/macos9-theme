@@ -42,8 +42,33 @@ serves), and added `--delay SECONDS` to `tools/capture.py` so the user can
 hold a button down while it captures (countdown, then a terminal beep;
 tested 2.5 s against a throwaway QEMU). Linked from AGENTS.md and PLAN.md.
 
+Group 1 started: `window-close-pressed.png` (user ran it with `--delay`;
+the pressed close box is a dark gradient, the cursor covers its lower-right
+corner). INDEX.tsv had two entries for it because the user deleted a
+failed first try (empty shot) and retook it; I removed the deleted one's
+line. While checking, I found that two overlapping runs with the same name
+could both pass the exists check before `--delay` ends, so the PNG is now
+created with `open(..., "xb")` and each run uses its own temp PPM: an
+overlapping run refuses instead of overwriting (tested with two overlapping
+runs against a throwaway QEMU). Deleting a bad capture and retaking it
+under the same name is fine; remove its INDEX line too.
+
+Group 1 (windows and title bars) finished, 12 captures; details are in
+the ticked items of `docs/CAPTURES.md`. Findings for the decoration:
+
+- Pressed close/zoom/collapse boxes fill with a dark gradient, glyphs stay.
+- Inactive windows drop the pinstripes, all three boxes, scroll arrows, and
+  the size box grip; title and header text turn gray.
+- Long titles are drawn condensed first; when even that doesn't fit, the
+  text is dropped and only the title icon stays (no "…" seen; an
+  in-between ellipsis stage is unchecked).
+- Moving and resizing draw an outline (every other pixel color-inverted)
+  instead of moving the window; the resize outline sketches the frame and
+  title bar. KWin likely can't do this; to check.
+- A collapsed window keeps its full title bar and frame.
+
 Next: recheck the Themes tab still says Mac OS Default after the Fonts edits,
-then work through CAPTURES.md group 1 (windows and title bars).
+then CAPTURES.md group 2 (dialogs and alerts).
 
 ## 2026-11-19, Claude Code (Claude Opus 5.5) — project setup
 

@@ -112,7 +112,7 @@ def main():
         time.sleep(a.delay - int(a.delay))
         print("\a", end="", flush=True)
 
-    ppm = REF / f".{a.name}.ppm"
+    ppm = REF / f".{a.name}.{os.getpid()}.ppm"
     ppm.unlink(missing_ok=True)
     qmp(a.socket, "screendump", {"filename": str(ppm)})
     for _ in range(50):  # QEMU may finish writing after replying
@@ -122,7 +122,14 @@ def main():
     from PIL import Image
     with Image.open(ppm) as im:
         im.load()
-        im.save(out, format="PNG", optimize=True)
+        try:
+            # "x": fail instead of overwriting if another run saved this name
+            # meanwhile (the exists() check above runs before --delay)
+            with open(out, "xb") as fh:
+                im.save(fh, format="PNG", optimize=True)
+        except FileExistsError:
+            ppm.unlink()
+            sys.exit(f"{out} was created by another run meanwhile; nothing saved")
     with Image.open(ppm) as a_im, Image.open(out) as b_im:
         if a_im.tobytes() != b_im.convert(a_im.mode).tobytes():
             out.unlink()
