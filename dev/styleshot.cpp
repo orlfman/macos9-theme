@@ -9,7 +9,8 @@
 //   push buttons 70x20 (normal, pressed), 80x20 disabled, default ring
 //   86x26 (normal) and 78x26 (pressed); check boxes and radio buttons in
 //   every state; two vertical scroll bars and one horizontal one sized like
-//   the captures.
+//   the captures; pop-ups, sliders, progress bars; three tab rows laid out
+//   like the Appearance control panel's six tabs on their pane.
 #include <QtWidgets>
 #include <cstdio>
 
@@ -96,6 +97,37 @@ void progress(QPainter &p, const char *name, const QRect &r, int min, int max, i
     report(name, r);
 }
 
+// The Appearance control panel's tab row: six tabs (Themes, Appearance,
+// Fonts, Desktop, Sound, Options) on a pane, measured widths, starting 5 px
+// inside the pane. `current` and `pressed` are tab indexes (-1 = none).
+void tabRow(QPainter &p, const char *name, const QRect &pane, int current, int pressed)
+{
+    QStyleOptionTabWidgetFrame f;
+    f.initFrom(host);
+    f.rect = pane;
+    f.shape = QTabBar::RoundedNorth;
+    style->drawPrimitive(QStyle::PE_FrameTabWidget, &f, &p, host);
+    static const int widths[] = {72, 101, 57, 74, 62, 71};
+    int x = pane.x() + 5;
+    const int y = pane.y() - 21;
+    for (int i = 0; i < 6; ++i) {
+        QStyleOptionTab o;
+        o.initFrom(host);
+        o.shape = QTabBar::RoundedNorth;
+        o.rect = QRect(x, y, widths[i], 24);
+        o.state = QStyle::State_Enabled | QStyle::State_Active;
+        if (i == current) {
+            o.state |= QStyle::State_Selected;
+        }
+        if (i == pressed) {
+            o.state |= QStyle::State_Sunken;
+        }
+        style->drawControl(QStyle::CE_TabBarTabShape, &o, &p, host);
+        x += widths[i];
+    }
+    report(name, pane);
+}
+
 void scrollbar(QPainter &p, const char *name, const QRect &r, Qt::Orientation orientation, int value, int page)
 {
     QStyleOptionSlider o;
@@ -128,7 +160,7 @@ int main(int argc, char **argv)
     QWidget w;
     host = &w;
     std::printf("style %s\n", qPrintable(style->name()));
-    QImage img(700, 640, QImage::Format_RGB32);
+    QImage img(1000, 960, QImage::Format_RGB32);
     img.fill(QColor(0xDD, 0xDD, 0xDD));
     QPainter p(&img);
     using S = QStyle;
@@ -196,6 +228,12 @@ int main(int argc, char **argv)
     progress(p, "progress-55", QRect(10, 560, 188, 14), 0, 184, 101);
     progress(p, "progress-0", QRect(220, 560, 188, 14), 0, 184, 0);
     progress(p, "progress-busy", QRect(430, 560, 188, 14), 0, 0, 0);
+    // Tabs like reference/appearance-1-themes.png (Themes current, the
+    // whole pane), tab-pressed.png (Appearance current, Sound pressed) and
+    // appearance-6-options.png (Options current).
+    tabRow(p, "tabs-themes", QRect(5, 641, 466, 280), 0, -1);
+    tabRow(p, "tabs-pressed", QRect(520, 641, 466, 40), 1, 4);
+    tabRow(p, "tabs-options", QRect(520, 721, 466, 40), 5, -1);
     p.end();
     return img.save(QString::fromLocal8Bit(argv[1])) ? 0 : 1;
 }

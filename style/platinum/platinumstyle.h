@@ -36,6 +36,11 @@ constexpr int SliderGrooveTop = 3;   // groove (with its outer lines) below the 
 constexpr int SliderGrooveHeight = 7;
 constexpr int SliderTickHeight = 7;
 constexpr int ProgressHeight = 14;
+constexpr int TabHeight = 24;        // 21 rows of tab + the pane's 3 top rows
+constexpr int TabPaneOverlap = 3;    // black line, #CCCCCC, white
+constexpr int TabTextPadding = 12;   // each side; tab width = text + 24
+constexpr int TabInset = 5;          // first tab's left edge from the pane's
+constexpr int TabPaneFrame = 3;      // black outline + 2 px bevel
 } // namespace Metrics
 
 class Style : public QProxyStyle
@@ -48,6 +53,7 @@ public:
     QString name() const;
     int pixelMetric(PixelMetric metric, const QStyleOption *option, const QWidget *widget) const override;
     QSize sizeFromContents(ContentsType type, const QStyleOption *option, const QSize &size, const QWidget *widget) const override;
+    QRect subElementRect(SubElement element, const QStyleOption *option, const QWidget *widget) const override;
     QRect subControlRect(ComplexControl control, const QStyleOptionComplex *option, SubControl sub, const QWidget *widget) const override;
     SubControl hitTestComplexControl(ComplexControl control, const QStyleOptionComplex *option, const QPoint &pos, const QWidget *widget) const override;
     void drawComplexControl(ComplexControl control, const QStyleOptionComplex *option, QPainter *painter, const QWidget *widget) const override;

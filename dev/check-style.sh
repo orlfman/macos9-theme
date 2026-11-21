@@ -89,5 +89,41 @@ check progress-55 progress-determinate-55.png@590,276,188,14 10,560,188,14
 check progress-0 progress-copy-window.png@590,276,188,14 220,560,188,14
 check progress-busy-stripes progress-indeterminate-a.png@1077,473,60,10 432,562,60,10
 
+# Tabs: the strip above the labels, the strip below them down into the pane,
+# and the 12 label-free columns on both sides of every tab. tabs_check
+# compares a capture's tab row (pane at rx,ry) with ours (pane at ox,oy).
+# Above the pane, the capture's two outermost columns on each side are the
+# window's (frame black line, then its content area's white / #AAAAAA edge:
+# the pane fills the window there), so columns 2-463 are compared.
+tab_widths=(72 101 57 74 62 71)
+tabs_check() { # name ref.png rx ry ox oy [skip-x0 skip-x1]: columns (pane-relative) to leave out below the labels
+    local n=$1 img=$2 rx=$3 ry=$4 ox=$5 oy=$6 s0=${7:-} s1=${8:-}
+    local ty=$((ry - 21)) oty=$((oy - 21))
+    check "$n-top" "$img@$((rx + 2)),$ty,462,6" "$((ox + 2)),$oty,462,6"
+    if [[ -n $s0 ]]; then
+        check "$n-bottom-a" "$img@$((rx + 2)),$((ty + 17)),$((s0 - 2)),10" "$((ox + 2)),$((oty + 17)),$((s0 - 2)),10"
+        check "$n-bottom-b" "$img@$((rx + s1)),$((ty + 17)),$((464 - s1)),10" "$((ox + s1)),$((oty + 17)),$((464 - s1)),10"
+    else
+        check "$n-bottom" "$img@$((rx + 2)),$((ty + 17)),462,10" "$((ox + 2)),$((oty + 17)),462,10"
+    fi
+    # left of the first tab's label, between labels, right of the last one
+    local x=5 i
+    check "$n-sides-0" "$img@$((rx + 2)),$((ty + 6)),15,11" "$((ox + 2)),$((oty + 6)),15,11"
+    for i in 0 1 2 3 4; do
+        x=$((x + tab_widths[i]))
+        check "$n-sides-$((i + 1))" "$img@$((rx + x - 12)),$((ty + 6)),24,11" "$((ox + x - 12)),$((oty + 6)),24,11"
+    done
+    x=$((x + tab_widths[5]))
+    check "$n-sides-6" "$img@$((rx + x - 12)),$((ty + 6)),$((464 - x + 12)),11" "$((ox + x - 12)),$((oty + 6)),$((464 - x + 12)),11"
+}
+tabs_check tabs-themes appearance-1-themes.png 469 235 5 641
+# the whole pane frame: left, right and bottom bands
+check tabs-pane-left appearance-1-themes.png@469,235,4,280 5,641,4,280
+check tabs-pane-right appearance-1-themes.png@931,235,4,280 467,641,4,280
+check tabs-pane-bottom appearance-1-themes.png@469,511,466,4 5,917,466,4
+# the pointer is over the pressed tab's lower right and the pane below it
+tabs_check tabs-pressed tab-pressed.png 773 225 520 641 357 373
+tabs_check tabs-options appearance-6-options.png 469 235 520 721
+
 echo "$((total - failed)) of $total regions pixel exact"
 exit $((failed > 0))

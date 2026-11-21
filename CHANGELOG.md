@@ -2,6 +2,47 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-20, Claude Code (Claude Opus 5.5) — step 4: application style, batch 3 (tabs)
+
+Claimed `style` (and `shared` for the tools/dev/docs edits), released at
+the end.
+
+- Tabs (north tab bars): drawn row by row from measured edges. New
+  `tools/tabs.py` reads each tab state's left and right edge, row by row,
+  from a tab whose edge has no neighbor (first tab's left, last tab's
+  right) and writes `style/platinum/tabs.h`; the pressed tab's right edge
+  turned out to be clean in `tab-pressed.png` (the pointer is inside the
+  tab), so nothing is derived. Fill per row = first color repeated 3 times
+  after the edge (labels can start right after the edge).
+- Tab pane (`PE_FrameTabWidget`): a measured 9-slice (`TabPane`, added to
+  `tools/gen-style-data.sh`); `PE_FrameTabBarBase` draws the pane's top
+  3 rows under a lone `QTabBar`.
+- Metrics: tab height 24 (21 + the 3 pane rows it overlaps), width = text
+  + 24, no tab overlap, first tab 5 px in from the pane, contents 3 px
+  inside the pane. Label centered in the 20 rows below the top line, black,
+  white on the pressed tab, `#777777` disabled. No focus rectangle on tab
+  bars. `SH_TabBar_SelectMouseType` = release: the tab shows pressed while
+  held and switches on release, as in Mac OS 9.
+- `dev/styleshot.cpp` lays out the Appearance control panel's six tabs
+  three times (Themes current with the whole pane; Appearance current with
+  Sound pressed; Options current); `dev/check-style.sh` compares them.
+- `docs/REFERENCE.md`: tab shape, tab row layout and pane rows.
+
+Checks: `dev/check-style.sh` 78 of 78 regions pixel exact (31 new tab
+regions). A live `QTabWidget` (offscreen) lays out as measured: tab bar at
+x=5, tab widths = text + 24, page at the pane's inside; a press on "Sound"
+keeps "Themes" current until release. First ASan + UBSan run of the style
+(styleshot and the tab test): no reports, identical render.
+
+Not done: vertical (west/east) and south tabs still come from Fusion;
+pressing the current tab and disabled tabs were not captured (current look
+kept / normal shape with gray label); labels use the substitute font, so
+widths differ from Charcoal's by a few pixels.
+
+Next batch: text fields and the 2 px `#6666CC` focus ring, then group
+boxes, list headers + disclosure triangles, menus, mixed check box, size
+grip.
+
 ## 2026-11-20, Claude Code (Claude Opus 5.5) — step 4: application style, batch 2
 
 Claimed `style`, released at the end. Tabs moved to their own batch: their

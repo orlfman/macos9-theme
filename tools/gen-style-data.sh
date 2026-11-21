@@ -1,5 +1,5 @@
 #!/bin/bash
-# Regenerates style/platinum/slices.h and style/platinum/sprites.h from the
+# Regenerates style/platinum/{slices,sprites,progress,tabs}.h from the
 # reference captures (needs reference/, the private capture repo). Every value
 # is a measured gray level; see docs/REFERENCE.md for what each one is.
 set -euo pipefail
@@ -29,6 +29,12 @@ out=style/platinum
     # (its own sprite) is measured, so the right edge here gets covered.
     py $ref/appearance-2-appearance.png 591 257 159 20 4 PopupBody --bg EEEEEE --skip 4,2,158,17
     py $ref/appearance-4-desktop.png 710 451 173 20 4 PopupBodyDisabled --bg EEEEEE --skip 4,2,172,17
+    # Tab pane: black outline + 2 px bevel around #EEEEEE. In the Appearance
+    # control panel it fills the window, so its black lines coincide with
+    # the window frame's. Only the left 5 columns are read for the top edge
+    # (the tabs cover the rest of it); the interior holds the panel's
+    # controls and is skipped.
+    py $ref/appearance-1-themes.png 469 235 466 280 4 TabPane --bg DDDDDD --skip 5,0,461,275
     echo "} // namespace Platinum::Slices"
 } > "$out/slices.h"
 
@@ -138,4 +144,5 @@ with open(sys.argv[2], "w") as f:
         f.write(f"constexpr int {name}[14] = {{{', '.join(vals)}}}; // x={x}\n")
     f.write("} // namespace Platinum::Progress\n")
 EOF
-echo "wrote $out/slices.h, $out/sprites.h and $out/progress.h"
+python3 -I tools/tabs.py > /dev/null
+echo "wrote $out/slices.h, $out/sprites.h, $out/progress.h and $out/tabs.h"

@@ -3,7 +3,35 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: three checks so far (decoration, style batches 1-2; 2026-11-20). Open findings: none.
+Status: four checks so far (decoration, style batches 1-3; 2026-11-20). Open findings: none.
+
+## 2026-11-20, Claude Code (Claude Opus 5.5) — style batch 3 fidelity check (tabs)
+
+Audited: `style/platinum/` tabs and tab pane, working tree before commit.
+Reference: `appearance-1-themes.png`, `appearance-6-options.png`,
+`tab-pressed.png` (regions in `dev/check-style.sh`).
+
+Findings: none open. Found during development: above the pane, the
+captures' two outermost columns belong to the window (frame black line,
+then its content area's white / `#AAAAAA` edge), not to the tabs; the check
+leaves them out. The window content edge itself is a note for the
+decoration / window background, not a tab issue.
+
+### Checks
+
+`dev/check-style.sh`: 78 of 78 regions pixel exact. New (31): for each of
+the three tab rows, the 6 rows above the labels and the 10 rows from below
+the labels into the pane (pressed row: split around the pointer), and the
+label-free columns at both ends and between all six tabs; the pane's left,
+right and bottom bands (whole 466×280 pane). Live `QTabWidget` offscreen:
+geometry as measured, selection on release. ASan + UBSan build: no reports
+from styleshot or the tab test, render identical to the normal build.
+
+### Limits
+
+Offscreen only; not seen by the user on screen. Label pixels not compared
+(Charcoal substitute). Vertical / south tabs, pressed-current and disabled
+tabs not captured or themed.
 
 ## 2026-11-20, Claude Code (Claude Opus 5.5) — style batch 2 fidelity check
 

@@ -108,8 +108,10 @@ any difference.
 
 The bevelled parts are data measured from the captures:
 `tools/gen-style-data.sh` regenerates `style/platinum/slices.h` (9-slices,
-via `tools/nineslice.py`) and `style/platinum/sprites.h` (fixed-size parts,
-via `tools/sprite.py`). It needs `reference/`.
+via `tools/nineslice.py`), `style/platinum/sprites.h` (fixed-size parts,
+via `tools/sprite.py`), `style/platinum/progress.h` (progress bar column
+profiles) and `style/platinum/tabs.h` (tab edges row by row, via
+`tools/tabs.py`). It needs `reference/`.
 
 ## Measure and compare
 
