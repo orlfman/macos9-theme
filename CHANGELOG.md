@@ -2,6 +2,40 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — step 4: application style, batch 4 (menus)
+
+Claimed `style` (and `shared` for tools/dev/docs), released at the end.
+Done from the user's phone over Remote Control; nothing needed the VM.
+
+- Menus (`QMenu`): measured frame (black line, white/`#999999` bevel,
+  `#222222` drop shadow, see-through outer corners via
+  `WA_TranslucentBackground` and a 1 px right/bottom contents margin),
+  16 px items (18 with an icon), 6 px separators, Lavender highlight
+  bevel, check mark 4 px in (left of the icon; icon 19 px in, label 22 or
+  41 px in), submenu arrow, shortcut column ending 21 px before the edge.
+  Fixes AUDIT finding 2 (Fusion's frame around a checked icon).
+- Pop-up menu lists (`QComboBox` popups): the same menu look; the list is
+  see-through and each item draws its slice of the bevel, because Qt's
+  delegate fills items first (docs/FINDINGS.md).
+- Menu bar (`QMenuBar`): 20 px bar (white top row, `#999999` and black at
+  the bottom), open title in the Lavender bevel, titles padded 7 px.
+- `tools/gen-style-data.sh` writes `style/platinum/menu.h`: the check mark
+  as a coverage mask (any color) and as a sprite on the highlight (Mac OS 9
+  blends it to `#FEFEFE` there).
+- `dev/styleshot.cpp` renders a real QMenu (the Finder's View menu), a
+  real combo popup (Appearance's Highlight Color list) and menu bar
+  titles; `dev/check-style.sh` compares them. `dev/livedemo.cpp` has a menu
+  bar (File / View / Special with checks, icons, a submenu, shortcuts) and
+  a right-click menu.
+- `docs/REFERENCE.md`: menu frame, items, separator, highlight, check mark
+  and arrow, pop-up list, menu bar title.
+
+Checks: `dev/check-style.sh` 93 of 93 regions pixel exact; ASan + UBSan
+clean. The user tried it live (`dev/live-test.sh`): looks good, no findings.
+
+Next batch: text fields and the 2 px `#6666CC` focus ring, then group
+boxes, list headers + disclosure triangles, mixed check box, size grip.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — live test script, document-mode tabs
 
 - `dev/live-test.sh` + `dev/live-session.sh` + `dev/livedemo.cpp`: the

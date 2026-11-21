@@ -14,7 +14,7 @@ mkdir -p dev/build dev/shots
 # shellcheck disable=SC2046
 g++ -std=c++17 -O1 -fPIC dev/styleshot.cpp -o dev/build/styleshot $(pkg-config --cflags --libs Qt6Widgets)
 shot=dev/shots/styleshot.png
-PLATINUM_BARBER_PHASE=4 QSTYLE=Platinum dev/run.sh platinum breeze dev/build/styleshot "$shot" > /dev/null 2>&1
+PLATINUM_BARBER_PHASE=4 QSTYLE=Platinum dev/run.sh platinum breeze dev/build/styleshot "$shot" > dev/shots/styleshot.txt 2> /dev/null
 
 failed=0
 total=0
@@ -124,6 +124,38 @@ check tabs-pane-bottom appearance-1-themes.png@469,511,466,4 5,917,466,4
 # the pointer is over the pressed tab's lower right and the pane below it
 tabs_check tabs-pressed tab-pressed.png 773 225 520 641 357 373
 tabs_check tabs-options appearance-6-options.png 469 235 520 721
+
+# Menus: the Finder's View menu (180x165 at 109,19; "as Icons"
+# highlighted). Our width follows our font, so the left 20 columns (check
+# marks; text starts at 22, its anti-aliasing at 21) and the right 14 (arrow, black line, shadow;
+# the capture's "⌘J" ends just left of them) are compared, from our menu's
+# own right end. Left out: the capture's top row past the menu (it's the
+# menu bar's black line), the shadow's see-through outer corners, and the
+# pointer (right band, rows 12-31).
+mw=$(awk '$1 == "menu-view" { split($2, a, ","); print a[3] }' dev/shots/styleshot.txt)
+mr=$((520 + mw - 14))
+check menu-left menu-view-checked.png@109,19,20,164 520,780,20,164
+check menu-bottom-left menu-view-checked.png@111,183,19,1 522,944,19,1
+check menu-right-top menu-view-checked.png@275,19,12,12 "$mr,780,12,12"
+check menu-right-shadow-top menu-view-checked.png@287,21,2,10 "$((mr + 12)),782,2,10"
+check menu-right menu-view-checked.png@275,51,14,114 "$mr,812,14,114"
+# Pop-up menu list (popup-open.png: 161x163 at 591,218, "Purple" current
+# and highlighted): the left 18 columns (check mark; the capture's color
+# swatches start at 19) and the right 5, from our list's own right end.
+# The pointer sits on the right end of rows 81-112.
+pw=$(awk '$1 == "popup-list" { split($2, a, ","); print a[3] }' dev/shots/styleshot.txt)
+pr=$((800 + pw - 5))
+check popup-list-left popup-open.png@591,218,18,162 800,780,18,162
+check popup-list-bottom-left popup-open.png@593,380,16,1 802,942,16,1
+check popup-list-right-top popup-open.png@747,218,4,2 "$pr,780,4,2"
+check popup-list-right-a popup-open.png@747,220,5,79 "$pr,782,5,79"
+check popup-list-right-b popup-open.png@747,331,5,50 "$pr,893,5,50"
+# Menu bar: an empty stretch and the open "File" title (outside its label).
+check menubar-empty menu-file-open.png@72,0,7,20 10,930,7,20
+check menubar-title-left menu-file-open.png@37,0,7,20 100,930,7,20
+check menubar-title-right menu-file-open.png@64,0,8,20 127,930,8,20
+check menubar-title-top menu-file-open.png@37,0,35,2 100,930,35,2
+check menubar-title-bottom menu-file-open.png@37,17,35,3 100,947,35,3
 
 echo "$((total - failed)) of $total regions pixel exact"
 exit $((failed > 0))

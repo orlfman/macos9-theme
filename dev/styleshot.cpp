@@ -10,7 +10,9 @@
 //   86x26 (normal) and 78x26 (pressed); check boxes and radio buttons in
 //   every state; two vertical scroll bars and one horizontal one sized like
 //   the captures; pop-ups, sliders, progress bars; three tab rows laid out
-//   like the Appearance control panel's six tabs on their pane.
+//   like the Appearance control panel's six tabs on their pane; a real
+//   QMenu laid out like the Finder's View menu (first item highlighted), and
+//   menu bar titles (normal and open).
 #include <QtWidgets>
 #include <cstdio>
 
@@ -234,6 +236,72 @@ int main(int argc, char **argv)
     tabRow(p, "tabs-themes", QRect(5, 641, 466, 280), 0, -1);
     tabRow(p, "tabs-pressed", QRect(520, 641, 466, 40), 1, 4);
     tabRow(p, "tabs-options", QRect(520, 721, 466, 40), 5, -1);
+
+    // The Finder's View menu (reference/menu-view-checked.png), "as Icons"
+    // highlighted, rendered by the real QMenu (item layout is Qt's). Its
+    // width comes from our font, not Charcoal's, so check-style.sh compares
+    // the left and right ends.
+    {
+        QMenu menu;
+        QAction *first = menu.addAction(QStringLiteral("as Icons"));
+        menu.addAction(QStringLiteral("as Buttons"));
+        QAction *list = menu.addAction(QStringLiteral("as List"));
+        list->setCheckable(true);
+        list->setChecked(true);
+        menu.addSeparator();
+        QAction *window = menu.addAction(QStringLiteral("as Window"));
+        window->setCheckable(true);
+        window->setChecked(true);
+        menu.addAction(QStringLiteral("as Pop-up Window"));
+        menu.addSeparator();
+        menu.addAction(QStringLiteral("Clean Up"))->setEnabled(false);
+        menu.addMenu(QStringLiteral("Sort List"))->addAction(QStringLiteral("by Name"));
+        menu.addAction(QStringLiteral("Reset Column Positions"));
+        menu.addSeparator();
+        QAction *options = menu.addAction(QStringLiteral("View Options…"));
+        options->setShortcut(QKeySequence(QStringLiteral("Ctrl+J")));
+        options->setShortcutVisibleInContextMenu(true);
+        menu.popup(QPoint(0, 0));
+        menu.setActiveAction(first);
+        QApplication::processEvents();
+        const QPixmap pm = menu.grab();
+        p.drawPixmap(520, 780, pm);
+        report("menu-view", QRect(QPoint(520, 780), pm.size()));
+        menu.hide();
+    }
+    // An open pop-up menu's list like reference/popup-open.png: ten items,
+    // the 6th current (check mark + highlight), no icons.
+    {
+        QComboBox combo;
+        for (const char *s : {"Bondi", "Blueberry", "Green", "Plum", "Poppy", "Purple", "Teal", "Yellow", "Gray", "Other…"}) {
+            combo.addItem(QString::fromUtf8(s));
+        }
+        combo.setCurrentIndex(5);
+        combo.move(0, 300);
+        combo.show();
+        combo.showPopup();
+        QApplication::processEvents();
+        QWidget *list = combo.view()->window();
+        const QPixmap pm = list->grab();
+        p.drawPixmap(800, 780, pm);
+        report("popup-list", QRect(QPoint(800, 780), pm.size()));
+        combo.hidePopup();
+        combo.hide();
+    }
+    // Menu bar: an empty stretch, and the "File" title open (35 px like the
+    // capture's).
+    {
+        QStyleOptionMenuItem o;
+        o.initFrom(host);
+        o.menuItemType = QStyleOptionMenuItem::Normal;
+        o.rect = QRect(10, 930, 80, 20);
+        o.state = QStyle::State_Enabled;
+        style->drawControl(QStyle::CE_MenuBarEmptyArea, &o, &p, host);
+        o.rect = QRect(100, 930, 35, 20);
+        o.state = QStyle::State_Enabled | QStyle::State_Selected | QStyle::State_Sunken;
+        style->drawControl(QStyle::CE_MenuBarItem, &o, &p, host);
+        report("menubar-file", o.rect);
+    }
     p.end();
     return img.save(QString::fromLocal8Bit(argv[1])) ? 0 : 1;
 }

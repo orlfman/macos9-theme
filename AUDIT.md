@@ -3,7 +3,45 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: five checks so far (decoration, style batches 1-3, first live test; 2026-11-21). Open findings: 2 (P3, menus: Fusion until the menu batch).
+Status: six checks so far (decoration, style batches 1-4, first live test; 2026-11-21). Open findings: none.
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — style batch 4 fidelity check (menus)
+
+Audited: `style/platinum/` menus, pop-up menu lists and the menu bar,
+working tree before commit. Reference: `menu-view-checked.png`,
+`popup-open.png`, `menu-file-open.png` (regions in `dev/check-style.sh`).
+
+Findings: none new. Finding 2 fixed: checked items now show the Mac OS 9
+check mark 4 px in, left of the icon (icon 19 px in, as in the Apple
+menu), no frame around the icon. Found during development: the capture's
+View menu is 180 px wide (not 181); Qt's combo popup delegate covers any
+frame behind the list (docs/FINDINGS.md); the check mark on the highlight
+differed by up to 2 levels when blended from the black-on-gray mask, so it
+is its own measured sprite.
+
+### Checks
+
+`dev/check-style.sh`: 93 of 93 regions pixel exact. New (15): the View
+menu rendered by a real `QMenu` (left 20 columns over the whole height,
+right 14 columns minus the capture's pointer, the shadow's corners), the
+open pop-up list rendered by a real `QComboBox` (left 18 and right 5
+columns, minus the pointer), the menu bar's empty stretch and the open
+"File" title outside its label. Labels aren't compared (no Charcoal), so
+menu widths differ. ASan + UBSan: styleshot and a menu/menu bar/pop-up
+test, no reports, identical render. A menu with icons, check marks, a
+shortcut and a submenu was looked at (2x), not diffed: no Mac capture has
+a checked item with an icon (layout follows the Apple menu's icon offset).
+
+### Limits
+
+The user tried it live (`dev/live-test.sh`: demo menu bar and context
+menu, pop-up lists, Dolphin, Kate) on 2026-11-21: "everything looks good
+so far", no findings. Not captured: a highlighted last
+item (bottom row derived), disabled check marks (`#777777` from the mask),
+radio-style menu items (same check mark), tear-off and scroll arrows
+(Fusion). A menu opened from a menu bar sits below the bar's black line;
+Mac OS 9 overlaps it by 1 px (not checked in Qt). Menu titles use the
+substitute font.
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — first live test (user), findings 1-2
 
@@ -28,7 +66,7 @@ demo, at commit c2e581f plus the uncommitted test scripts.
    label (no white label when pressed, text 3 px low and clipped once the
    padding was right); they now use the Platinum label area and colors
    with Qt's icon + text layout, and `PM_TabBarTabVSpace` is 0.
-2. **P3, open (menu batch): checked menu items with an icon.** Dolphin's
+2. **P3, fixed (menu batch, 2026-11-21): checked menu items with an icon.** Dolphin's
    view-mode menu
    (`reference/testing/dolphin-menu-icon-selected-close-to-border.png`): the
    checked first item gets Fusion's sunken frame around its icon, touching

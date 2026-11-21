@@ -1,5 +1,6 @@
-// An interactive window with every control the Platinum style draws so far,
-// laid out a bit like a Mac OS 9 control panel, plus a few controls that are
+// An interactive window with every control the Platinum style draws so far
+// (with a menu bar and a right-click menu), laid out a bit like a Mac OS 9
+// control panel, plus a few controls that are
 // still Fusion (marked "not themed yet"), for trying the style by hand in
 // dev/live-test.sh. Nothing is grabbed or saved.
 //
@@ -162,12 +163,51 @@ QWidget *notYetPage()
 }
 } // namespace
 
+QMenuBar *menuBar(QWidget *parent)
+{
+    auto *bar = new QMenuBar(parent);
+    QMenu *file = bar->addMenu(QStringLiteral("&File"));
+    file->addAction(QStringLiteral("New Folder"))->setShortcut(QKeySequence::New);
+    file->addAction(QStringLiteral("Open"))->setShortcut(QKeySequence::Open);
+    file->addAction(QStringLiteral("Close Window"))->setEnabled(false);
+    file->addSeparator();
+    QMenu *label = file->addMenu(QStringLiteral("Label"));
+    for (const char *s : {"None", "Essential", "Hot", "In Progress", "Cool"}) {
+        label->addAction(QString::fromLatin1(s));
+    }
+    file->addSeparator();
+    file->addAction(QStringLiteral("Quit"), QKeySequence::Quit, qApp, &QApplication::quit);
+    QMenu *view = bar->addMenu(QStringLiteral("&View"));
+    auto *modes = new QActionGroup(view);
+    QAction *first = nullptr;
+    for (const char *s : {"as Icons", "as Buttons", "as List"}) {
+        QAction *a = view->addAction(QString::fromLatin1(s));
+        a->setCheckable(true);
+        modes->addAction(a);
+        first = first ? first : a;
+    }
+    first->setChecked(true);
+    view->addSeparator();
+    QAction *previews = view->addAction(QIcon::fromTheme(QStringLiteral("view-preview")), QStringLiteral("Show Previews"));
+    previews->setCheckable(true);
+    previews->setChecked(true);
+    view->addAction(QIcon::fromTheme(QStringLiteral("view-sort")), QStringLiteral("Sort List"))->setMenu(label);
+    view->addAction(QStringLiteral("View Options…"))->setShortcut(QKeySequence(QStringLiteral("Ctrl+J")));
+    bar->addMenu(QStringLiteral("&Special"))->addAction(QStringLiteral("Empty Trash…"));
+    return bar;
+}
+
 int main(int argc, char **argv)
 {
     QApplication app(argc, argv);
     QWidget window;
     window.setWindowTitle(QStringLiteral("Platinum Controls"));
     auto *layout = new QVBoxLayout(&window);
+    layout->setMenuBar(menuBar(&window));
+    window.setContextMenuPolicy(Qt::ActionsContextMenu);
+    for (const char *s : {"Get Info", "Duplicate", "Make Alias"}) {
+        window.addAction(new QAction(QString::fromLatin1(s), &window));
+    }
     auto *tabs = new QTabWidget;
     tabs->addTab(controlsPage(), QStringLiteral("Controls"));
     tabs->addTab(scrollingPage(), QStringLiteral("Scrolling"));

@@ -4,7 +4,8 @@
  * the bottom/right end), push buttons (normal, pressed, disabled, default with
  * its ring), check boxes, radio buttons, pop-up menus (non-editable combo
  * boxes), sliders with tick marks, progress bars (determinate and the
- * barber pole), and tabs on top of their pane (normal, current, pressed).
+ * barber pole), tabs on top of their pane (normal, current, pressed), menus,
+ * pop-up menu lists and the menu bar.
  * Everything else is still drawn by Fusion underneath.
  *
  * Sources: docs/REFERENCE.md, docs/FINDINGS.md (scroll bar spike), and the
@@ -21,11 +22,16 @@
 #include "slices.h"
 #include "sprite.h"
 #include "sprites.h"
+#include "menu.h"
 #include "tabs.h"
 
+#include <QAbstractItemView>
 #include <QComboBox>
+#include <QFrame>
 #include <QDateTime>
 #include <QEvent>
+#include <QMenu>
+#include <QMenuBar>
 #include <QPainter>
 #include <QProgressBar>
 #include <QPushButton>
@@ -327,6 +333,94 @@ void drawTab(QPainter *p, const QRect &r, const Tabs::Shape &s)
     }
 }
 
+// Menus (docs/REFERENCE.md "Menus"): a black outline with a 1 px #222222
+// drop shadow right and bottom (starting 2 px in), inside it a 1 px bevel
+// (white top/left, #999999 right/bottom; the two corners where they meet
+// are the #DDDDDD fill). Items run edge to edge inside the black line, so
+// the first and last item cover the bevel rows.
+void drawMenuPanel(QPainter *p, const QRect &r)
+{
+    const int x = r.x(), y = r.y(), w = r.width(), h = r.height();
+    if (w < 6 || h < 6) {
+        return;
+    }
+    p->fillRect(QRect(x + w - 1, y + 2, 1, h - 2), gray(0x22));
+    p->fillRect(QRect(x + 2, y + h - 1, w - 2, 1), gray(0x22));
+    p->fillRect(QRect(x, y, w - 1, h - 1), Black);
+    const QRect in(x + 1, y + 1, w - 3, h - 3);
+    p->fillRect(in, gray(0xDD));
+    p->fillRect(QRect(in.left(), in.top(), in.width() - 1, 1), White);
+    p->fillRect(QRect(in.left(), in.top(), 1, in.height() - 1), White);
+    p->fillRect(QRect(in.right(), in.top() + 1, 1, in.height() - 1), gray(0x99));
+    p->fillRect(QRect(in.left() + 1, in.bottom(), in.width() - 1, 1), gray(0x99));
+}
+
+// One item's slice of the menu bevel: light left column and top row,
+// dark right column and bottom row, the two corners where they meet in the
+// fill color; the top / bottom row only where the item covers the menu's
+// bevel rows (first / last item). Highlighted items use it in Lavender
+// (#6666CC, #333399, #000088), measured on a first item
+// (menu-view-checked.png); the last item's bottom row follows the panel's
+// pattern. Pop-up lists draw it in gray for every item, since Qt fills
+// their items with the window color first.
+void drawMenuItemBevel(QPainter *p, const QRect &r, bool first, bool last, const QColor &light, const QColor &fill, const QColor &dark)
+{
+    p->fillRect(r, fill);
+    p->fillRect(QRect(r.left(), r.top(), 1, r.height() - (last ? 1 : 0)), light);
+    p->fillRect(QRect(r.right(), r.top() + (first ? 1 : 0), 1, r.height() - (first ? 1 : 0)), dark);
+    if (first) {
+        p->fillRect(QRect(r.left(), r.top(), r.width() - 1, 1), light);
+    }
+    if (last) {
+        p->fillRect(QRect(r.left() + 1, r.bottom(), r.width() - 1, 1), dark);
+    }
+}
+
+void drawMenuCheck(QPainter *p, int x, int y, const QColor &color)
+{
+    for (int row = 0; row < Menu::CheckHeight; ++row) {
+        for (int col = 0; col < Menu::CheckWidth; ++col) {
+            if (const int a = Menu::Check[row][col]) {
+                QColor c(color);
+                c.setAlpha(a);
+                p->fillRect(QRect(x + col, y + row, 1, 1), c);
+            }
+        }
+    }
+}
+
+// Submenu arrow: a solid triangle 6 wide, 11 tall, pointing right.
+void drawMenuArrow(QPainter *p, int x, int y, const QColor &color)
+{
+    for (int row = 0; row < MenuArrowHeight; ++row) {
+        const int w = row <= MenuArrowHeight / 2 ? row + 1 : MenuArrowHeight - row;
+        p->fillRect(QRect(x, y + row, w, 1), color);
+    }
+}
+
+// Menu bar background, or a title (highlighted: the Lavender bevel, top
+// and bottom rows only). The last row is the bar's black line.
+void drawMenuBarBackground(QPainter *p, const QRect &r, bool highlighted)
+{
+    p->fillRect(r, highlighted ? QColor(0x33, 0x33, 0x99) : gray(0xDD));
+    p->fillRect(QRect(r.x(), r.y(), r.width(), 1), highlighted ? QColor(0x66, 0x66, 0xCC) : White);
+    p->fillRect(QRect(r.x(), r.bottom() - 1, r.width(), 1), highlighted ? QColor(0x00, 0x00, 0x88) : gray(0x99));
+    p->fillRect(QRect(r.x(), r.bottom(), r.width(), 1), Black);
+}
+
+bool menuHasShortcuts(const QWidget *widget)
+{
+    if (const auto *menu = qobject_cast<const QMenu *>(widget)) {
+        const auto actions = menu->actions();
+        for (const QAction *a : actions) {
+            if (a->isVisible() && (a->text().contains(QLatin1Char('\t')) || !a->shortcut().isEmpty())) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 } // namespace
 
 Style::Style()
@@ -364,6 +458,15 @@ int Style::pixelMetric(PixelMetric metric, const QStyleOption *option, const QWi
     case PM_SliderThickness:
     case PM_SliderControlThickness:
         return SliderThumbHeight;
+    case PM_MenuPanelWidth:
+        return 1;
+    case PM_MenuHMargin:
+    case PM_MenuVMargin:
+    case PM_MenuBarPanelWidth:
+    case PM_MenuBarItemSpacing:
+    case PM_MenuBarHMargin:
+    case PM_MenuBarVMargin:
+        return 0;
     case PM_TabBarBaseOverlap:
         return TabPaneOverlap;
     case PM_TabBarTabHSpace:
@@ -408,6 +511,30 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption *option, con
             const int thick = SliderThumbHeight + ((s->tickPosition & QSlider::TicksBelow) ? SliderTickHeight : 0);
             return s->orientation == Qt::Horizontal ? QSize(size.width(), thick) : QSize(thick, size.height());
         }
+    }
+    if (type == CT_MenuItem) {
+        if (const auto *mi = qstyleoption_cast<const QStyleOptionMenuItem *>(option)) {
+            if (mi->menuItemType == QStyleOptionMenuItem::Separator) {
+                return QSize(10, MenuSeparatorHeight);
+            }
+            // QMenu passes the label width and adds the shortcut column
+            // width itself.
+            const bool icon = !mi->icon.isNull();
+            int w = (icon ? MenuIconTextLeft : MenuTextLeft) + size.width() + MenuTextRight + 1;
+            if (menuHasShortcuts(widget)) {
+                w += MenuShortcutGap;
+            }
+            return QSize(w, icon ? MenuIconItemHeight : MenuItemHeight);
+        }
+    }
+    if (type == CT_MenuBarItem) {
+        if (const auto *mi = qstyleoption_cast<const QStyleOptionMenuItem *>(option)) {
+            const int text = mi->fontMetrics.horizontalAdvance(mi->text);
+            return QSize(text + 2 * MenuBarItemPadding, MenuBarHeight);
+        }
+    }
+    if (type == CT_MenuBar) {
+        return QSize(size.width(), MenuBarHeight);
     }
     if (type == CT_TabBarTab) {
         if (const auto *tab = qstyleoption_cast<const QStyleOptionTab *>(option); tab && isNorth(tab->shape)) {
@@ -685,6 +812,117 @@ void Style::drawControl(ControlElement element, const QStyleOption *option, QPai
             return;
         }
         break;
+    case CE_MenuEmptyArea:
+        // PE_PanelMenu already drew the whole menu, frame and shadow.
+        return;
+    case CE_MenuItem:
+        if (const auto *mi = qstyleoption_cast<const QStyleOptionMenuItem *>(option)) {
+            painter->save();
+            painter->setRenderHint(QPainter::Antialiasing, false);
+            const QRect r = mi->rect;
+            if (mi->menuItemType == QStyleOptionMenuItem::Separator) {
+                // 6 rows: two of menu, a #888888 line, a white line, two of menu.
+                if (qobject_cast<const QComboBox *>(widget)) {
+                    drawMenuItemBevel(painter, r, false, false, White, gray(0xDD), gray(0x99));
+                }
+                const int y = r.y() + (r.height() - MenuSeparatorHeight) / 2;
+                painter->fillRect(QRect(r.x(), y + 2, r.width(), 1), gray(0x88));
+                painter->fillRect(QRect(r.x(), y + 3, r.width(), 1), White);
+                painter->restore();
+                return;
+            }
+            const bool enabled = mi->state & State_Enabled;
+            const bool selected = enabled && (mi->state & State_Selected);
+            // First / last item: on the menu's top / bottom bevel row. In a
+            // QMenu the items start 1 px down (inside the black line); in a
+            // pop-up's list (widget = the QComboBox) they start at 0.
+            const auto *combo = qobject_cast<const QComboBox *>(widget);
+            bool first = false, last = false;
+            if (combo && combo->view()) {
+                first = r.top() <= 0;
+                last = r.bottom() >= combo->view()->viewport()->height() - 1;
+            } else if (widget) {
+                first = r.top() <= 1;
+                last = qobject_cast<const QMenu *>(widget) && r.bottom() >= widget->height() - 3;
+            }
+            if (selected) {
+                drawMenuItemBevel(painter, r, first, last, QColor(0x66, 0x66, 0xCC), QColor(0x33, 0x33, 0x99), QColor(0x00, 0x00, 0x88));
+            } else if (combo) {
+                drawMenuItemBevel(painter, r, first, last, White, gray(0xDD), gray(0x99));
+            }
+            const QColor color = !enabled ? DisabledText : selected ? White : Black;
+            if (mi->checkType != QStyleOptionMenuItem::NotCheckable && mi->checked) {
+                const int cx = r.x() + MenuCheckLeft, cy = r.y() + (r.height() - Menu::CheckHeight) / 2;
+                if (selected) {
+                    for (int row = 0; row < Menu::CheckHeight; ++row) {
+                        for (int col = 0; col < Menu::CheckWidth; ++col) {
+                            putPixel(painter, cx + col, cy + row, Menu::CheckHighlighted[row][col]);
+                        }
+                    }
+                } else {
+                    drawMenuCheck(painter, cx, cy, color);
+                }
+            }
+            const bool icon = !mi->icon.isNull();
+            if (icon) {
+                const QIcon::Mode mode = !enabled ? QIcon::Disabled : selected ? QIcon::Selected : QIcon::Normal;
+                const QPixmap pm = mi->icon.pixmap(QSize(16, 16), painter->device()->devicePixelRatioF(), mode);
+                painter->drawPixmap(r.x() + MenuIconLeft, r.y() + (r.height() - 16) / 2, pm);
+            }
+            QString text = mi->text;
+            QString shortcut;
+            if (const int tab = text.indexOf(QLatin1Char('\t')); tab >= 0) {
+                shortcut = text.mid(tab + 1);
+                text.truncate(tab);
+            }
+            QPalette pal = mi->palette;
+            pal.setColor(QPalette::WindowText, color);
+            int flags = Qt::AlignLeft | Qt::AlignVCenter | Qt::TextShowMnemonic | Qt::TextSingleLine;
+            if (!proxy()->styleHint(SH_UnderlineShortcut, option, widget)) {
+                flags |= Qt::TextHideMnemonic;
+            }
+            painter->setFont(mi->font);
+            const int left = r.x() + (icon ? MenuIconTextLeft : MenuTextLeft);
+            proxy()->drawItemText(painter, QRect(left, r.y(), r.right() - left, r.height()), flags, pal, true, text, QPalette::WindowText);
+            if (!shortcut.isEmpty()) {
+                // A left-aligned column ending MenuTextRight before the edge,
+                // like Mac OS 9's command-key column.
+                const int width = std::max(mi->reservedShortcutWidth, mi->fontMetrics.horizontalAdvance(shortcut));
+                const QRect sr(r.right() - MenuTextRight - width + 1, r.y(), width, r.height());
+                proxy()->drawItemText(painter, sr, Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, pal, true, shortcut, QPalette::WindowText);
+            }
+            if (mi->menuItemType == QStyleOptionMenuItem::SubMenu) {
+                drawMenuArrow(painter, r.right() - MenuArrowRight - MenuArrowWidth + 1, r.y() + (r.height() - MenuArrowHeight) / 2, color);
+            }
+            painter->restore();
+            return;
+        }
+        break;
+    case CE_MenuBarEmptyArea:
+        painter->save();
+        drawMenuBarBackground(painter, option->rect, false);
+        painter->restore();
+        return;
+    case CE_MenuBarItem:
+        if (const auto *mi = qstyleoption_cast<const QStyleOptionMenuItem *>(option)) {
+            painter->save();
+            painter->setRenderHint(QPainter::Antialiasing, false);
+            const bool enabled = mi->state & State_Enabled;
+            const bool selected = enabled && (mi->state & State_Selected) && (mi->state & State_Sunken);
+            drawMenuBarBackground(painter, mi->rect, selected);
+            QPalette pal = mi->palette;
+            pal.setColor(QPalette::WindowText, !enabled ? DisabledText : selected ? White : Black);
+            int flags = Qt::AlignCenter | Qt::TextShowMnemonic | Qt::TextSingleLine;
+            if (!proxy()->styleHint(SH_UnderlineShortcut, option, widget)) {
+                flags |= Qt::TextHideMnemonic;
+            }
+            // Text centered in the rows above the bar's bottom lines.
+            const QRect text(mi->rect.x(), mi->rect.y(), mi->rect.width(), mi->rect.height() - 2);
+            proxy()->drawItemText(painter, text, flags, pal, enabled, mi->text, QPalette::WindowText);
+            painter->restore();
+            return;
+        }
+        break;
     case CE_TabBarTabShape:
         if (const auto *tab = qstyleoption_cast<const QStyleOptionTab *>(option); tab && isNorth(tab->shape)) {
             painter->save();
@@ -751,6 +989,20 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption *option, 
             return;
         }
         break;
+    case PE_PanelMenu:
+        painter->save();
+        painter->setRenderHint(QPainter::Antialiasing, false);
+        drawMenuPanel(painter, option->rect);
+        painter->restore();
+        return;
+    case PE_FrameMenu:
+        // Drawn with the panel (PE_PanelMenu).
+        return;
+    case PE_PanelMenuBar:
+        painter->save();
+        drawMenuBarBackground(painter, option->rect, false);
+        painter->restore();
+        return;
     case PE_FrameTabWidget:
         painter->save();
         painter->setRenderHint(QPainter::Antialiasing, false);
@@ -835,6 +1087,13 @@ bool Style::eventFilter(QObject *object, QEvent *event)
     // #EEEEEE opening loose over the window. Mac OS 9 tabs always sit on a
     // pane, so draw it there too.
     if (event->type() == QEvent::Paint) {
+        // Pop-up menu lists (QComboBox's popup): the menu panel behind the
+        // list, whose background is see-through (polish).
+        if (auto *w = qobject_cast<QWidget *>(object); w && w->inherits("QComboBoxPrivateContainer")) {
+            QPainter p(w);
+            drawMenuPanel(&p, w->rect());
+            return true;
+        }
         if (auto *tw = qobject_cast<QTabWidget *>(object); tw && tw->documentMode() && tw->tabPosition() == QTabWidget::North) {
             QStyleOptionTabWidgetFrame o;
             o.initFrom(tw);
@@ -858,6 +1117,27 @@ void Style::polish(QWidget *widget)
     if (qobject_cast<QTabWidget *>(widget)) {
         widget->installEventFilter(this);
     }
+    if (widget->inherits("QComboBoxPrivateContainer")) {
+        // Pop-up menu lists look like menus (popup-open.png): the panel is
+        // painted by eventFilter, the list sits inside the black line and
+        // shows it through.
+        widget->setAttribute(Qt::WA_TranslucentBackground);
+        widget->setContentsMargins(1, 1, 2, 2);
+        widget->installEventFilter(this);
+    }
+    if (auto *view = qobject_cast<QAbstractItemView *>(widget);
+        view && view->parentWidget() && view->parentWidget()->inherits("QComboBoxPrivateContainer")) {
+        // The list is created after its container is polished.
+        view->setFrameShape(QFrame::NoFrame);
+        view->setAutoFillBackground(false);
+        view->viewport()->setAutoFillBackground(false);
+    }
+    if (auto *menu = qobject_cast<QMenu *>(widget)) {
+        // The drop shadow's outer corners stay see-through, and the shadow
+        // takes one more column and row on the right and bottom.
+        menu->setAttribute(Qt::WA_TranslucentBackground);
+        menu->setContentsMargins(0, 0, 1, 1);
+    }
     // Busy progress bars need repaints to move the barber pole.
     if (auto *bar = qobject_cast<QProgressBar *>(widget)) {
         auto *timer = new QTimer(bar);
@@ -877,6 +1157,14 @@ void Style::unpolish(QWidget *widget)
     if (qobject_cast<QTabWidget *>(widget)) {
         widget->removeEventFilter(this);
     }
+    if (widget->inherits("QComboBoxPrivateContainer")) {
+        widget->removeEventFilter(this);
+        widget->setContentsMargins(0, 0, 0, 0);
+    }
+    if (auto *menu = qobject_cast<QMenu *>(widget)) {
+        menu->setAttribute(Qt::WA_TranslucentBackground, false);
+        menu->setContentsMargins(0, 0, 0, 0);
+    }
     if (auto *bar = qobject_cast<QProgressBar *>(widget)) {
         delete bar->findChild<QTimer *>(QStringLiteral("platinum-barber-pole"), Qt::FindDirectChildrenOnly);
     }
@@ -886,6 +1174,12 @@ void Style::unpolish(QWidget *widget)
 int Style::styleHint(StyleHint hint, const QStyleOption *option, const QWidget *widget, QStyleHintReturn *returnData) const
 {
     switch (hint) {
+    case SH_Menu_AllowActiveAndDisabled:
+        return 0;
+    case SH_ComboBox_PopupFrameStyle:
+        return QFrame::NoFrame;
+    case SH_ComboBox_Popup:
+        return 1;
     case SH_TabBar_SelectMouseType:
         // The tab shows pressed while held and switches on release.
         return QEvent::MouseButtonRelease;

@@ -103,3 +103,24 @@ default buttons. It doesn't draw the drop shadow (the compositor does), and
 a 416×246 item came out 415×245. Use it for inactive and pressed states;
 check layout and shadow in the nested KWin (`dev/kwin-test.sh`,
 `dev/app-test.sh` with `M9_DECORATION=platinum`).
+
+## Menus in the Qt style (2026-11-21, Claude Code)
+
+### QMenu honors contents margins, combo popups fill their items
+
+- `QMenu` lays its items inside `PM_MenuPanelWidth` plus the widget's
+  contents margins, so `setContentsMargins(0, 0, 1, 1)` makes room for the
+  1 px drop shadow, and `WA_TranslucentBackground` keeps the shadow's two
+  outer corners see-through. Forcing a QMenu narrower than its items with
+  `setFixedWidth` does not relayout them (they overflow the frame); natural
+  width is correct.
+- `QComboBox`'s popup list (`QComboBoxPrivateContainer`, with
+  `SH_ComboBox_Popup`) paints each item through a delegate that first fills
+  it with the palette's window color, then calls `CE_MenuItem` with the
+  combo box as the widget. A frame painted behind the list gets covered, so
+  the style draws each item's slice of the bevel itself, knowing first and
+  last item from the list's viewport height. The list view is created after
+  its container is polished.
+- Qt hides shortcuts in context menus by default on this platform
+  (`QAction::isShortcutVisibleInContextMenu`); tests set it per action.
+

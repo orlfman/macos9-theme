@@ -41,6 +41,22 @@ constexpr int TabPaneOverlap = 3;    // black line, #CCCCCC, white
 constexpr int TabTextPadding = 12;   // each side; tab width = text + 24
 constexpr int TabInset = 5;          // first tab's left edge from the pane's
 constexpr int TabPaneFrame = 3;      // black outline + 2 px bevel
+// Menus: offsets from an item's left edge (1 px inside the menu's black
+// line) and from its right edge.
+constexpr int MenuItemHeight = 16;
+constexpr int MenuIconItemHeight = 18;
+constexpr int MenuSeparatorHeight = 6;
+constexpr int MenuCheckLeft = 3;
+constexpr int MenuIconLeft = 18;
+constexpr int MenuTextLeft = 21;
+constexpr int MenuIconTextLeft = 40;
+constexpr int MenuTextRight = 20;      // last text column to the item's right edge
+constexpr int MenuShortcutGap = 18;    // label end to shortcut column
+constexpr int MenuArrowRight = 6;      // submenu arrow's last column to the item's right edge
+constexpr int MenuArrowWidth = 6;
+constexpr int MenuArrowHeight = 11;
+constexpr int MenuBarHeight = 20;
+constexpr int MenuBarItemPadding = 7;  // each side of a menu title
 } // namespace Metrics
 
 class Style : public QProxyStyle
