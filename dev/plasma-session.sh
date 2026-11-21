@@ -12,7 +12,14 @@ kded6 > "$M9_OUT.kded.log" 2>&1 &
 sleep 1
 plasmashell --no-respawn > "$M9_OUT.plasmashell.log" 2>&1 &
 sleep 8
-qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$(cat "$M9_LAYOUT")" > "$M9_OUT.layout.log" 2>&1
+if [[ ${M9_APPLY:-} == lnf ]]; then
+    plasma-apply-lookandfeel --apply platinum.desktop --resetLayout > "$M9_OUT.layout.log" 2>&1
+    sleep 2
+    # A newly applied decoration and button order take a reconfigure.
+    qdbus6 org.kde.KWin /KWin reconfigure >> "$M9_OUT.layout.log" 2>&1
+else
+    qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$(cat "$M9_LAYOUT")" > "$M9_OUT.layout.log" 2>&1
+fi
 sleep 3
 "$dev/build/livedemo" &
 sleep 4

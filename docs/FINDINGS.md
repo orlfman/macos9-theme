@@ -143,3 +143,30 @@ check layout and shadow in the nested KWin (`dev/kwin-test.sh`,
   `polish()`, and `SH_ToolTip_Mask` = 0 keeps the window unmasked, so a
   rounded balloon's corners stay see-through.
 
+## Plasma (2026-11-21, Claude Code)
+
+### What a top panel, the global menu and a global theme do
+
+- A top panel touching the screen edges loses its top, left and right
+  borders, so a panel background can't draw a white top row or rounded
+  ends: the white row lives in the center piece (exact only at 20 px), and
+  the ends are drawn by our own plasmoid (`platinum.menubarpiece`).
+- Plasma gives panel applets the panel's full height; the panel
+  background's margin hints didn't move them off the bottom rows. An open
+  global menu title therefore draws the bar's black line itself.
+- The global menu (`org.kde.plasma.appmenu`) draws titles with
+  `widgets/menubaritem` and colors non-resting titles with the theme's
+  highlighted text color; apps only hand their menus over while `kded6`'s
+  appmenu module runs. A Plasma style's own `colors` file changes Plasma's
+  colors without touching apps (used for white-on-`#333399` titles while
+  apps keep the `#CCCCFF` text selection).
+- Applying a global theme (`plasma-apply-lookandfeel`) writes its values
+  into `~/.config/kdedefaults/` and clears the user's own overrides;
+  startplasma puts that folder on `XDG_CONFIG_DIRS`. Of the decoration
+  group only `library`, `theme` and `NoPlugin` are applied: the button
+  order (`ButtonsOnLeft` / `ButtonsOnRight`) must be written by the
+  installer. `xrdb` fails without X11 (harmless).
+- Menus opened from the global menu sit 1 px below the bar's black line and
+  1 px right of the title (Mac OS 9: on the black line, aligned); placed by
+  Plasma, not reachable from the style.
+

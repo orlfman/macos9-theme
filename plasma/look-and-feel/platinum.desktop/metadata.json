@@ -1,0 +1,16 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "orlfman"
+            }
+        ],
+        "Category": "",
+        "Description": "Platinum, measured from a classic 1999 desktop: the menu bar with a global menu, Platinum windows, controls and colors.",
+        "Id": "platinum.desktop",
+        "License": "BSD-2-Clause",
+        "Name": "Platinum",
+        "Version": "0.1"
+    }
+}

@@ -5,6 +5,8 @@
 //   spacer
 //   system tray, clock
 //   Window List (the Application menu's place: active window icon + name)
+// with platinum.menubarpiece at both ends (the rounded corners) and before
+// the Window List (the divider),
 // and gives every desktop a plain color close to the Mac OS 9 default
 // desktop pattern's average (the pattern itself is Apple artwork).
 //
@@ -21,6 +23,13 @@ bar.hiding = "none";
 bar.alignment = "left";
 bar.lengthMode = "fill";
 
+function piece(name) {
+    var w = bar.addWidget("platinum.menubarpiece");
+    w.currentConfigGroup = ["General"];
+    w.writeConfig("piece", name);
+}
+
+piece("cornerLeft");
 var apple = bar.addWidget("org.kde.plasma.kicker");
 apple.currentConfigGroup = ["General"];
 apple.writeConfig("icon", "start-here-kde-plasma");
@@ -35,7 +44,9 @@ clock.currentConfigGroup = ["Appearance"];
 clock.writeConfig("showDate", false);
 clock.writeConfig("use24hFormat", 0);
 
+piece("divider");
 bar.addWidget("org.kde.plasma.windowlist");
+piece("cornerRight");
 
 desktops().forEach(function (d) {
     d.wallpaperPlugin = "org.kde.color";

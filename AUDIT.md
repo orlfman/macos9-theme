@@ -3,7 +3,32 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: eleven checks so far (decoration, style batches 1-7, real-app pass, Plasma menu bar, first live test; 2026-11-21). Open findings: 3 (P3).
+Status: twelve checks so far (decoration, style batches 1-7, real-app pass, Plasma menu bar x2, first live test; 2026-11-21). Open findings: 3 (P3).
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — menu bar ends, divider, look-and-feel package
+
+Audited: `plasma/plasmoids/platinum.menubarpiece`, `plasma/look-and-feel/
+platinum.desktop` and the updated layout, headless (`dev/plasma-test.sh`,
+also with `M9_APPLY=lnf`); working tree after ca530b0.
+
+Findings: none new. Found: a global theme can't set the title bar button
+order (docs/FINDINGS.md), so it moved to the install script's to-do.
+
+### Checks
+
+`dev/check-plasma.sh`: 5 of 5 exact (bar column 0/20, left end 0/160,
+right end 0/160, divider 0/120, open title 0/20). Applying the package in
+the sandbox set widget style Platinum, color scheme Platinum, Plasma style
+platinum, decoration platinum (icons and cursors stay Breeze), and the
+layout; the desktop came up Platinum except the button order. JSON and
+kcfg files parse; SVGs valid. `dev/check-style.sh` still 131 of 131.
+
+### Limits
+
+Headless only; not seen by the user. The spacing between the clock, the
+divider and the Window List follows the applets' own padding (not
+measured against Mac OS 9's 7 / 6 px yet). The Apple menu stand-in still
+has a placeholder icon. Install / uninstall scripts don't exist yet.
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — Plasma style and menu bar, first check
 
