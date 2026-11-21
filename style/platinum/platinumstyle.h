@@ -10,6 +10,8 @@
 #include <QProxyStyle>
 
 class QStyleOptionSlider;
+class QStyleOptionSpinBox;
+class QStyleOptionGroupBox;
 
 namespace Platinum
 {
@@ -57,6 +59,20 @@ constexpr int MenuArrowWidth = 6;
 constexpr int MenuArrowHeight = 11;
 constexpr int MenuBarHeight = 20;
 constexpr int MenuBarItemPadding = 7;  // each side of a menu title
+// Text fields: 1 px margin (the focus ring's outer row), 1 px sunken edge
+// (or the ring's inner row), 1 px black line; text 3 px inside the black.
+constexpr int FieldFrame = 3;
+constexpr int FieldMinHeight = 26;
+constexpr int SpinArrowsWidth = 22;
+constexpr int SpinArrowsHeight = 20;
+constexpr int SpinArrowsGap = 2;        // field edge to the arrows
+// Group boxes: etched #888888 / white rectangle, title 13 px in with a
+// 4 px gap each side, its bottom row on the top line.
+constexpr int GroupTitleLeft = 13;
+constexpr int GroupTitleGap = 4;
+constexpr int HeaderHeight = 21;        // Finder list header
+constexpr int HeaderMargin = 8;         // label from the section's left line
+constexpr int FrameWidth = 2;           // list / text area frame: sunken edge + black line
 } // namespace Metrics
 
 class Style : public QProxyStyle
@@ -85,6 +101,8 @@ public:
 private:
     void drawScrollBar(const QStyleOptionSlider *option, QPainter *painter, const QWidget *widget) const;
     void drawSlider(const QStyleOptionSlider *option, QPainter *painter, const QWidget *widget) const;
+    void drawSpinBox(const QStyleOptionSpinBox *option, QPainter *painter, const QWidget *widget) const;
+    void drawGroupBox(const QStyleOptionGroupBox *option, QPainter *painter, const QWidget *widget) const;
 };
 
 } // namespace Platinum

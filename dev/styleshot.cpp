@@ -162,7 +162,7 @@ int main(int argc, char **argv)
     QWidget w;
     host = &w;
     std::printf("style %s\n", qPrintable(style->name()));
-    QImage img(1000, 960, QImage::Format_RGB32);
+    QImage img(1000, 1200, QImage::Format_RGB32);
     img.fill(QColor(0xDD, 0xDD, 0xDD));
     QPainter p(&img);
     using S = QStyle;
@@ -287,6 +287,74 @@ int main(int argc, char **argv)
         report("popup-list", QRect(QPoint(800, 780), pm.size()));
         combo.hidePopup();
         combo.hide();
+    }
+    // Spin boxes like the Fonts tab's size fields
+    // (reference/appearance-3-fonts-clean.png): 30x26 field + 2 px + 22x20
+    // little arrows, unfocused ("10") and focused ("12"), on the tab pane's
+    // #EEEEEE. Their text is the line edit's, not drawn here.
+    p.fillRect(QRect(150, 924, 160, 34), QColor(0xEE, 0xEE, 0xEE));
+    for (int i = 0; i < 2; ++i) {
+        QStyleOptionSpinBox o;
+        o.initFrom(host);
+        o.rect = QRect(160 + i * 70, 928, 54, 26);
+        o.frame = true;
+        o.buttonSymbols = QAbstractSpinBox::UpDownArrows;
+        o.stepEnabled = QAbstractSpinBox::StepUpEnabled | QAbstractSpinBox::StepDownEnabled;
+        o.subControls = QStyle::SC_SpinBoxFrame | QStyle::SC_SpinBoxEditField | QStyle::SC_SpinBoxUp | QStyle::SC_SpinBoxDown;
+        o.state = QStyle::State_Enabled | QStyle::State_Active;
+        if (i == 1) {
+            o.state |= QStyle::State_HasFocus;
+        }
+        style->drawComplexControl(QStyle::CC_SpinBox, &o, &p, host);
+        report(i == 0 ? "spin" : "spin-focused", o.rect);
+    }
+    // The General Controls "Desktop" group box (frame 538..863 x 259..367 in
+    // reference/controls-general-controls.png), its title 13 px in; the
+    // box's rect starts where the title's top would be.
+    {
+        QStyleOptionGroupBox o;
+        o.initFrom(host);
+        o.text = QStringLiteral("Desktop");
+        o.subControls = QStyle::SC_GroupBoxFrame | QStyle::SC_GroupBoxLabel;
+        o.state = QStyle::State_Enabled | QStyle::State_Active;
+        const int top = 1000 - (o.fontMetrics.ascent() - 1);
+        o.rect = QRect(10, top, 326, 1109 - top);
+        style->drawComplexControl(QStyle::CC_GroupBox, &o, &p, host);
+        report("groupbox", QRect(10, 1000, 326, 109));
+    }
+    // Finder list header sections like reference/disclosure-triangles.png:
+    // "Name" sorted (238 px), "Date Modified" (149 px); no labels.
+    {
+        QStyleOptionHeader o;
+        o.initFrom(host);
+        o.state = QStyle::State_Enabled | QStyle::State_Active | QStyle::State_Horizontal;
+        o.rect = QRect(360, 1000, 238, 21);
+        o.sortIndicator = QStyleOptionHeader::SortDown;
+        style->drawControl(QStyle::CE_HeaderSection, &o, &p, host);
+        o.rect = QRect(598, 1000, 149, 21);
+        o.sortIndicator = QStyleOptionHeader::None;
+        style->drawControl(QStyle::CE_HeaderSection, &o, &p, host);
+        report("header", QRect(360, 1000, 387, 21));
+    }
+    // Disclosure triangles (closed, open) in 17x17 cells on the sorted
+    // column's #DDDDDD, and a separator line (HLine).
+    {
+        QStyleOption o;
+        o.initFrom(host);
+        o.state = QStyle::State_Enabled | QStyle::State_Children;
+        o.rect = QRect(360, 1040, 17, 17);
+        style->drawPrimitive(QStyle::PE_IndicatorBranch, &o, &p, host);
+        o.state |= QStyle::State_Open;
+        o.rect = QRect(390, 1040, 17, 17);
+        style->drawPrimitive(QStyle::PE_IndicatorBranch, &o, &p, host);
+        report("triangles", QRect(360, 1040, 47, 17));
+        QStyleOptionFrame f;
+        f.initFrom(host);
+        f.frameShape = QFrame::HLine;
+        f.rect = QRect(360, 1080, 100, 4);
+        p.fillRect(QRect(360, 1076, 100, 12), QColor(0xEE, 0xEE, 0xEE));
+        style->drawControl(QStyle::CE_ShapedFrame, &f, &p, host);
+        report("separator", f.rect);
     }
     // Menu bar: an empty stretch, and the "File" title open (35 px like the
     // capture's).

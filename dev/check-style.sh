@@ -157,5 +157,43 @@ check menubar-title-right menu-file-open.png@64,0,8,20 127,930,8,20
 check menubar-title-top menu-file-open.png@37,0,35,2 100,930,35,2
 check menubar-title-bottom menu-file-open.png@37,17,35,3 100,947,35,3
 
+# Text fields: the Fonts tab's size spin boxes (field 30x26 + arrows),
+# unfocused at 846,346 and focused (focus ring) at 846,432. The field's
+# outer 5 rows / columns (margin or ring, edge, black line, 2 white) are
+# compared; inside them are the text and its selection.
+field_check() { # name rx ry ox oy
+    local n=$1 rx=$2 ry=$3 ox=$4 oy=$5
+    check "$n-top" "appearance-3-fonts-clean.png@$rx,$ry,30,5" "$ox,$oy,30,5"
+    check "$n-bottom" "appearance-3-fonts-clean.png@$rx,$((ry + 21)),30,5" "$ox,$((oy + 21)),30,5"
+    check "$n-left" "appearance-3-fonts-clean.png@$rx,$ry,5,26" "$ox,$oy,5,26"
+    check "$n-right" "appearance-3-fonts-clean.png@$((rx + 25)),$ry,5,26" "$((ox + 25)),$oy,5,26"
+    check "$n-arrows" "appearance-3-fonts-clean.png@$((rx + 30)),$ry,24,26" "$((ox + 30)),$oy,24,26"
+}
+field_check spin 846 346 160 928
+field_check spin-focused 846 432 230 928
+
+# Group box ("Desktop" in General Controls, frame 538,259 to 863,367): the
+# left 12 columns (to the title gap; its check boxes start at 13), the top
+# lines right of the title, the right 8 columns and the bottom 2 rows. The
+# title itself isn't compared.
+check groupbox-left controls-general-controls.png@538,259,12,109 10,1000,12,109
+check groupbox-top-right controls-general-controls.png@620,259,244,2 92,1000,244,2
+check groupbox-right controls-general-controls.png@856,259,8,109 328,1000,8,109
+check groupbox-bottom controls-general-controls.png@538,366,326,2 10,1107,326,2
+# Finder list header: sorted "Name" (105,154, 238x21) and "Date Modified"
+# (343,154, 149x21), outside their labels (3 px bands).
+section_check() { # name rx ry ox oy W
+    local n=$1 rx=$2 ry=$3 ox=$4 oy=$5 W=$6
+    check "$n-top" "disclosure-triangles.png@$rx,$ry,$W,3" "$ox,$oy,$W,3"
+    check "$n-bottom" "disclosure-triangles.png@$rx,$((ry + 18)),$W,3" "$ox,$((oy + 18)),$W,3"
+    check "$n-left" "disclosure-triangles.png@$rx,$ry,3,21" "$ox,$oy,3,21"
+    check "$n-right" "disclosure-triangles.png@$((rx + W - 3)),$ry,3,21" "$((ox + W - 3)),$oy,3,21"
+}
+section_check header-sorted 105 154 360 1000 238
+section_check header-normal 343 154 598 1000 149
+check triangle-closed disclosure-triangles.png@108,194,17,17 360,1040,17,17
+check triangle-open disclosure-triangles.png@108,270,17,17 390,1040,17,17
+check separator appearance-3-fonts-clean.png@600,400,100,4 360,1080,100,4
+
 echo "$((total - failed)) of $total regions pixel exact"
 exit $((failed > 0))

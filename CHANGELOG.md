@@ -2,6 +2,67 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — step 4: application style, batch 6 (groups, lists)
+
+Claimed `style` (and `shared` for tools/dev/docs), released at the end.
+Done over Remote Control.
+
+- Group boxes (`QGroupBox`): the etched `#888888` / white rectangle from
+  General Controls, title 13 px in with its bottom row on the top line and
+  a 4 px gap each side; checkable ones put the check box there; flat ones
+  draw only the top line pair.
+- Separators (`QFrame` HLine / VLine): `#888888` and white lines.
+- List headers (`QHeaderView`): the Finder's 21 px sections as nine-slices
+  (normal and the darker sorted column), label 8 px in, no sort arrow; the
+  empty area after the last section closes it.
+- Disclosure triangles (`PE_IndicatorBranch`): measured closed and open
+  sprites, no tree lines. A pressed sprite is generated too (pointer
+  pixels removed), unused since Qt has no pressed branch state.
+- Scroll-area frames (`PE_Frame`, `PM_DefaultFrameWidth` 2): the text
+  field's sunken edge and black line (derived; no capture of a Platinum
+  list box frame).
+- `tools/gen-style-data.sh`: header nine-slices and triangle sprites.
+  `dev/styleshot.cpp` / `dev/check-style.sh`: group box, headers,
+  triangles, separator. `dev/livedemo.cpp`: the old "Not Themed Yet" tab is
+  now "Lists & Groups" (group boxes, separator, sorted tree; only the
+  editable combo box is still Fusion).
+- `docs/REFERENCE.md`: group box, separator, list header, triangle
+  sprites, Standard File list box.
+
+Checks: `dev/check-style.sh` 118 of 118 regions pixel exact; ASan + UBSan
+clean. Not seen live by the user yet. Batch 5 (text fields) is also still
+uncommitted in this working tree.
+
+Next: editable combo boxes, the mixed check box, the size grip, tool
+buttons (toolbars), then a wider pass over real apps (Dolphin, Kate,
+System Settings) for whatever is still Fusion.
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — step 4: application style, batch 5 (text fields)
+
+Claimed `style` (and `shared` for tools/dev/docs), released at the end.
+Done over Remote Control.
+
+- Text fields (`QLineEdit` with a frame): measured from the Fonts tab's
+  size fields: 1 px margin, 1 px sunken edge (`#888888` / white), black
+  line, white inside, text 3 px in; 26 px minimum height. Focused (and the
+  window active, not read-only): the 2 px `#6666CC` ring in place of the
+  margin and edge, corners cut.
+- Spin boxes (`QSpinBox`, `QDoubleSpinBox`): the same field plus the
+  Appearance control panel's rounded 22x20 little arrows, 2 px to its
+  right (sprite in `sprites.h`); the pressed half (not captured) is drawn
+  like a pressed push button. Frameless line edits get no size padding, so
+  spin boxes and line edits are both 26 px.
+- `dev/styleshot.cpp` / `dev/check-style.sh`: both Fonts tab spin boxes;
+  `dev/livedemo.cpp` has text fields and a spin box on its Controls tab.
+- `docs/REFERENCE.md`: text field and little arrows (with Memory's older
+  stacked variant).
+
+Checks: `dev/check-style.sh` 103 of 103 regions pixel exact; ASan + UBSan
+clean. Not seen live by the user yet.
+
+Next batch: group boxes, list and text area frames, list headers and
+disclosure triangles; editable combo boxes after that.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — step 4: application style, batch 4 (menus)
 
 Claimed `style` (and `shared` for tools/dev/docs), released at the end.

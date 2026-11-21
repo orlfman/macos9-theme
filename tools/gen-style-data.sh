@@ -35,6 +35,12 @@ out=style/platinum
     # (the tabs cover the rest of it); the interior holds the panel's
     # controls and is skipped.
     py $ref/appearance-1-themes.png 469 235 466 280 4 TabPane --bg DDDDDD --skip 5,0,461,275
+    # Finder list header sections, 21 px tall (K=2): normal ("Date
+    # Modified") and the sorted column ("Name"). A section's right side is
+    # the next section's left line, so neither has a right edge of its own
+    # (the sorted one has its dark shadow there).
+    py $ref/disclosure-triangles.png 343 154 149 21 2 HeaderSection --skip 3,3,145,17
+    py $ref/disclosure-triangles.png 105 154 238 21 2 HeaderSorted --skip 3,3,234,17
     echo "} // namespace Platinum::Slices"
 } > "$out/slices.h"
 
@@ -74,6 +80,15 @@ out=style/platinum
     # Pressed: the capture's pointer touches the bottom edge (check box) and
     # the lower-right rim (radio); fix_outline below copies the unpressed
     # outline into those pixels.
+    # Little arrows (spin box buttons), the Appearance control panel's
+    # rounded 22x20 kind, next to the Fonts tab's size fields.
+    sp $ref/appearance-3-fonts-clean.png 878 349 22 20 SpinArrows --bg EEEEEE
+    # Disclosure triangles, 17x17 boxes in Finder list rows (#DDDDDD, the
+    # sorted column): closed, open, pressed (closed, its fill #333399 and
+    # no shadow; the pointer covers the lower right, fixed below).
+    sp $ref/disclosure-triangles.png 108 194 17 17 TriangleClosed --bg DDDDDD
+    sp $ref/disclosure-triangles.png 108 270 17 17 TriangleOpen --bg DDDDDD
+    sp $ref/triangle-pressed.png 108 213 17 17 TrianglePressedRaw --bg DDDDDD
     sp $ref/checkbox-pressed.png 550 327 14 12 CheckOffPressedRaw --bg DDDDDD
     sp $ref/radio-pressed.png 553 534 12 12 RadioOffPressedRaw --bg DDDDDD
     echo "} // namespace Platinum::Sprites"
@@ -112,7 +127,18 @@ def merge(a, b, b_cols, name):
     return f"// {name}: {a} with columns {sorted(b_cols)} from {b} (pointer in each capture)\n" \
            f"const Sprite {name} = {{{w}, {h}, {{\n    {body},\n}}}};\n"
 
-extra = fix("CheckOffPressedRaw", "CheckOff", range(10, 12)) + fix("RadioOffPressedRaw", "RadioOff", range(8, 12)) \
+def clear(raw, rows, cols):
+    """Sprite raw without "Raw": the given pixels set to -1 (pointer)."""
+    w, h, rv, m = table(raw)
+    for r in rows:
+        for c in cols:
+            rv[r * w + c] = "-1"
+    name = raw.replace("Raw", "")
+    body = ",\n    ".join(", ".join(rv[r * w:(r + 1) * w]) for r in range(h))
+    return f"// {name}: {raw} without rows {list(rows)}, columns {list(cols)} (pointer in the capture)\n" \
+           f"const Sprite {name} = {{{w}, {h}, {{\n    {body},\n}}}};\n"
+
+extra = clear("TrianglePressedRaw", range(11, 17), range(9, 17)) + fix("CheckOffPressedRaw", "CheckOff", range(10, 12)) + fix("RadioOffPressedRaw", "RadioOff", range(8, 12)) \
     + merge("PopupArrowPressedA", "PopupArrowPressedB", {0, 1}, "PopupArrowPressed")
 text = text.replace("} // namespace Platinum::Sprites", extra + "} // namespace Platinum::Sprites")
 open(sys.argv[2], "w").write(text)

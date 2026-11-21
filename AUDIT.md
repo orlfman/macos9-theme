@@ -3,7 +3,63 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: six checks so far (decoration, style batches 1-4, first live test; 2026-11-21). Open findings: none.
+Status: eight checks so far (decoration, style batches 1-6, first live test; 2026-11-21). Open findings: none.
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — style batch 6 fidelity check (groups, lists)
+
+Audited: `style/platinum/` group boxes, separators, list headers,
+disclosure triangles and scroll-area frames, working tree before commit.
+Reference: `controls-general-controls.png`, `disclosure-triangles.png`,
+`appearance-3-fonts-clean.png` (regions in `dev/check-style.sh`).
+
+Findings: none. Found during development: Qt applies `PM_HeaderMargin` on
+all four sides and `CE_Header` asks the base style for the label rect, so
+the 8 px label inset is drawn by our own `CE_Header`.
+
+### Checks
+
+`dev/check-style.sh`: 118 of 118 regions pixel exact. New (15): the
+"Desktop" group box (left 12 columns, top lines right of the title, right
+8 columns, bottom 2 rows), both header sections (3 px bands on all sides),
+closed and open triangles (whole 17x17), the separator line. Real widgets
+(offscreen, looked at 2x): titled, checkable and flat group boxes, a
+sorted `QTreeWidget` with header and triangles, an HLine, a text area.
+ASan + UBSan: no reports, identical render.
+
+### Limits
+
+Offscreen only; not seen by the user yet. Derived, not captured: the
+list / text area frame (the text field's sunken edge and black line, no
+focus ring), flat group boxes (top line pair only), pressed header
+sections (unchanged), the pressed triangle (sprite generated but Qt gives
+branch indicators no pressed state). Titles use the substitute font, so
+the title gap's width differs from the capture.
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — style batch 5 fidelity check (text fields)
+
+Audited: `style/platinum/` text fields (`QLineEdit`), focus ring and spin
+boxes, working tree before commit. Reference:
+`appearance-3-fonts-clean.png` (regions in `dev/check-style.sh`).
+
+Findings: none.
+
+### Checks
+
+`dev/check-style.sh`: 103 of 103 regions pixel exact. New (10): the Fonts
+tab's two size spin boxes, unfocused and focused: the field's outer 5 rows
+and columns on all four sides (margin or ring, edge, black line, 2 white)
+and the little arrows with the 2 px gap. Real widgets (offscreen): a
+framed `QLineEdit` and a `QSpinBox` are both 26 px tall, text and selection
+start 3 px inside the black line; focused, read-only (no ring), disabled
+fields looked at (2x). ASan + UBSan: no reports, identical render.
+
+### Limits
+
+Offscreen only; not seen by the user yet. Not captured: pressed arrow
+halves (drawn like a pressed push button), disabled fields and arrows
+(frame unchanged, gray text; arrows washed out), a focus ring in an
+inactive window (hidden). Editable combo boxes, multi-line text areas and
+list/text frames are still Fusion.
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — style batch 4 fidelity check (menus)
 

@@ -1,7 +1,7 @@
 // An interactive window with every control the Platinum style draws so far
 // (with a menu bar and a right-click menu), laid out a bit like a Mac OS 9
-// control panel, plus a few controls that are
-// still Fusion (marked "not themed yet"), for trying the style by hand in
+// control panel, plus the few controls that are
+// still Fusion (marked "Still Fusion"), for trying the style by hand in
 // dev/live-test.sh. Nothing is grabbed or saved.
 //
 // usage: livedemo
@@ -110,6 +110,17 @@ QWidget *controlsPage()
     grid->addWidget(new QLabel(QStringLiteral("Progress:")), row, 0);
     grid->addLayout(bars, row++, 1);
 
+    auto *fields = new QHBoxLayout;
+    fields->addWidget(new QLineEdit(QStringLiteral("Macintosh HD")));
+    auto *spin = new QSpinBox;
+    spin->setValue(12);
+    fields->addWidget(spin);
+    auto *off = new QLineEdit(QStringLiteral("Disabled"));
+    off->setEnabled(false);
+    fields->addWidget(off);
+    grid->addWidget(new QLabel(QStringLiteral("Text fields:")), row, 0);
+    grid->addLayout(fields, row++, 1);
+
     grid->setRowStretch(row, 1);
     grid->setColumnStretch(1, 1);
     return page(grid);
@@ -136,30 +147,42 @@ QWidget *scrollingPage()
     return page(layout);
 }
 
-QWidget *notYetPage()
+QWidget *listsPage()
 {
-    auto *form = new QFormLayout;
-    form->addRow(new QLabel(QStringLiteral("These are still drawn by Fusion (later batches):")));
-    form->addRow(QStringLiteral("Text field:"), new QLineEdit(QStringLiteral("Focus ring comes next")));
-    auto *spin = new QSpinBox;
-    spin->setValue(12);
-    form->addRow(QStringLiteral("Spin box:"), spin);
-    auto *edit = new QComboBox;
-    edit->setEditable(true);
-    edit->addItem(QStringLiteral("Editable combo"));
-    form->addRow(QStringLiteral("Editable combo:"), edit);
-    auto *group = new QGroupBox(QStringLiteral("Group box"));
+    auto *layout = new QVBoxLayout;
+    auto *top = new QHBoxLayout;
+    auto *group = new QGroupBox(QStringLiteral("Desktop"));
     auto *gl = new QVBoxLayout(group);
-    gl->addWidget(new QCheckBox(QStringLiteral("Inside a group box")));
-    form->addRow(group);
+    gl->addWidget(new QCheckBox(QStringLiteral("Show Desktop when in background")));
+    gl->addWidget(new QCheckBox(QStringLiteral("Show Launcher at system startup")));
+    top->addWidget(group);
+    auto *checkable = new QGroupBox(QStringLiteral("Check Disk"));
+    checkable->setCheckable(true);
+    (new QVBoxLayout(checkable))->addWidget(new QRadioButton(QStringLiteral("If shut down improperly")));
+    top->addWidget(checkable);
+    layout->addLayout(top);
+    auto *line = new QFrame;
+    line->setFrameShape(QFrame::HLine);
+    layout->addWidget(line);
     auto *tree = new QTreeWidget;
     tree->setHeaderLabels({QStringLiteral("Name"), QStringLiteral("Size")});
     auto *folder = new QTreeWidgetItem(tree, {QStringLiteral("System Folder"), QStringLiteral("—")});
     new QTreeWidgetItem(folder, {QStringLiteral("Finder"), QStringLiteral("1.2 MB")});
     new QTreeWidgetItem(folder, {QStringLiteral("System"), QStringLiteral("8.4 MB")});
-    tree->expandAll();
-    form->addRow(tree);
-    return page(form);
+    auto *apps = new QTreeWidgetItem(tree, {QStringLiteral("Applications"), QStringLiteral("—")});
+    new QTreeWidgetItem(apps, {QStringLiteral("SimpleText"), QStringLiteral("600 KB")});
+    folder->setExpanded(true);
+    tree->setSortingEnabled(true);
+    tree->sortByColumn(0, Qt::AscendingOrder);
+    layout->addWidget(tree, 1);
+    auto *row = new QHBoxLayout;
+    row->addWidget(new QLabel(QStringLiteral("Still Fusion:")));
+    auto *edit = new QComboBox;
+    edit->setEditable(true);
+    edit->addItem(QStringLiteral("Editable combo"));
+    row->addWidget(edit, 1);
+    layout->addLayout(row);
+    return page(layout);
 }
 } // namespace
 
@@ -211,7 +234,7 @@ int main(int argc, char **argv)
     auto *tabs = new QTabWidget;
     tabs->addTab(controlsPage(), QStringLiteral("Controls"));
     tabs->addTab(scrollingPage(), QStringLiteral("Scrolling"));
-    tabs->addTab(notYetPage(), QStringLiteral("Not Themed Yet"));
+    tabs->addTab(listsPage(), QStringLiteral("Lists && Groups"));
     auto *off = new QWidget;
     tabs->addTab(off, QStringLiteral("Disabled"));
     tabs->setTabEnabled(3, false);

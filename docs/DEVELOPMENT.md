@@ -65,8 +65,8 @@ Opens a nested KWin as a normal window on the user's desktop (windowed
 Wayland backend, 1600×1000 at 1x, `M9_SIZE` to change) with the Platinum
 decoration, style and colors, sandboxed like `run.sh` (own XDG folders,
 private D-Bus, nothing installed). It rebuilds the style, the decoration
-and `dev/build/livedemo` (every themed control, plus a "Not Themed Yet"
-tab), then starts the demo, Dolphin and Kate, or the commands given as
+and `dev/build/livedemo` (every themed control on its tabs, the few
+still-Fusion ones marked "Still Fusion"), then starts the demo, Dolphin and Kate, or the commands given as
 arguments. Closing the apps or the nested KWin window ends it; the log is
 `dev/build/live-test.log`. Agents can't screenshot inside it (its D-Bus is
 private), so it's for the user's eyes.

@@ -5,7 +5,9 @@
  * its ring), check boxes, radio buttons, pop-up menus (non-editable combo
  * boxes), sliders with tick marks, progress bars (determinate and the
  * barber pole), tabs on top of their pane (normal, current, pressed), menus,
- * pop-up menu lists and the menu bar.
+ * pop-up menu lists, the menu bar, text fields with the focus ring,
+ * spin boxes, group boxes, separators, list headers, and disclosure
+ * triangles.
  * Everything else is still drawn by Fusion underneath.
  *
  * Sources: docs/REFERENCE.md, docs/FINDINGS.md (scroll bar spike), and the
@@ -27,6 +29,9 @@
 
 #include <QAbstractItemView>
 #include <QComboBox>
+#include <QGroupBox>
+#include <QLineEdit>
+#include <QSpinBox>
 #include <QFrame>
 #include <QDateTime>
 #include <QEvent>
@@ -421,6 +426,54 @@ bool menuHasShortcuts(const QWidget *widget)
     return false;
 }
 
+// A text field (docs/REFERENCE.md "Text field"): in a rect with a 1 px
+// margin, a sunken 1 px edge (#888888 top/left, white bottom/right, the
+// two corners where they meet left out), then a black line and the white
+// inside. Focused: the 2 px #6666CC ring fills the margin and the edge,
+// minus its four corner pixels.
+void drawField(QPainter *p, const QRect &r, bool focused, const QColor &base)
+{
+    const int x0 = r.left(), y0 = r.top(), x1 = r.right(), y1 = r.bottom();
+    if (r.width() < 8 || r.height() < 8) {
+        return;
+    }
+    if (focused) {
+        const QColor ring(0x66, 0x66, 0xCC);
+        p->fillRect(QRect(x0 + 1, y0, r.width() - 2, 1), ring);
+        p->fillRect(QRect(x0 + 1, y1, r.width() - 2, 1), ring);
+        p->fillRect(QRect(x0, y0 + 1, r.width(), r.height() - 2), ring);
+    } else {
+        p->fillRect(QRect(x0 + 1, y0 + 1, r.width() - 3, 1), gray(0x88));
+        p->fillRect(QRect(x0 + 1, y0 + 1, 1, r.height() - 3), gray(0x88));
+        p->fillRect(QRect(x1 - 1, y0 + 2, 1, r.height() - 3), White);
+        p->fillRect(QRect(x0 + 2, y1 - 1, r.width() - 3, 1), White);
+    }
+    const QRect black = r.adjusted(2, 2, -2, -2);
+    p->fillRect(black, Black);
+    p->fillRect(black.adjusted(1, 1, -1, -1), base);
+}
+
+bool hasFieldFrame(const QStyleOption *option)
+{
+    const auto *f = qstyleoption_cast<const QStyleOptionFrame *>(option);
+    return f && f->lineWidth > 0;
+}
+
+// A list / text area frame: the text field's sunken edge and black line,
+// without its margin (derived: no capture of a Platinum list box frame;
+// Standard File's list in dialog-file-open.png is a plain black line).
+void drawSunkenFrame(QPainter *p, const QRect &r)
+{
+    const int x0 = r.left(), y0 = r.top(), x1 = r.right(), y1 = r.bottom();
+    p->fillRect(QRect(x0, y0, r.width() - 1, 1), gray(0x88));
+    p->fillRect(QRect(x0, y0, 1, r.height() - 1), gray(0x88));
+    p->fillRect(QRect(x1, y0 + 1, 1, r.height() - 1), White);
+    p->fillRect(QRect(x0 + 1, y1, r.width() - 1, 1), White);
+    p->setPen(Black);
+    p->setBrush(Qt::NoBrush);
+    p->drawRect(r.adjusted(1, 1, -2, -2));
+}
+
 } // namespace
 
 Style::Style()
@@ -458,6 +511,12 @@ int Style::pixelMetric(PixelMetric metric, const QStyleOption *option, const QWi
     case PM_SliderThickness:
     case PM_SliderControlThickness:
         return SliderThumbHeight;
+    case PM_DefaultFrameWidth:
+        return FrameWidth;
+    case PM_HeaderMargin:
+        // Qt uses it on all four sides (and twice in the section size);
+        // the 8 px label inset is set in SE_HeaderLabel instead.
+        return 2;
     case PM_MenuPanelWidth:
         return 1;
     case PM_MenuHMargin:
@@ -512,6 +571,24 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption *option, con
             return s->orientation == Qt::Horizontal ? QSize(size.width(), thick) : QSize(thick, size.height());
         }
     }
+    if (type == CT_LineEdit) {
+        // QLineEdit passes its text size (with its own 2 / 1 px margins).
+        // Frameless ones (inside spin boxes) get nothing added, so a spin
+        // box is as tall as a line edit.
+        if (!hasFieldFrame(option)) {
+            return size;
+        }
+        return QSize(size.width() + 2 * FieldFrame, std::max(size.height() + 2 * FieldFrame, FieldMinHeight));
+    }
+    if (type == CT_SpinBox) {
+        if (const auto *sb = qstyleoption_cast<const QStyleOptionSpinBox *>(option); sb && sb->frame) {
+            return QSize(size.width() + 2 * FieldFrame + SpinArrowsGap + SpinArrowsWidth, std::max(size.height() + 2 * FieldFrame, FieldMinHeight));
+        }
+    }
+    if (type == CT_HeaderSection) {
+        const QSize s = QProxyStyle::sizeFromContents(type, option, size, widget);
+        return QSize(s.width(), std::max(HeaderHeight, option->fontMetrics.height() + 5));
+    }
     if (type == CT_MenuItem) {
         if (const auto *mi = qstyleoption_cast<const QStyleOptionMenuItem *>(option)) {
             if (mi->menuItemType == QStyleOptionMenuItem::Separator) {
@@ -564,6 +641,16 @@ QRect Style::subElementRect(SubElement element, const QStyleOption *option, cons
             return r;
         }
         break;
+    case SE_HeaderLabel:
+        if (qstyleoption_cast<const QStyleOptionHeader *>(option)) {
+            return option->rect.adjusted(HeaderMargin, 0, -HeaderMargin / 2, 0);
+        }
+        break;
+    case SE_LineEditContents:
+        if (hasFieldFrame(option)) {
+            return option->rect.adjusted(FieldFrame, FieldFrame, -FieldFrame, -FieldFrame);
+        }
+        break;
     case SE_TabWidgetTabPane:
         // Also in document mode, where Qt would leave out the overlap: the
         // pane is drawn there too (eventFilter).
@@ -585,6 +672,53 @@ QRect Style::subElementRect(SubElement element, const QStyleOption *option, cons
 
 QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex *option, SubControl sub, const QWidget *widget) const
 {
+    if (control == CC_GroupBox) {
+        if (const auto *gb = qstyleoption_cast<const QStyleOptionGroupBox *>(option)) {
+            const QRect r = gb->rect;
+            const QFontMetrics &fm = gb->fontMetrics;
+            const bool check = gb->subControls & SC_GroupBoxCheckBox;
+            const bool title = check || !gb->text.isEmpty();
+            // The title's bottom row (the row above its baseline) lies on
+            // the frame's top line.
+            const int frameTop = title ? r.y() + fm.ascent() - 1 : r.y();
+            const QRect box(r.x() + GroupTitleLeft, r.y() + (fm.height() - CheckHeight) / 2, CheckWidth, CheckHeight);
+            const int labelX = r.x() + GroupTitleLeft + (check ? CheckWidth + GroupTitleGap : 0);
+            const QRect label(labelX, r.y(), gb->text.isEmpty() ? 0 : fm.boundingRect(QRect(), Qt::TextShowMnemonic, gb->text).width(), fm.height());
+            switch (sub) {
+            case SC_GroupBoxCheckBox:
+                return check ? box : QRect();
+            case SC_GroupBoxLabel:
+                return label;
+            case SC_GroupBoxFrame:
+                return QRect(r.x(), frameTop, r.width(), r.bottom() - frameTop + 1);
+            case SC_GroupBoxContents: {
+                const int top = std::max(frameTop + 2, title ? r.y() + fm.height() : r.y() + 2);
+                return QRect(r.x() + 2, top, r.width() - 4, r.bottom() - 2 - top + 1);
+            }
+            default:
+                break;
+            }
+        }
+    }
+    if (control == CC_SpinBox) {
+        if (const auto *sb = qstyleoption_cast<const QStyleOptionSpinBox *>(option); sb && sb->frame && sb->buttonSymbols != QAbstractSpinBox::NoButtons) {
+            const QRect r = sb->rect;
+            const QRect field(r.x(), r.y(), r.width() - SpinArrowsGap - SpinArrowsWidth, r.height());
+            const QRect arrows(r.right() - SpinArrowsWidth + 1, r.y() + (r.height() - SpinArrowsHeight) / 2, SpinArrowsWidth, SpinArrowsHeight);
+            switch (sub) {
+            case SC_SpinBoxFrame:
+                return r;
+            case SC_SpinBoxEditField:
+                return field.adjusted(FieldFrame, FieldFrame, -FieldFrame, -FieldFrame);
+            case SC_SpinBoxUp:
+                return arrows.adjusted(0, 0, 0, -SpinArrowsHeight / 2);
+            case SC_SpinBoxDown:
+                return arrows.adjusted(0, SpinArrowsHeight / 2, 0, 0);
+            default:
+                break;
+            }
+        }
+    }
     if (control == CC_ComboBox) {
         if (const auto *cb = qstyleoption_cast<const QStyleOptionComboBox *>(option); cb && !cb->editable) {
             const QRect r = cb->rect;
@@ -735,6 +869,119 @@ void Style::drawSlider(const QStyleOptionSlider *o, QPainter *p, const QWidget *
     p->restore();
 }
 
+void Style::drawSpinBox(const QStyleOptionSpinBox *sb, QPainter *painter, const QWidget *widget) const
+{
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing, false);
+    const bool enabled = sb->state & State_Enabled;
+    const bool focused = enabled && (sb->state & State_HasFocus) && (sb->state & State_Active);
+    const QRect r = sb->rect;
+    const QRect field(r.x(), r.y(), r.width() - SpinArrowsGap - SpinArrowsWidth, r.height());
+    drawField(painter, field, focused, sb->palette.color(enabled ? QPalette::Active : QPalette::Disabled, QPalette::Base));
+    const QRect up = subControlRect(CC_SpinBox, sb, SC_SpinBoxUp, widget);
+    drawSprite(painter, up.x(), up.y(), Sprites::SpinArrows);
+    // Not captured: the pressed half. Drawn like a pressed push button
+    // (#555555 highlight, #666666 fill, #777777 / #888888 shadow, white
+    // arrow) inside that half, keeping the outline.
+    const bool upPressed = (sb->activeSubControls & SC_SpinBoxUp) && (sb->state & State_Sunken);
+    const bool downPressed = (sb->activeSubControls & SC_SpinBoxDown) && (sb->state & State_Sunken);
+    for (int half = 0; half < 2; ++half) {
+        if (!(half == 0 ? upPressed : downPressed)) {
+            continue;
+        }
+        const int row0 = half == 0 ? 0 : SpinArrowsHeight / 2;
+        const int row1 = half == 0 ? SpinArrowsHeight / 2 : SpinArrowsHeight;
+        for (int row = row0; row < row1; ++row) {
+            for (int col = 0; col < SpinArrowsWidth; ++col) {
+                const int v = Sprites::SpinArrows.data[row * SpinArrowsWidth + col];
+                const bool inside = col >= 3 && col <= SpinArrowsWidth - 4 && row >= 2 && row <= SpinArrowsHeight - 3;
+                int out = v;
+                switch (v) {
+                case 0xFFFFFF:
+                    out = 0x555555;
+                    break;
+                case 0xDDDDDD:
+                    out = 0x666666;
+                    break;
+                case 0xBBBBBB:
+                case 0xAAAAAA:
+                    out = 0x777777;
+                    break;
+                case 0x777777:
+                    out = 0x888888;
+                    break;
+                case 0x000000:
+                    out = inside ? 0xFFFFFF : 0x000000;
+                    break;
+                default:
+                    break;
+                }
+                putPixel(painter, up.x() + col, up.y() + row, out);
+            }
+        }
+    }
+    if (!enabled) {
+        // Not captured: disabled arrows, washed out (#DDDDDD at half
+        // strength over the inside).
+        painter->fillRect(QRect(up.x() + 1, up.y() + 1, SpinArrowsWidth - 2, SpinArrowsHeight - 2), QColor(0xDD, 0xDD, 0xDD, 128));
+    }
+    painter->restore();
+}
+
+void Style::drawGroupBox(const QStyleOptionGroupBox *gb, QPainter *painter, const QWidget *widget) const
+{
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing, false);
+    const QRect f = subControlRect(CC_GroupBox, gb, SC_GroupBoxFrame, widget);
+    const QRect label = subControlRect(CC_GroupBox, gb, SC_GroupBoxLabel, widget);
+    const QRect box = subControlRect(CC_GroupBox, gb, SC_GroupBoxCheckBox, widget);
+    const bool check = gb->subControls & SC_GroupBoxCheckBox;
+    const bool title = check || !gb->text.isEmpty();
+    // The top line pair stops 4 px before the title and resumes 4 px after.
+    const int gapL = title ? (check ? box.left() : label.left()) - GroupTitleGap : f.right() + 2;
+    const int gapR = title ? (gb->text.isEmpty() ? box.right() : label.right()) + GroupTitleGap : f.right() + 2;
+    const bool flat = gb->features & QStyleOptionFrame::Flat;
+    const int x0 = f.left(), x1 = f.right() - 1, y0 = f.top(), y1 = f.bottom() - 1;
+    // Top: #888888 x0..x1 on y0, white x0+1..x1+1 on y0+1, both broken at the title.
+    painter->fillRect(QRect(x0, y0, std::max(0, std::min(x1, gapL - 1) - x0 + 1), 1), gray(0x88));
+    painter->fillRect(QRect(x0 + 1, y0 + 1, std::max(0, std::min(flat ? x1 + 1 : x1 - 1, gapL - 1) - x0), 1), White);
+    if (gapR < x1) {
+        painter->fillRect(QRect(gapR + 1, y0, x1 - gapR, 1), gray(0x88));
+        painter->fillRect(QRect(gapR + 1, y0 + 1, (flat ? x1 + 1 : x1 - 1) - gapR, 1), White);
+    }
+    if (!flat) {
+        // Measured (controls-general-controls.png, "Desktop"): a #888888
+        // rectangle, and a white one 1 px down and right under it.
+        painter->fillRect(QRect(x1 + 1, y0 + 1, 1, y1 - y0 + 1), White);     // white right
+        painter->fillRect(QRect(x0 + 1, y1 + 1, x1 - x0 + 1, 1), White);     // white bottom
+        painter->fillRect(QRect(x0 + 1, y0 + 1, 1, y1 - y0 - 1), White);     // white left
+        painter->fillRect(QRect(x0, y0, 1, y1 - y0 + 1), gray(0x88));        // gray left
+        painter->fillRect(QRect(x1, y0, 1, y1 - y0 + 1), gray(0x88));        // gray right
+        painter->fillRect(QRect(x0, y1, x1 - x0 + 1, 1), gray(0x88));        // gray bottom
+    }
+    if (check) {
+        QStyleOption o(*gb);
+        o.rect = box;
+        o.state = (gb->state & ~(State_On | State_Off | State_NoChange)) | ((gb->state & State_On) ? State_On : State_Off);
+        if (gb->activeSubControls & SC_GroupBoxCheckBox) {
+            o.state |= (gb->state & State_Sunken);
+        } else {
+            o.state &= ~State_Sunken;
+        }
+        proxy()->drawPrimitive(PE_IndicatorCheckBox, &o, painter, widget);
+    }
+    if (!gb->text.isEmpty()) {
+        QPalette pal = gb->palette;
+        pal.setColor(QPalette::WindowText, (gb->state & State_Enabled) ? (gb->textColor.isValid() ? gb->textColor : Black) : DisabledText);
+        int flags = Qt::AlignLeft | Qt::AlignTop | Qt::TextShowMnemonic | Qt::TextSingleLine;
+        if (!proxy()->styleHint(SH_UnderlineShortcut, gb, widget)) {
+            flags |= Qt::TextHideMnemonic;
+        }
+        proxy()->drawItemText(painter, label, flags, pal, true, gb->text, QPalette::WindowText);
+    }
+    painter->restore();
+}
+
 void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex *option, QPainter *painter, const QWidget *widget) const
 {
     if (control == CC_ComboBox) {
@@ -749,6 +996,18 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
             const Sprite &arrow = !enabled ? Sprites::PopupArrowDisabled : pressed ? Sprites::PopupArrowPressed : Sprites::PopupArrow;
             drawSprite(painter, cb->rect.right() - PopupArrowWidth + 1, cb->rect.y() + (cb->rect.height() - arrow.h) / 2, arrow);
             painter->restore();
+            return;
+        }
+    }
+    if (control == CC_SpinBox) {
+        if (const auto *sb = qstyleoption_cast<const QStyleOptionSpinBox *>(option); sb && sb->frame && sb->buttonSymbols != QAbstractSpinBox::NoButtons) {
+            drawSpinBox(sb, painter, widget);
+            return;
+        }
+    }
+    if (control == CC_GroupBox) {
+        if (const auto *gb = qstyleoption_cast<const QStyleOptionGroupBox *>(option)) {
+            drawGroupBox(gb, painter, widget);
             return;
         }
     }
@@ -810,6 +1069,58 @@ void Style::drawControl(ControlElement element, const QStyleOption *option, QPai
             drawProgress(painter, pb->rect, pb->progress, pb->minimum, pb->maximum);
             painter->restore();
             return;
+        }
+        break;
+    case CE_Header:
+        // Section, then the label in our label rect (Qt's own CE_Header
+        // asks the base style for it). No sort arrow.
+        if (const auto *hd = qstyleoption_cast<const QStyleOptionHeader *>(option)) {
+            proxy()->drawControl(CE_HeaderSection, hd, painter, widget);
+            QStyleOptionHeader label(*hd);
+            label.rect = subElementRect(SE_HeaderLabel, hd, widget);
+            if (label.rect.isValid()) {
+                proxy()->drawControl(CE_HeaderLabel, &label, painter, widget);
+            }
+            return;
+        }
+        break;
+    case CE_HeaderSection:
+        if (const auto *hd = qstyleoption_cast<const QStyleOptionHeader *>(option)) {
+            painter->save();
+            painter->setRenderHint(QPainter::Antialiasing, false);
+            // The sorted column is the dark one (no sort arrow in Mac OS 9's
+            // list headers). A section's right side is the next one's left
+            // line; the empty area after the last section closes it.
+            drawNineSlice(painter, hd->rect, hd->sortIndicator != QStyleOptionHeader::None ? Slices::HeaderSorted : Slices::HeaderSection);
+            painter->restore();
+            return;
+        }
+        break;
+    case CE_HeaderEmptyArea:
+        painter->save();
+        painter->setRenderHint(QPainter::Antialiasing, false);
+        drawNineSlice(painter, option->rect, Slices::HeaderSection);
+        painter->restore();
+        return;
+    case CE_ShapedFrame:
+        if (const auto *fr = qstyleoption_cast<const QStyleOptionFrame *>(option)) {
+            if (fr->frameShape == QFrame::HLine || fr->frameShape == QFrame::VLine) {
+                // Separators (Appearance and Memory control panels):
+                // #888888, then white below / right of it.
+                painter->save();
+                const QRect r = fr->rect;
+                if (fr->frameShape == QFrame::HLine) {
+                    const int y = r.y() + r.height() / 2 - 1;
+                    painter->fillRect(QRect(r.x(), y, r.width(), 1), gray(0x88));
+                    painter->fillRect(QRect(r.x(), y + 1, r.width(), 1), White);
+                } else {
+                    const int x = r.x() + r.width() / 2 - 1;
+                    painter->fillRect(QRect(x, r.y(), 1, r.height()), gray(0x88));
+                    painter->fillRect(QRect(x + 1, r.y(), 1, r.height()), White);
+                }
+                painter->restore();
+                return;
+            }
         }
         break;
     case CE_MenuEmptyArea:
@@ -986,6 +1297,47 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption *option, 
     case PE_FrameFocusRect:
         // Mac OS 9 shows no focus rectangle on buttons and toggles.
         if (qobject_cast<const QAbstractButton *>(widget) || qobject_cast<const QTabBar *>(widget)) {
+            return;
+        }
+        break;
+    case PE_Frame:
+        if (const auto *fr = qstyleoption_cast<const QStyleOptionFrame *>(option); fr && fr->lineWidth > 0) {
+            painter->save();
+            painter->setRenderHint(QPainter::Antialiasing, false);
+            drawSunkenFrame(painter, fr->rect);
+            painter->restore();
+            return;
+        }
+        break;
+    case PE_IndicatorHeaderArrow:
+        // Mac OS 9 list headers show the sorted column by its darker
+        // section, not an arrow.
+        return;
+    case PE_IndicatorBranch:
+        // Disclosure triangles; no tree lines (the Finder draws none).
+        if (option->state & State_Children) {
+            const Sprite &s = (option->state & State_Open) ? Sprites::TriangleOpen : Sprites::TriangleClosed;
+            painter->save();
+            const QRect &r = option->rect;
+            drawSprite(painter, r.x() + (r.width() - s.w) / 2, r.y() + (r.height() - s.h) / 2, s);
+            painter->restore();
+        }
+        return;
+    case PE_PanelLineEdit:
+        if (hasFieldFrame(option)) {
+            painter->save();
+            painter->setRenderHint(QPainter::Antialiasing, false);
+            const bool enabled = option->state & State_Enabled;
+            const auto *edit = qobject_cast<const QLineEdit *>(widget);
+            const bool focused = enabled && (option->state & State_HasFocus) && (option->state & State_Active) && !(edit && edit->isReadOnly());
+            drawField(painter, option->rect, focused, option->palette.color(enabled ? QPalette::Active : QPalette::Disabled, QPalette::Base));
+            painter->restore();
+            return;
+        }
+        break;
+    case PE_FrameLineEdit:
+        // Drawn with the panel (PE_PanelLineEdit).
+        if (hasFieldFrame(option)) {
             return;
         }
         break;
