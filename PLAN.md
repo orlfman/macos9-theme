@@ -2,7 +2,9 @@
 
 ## Status
 
-Updated: 2026-11-19 (Claude Code). Phase: project setup, nothing built yet.
+Updated: 2026-11-21 (Claude Code). Phase: colors, decoration, style, Plasma
+(menu bar, dock, global theme) and install scripts built and checked headless;
+not yet installed on the real desktop. Next: icons, cursors, fonts, GTK.
 
 ### Claims
 

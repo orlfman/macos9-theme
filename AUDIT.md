@@ -3,7 +3,7 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: fourteen checks so far (decoration, style batches 1-7, real-app pass, Plasma menu bar x2, dock, install scripts, first live test; 2026-11-21). Open findings: 3 (P3).
+Status: fourteen checks so far (decoration, style batches 1-7, real-app pass, Plasma menu bar x2, dock, install scripts, first live test; 2026-11-21). Open findings: one, #3 (P3, Qt Quick menus / tooltips / switches).
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — install and uninstall scripts
 
