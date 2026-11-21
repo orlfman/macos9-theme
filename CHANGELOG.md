@@ -149,7 +149,20 @@ Burst mode worked on the real VM. Group 4 finished:
 - Bursts are pruned by hand: only the useful frames are kept (renamed),
   the rest deleted with their INDEX lines.
 
-Next: commit; then CAPTURES.md group 5 (text, lists, tabs).
+Group 5 (text, lists, tabs) finished. Most items were already covered
+by earlier captures; new ones:
+
+- Text selection by burst: `text-selection-word.png` (`#CCCCFF` fill),
+  `text-selection-to-line-end.png` (fills to the right edge past the line
+  end), `cursor-ibeam.png`. Inactive window: `text-selection-inactive.png`
+  shows only a 1 px `#CCCCFF` outline.
+- Finder list selection inverts just the name label (black box) and darkens
+  the icon, no row highlight (`list-view-selection.png`); in an inactive
+  window it isn't shown at all (`list-view-selection-inactive.png`).
+- Tabs: normal `#CCCCCC`, current `#EEEEEE` (joined to the panel), pressed
+  `#666666` with a white label (`tab-pressed.png`).
+
+Next: commit; then CAPTURES.md group 6 (menus).
 
 ## 2026-11-19, Claude Code (Claude Opus 5.5) — project setup
 

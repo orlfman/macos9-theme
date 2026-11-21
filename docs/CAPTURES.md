@@ -265,24 +265,34 @@ Smart Scrolling is on (both arrows at one end, proportional thumb).
 
 ## 5. Text, lists, tabs (A) — style
 
-- [ ] `text-field-states`: an edit field focused (focus ring) and one not
+- [x] `text-field-states` (focused with ring: `appearance-3-fonts-clean.png`;
+      unfocused: `controls-memory.png`; classic field without ring:
+      `dialog-movable-modal.png`): an edit field focused (focus ring) and one not
       focused (Date & Time, File Sharing name fields, or Get Info comments).
-- [ ] `text-selection`: text selected in a field and in SimpleText (Purple
-      highlight color).
-- [ ] `text-selection-inactive`: the same SimpleText window inactive
-      (outlined selection?).
+- [x] `text-selection`: text selected in a field and in SimpleText (Purple
+      highlight color). Done 2026-11-20 by burst: `text-selection-word.png`
+      (`#CCCCFF` behind black text) and `text-selection-to-line-end.png`
+      (a selection past the line end fills to the window's right edge).
+      The text shows a stray box glyph after "amazing" (an Alt+Tab key).
+- [x] `text-selection-inactive`: the same SimpleText window inactive
+      (outlined selection?). Done 2026-11-20: yes, a 1 px `#CCCCFF`
+      outline around the selected text.
 - [x] `list-view-header` (Finder version in `disclosure-triangles.png`): Finder list view: column headers, sorted column
       highlighted, sort direction button.
-- [ ] `list-view-selection`: Finder list view with one row selected, and
-      the window inactive with a selection.
-- [ ] `list-box`: a plain list box with a selection (Appearance > Desktop
+- [x] `list-view-selection`: Finder list view with one row selected, and
+      the window inactive with a selection. Active done 2026-11-20: only the
+      name label inverts (black box) and the icon darkens. Inactive
+      (`list-view-selection-inactive.png`): the selection disappears
+      completely.
+- [x] `list-box` (`appearance-4-desktop.png`, `dialog-file-open.png`): a plain list box with a selection (Appearance > Desktop
       already has one; also Chooser or Extensions Manager).
-- [ ] `tabs-states`: Appearance tabs (already captured); also a tab
-      pressed (delay).
+- [x] `tabs-states`: Appearance tabs (already captured); also a tab
+      pressed (delay). Normal and small tabs done; pressed in
+      `tab-pressed.png` (Sound held, 2026-11-20).
 - [x] `group-box` (titled group boxes, title on the frame line, in
       `controls-general-controls.png`): a group box / separator (Memory, General Controls,
       Monitors).
-- [ ] `window-header`: Finder window header ("N items, X MB available").
+- [x] `window-header` (`window-document-active.png` and others): Finder window header ("N items, X MB available").
 
 ## 6. Menus (B) — style + Plasma
 
@@ -327,7 +337,7 @@ Smart Scrolling is on (both arrows at one end, proportional thumb).
 ## 8. Help, cursors, misc (C)
 
 - [ ] `help-balloon`: Help > Show Balloons, hover something.
-- [ ] `cursor-arrow`, `cursor-ibeam`, `cursor-watch`, `cursor-hand`,
+- [~] `cursor-arrow`, `cursor-ibeam` (I-beam done: `cursor-ibeam.png`), `cursor-watch`, `cursor-hand`,
       `cursor-crosshair`: the cursor is drawn into the framebuffer, so it
       shows in captures; position it over an empty area.
 - [ ] `cursor-watch-frames`: several captures during a busy moment for the
