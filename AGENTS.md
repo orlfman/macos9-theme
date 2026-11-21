@@ -41,7 +41,9 @@ apply from the start.
 3. The status lines at the top of `AUDIT.md`: open findings.
 4. `docs/REFERENCE.md` before drawing anything: the measured Mac OS 9.2.2
    colors and metrics, each with its source.
-5. `docs/FINDINGS.md` before choosing a technique: what Plasma, KWin, Union,
+5. `docs/CAPTURES.md` when capturing: the checklist of states still to
+   capture, naming, and how pressed states are timed (`--delay`).
+6. `docs/FINDINGS.md` before choosing a technique: what Plasma, KWin, Union,
    Aurorae, and Qt can and can't draw, as verified in this project.
 
 ## Layout

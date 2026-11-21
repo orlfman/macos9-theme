@@ -11,6 +11,7 @@ The VM must be started with a QMP socket, e.g.:
 Usage:
     tools/capture.py NAME            -> reference/NAME.png (never overwrites)
     tools/capture.py --socket PATH NAME
+    tools/capture.py --delay 5 NAME  -> capture after 5 s (pressed states)
     tools/capture.py --check         -> just test the connection
 
 Every capture is appended to reference/INDEX.tsv (time, file, size, sha256),
@@ -80,6 +81,9 @@ def main():
     ap.add_argument("name", nargs="?", help="capture name, e.g. finder-window-active")
     ap.add_argument("--socket", type=Path, default=DEFAULT_SOCK)
     ap.add_argument("--check", action="store_true", help="only test the QMP connection")
+    ap.add_argument("--delay", type=float, default=0, metavar="SECONDS",
+                    help="wait before capturing, to set up a pressed or "
+                         "dragging state in the VM")
     a = ap.parse_args()
 
     if not a.socket.exists():
@@ -101,6 +105,13 @@ def main():
 
     # The screamer QEMU build has no libpng, so dump PPM (lossless, always
     # available) and convert it to PNG here.
+    if a.delay > 0:
+        for left in range(int(a.delay), 0, -1):
+            print(f"capturing in {left} s...", flush=True)
+            time.sleep(1)
+        time.sleep(a.delay - int(a.delay))
+        print("\a", end="", flush=True)
+
     ppm = REF / f".{a.name}.ppm"
     ppm.unlink(missing_ok=True)
     qmp(a.socket, "screendump", {"filename": str(ppm)})

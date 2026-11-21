@@ -86,10 +86,11 @@ measurements.
 1. **Reference.** Mac OS 9.2.2 runs in QEMU (user set it up 2026-11-19, see
    AGENTS.md "The reference VM"); `tools/capture.py` takes lossless 1x
    captures (tested 2026-11-20 against a throwaway QEMU). Next: relaunch the
-   VM with a QMP socket, confirm the Appearance control panel is at defaults,
-   then capture every widget, window state, menu, and the Finder into
-   `reference/` and measure into `docs/REFERENCE.md`. Without this, no theme
-   work starts.
+   VM with a QMP socket (done), confirm the Appearance control panel is at
+   defaults (done 2026-11-20, see REFERENCE.md), then work through
+   `docs/CAPTURES.md` (priority A first) and measure into
+   `docs/REFERENCE.md`. A part of the theme starts once its A captures are
+   measured.
 2. **Sandbox.** Port windows2000-union's `dev/` tooling (sandbox, offscreen
    gallery, nested KWin, screenshot scripts) and add a screenshot comparison
    tool. Settle decision 1 (scale).

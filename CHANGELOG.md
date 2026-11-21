@@ -36,8 +36,14 @@ the focused size box twice; the user retyped 10 and 12, and
 `appearance-3-fonts-clean.png` is the clean Fonts capture. Release the VM
 with Ctrl+Alt+G before switching away.
 
+Then wrote `docs/CAPTURES.md`: the checklist of states to capture (eight
+groups, priority A/B/C, with names, setup steps, and which theme part each
+serves), and added `--delay SECONDS` to `tools/capture.py` so the user can
+hold a button down while it captures (countdown, then a terminal beep;
+tested 2.5 s against a throwaway QEMU). Linked from AGENTS.md and PLAN.md.
+
 Next: recheck the Themes tab still says Mac OS Default after the Fonts edits,
-then plan the capture list (every widget and state) and start capturing.
+then work through CAPTURES.md group 1 (windows and title bars).
 
 ## 2026-11-19, Claude Code (Claude Opus 5.5) — project setup
 
