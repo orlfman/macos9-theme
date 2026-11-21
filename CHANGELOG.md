@@ -2,6 +2,39 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-20, Claude Code (Claude Opus 5.5) — step 2: sandbox, compare tool, scale
+
+Claimed `shared` for PLAN step 2, released at the end.
+
+- `dev/`: ported the generic parts of the user's windows2000-union test rig
+  (BSD-2-Clause): `run.sh` (sandbox; schemes `platinum`/`breeze`/`user`/file,
+  every folder under `style/` linked as a Union style, new `EXTRA_FONT_DIRS`
+  for stand-in fonts, Wine Tahoma bits dropped), `build.sh` (gallery,
+  quickshot, tabdemo, fakeinput; decoration tools deferred), `shoot.sh`,
+  `kwin-test.sh` / `app-test.sh` (decoration chosen with `M9_DECORATION`,
+  default Breeze), session scripts, test QML/C++ and the fake-input
+  protocol. `dev/shots/` git-ignored.
+- `tools/compare.py`: `row`, `col`, `colors`, `bbox`, `zoom`, and `diff`
+  (same-size regions, any image with an `@X,Y,W,H` crop; counts, max
+  difference, bounding box, side-by-side picture, exit 1 on differences).
+- `docs/DEVELOPMENT.md`: how to use both. AGENTS.md and PLAN.md point to it.
+
+Checks: `dev/build.sh` builds all four tools; `dev/shoot.sh breeze breeze`
+renders the widgets, Quick and Kirigami galleries; `dev/kwin-test.sh breeze`
+screenshots two Breeze windows in a nested KWin. `compare.py` reproduces
+earlier hand measurements (selected bevel button column, 12×12 check box),
+gives 0 / 120 differing pixels for identical / normal-vs-pressed check box
+crops, refuses crops outside the image, and runs clean under
+`-W error::DeprecationWarning`. No shellcheck on this machine. Found on the
+way: the watch cursor crop has two `#9C9C63` pixels (the desktop color
+inverted), so Mac OS cursors can invert pixels, not just paint them.
+
+Decision 1 (scale) settled by the user: true 1x at Plasma 100%, to be
+tweaked after testing; recorded in PLAN.md with the numbers behind it.
+
+Next: step 3 spikes (style engine, decoration engine), or measuring passes
+per component.
+
 ## 2026-11-20, Claude Code (Claude Opus 5.5) — reference capture tool
 
 The user set up Mac OS 9.2.2 in QEMU (`/mnt/storage1/local/VM/mac-os-9`,

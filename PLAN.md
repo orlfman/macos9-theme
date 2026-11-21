@@ -10,7 +10,7 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 
 | Component  | Folder(s)                 | Claimed by | Status      |
 |------------|---------------------------|------------|-------------|
-| shared     | docs, tools, dev, scripts | nobody     | docs set up |
+| shared     | docs, tools, dev, scripts | nobody     | dev/ sandbox + tools/compare.py done (step 2) |
 | reference  | reference/, docs/REFERENCE.md | nobody | capture pass done (81 captures, CAPTURES.md); measurements partial |
 | colors     | colors/                   | nobody     | not started |
 | decoration | decoration/               | nobody     | not started |
@@ -33,9 +33,15 @@ Platinum appearance, measured against the real system. See AGENTS.md
 Open decisions need the user. Record the answer here with the date.
 
 1. **Scale.** Both 4K screens run at scale 1, where 1x Mac OS 9 metrics are
-   tiny. Options: (a) draw at 1x and let the user set Plasma scale 2,
-   (b) build the theme at a fixed 2x pixel size (every 1 px edge = 2 px) so it
-   works at scale 1, (c) make the multiplier a build option. *Open.*
+   tiny. **Decided 2026-11-20 (user): true 1x at Plasma 100%**: draw every
+   metric at its real Mac OS 9 pixel size, pixel exact; "from my testing,
+   we can tweak it from there." Facts behind it: a 20 px menu bar is 3.1 mm
+   on the 27" (163 ppi) and 3.7 mm on the 32" (138 ppi), against ~6.4 mm on
+   a 2001 Mac at ~80 ppi; Plasma 200% would double that and give a
+   1920×1080 workspace. So keep metrics in one place (no hard-coded sizes
+   scattered around) so a later 2x variant or tweak stays cheap. Other
+   options considered: Plasma 200%, a fixed 2x theme at 100%, a build-time
+   multiplier.
 2. **Application style engine.** Union can't draw scroll bar arrows or two
    bevel layers in Qt Widgets (windows2000-union findings, recheck on 6.8.3).
    Options: Union style (supported, limited), a C++ QStyle (full control, more
@@ -96,7 +102,8 @@ measurements.
    do, ideally right before that component is built.
 2. **Sandbox.** Port windows2000-union's `dev/` tooling (sandbox, offscreen
    gallery, nested KWin, screenshot scripts) and add a screenshot comparison
-   tool. Settle decision 1 (scale).
+   tool. Settle decision 1 (scale). **Tooling done 2026-11-20** (see
+   `docs/DEVELOPMENT.md`); decoration test tools come with the decoration.
 3. **Spikes.** Decide the style engine (decision 2) and decoration engine
    (decision 3) by drawing one scroll bar and one title bar each way.
 4. **colors** → **decoration** → **style** (the bulk of the look).

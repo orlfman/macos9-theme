@@ -43,7 +43,9 @@ apply from the start.
    colors and metrics, each with its source.
 5. `docs/CAPTURES.md` when capturing: the checklist of states still to
    capture, naming, and how pressed states are timed (`--delay`).
-6. `docs/FINDINGS.md` before choosing a technique: what Plasma, KWin, Union,
+6. `docs/DEVELOPMENT.md` before testing anything: the sandbox and the
+   comparison tool.
+7. `docs/FINDINGS.md` before choosing a technique: what Plasma, KWin, Union,
    Aurorae, and Qt can and can't draw, as verified in this project.
 
 ## Layout
@@ -192,8 +194,8 @@ auditing doesn't give you the right to edit a component you haven't claimed.
   before Alt+Tab: Alt+Tab is typed into the focused field otherwise (stray
   `^`), and the agent can't click in the VM (no absolute pointer device).
 - Compare results against the reference with screenshots at the same scale,
-  not by eye alone (`tools/` will hold the comparison script). Record the
-  comparison in `AUDIT.md`.
+  not by eye alone: `tools/compare.py diff` (see `docs/DEVELOPMENT.md`).
+  Record the comparison in `AUDIT.md`.
 - Pixel art must land on whole pixels. Check at the scale factors the user
   actually uses (see Machine facts), not only at 1x offscreen.
 - Where Plasma can't match the reference, pick the closest option, document
@@ -252,8 +254,9 @@ own. Always, before finishing:
   `tools/` once it exists).
 - C++ (decoration/style): builds with no warnings, run once under ASan/UBSan.
 - `git status`: nothing from `reference/` or `dev/build/`, no Apple files.
-- Visual: screenshot in the sandbox, compare with the reference, and record
-  the result. A change isn't "done" until the user has seen it on screen, so
+- Visual: render in the sandbox (`dev/shoot.sh`, `dev/kwin-test.sh`,
+  `dev/app-test.sh`), compare with the reference (`tools/compare.py diff`),
+  and record the result. A change isn't "done" until the user has seen it on screen, so
   say plainly when they haven't.
 
 ## Prior work to reuse
@@ -283,8 +286,9 @@ arrows, so the application style choice is an open decision in `PLAN.md`.
   kdecoration 6.8.3, breeze 6.8.3 (CachyOS builds, checked 2026-11-19).
 - Two 3840×2160 displays at 120 Hz, **both at scale 1** (DP-1 27" Dell
   S2725QS on the left, DP-2 32" S3225QS on the right). The user sometimes
-  scales the 32" up to read. Mac OS 9 metrics at 1x on 4K are tiny; how the
-  theme handles this is an open decision in `PLAN.md`.
+  scales the 32" up to read. The theme draws at true 1x at Plasma 100% (user's
+  decision 2026-11-20, may be tweaked after testing): keep metrics in one
+  place so a later change is cheap.
 - Current look: stock Breeze, fonts SF Pro Text + SF Mono. Terminals:
   Alacritty (default), kitty, Kwi. kmscon on tty3-6.
 - The live tests (nested KWin, screenshots) need a working Wayland/DRM
