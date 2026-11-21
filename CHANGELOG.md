@@ -91,8 +91,33 @@ System Profiler list shot (`list-view-profiler-applications.png`). Findings:
   `dialog-save-as-standard-file.png`, the user's extra shot is
   `list-view-profiler-applications.png` (INDEX.tsv updated).
 
+Group 3 (buttons and toggles) finished: General Controls, Memory, Monitors,
+open pop-ups, Finder list with disclosure triangles, and pressed states for
+check box, radio, slider, triangle, push and default buttons. Measured into
+REFERENCE.md (sizes and pixel rows):
+
+- Check boxes and radios are 12×12; disabled ones are flat `#888888`
+  outlines; pressed ones go dark with the bevel reversed.
+- Pressed push buttons, selected bevel buttons, and the inside of a pressed
+  default button share one look: `#444444`/`#555555` top, `#666666` fill,
+  `#777777`/`#888888` bottom, white label. The default ring never changes.
+- Sliders don't track live: the real thumb darkens to `#6666CC` and a gray
+  ghost follows the pointer.
+- Menus: `#DDDDDD`, highlight `#333399` with white text, `#999999` inner
+  shadow, black border, 1 px `#222222` drop shadow. Pop-up menus open over
+  the control with the current item in place; Mac OS 9 menus stay open after
+  one click, so open menus need no `--delay`.
+- Disclosure triangles: Lavender with black outline and gray shadow, dark
+  `#333399` when pressed, Lavender even in inactive windows.
+
+Two missed captures (radio, pop-up) were deleted and retaken. From
+`controls-monitors.png` on, the VM runs at 1920×1080 (user's change), still
+1x. Little arrows pressed is skipped for now (pressing changes settings);
+a mixed check box is optional. Captures pushed to the reference repo
+(`ce910d1`, 41 captures).
+
 Next: recheck the Themes tab still says Mac OS Default after the Fonts edits,
-then CAPTURES.md group 3 (buttons and toggles).
+then CAPTURES.md group 4 (scroll bars, sliders, progress).
 
 ## 2026-11-19, Claude Code (Claude Opus 5.5) — project setup
 

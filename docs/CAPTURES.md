@@ -17,6 +17,9 @@ part is built. Measurements go to `docs/REFERENCE.md`; the files go to
   ```
 
   then switches to the VM and holds the button until the beep.
+- **Menus and pop-ups stay open after one click** (Mac OS 8+ sticky
+  menus): click to open, hover the item, Ctrl+Alt+G, and the agent
+  captures. No `--delay` needed for open menus.
 - Release the VM with **Ctrl+Alt+G** before Alt+Tab, or Alt+Tab gets typed
   into the focused field.
 - Names: `<area>-<thing>-<state>`, lowercase, e.g.
@@ -28,7 +31,8 @@ part is built. Measurements go to `docs/REFERENCE.md`; the files go to
 - One state per capture when practical; the whole screen is always saved,
   so several unrelated windows in one shot are fine as long as none overlaps
   the thing being captured.
-- Tick the box (`[x]`) and add the file name when done; note anything odd.
+- Tick the box (`[x]`) and add the file name when done; `[~]` = partly
+  done (the note says what's missing); note anything odd.
 
 Priority: **A** = needed for colors, decoration, and the application style
 (do first). **B** = Plasma shell, menus, Finder look. **C** = polish.
@@ -151,39 +155,67 @@ Use a Finder window (open the Mac OS hard disk) and a SimpleText window.
 Most are in control panels: General Controls, Mouse, Keyboard, Monitors,
 Sound, Memory, File Sharing, Date & Time, Appearance.
 
-- [ ] `button-push-states`: a dialog with a default button (thick ring),
-      a normal button, and a disabled button if possible.
-- [ ] `button-push-pressed`: hold a normal push button (delay).
-- [ ] `button-default-pressed`: hold the default button (delay).
-- [ ] `checkbox-states`: checked, unchecked, disabled (General Controls,
-      Memory, Appearance > Sound).
-- [ ] `checkbox-pressed`: hold on a check box (delay).
-- [ ] `checkbox-mixed`: a mixed (dash) check box, if one can be found (Get
+- [x] `button-push-states`: a dialog with a default button (thick ring),
+      a normal button, and a disabled button if possible. Covered by
+      `dialog-file-open.png`: default Open, normal Desktop/Cancel,
+      disabled Eject/Create (2026-11-20).
+- [x] `button-push-pressed`: hold a normal push button (delay). Done
+      2026-11-20 (SimpleText Find, Cancel): dark gray fill, white label.
+- [x] `button-default-pressed`: hold the default button (delay). Done
+      2026-11-20 (SimpleText Find): the button goes dark with a white label,
+      the default ring around it stays as it was. The dialog moved and the
+      field reads "Welcome^" (Alt+Tab artifact).
+- [x] `checkbox-states`: checked, unchecked, disabled (General Controls,
+      Memory, Appearance > Sound). Checked + unchecked in
+      `controls-general-controls.png`, disabled (checked) in
+      `controls-memory.png` (2026-11-20).
+- [x] `checkbox-pressed`: hold on a check box (delay). Done 2026-11-20:
+      unchecked box pressed = dark `#777777` fill with a reversed bevel.
+- [ ] `checkbox-mixed` (optional, not found yet): a mixed (dash) check box, if one can be found (Get
       Info on several items, or Extensions Manager).
-- [ ] `radio-states`: selected, unselected, disabled (General Controls,
-      Memory, Monitors).
-- [ ] `radio-pressed`: hold on a radio button (delay).
-- [ ] `bevel-buttons`: bevel buttons (Control Strip popouts, Monitors, or
-      Finder button view).
-- [ ] `popup-closed`: pop-up menus closed (Appearance > Appearance tab
+- [x] `radio-states`: selected, unselected, disabled (General Controls,
+      Memory, Monitors). Selected + unselected in
+      `controls-general-controls.png` and `controls-memory.png`; disabled
+      in `controls-monitors.png` ("Grays").
+- [x] `radio-pressed`: hold on a radio button (delay). Done 2026-11-20
+      (second try, `--delay 10`): dark sphere with the shading reversed.
+- [x] `bevel-buttons`: bevel buttons (Control Strip popouts, Monitors, or
+      Finder button view). Done 2026-11-20 in `controls-monitors.png`
+      (Monitors panel: one selected, one normal, plus the help button).
+      Note: the user switched the VM to **1920×1080** here; later
+      captures may be at that size (metrics are the same, it's still 1x).
+- [x] `popup-closed` (normal in `appearance-2-appearance.png`, disabled
+      "Position Automatically" in `appearance-4-desktop.png`): pop-up menus closed (Appearance > Appearance tab
       already has three; get one disabled too: Appearance > Desktop
       "Position Automatically").
-- [ ] `popup-open`: a pop-up menu held open (delay) with the current item
-      checked.
-- [ ] `little-arrows`: the up/down arrows next to a size box (already in
+- [x] `popup-open`: a pop-up menu held open (delay) with the current item
+      checked. Done 2026-11-20 (Highlight Color, clicked open: Mac OS 9
+      menus stay open after one click, no delay needed). Menu pops up
+      over the control with the current item (Purple) at the control's
+      position, check mark, color swatches, highlighted row.
+- [x] `popup-open-no-hover` (extra): same menu with the pointer on the
+      pop-up's arrow part instead of a row: no row highlighted, the arrow
+      part drawn pressed (dark).
+- [~] `little-arrows` (normal done; pressed skipped for now because
+      pressing changes the setting at once): the up/down arrows next to a size box (already in
       `appearance-3-fonts-clean.png`; also capture one pressed, delay).
-- [ ] `disclosure-triangles`: Finder list view with a folder closed and one
-      open; also a triangle pressed (delay).
+- [x] `disclosure-triangles`: Finder list view with a folder closed and one
+      open; also a triangle pressed (delay). Closed + open done
+      2026-11-20 (Applications list, SimCity2000 open); pressed in
+      `triangle-pressed.png` (dark `#333399` fill, shadow gone). The same capture also has: an active Finder list with
+      header, sorted column, sort direction button, **Lavender vertical and
+      horizontal scroll boxes**, and an inactive Finder list window
+      (Mac OS) whose triangles stay Lavender.
 
 ## 4. Scroll bars, sliders, progress (A) — style
 
 Smart Scrolling is on (both arrows at one end, proportional thumb).
 
-- [ ] `scroll-vertical-active`: Finder window with more items than fit,
+- [x] `scroll-vertical-active` (also in `disclosure-triangles.png`): Finder window with more items than fit,
       front window.
 - [ ] `scroll-vertical-inactive`: same window inactive (no thumb, no arrows
       shown in Platinum?).
-- [ ] `scroll-horizontal-active`: window wide enough content to need a
+- [x] `scroll-horizontal-active` (in `disclosure-triangles.png`): window wide enough content to need a
       horizontal bar.
 - [ ] `scroll-nothing-to-scroll`: active window where all content fits
       (empty track?).
@@ -191,9 +223,13 @@ Smart Scrolling is on (both arrows at one end, proportional thumb).
 - [ ] `scroll-thumb-dragging`: drag the scroll box and hold (delay); is
       there a ghost outline?
 - [ ] `scroll-track-pressed`: hold in the track (delay).
-- [ ] `slider-states`: sliders (Sound control panel volume, Mouse tracking
+- [x] `slider-states` (sliders with tick marks in
+      `controls-general-controls.png`, a disabled one in
+      `controls-memory.png`): sliders (Sound control panel volume, Mouse tracking
       speed, Keyboard repeat): horizontal, with tick marks if any.
-- [ ] `slider-pressed`: drag a slider thumb and hold (delay).
+- [x] `slider-pressed`: drag a slider thumb and hold (delay). Done
+      2026-11-20: the real thumb stays and darkens to `#6666CC`; a gray
+      ghost thumb follows the pointer (no live tracking).
 - [ ] `progress-determinate`: copy a big file in the Finder (duplicate the
       Toast or Starcraft archive), capture mid-copy.
 - [ ] `progress-indeterminate`: barber pole (start of a copy, "Preparing to
@@ -207,7 +243,7 @@ Smart Scrolling is on (both arrows at one end, proportional thumb).
       highlight color).
 - [ ] `text-selection-inactive`: the same SimpleText window inactive
       (outlined selection?).
-- [ ] `list-view-header`: Finder list view: column headers, sorted column
+- [x] `list-view-header` (Finder version in `disclosure-triangles.png`): Finder list view: column headers, sorted column
       highlighted, sort direction button.
 - [ ] `list-view-selection`: Finder list view with one row selected, and
       the window inactive with a selection.
@@ -215,7 +251,8 @@ Smart Scrolling is on (both arrows at one end, proportional thumb).
       already has one; also Chooser or Extensions Manager).
 - [ ] `tabs-states`: Appearance tabs (already captured); also a tab
       pressed (delay).
-- [ ] `group-box`: a group box / separator (Memory, General Controls,
+- [x] `group-box` (titled group boxes, title on the frame line, in
+      `controls-general-controls.png`): a group box / separator (Memory, General Controls,
       Monitors).
 - [ ] `window-header`: Finder window header ("N items, X MB available").
 
