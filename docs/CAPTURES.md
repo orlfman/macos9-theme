@@ -220,6 +220,12 @@ Sound, Memory, File Sharing, Date & Time, Appearance.
       horizontal scroll boxes**, and an inactive Finder list window
       (Mac OS) whose triangles stay Lavender.
 
+- [x] `help-viewer` (extra, the user's idea, 2026-11-20): Mac Help window
+      with small toolbar bevel buttons (Lavender back/forward/home icons,
+      forward disabled), a focused search field with the 2 px `#6666CC`
+      focus ring, and a default Search button. Bonus: the Appearance
+      panel behind it is inactive, so its tabs and pop-ups are all dimmed.
+
 ## 4. Scroll bars, sliders, progress (A) — style
 
 Smart Scrolling is on (both arrows at one end, proportional thumb).
@@ -301,18 +307,26 @@ Smart Scrolling is on (both arrows at one end, proportional thumb).
 - [x] `menu-file-open` (caught in the copy burst, 2026-11-20; no item
       highlighted, pointer on Duplicate): Finder File menu open: enabled and disabled items,
       separators, ⌘ shortcuts.
-- [ ] `menu-item-highlight`: mouse over an item while the menu is held open
+- [x] `menu-item-highlight` (`menu-view-checked.png`, "as Icons" hovered): mouse over an item while the menu is held open
       (delay): Lavender highlight.
-- [ ] `menu-checkmark`: a menu with a checked item (View > as Icons /
+- [x] `menu-checkmark` (`menu-view-checked.png`: "as List" and "as
+      Window" checked, disabled "Clean Up", submenu arrow, ⌘J): a menu with a checked item (View > as Icons /
       as List).
-- [ ] `menu-submenu`: Apple menu > Control Panels submenu open (hierarchical
+- [x] `menu-submenu` (2026-11-20): Apple menu > Control Panels submenu open (hierarchical
       arrow, submenu placement).
-- [ ] `menu-apple`: Apple menu open.
-- [ ] `menu-application`: application menu at the right end of the menu
-      bar open (running apps list).
-- [ ] `menu-contextual`: control-click on the desktop or a file
-      (contextual menu).
-- [ ] `menu-scrolling`: a menu too long for the screen, if one exists
+- [x] `menu-apple`: Apple menu open (in `menu-submenu.png`).
+- [x] `menu-application`: application menu at the right end of the menu
+      bar open (running apps list). Done 2026-11-20: Hide <app> / Hide
+      Others / Show All (disabled), separator, running apps with 16 px
+      icons, check mark on the front app (Finder), hovered row
+      highlighted; the menu's right edge lines up with the screen edge and
+      the title (icon + name) stays highlighted.
+- [x] `menu-contextual`: control-click on the desktop or a file
+      (contextual menu). Done 2026-11-20 (Control-click on Documents):
+      same menu style as the menu bar's, no icons, "Help" first, separators,
+      submenu arrows; opens with its top-left corner at the click point.
+- [ ] `menu-scrolling` (optional; nothing is long enough at 1920×1080,
+      would need a lower resolution): a menu too long for the screen, if one exists
       (scroll arrows in the menu).
 
 ## 7. Finder and desktop (B) — Plasma, icons

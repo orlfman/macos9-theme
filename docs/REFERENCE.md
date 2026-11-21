@@ -135,3 +135,8 @@ current item). Measured.
 | Finder list, selected item (active) | `list-view-selection.png` ("Documents") | **not a row highlight**: only the name label is inverted (black box, text in the column color `#DDDDDD`), and the icon is darkened; the rest of the row is unchanged |
 | Finder list, selected item (inactive window) | `list-view-selection-inactive.png` | **selection not shown at all**: label and icon look unselected; column header and window header text turn gray |
 | Tab, pressed | `tab-pressed.png` ("Sound", held while "Appearance" is current) | tab fills: normal `#CCCCCC` with black label, current `#EEEEEE` (same as the panel it joins), pressed `#666666` with **white** label |
+| Text field focus ring | `help-viewer.png` (Help search field, column x=200, y=51–75) | 2 px `#6666CC` ring directly outside the field's 1 px black frame; white field |
+| Toolbar bevel buttons | `help-viewer.png` (back / forward / home, x≈14–90, y≈50–74) | small square bevel buttons with Lavender icons; the disabled one (forward) shows a washed-out icon |
+| Submenu placement | `menu-submenu.png` (Apple menu > Control Panels) | the parent item stays highlighted `#333399`; the submenu's top black edge (y=131) sits 1 px above the parent item's highlight (y=132), so first items line up; its left black edge (x=201) starts right at the parent menu's right edge |
+| Menu inner edge, top/left | `menu-submenu.png` (x=202, y=132) | 1 px `#FFFFFF` highlight inside the black border, then `#DDDDDD` |
+| Apple menu | `menu-submenu.png` | "About This Computer" alone above a separator; every item has a 16 px icon; submenu arrows on folders |

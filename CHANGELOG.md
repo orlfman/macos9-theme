@@ -162,7 +162,19 @@ by earlier captures; new ones:
 - Tabs: normal `#CCCCCC`, current `#EEEEEE` (joined to the panel), pressed
   `#666666` with a white label (`tab-pressed.png`).
 
-Next: commit; then CAPTURES.md group 6 (menus).
+Group 6 (menus) finished, plus an extra `help-viewer.png` (the user's
+idea: toolbar bevel buttons with Lavender icons, the 2 px `#6666CC` text
+field focus ring, an inactive Appearance panel with every control dimmed).
+Menus: `menu-view-checked` (hover and pressed title both `#333399`, check
+marks, disabled item, submenu arrow, shortcut), `menu-submenu` (Apple menu
+with icons; submenu's top edge 1 px above the highlighted parent row, left
+edge at the parent's right edge; 1 px white inner top/left edge),
+`menu-application` (Hide/Show items, running apps with icons, front app
+checked), `menu-contextual` (plain menu, Help first, opens at the click
+point). A scrolling menu is optional and skipped (nothing is long enough at
+1920×1080).
+
+Next: commit; then CAPTURES.md group 7 (Finder and desktop).
 
 ## 2026-11-19, Claude Code (Claude Opus 5.5) — project setup
 
