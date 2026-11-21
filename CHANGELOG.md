@@ -2,6 +2,31 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-20, Claude Code (Claude Opus 5.5) — step 4: color scheme
+
+Claimed `colors`, released at the end.
+
+- Measured the remaining text colors: disabled text is `#777777` everywhere
+  (menu items, button labels), inactive title and header text `#777777`,
+  inactive title bar face `#DDDDDD`, links `#0000FF`. Added to REFERENCE.md.
+- `colors/Platinum.colors`: Window/Button/Header `#DDDDDD`, View and
+  Tooltip `#FFFFFF`, Selection `#CCCCFF` with black text, focus/hover
+  decoration `#6666CC`, links `#0000FF`, `[WM]` title faces
+  `#CCCCCC`/`#DDDDDD`. Disabled text comes from a contrast fade of 0.54,
+  which turns black on `#DDDDDD` into exactly `#777777` without touching
+  backgrounds. Inactive-window effects off. Not measured (Mac OS 9 has no
+  such colors): negative/neutral/positive, visited links, Complementary;
+  the file's header says so. The menu highlight (`#333399`, white text)
+  can't share KDE's single Selection group with text selection; the C++
+  style will draw it.
+
+Checks: the file parses (13 sections, all 12 keys in each of the 8 color
+groups, every value a valid RGB triple); `dev/shoot.sh breeze platinum`
+renders the widgets, Quick and Kirigami galleries with it; in the widgets
+render the selected row is exactly `#CCCCFF`, views `#FFFFFF`, and disabled
+button and check box labels exactly `#777777` on `#DDDDDD`. Shapes are still
+Breeze's (no Platinum style yet). Not installed or applied to the desktop.
+
 ## 2026-11-20, Claude Code (Claude Opus 5.5) — step 3 spikes: style and decoration engines
 
 Claimed `style` and `decoration` for the spikes, released at the end.

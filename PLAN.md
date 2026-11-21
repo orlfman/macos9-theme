@@ -12,7 +12,7 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 |------------|---------------------------|------------|-------------|
 | shared     | docs, tools, dev, scripts | nobody     | dev/ sandbox + tools/compare.py done (step 2) |
 | reference  | reference/, docs/REFERENCE.md | nobody | capture pass done (81 captures, CAPTURES.md); measurements partial |
-| colors     | colors/                   | nobody     | not started |
+| colors     | colors/                   | nobody     | Platinum.colors done (sandbox-checked) |
 | decoration | decoration/               | nobody     | engine decided: C++ KDecoration3 |
 | style      | style/                    | nobody     | engine decided: C++ QStyle |
 | plasma     | plasma/                   | nobody     | not started |

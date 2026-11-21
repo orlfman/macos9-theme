@@ -144,3 +144,16 @@ current item). Measured.
 | Finder name being edited | `finder-rename.png` ("Sherlock 2") | name sits in a 1 px black-framed edit box, text selected with the `#CCCCFF` highlight (black text), icon stays darkened |
 | Pop-up window tab (closed) | `finder-popup-tab.png` (x≈632–818, y=1061–1080, column x=720) | sits on the bottom screen edge; rounded top corners; black edge, `#FFFFFF` highlight, `#CCCCCC` fill; folder icon + title in the large system font |
 | Help balloon | `help-balloon.png` (x≈1688–1852, y≈138–272) | white fill, 1 px black outline with a heavier black edge right and bottom (shadow), rounded corners, a pointed tail to the hovered spot (top right here), text in the small system font |
+
+## Text colors (for the color scheme)
+
+| What | Value | Source |
+|------|-------|--------|
+| Normal text | `#000000` | every capture |
+| Disabled text (menus, buttons, labels) | `#777777` | `menu-file-open.png` (Close Window), `dialog-file-open.png` (Eject) |
+| Inactive window title and header text | `#777777` | `window-document-inactive.png` |
+| Title bar face, active / inactive | `#CCCCCC` / `#DDDDDD` | `window-document-active.png`, `window-document-inactive.png` |
+| Link text | `#0000FF` | `help-viewer.png` ("Broaden my search") |
+
+`colors/Platinum.colors` is built from these and the tables above; its header
+lists which keys are measured and which aren't.
