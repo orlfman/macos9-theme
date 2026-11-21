@@ -67,6 +67,12 @@ the ticked items of `docs/CAPTURES.md`. Findings for the decoration:
   title bar. KWin likely can't do this; to check.
 - A collapsed window keeps its full title bar and frame.
 
+At the user's request, `reference/` became its own git repo, pushed to the
+**private** GitHub repo `orlfman/macos9-theme-reference` as a cloud backup
+(21 captures, INDEX.tsv, a README warning it must stay private, and a
+.gitignore for capture.py's temp PPMs). This repo keeps ignoring
+`reference/`. AGENTS.md says how to clone it and when to push captures.
+
 Next: recheck the Themes tab still says Mac OS Default after the Fonts edits,
 then CAPTURES.md group 2 (dialogs and alerts).
 

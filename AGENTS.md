@@ -52,7 +52,7 @@ apply from the start.
 AGENTS.md  CLAUDE.md  PLAN.md  CHANGELOG.md  AUDIT.md  README.md
 docs/        REFERENCE.md (measured spec), FINDINGS.md (verified platform facts),
              plus one file per larger component plan when PLAN.md gets long
-reference/   Mac OS 9.2.2 screenshots and captures. Git-ignored, never published
+reference/   Mac OS 9.2.2 captures: ignored here, its own private repo (below)
 colors/      color scheme(s)
 decoration/  KWin decoration (C++ KDecoration3 or Aurorae, see PLAN.md)
 style/       application style (Union style or C++ QStyle, see PLAN.md)
@@ -70,7 +70,17 @@ Create folders when their step starts, not ahead of time.
   https://github.com/orlfman/macos9-theme (**private** since 2026-11-19; it
   stays private until the user says otherwise). The `gh` CLI is logged in as
   `orlfman`, and git uses it for github.com over HTTPS.
-- Nothing from `reference/`, `dev/build/`, or any Apple file ever goes into git.
+- Nothing from `reference/`, `dev/build/`, or any Apple file ever goes into
+  this repo.
+- `reference/` is a separate git checkout: private repo
+  https://github.com/orlfman/macos9-theme-reference (created 2026-11-20 as
+  the cloud backup of the captures; **never make it public**, it contains
+  Apple artwork). On a fresh clone of this repo, get it with
+  `git clone https://github.com/orlfman/macos9-theme-reference reference`.
+  Commit and push new captures there (with `INDEX.tsv`) whenever this repo
+  is committed or a capture group is finished; that's the user's standing
+  request, since `/home` has no other backup. Same identity and
+  `Co-Authored-By:` rules.
 
 ## Working together (multiple agents)
 
@@ -194,7 +204,8 @@ auditing doesn't give you the right to edit a component you haven't claimed.
   not even "temporarily". Everything shipped is redrawn or generated here, or
   comes from a third party with a license that allows it (license recorded in
   the component's folder).
-- Reference screenshots live only in `reference/` (ignored by git).
+- Reference screenshots live only in `reference/`, i.e. in the private
+  reference repo, never in this one.
 - Mac OS install media and ROMs come from the user. Don't download them from
   abandonware sites or other unofficial sources.
 - Measured facts (hex colors, pixel sizes, layout) are fine to record and use.
