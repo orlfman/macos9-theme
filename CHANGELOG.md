@@ -2,6 +2,28 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Codex (GPT-6) — independent pre-install audit
+
+Added findings #4–#25 and updated the open list in AUDIT.md at commit
+`591e96d`. Hold the first desktop install. A plain install destroyed
+pre-existing same-name assets in a throwaway home. Applying and undoing
+with kded6 running left GTK and xsettingsd changes behind. A linked
+defaults directory lost its original contents, and a partial first
+install left plugins without a manifest.
+
+The baseline suites passed 131/131 style regions, 7/7 Plasma regions and
+31/31 install assertions. Two virtual outputs confirmed that both new
+panels land on screen 0. Offscreen keyboard tests at four scales confirmed
+invisible focus on buttons, check boxes and tabs. Both plugin render
+harnesses ran under ASan/UBSan. The history review found sampled glyph
+and pointer data in source tables.
+
+Only AUDIT.md and this entry changed. The review and test images stayed
+local. A real user-systemd shell restart, a package upgrade and interaction
+on the physical displays remain unverified. Packaging should address and
+retest #4–#12 before the first real install. Publication needs a separate
+asset review under #25. These two documentation edits are uncommitted.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — packaging: install and uninstall scripts
 
 Claimed `packaging` (and `shared` for scripts/dev/docs), released at the

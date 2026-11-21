@@ -3,7 +3,202 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: fourteen checks so far (decoration, style batches 1-7, real-app pass, Plasma menu bar x2, dock, install scripts, first live test; 2026-11-21). Open findings: one, #3 (P3, Qt Quick menus / tooltips / switches).
+Status: 23 open findings. First-install blockers include #4–#12 (asset ownership, backup coverage, failure recovery and panel restoration). #21 affects a second monitor. #25 blocks publication under the project’s asset rules. Open by severity: P1 #4–#10 and #25. P2 #11–#12, #14–#22 and #24. P3 #3, #13 and #23. #1 and #2 remain fixed.
+
+## 2026-11-21, Codex (GPT-6) — independent review before first install
+
+Reviewed all seven sections of `docs/AUDIT-REQUEST.md` at `591e96d` on
+`main`. **Hold both the plain install and `--apply`.** The clean-home tests
+pass. An existing color scheme was lost even on a plain install. A running
+Plasma session also exposed settings that uninstall leaves behind.
+
+### 1. Install, apply and undo
+
+| Finding | Where | Consequence and verification |
+|---|---|---|
+| **#4 P1, open** — existing install targets are lost | `install.sh:67`, `install.sh:87`, `install.sh:92`, `scripts/common.sh:153`, `uninstall.sh:64` | Seeded a custom `Platinum.colors` and an extra file inside an existing `desktoptheme/platinum`. Plain install replaced both. After uninstall neither original existed. The first install assumes ownership of all seven destinations, including whole directories. It also removes the fixed directory staging name before copying. |
+| **#5 P1, open** — applying the theme changes GTK settings outside the backup | `scripts/common.sh:32`, `install.sh:132`, `uninstall.sh:47` | Hashed the config and data trees before apply, after apply and after uninstall with real plasmashell and kded6 on a private bus. Existing GTK 3 `colors.css`, `gtk.css`, `settings.ini` and `xsettingsd/xsettingsd.conf` still had different hashes after undo. GTK 3 decoration assets and GTK 4 CSS files were also added. Neither the backup nor the dated archive covers these paths. The seeded Plasma panel file itself was restored byte for byte. |
+| **#6 P1, open** — a linked config entry can back up its own changes | `install.sh:119`, `uninstall.sh:50` | Tested an absolute `kdedefaults` symlink. `cp -a` preserved the link, so the backup and live path resolved to the same directory. After apply **and** uninstall its original `ColorScheme=MyOriginalScheme` was `Platinum`. Relative links can resolve differently inside the backup, and `-e` classifies dangling links as absent. Separately, linking the entire `.config` parent worked when its entries were regular files/directories. |
+| **#7 P1, open** — a partial first install has no usable removal record | `install.sh:67`, `install.sh:107`, `scripts/common.sh:155` | Made the color-schemes parent an ordinary file in a throwaway home. Install exited 1 after placing both plugins and the login script. No manifest existed. Uninstall exited 0 and the style plugin remained. A Ctrl+C between those writes and manifest save has the same ordering. Directory replacement also has a gap between removal and rename. Both builds finish in a temporary directory before the first install write, so a build failure alone avoids this window. |
+| **#8 P1, open** — the suggested System Settings switch bypasses the only snapshot | `install.sh:109`, `install.sh:153`, `uninstall.sh:36` | Plain install followed by plain uninstall produced no config snapshot. Traced the printed instruction to select the global theme manually. That route can replace panels before any snapshot exists. A later first `--apply` would save the already-switched desktop. Uninstall then has no copy of the original layout to restore. |
+| **#9 P1, open** — recursive removal has no destination or ownership checks | `scripts/common.sh:8`, `scripts/common.sh:121`, `uninstall.sh:47`, `uninstall.sh:64` | Traced the manifest loader to deletion. Both file and directory entries use recursive removal with no check against the seven expected paths, their recorded types, or the home that created the record. A previously installed file replaced by a directory would be deleted with its contents. Config restore also uses today's XDG config root with yesterday's snapshot. Relative XDG roots are accepted. Empty XDG values fall back to HOME, but an empty HOME passes the root-user check for a non-root caller. Reviewed statically. |
+| **#10 P1, open** — an interrupted backup can contaminate the next snapshot | `install.sh:116`, `install.sh:120`, `install.sh:125` | Traced a retry after a partial copy of an existing `kdedefaults/`. The same `backup.new` is reused. Copying the directory again into that existing destination nests it one level deeper and leaves stale entries in the outer copy. Only the ABSENT list is truncated. Concurrent invocations also share the staging names with no lock. The final rename only protects an uninterrupted, single-writer copy. |
+| **#11 P2, open** — theme application can fail with a successful exit | `install.sh:132`, `install.sh:139`, `install.sh:155` | A stand-in theme applier returned 1 on a private bus. Install warned, wrote `ButtonsOnRight=AI`, printed “Done” and exited 0. Uninstall recovered the seeded kwinrc in this case. A caller cannot distinguish this partial switch by its exit status. |
+| **#12 P2, open** — the original snapshot is discarded before panel recovery is confirmed | `uninstall.sh:51`, `uninstall.sh:55`, `uninstall.sh:82` | The two-output sandbox had the original panel file back on disk while the running shell still reported the Platinum panels. The restart happens after both backup and manifest removal. A failed restart leaves no retryable original snapshot, and a dirty shell could write during shutdown. The dated archive contains the outgoing setup. A real user-systemd stop/start and a shutdown overwrite were not demonstrated. |
+| **#13 P3, open** — the dry run omits backup and cleanup steps | `scripts/common.sh:39`, `install.sh:114`, `uninstall.sh:39`, `uninstall.sh:69` | Read the dry-run logs. They showed the theme reset and restoration commands but suppressed the “would copy/keep” lines via `say`. Manifest writes/removal and empty-parent cleanup were also absent from the preview. Install briefly creates and removes a temporary directory even in dry mode. The stock before/after checks found no persistent file-content changes from dry install. |
+| **#14 P2, open** — a repeat-apply regression can pass the installer suite | `dev/test-install.sh:95`, `dev/test-install.sh:102` | Both apply exit statuses are discarded. The repeat assertion compares a copy made **before** the second apply with the seed. It never rereads the backup for that assertion. Final uninstall gives some indirect coverage. Independently compared the entire backup after both successful applies in a home with a pre-existing defaults tree. The bytes matched on this revision. |
+
+Other packaging checks and limits
+
+- Plain install twice, uninstall without applying, uninstall again, then reinstall
+  and apply twice all ran in a home with spaces. Existing nested defaults and
+  markers for `kscreenlockerrc`, `kxkbrc` and `Trolltech.conf` survived the
+  offscreen round trip. In the running session the dconf file hash also matched.
+  These fixtures do not establish a complete list of writes for other modules.
+- Inspected the other cleanup paths. The build trap uses the result of
+  `mktemp -d`. Cache globs at `scripts/common.sh:111` match other names starting
+  with “platinum” and run on uninstall even without a manifest. The untracked
+  parent-folder cleanup at `uninstall.sh:73` can remove pre-existing empty
+  folders. Conversely, some empty data directories created by install survive.
+- At `install.sh:82` the login hook preserves existing search paths and the
+  stock test verified duplicate suppression and a successful style load. It
+  prepends a shared per-user Qt plugin directory to inheriting processes.
+  An empty directory contributes no plugin. Shell quoting handles ordinary
+  spaces, but the installer embeds the literal path as shell source without
+  escaping shell metacharacters. Existing processes do not inherit a later
+  login hook. No package upgrade or real login was exercised. Both plugins
+  are rebuilt by rerunning install. The decoration also depends on the
+  installed KDecoration ABI. [Qt plugin search and compatibility rules](https://doc.qt.io/qt-6/deployment-plugins.html)
+- No actual Ctrl+C, concurrent install, disk-full restore or real systemd
+  restart was performed. All systemctl checks during installer runs used a
+  stand-in. The stock fixture has no running shell. Its regular-file hash
+  snapshot also omits empty directories, symlinks, permissions and ownership.
+
+### 2. Application style
+
+| Finding | Where | Consequence and verification |
+|---|---|---|
+| **#15 P2, open** — scroll and slider arithmetic exceeds the supported int range | `style/platinum/platinumstyle.cpp:165`, `style/platinum/platinumstyle.cpp:953` | Range, position offset and range plus page step are evaluated as signed int before the 64-bit scrollbar calculation. Valid int endpoints can overflow or yield the wrong thumb geometry. The tick-spacing limits also add/subtract an interval as int, and the paint loop scales with the number of values even when many ticks map to one pixel. Verified by reviewing expression types and loop bounds. The ordinary render sanitizer pass below does not cover these extremes. |
+| **#16 P2, open** — keyboard focus is invisible on common controls | `style/platinum/platinumstyle.cpp:1443`, `style/platinum/platinumstyle.cpp:1396` | In an active offscreen widget window, moved Tab focus from another field to a normal push button, check box and tab bar, verified `hasFocus()`, then compared each widget grab. Each changed **0 pixels**, at 1, 1.25, 1.5 and 2×. The line edit changed 1,734 pixels at 1×. This prevents a keyboard user from identifying the current target even when the measured decoration is accurate. |
+| **#17 P2, open** — partially checked looks unchecked | `style/platinum/platinumstyle.cpp:1557` | A real tristate QCheckBox gave identical grabs for Unchecked and PartiallyChecked at all four scales. The painter tests only `State_On`. A settings dialog can therefore misrepresent a mixed selection. |
+| **#18 P2, open** — switching styles loses widget-owned appearance settings | `style/platinum/platinumstyle.cpp:1648`, `style/platinum/platinumstyle.cpp:1686` | Set QMenu margins to (3,4,5,6), polished with Platinum and switched to Fusion. The resulting margins were (0,0,0,0). The tooltip and combo container also acquire translucent backgrounds, and the popup view loses its frame and autofill without symmetric restoration. Filters are removed and the named progress timer is deleted. |
+| **#19 P2, open** — control geometry does not mirror in RTL | `style/platinum/platinumstyle.cpp:831`, `style/platinum/platinumstyle.cpp:168` | A 120×20 non-editable combo returned the same right-hand arrow rectangle (98,0,22,20) in both directions. The custom spin, group and menu geometry also uses fixed left/right offsets. The scrollbar calculation ignores `upsideDown`, so its thumb geometry also ignores reversed direction. |
+
+- Normal style build completed without compiler warnings. ASan+UBSan
+  `styleshot` selected Platinum and rendered the state sheet without
+  diagnostics (leak detection disabled). Reviewed option casts, null widget
+  paths, generated table dimensions and nine-slice minimum-size guards.
+  Small nine-slices skip drawing and fixed sprites can paint beyond a tiny
+  requested rectangle without caller clipping. No exhaustive size or
+  unexpected-option test was performed.
+- At 1× the button's top and bottom black rules were one device row each.
+  They measured 1/2 rows at 1.25×, 2/1 at 1.5× and 2/2 at 2×. The sampled
+  column remained filled without gaps. This is offscreen raster behavior.
+  North/document-mode panes intercept paint and return true, which can
+  suppress a subclass's own painting. Combo popup handling depends on Qt's
+  private class name. Neither hook has been tested across Qt versions.
+- South/east/west tab shapes and vertical progress fall through to Fusion.
+  Vertical sliders transpose the measured horizontal shape. Disabled and
+  inactive cases in the fixture passed. A balloon uses a bounded number of
+  fills per row. Wider busy bars do 14 pixel writes per interior column and
+  every polished progress bar starts a 100 ms timer, including hidden and
+  determinate bars. Menu sizing can rescan all actions per item. No frame-time
+  profile or assistive-technology session was run.
+
+### 3. Window decoration
+
+**#20 P2, open — custom title-bar actions look like Close.**
+At `decoration/platinum.cpp:482` the factory accepts Menu, OnAllDesktops,
+KeepAbove and other actions. At `decoration/platinum.cpp:496` only zoom and
+collapse receive distinct glyphs. All other actions get the plain close-box
+drawing. Reviewed the switch and inspected the KWin preview's default layout,
+which showed multiple plain boxes. The installer's X/AI arrangement avoids
+these extra actions.
+
+The warning-enabled build and the ASan+UBSan KDecoration preview produced
+active, inactive, long-title and pressed frames. A maximized window in virtual
+KWin had a 22-row title and no side frame. The code sets a fixed 6-pixel
+normal frame and checks horizontal/vertical maximization independently. It
+does not consult the selected border size or individual tiled edges. Narrow
+titles drop the text, then the icon. The 100/92/85/78 font-stretch sequence at
+`decoration/platinum.cpp:415` has no measured thresholds in the reference
+table. With asymmetrical button groups the room calculation uses the gap
+between groups, while the content is centered on the whole window. Extreme
+narrow widths, tiling and fractional decoration damage were reviewed only.
+The Wayland collapse button is Minimize as documented. X11 shading and a
+post-upgrade load were not tested.
+
+### 4. Plasma
+
+| Finding | Where | Consequence and verification |
+|---|---|---|
+| **#21 P2, open** — the second monitor loses its panel | `plasma/layout.js:16`, `plasma/layout.js:53` | Seeded a bottom panel on virtual output 0 and a left panel on output 1. Queried the running shell before and after the actual installer's `--resetLayout`. Both new panels reported screen 0, top and bottom. Output 1 had no panel. The layout also changes wallpaper on every desktop at line 65. This affects the user's two-screen setup. |
+| **#22 P2, open** — selected secondary text can have zero contrast | `plasma/make-plasma.py:413`, `plasma/platinum/colors:105` | The generated Selection group sets both `ForegroundInactive` and `BackgroundNormal` to RGB (51,51,153), a 1:1 contrast ratio. A consumer using that pair will hide the text. Normal selected text is white and readable in the rendered File menu. No particular applet using the inactive role was identified. |
+| **#23 P3, open** — resizing the top panel breaks the corner treatment | `plasma/make-plasma.py:216`, `plasma/plasmoids/platinum.menubarpiece/contents/ui/main.qml:23` | In the 20 px render the top-left pixel is black as in `reference/desktop-first-check.png` (REFERENCE “Menu bar”). At 32 px it was white and the bar gained a blended #F4F4F4 second row at x=300. The applet's rows remain fixed at 0–19. The 1.5× virtual output showed uneven device-pixel steps in the corner. |
+
+- Inspected desktop, open menu, launcher, edit mode, auto-hide and vertical
+  dock renders. Edit mode opened with its controls visible. The left dock
+  hid when requested and reappeared when set always visible. It uses the
+  unprefixed panel art there. Only the south edge has pop-up-tab artwork.
+  With 24 separately registered test windows and three pins on a 1,000 px
+  output the dock used the full width and compressed its task buttons.
+  Input on every task and reveal timing were not checked. Real dual-4K
+  output, moving a window between mixed-DPI screens and GPU-specific
+  artifacts remain unverified.
+- Regenerating Plasma assets in the temporary tree produced the checked-in
+  files. The packaged layout matched the source after its generated comment.
+  All 11 SVGs parsed with xmllint and had unique element IDs within each
+  document. Inspected center/edge families, directional and mask IDs. Some
+  pieces intentionally provide only a center and the border they paint.
+  The 5 JSON and 4 scheme/config files parsed.
+
+### 5. Fidelity
+
+The requested suites independently returned **131/131 style regions exact,
+7/7 Plasma regions exact and 31/31 install assertions passed**. For the
+seven Plasma checks the differences were 0/20, 0/160, 0/160, 0/120, 0/20,
+0/57 and 0/57 pixels. These are selected regions at 1×.
+
+Re-measured the desktop base at (5,500) as #63639C, and x=700, y=0–19 as
+one white row, 17 #DDDDDD rows, #999999, then black in
+`reference/desktop-first-check.png`. The empty trough in
+`reference/progress-copy-window.png` at x=650, y=276–289 matched all 14
+documented rows including eight #BBBBBB rows. The filled-bar highlight in
+`reference/progress-determinate-55.png` at (620,282) was #EEEEEE. The
+empty-trough column and the bar's left corner independently diffed 0/14 and
+0/160 against the fresh renders. Inspected 4× views of the checked box,
+corner and trough alongside the state sheet. Text substitution and derived
+states remain outside those matches.
+
+### 6. Documentation and process
+
+**#24 P2, open — the general sandbox instructions promise more isolation
+than the launcher provides.** `docs/DEVELOPMENT.md:4` describes the development commands collectively
+as isolated. `dev/run.sh:107` exports config/data/cache/state directories
+and disconnects the session bus, but inherits HOME and XDG_RUNTIME_DIR.
+`dev/plasma-test.sh:63` starts a private bus with the inherited runtime.
+Programs using HOME directly or contacting user systemd can therefore reach
+outside the advertised sandbox. The install fixture does isolate both in its
+outer launcher at `dev/test-install.sh:31`. Its inner-mode flag at line 20
+assumes the caller has already done that setup. Verified by reading the exec
+environments. All runs for this audit also set an outer throwaway HOME and
+runtime.
+
+The changelog accurately labels its original packaging run as running without plasmashell.
+Its “puts every config file back” claim describes the seed in that fixture.
+README's broader undo promise at line 35 fails in #4–#8. AGENTS.md:288 still
+calls the style engine undecided although PLAN.md:53 records the decision.
+PLAN.md:144 and :151 still ask about the known VM and Wayland shading.
+The top of DEVELOPMENT.md describes decoration tools as forthcoming even
+though `dev/build.sh` builds them. FINDINGS.md correctly calls out the
+20 px panel assumption, the limited global-theme button-order support, and
+the need to isolate user systemd.
+
+### 7. Provenance and publication
+
+**#25 P1, open for publication — the generated source includes sampled
+glyph and pointer pixels.** `tools/gen-style-data.sh:182` and :209 emit the
+9×8 normal menu check and its highlighted RGB version from the captures.
+The clean and raw inputs also coexist in `style/platinum/sprites.h:120`
+and :369. The generator appends the corrected shapes at
+`tools/gen-style-data.sh:150`, retaining crops explicitly identified as
+containing pointer fragments. Checked every retained RGB value against the private reference. All 63
+nontransparent values in TrianglePressedRaw and all 434 in PopupArrowPressedA
+matched their source crops. The source
+also contains sampled slider thumbs, spin arrows, disclosure triangles,
+panel corners and button slices. README.md:44 says everything is redrawn.
+That description and the project's own no-Apple-material rule need a
+provenance review before publication, including already-reachable history.
+
+Inspected local `git log --all --stat`, paths and all **271 distinct blobs
+across 31 reachable commits**. No tracked reference capture, standalone
+font, binary blob containing NUL, or base64 data URI was found. The
+text-encoded tables above survive a binary scan. The reference checkout
+was accessed locally and read-only. No remote visibility or unreachable
+Git objects were audited. The installable IDs use Platinum/platinum. The
+public name remains open under PLAN decision 4. The association with Apple's
+appearance warrants a naming review before release. No trademark status or
+license clearance for that name was established. [Apple's guidelines for third parties](https://www.apple.com/legal/intellectual-property/guidelinesfor3rdparties.html)
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — install and uninstall scripts
 
