@@ -2,6 +2,43 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — step 5: Plasma style and menu bar
+
+Claimed `plasma` (and `shared` for dev/docs), released at the end. Done
+over Remote Control. Decisions recorded in PLAN.md: icons from an existing
+set (7), cursors our own or a temporary Mac OS X pack (8); the menu bar
+layout (6).
+
+- `plasma/make-plasma.py` (9-patch writer from the user's
+  windows2000-union, BSD-2-Clause) writes `plasma/platinum/`: the 20 px
+  menu bar panel, Lavender open menu titles (`menubaritem`), popups in the
+  Mac menu frame, help-balloon tooltips, `#333399` list highlights, push
+  buttons and tool buttons from the style's measured nine-slices, text
+  fields with the focus ring, frames, the open-applet look (derived
+  `#CCCCFF`), etched popup headings, and a `colors` file (the menu
+  highlight as the selection, white text, for Plasma only).
+- `plasma/layout.js`: one top panel: Kicker (Apple menu stand-in, neutral
+  icon for now), global menu, spacer, system tray, clock, Window List
+  (Application menu stand-in); a plain desktop color close to the default
+  pattern's.
+- `dev/plasma-test.sh` + `dev/plasma-session.sh`: nested plasmashell with
+  a fresh layout, `kded6` for the global menu, its own Desktop folder;
+  screenshots of the desktop, an open menu and the launcher.
+  `dev/check-plasma.sh` compares the bar and an open title with the
+  captures (both exact).
+- `dev/live-test.sh` / `dev/live-session.sh`: the user's live test now
+  runs the Plasma shell with this layout by default (`M9_PLASMA=0` to
+  skip); the session waits only on the apps.
+- `docs/REFERENCE.md`: the rest of the menu bar (corners, titles, clock,
+  divider, Application menu). `docs/DEVELOPMENT.md`: the Plasma tools.
+
+Checks: `dev/check-plasma.sh` 2 of 2 exact; SVGs valid. Not seen by the
+user (headless only). Limits in AUDIT.md.
+
+Next (plasma): a neutral Apple menu icon, the divider before the Window
+List, rounded screen corners (maybe not possible), title font (bold, like
+Charcoal), then a look-and-feel package with this layout for the install.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — real-app pass, Qt Quick, tooltips
 
 Claimed `style` and `shared`, released at the end. Done over Remote

@@ -15,7 +15,7 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | colors     | colors/                   | nobody     | Platinum.colors done (sandbox-checked) |
 | decoration | decoration/               | nobody     | plugin works in nested KWin; frame pixel exact (AUDIT.md) |
 | style      | style/                    | nobody     | batches 1-7 + tooltips done (pixel exact); real apps checked headless (Dolphin, Kate, System Settings: Qt Quick follows it); open: Qt Quick menus/tooltips/switches (AUDIT 3), editable combo, size grip |
-| plasma     | plasma/                   | nobody     | not started |
+| plasma     | plasma/                   | nobody     | Plasma style + menu bar layout started (bar and open title pixel exact, headless); next: Apple menu icon, divider, look-and-feel package |
 | icons      | icons/                    | nobody     | not started |
 | cursors    | cursors/                  | nobody     | not started |
 | gtk        | gtk/                      | nobody     | not started |
@@ -62,6 +62,16 @@ Open decisions need the user. Record the answer here with the date.
    copies at install time. *Open.*
 6. **Menu bar.** How close to get: global menu + Apple-menu stand-in
    (launcher) + clock + application switcher on the right. *Details open.*
+   Started 2026-11-21 (Claude Code): top panel 20 px, Kicker (cascading
+   menu) as the Apple menu stand-in with a neutral icon (no Apple logo),
+   the global menu (`appmenu`), a spacer, the system tray (kept: network,
+   volume), the clock, and the Window List applet as the Application menu.
+7. **Icons.** **Decided 2026-11-21 (user):** use an existing icon set
+   ("what's out there at the moment"); pick after checking licenses
+   (NineIcons Redux, Platinum9, Chi-Nata and others).
+8. **Cursors.** **Decided 2026-11-21 (user):** our own, or one of the many
+   Mac OS X cursor packs as a temporary stand-in ("not ideal but a temp
+   thing ... while focusing more on the meat").
 
 ## Components
 

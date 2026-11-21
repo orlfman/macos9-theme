@@ -60,8 +60,23 @@ Column x=700 of `desktop-first-check.png`, top to bottom:
 | 18 | 1 px | `#999999` | bottom shadow |
 | 19 | 1 px | `#000000` | bottom line |
 
-Total height 20 px. Confidence: measured (one column; corners, rounded
-screen corners, and the menu title highlight are TBD).
+Total height 20 px. Confidence: measured.
+
+More of the bar (`desktop-first-check.png`, 1440 px wide):
+
+- Rounded screen corners: both top corners are cut by anti-aliased black
+  (top-left: rows 0–6 black up to columns 5, 3, 2, 1, 1, 0, 0 with `#555555`
+  / `#AAAAAA` edge pixels; the top-right mirrors it with `#222222`–`#BBBBBB`
+  steps).
+- Titles: the Apple menu icon at x≈22–28; "File" from x=37 (title
+  highlight x=37–71, ink 7 px in, 8 px before its right end); titles sit
+  edge to edge.
+- Right end: the clock ("1:28 AM", ink x=1298–1341, rows 5–13), 7 px,
+  then a divider at x=1349–1354 (white column, dotted `#888888`/`#AAAAAA`
+  over `#BBBBBB`/white grip in columns 1351–1352 every 3 rows, `#999999`
+  column), then the Application menu: 16 px app icon at x=1361–1376 and the
+  app's name ("Finder", ink from x=1382).
+- An open title (`menu-file-open.png`): see "Menu bar title, open".
 
 ## Lists and scroll bars (first samples)
 

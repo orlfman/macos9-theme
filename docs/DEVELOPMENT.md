@@ -68,9 +68,28 @@ decoration, style and colors, sandboxed like `run.sh` (own XDG folders,
 private D-Bus, nothing installed). It rebuilds the style, the decoration
 and `dev/build/livedemo` (every themed control on its tabs, the few
 still-Fusion ones marked "Still Fusion"), then starts the demo, Dolphin and Kate, or the commands given as
-arguments. Closing the apps or the nested KWin window ends it; the log is
-`dev/build/live-test.log`. Agents can't screenshot inside it (its D-Bus is
-private), so it's for the user's eyes.
+arguments. With `M9_PLASMA=1` (the default) the Plasma shell runs too, with
+the Platinum Plasma style and `plasma/layout.js` (the menu bar; app menus
+move into it); `M9_PLASMA=0` for apps only. Closing the apps or the nested
+KWin window ends it; the logs are `dev/build/live-*.log`. Agents can't
+screenshot inside it (its D-Bus is private), so it's for the user's eyes.
+
+## The Plasma style and the menu bar
+
+```bash
+dev/check-plasma.sh
+```
+
+`plasma/make-plasma.py` writes the Plasma style into `plasma/platinum/`
+(regenerate, don't edit). `dev/plasma-test.sh [THEME]` runs plasmashell in a
+headless nested KWin with a fresh layout from `plasma/layout.js` (your own
+panel files are never read), starts `dev/build/livedemo`, clicks the first
+global menu title (`dev/build/fakeinput`), opens the launcher, and saves
+`dev/shots/plasma-THEME-{desktop,menu,launcher}.png`. The sandbox gets its
+own empty Desktop folder. `dev/check-plasma.sh` runs it and compares a
+column of the bar and of the open title with the captures. Plasma needs
+`kactivitymanagerd` and, for the global menu, `kded6` started by hand in the
+private session (no systemd there).
 
 ## The window decoration
 

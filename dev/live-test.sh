@@ -4,12 +4,15 @@
 # and colors, and starts apps in it. Everything is sandboxed like run.sh
 # (own XDG folders under dev/build/sandbox, private D-Bus, nothing
 # installed); your own desktop, config and running apps are not touched.
-# Close the apps (or the nested KWin window) to end it.
+# Close the apps (or the nested KWin window) to end it. With M9_PLASMA=1
+# (the default) it also runs the Plasma shell with the Platinum Plasma style
+# and plasma/layout.js (the Mac OS 9 menu bar; app menus move into it).
 #
 # usage: live-test.sh [COMMAND...]
 #   default: dev/build/livedemo (every themed control), Dolphin and Kate
 #   M9_SIZE   nested screen size (default 1600x1000, drawn at 1x)
 #   M9_SCHEME platinum (default), breeze or user, as for run.sh
+#   M9_PLASMA 1 (default) or 0: with or without the Plasma shell
 #   FONT, TITLEFONT, EXTRA_FONT_DIRS as for run.sh
 set -euo pipefail
 dev=$(dirname "$(readlink -f "$0")")
@@ -28,6 +31,17 @@ g++ -std=c++17 -O1 -fPIC "$dev/livedemo.cpp" -o "$dev/build/livedemo" $(pkg-conf
 scheme=${M9_SCHEME:-platinum}
 config=$dev/build/sandbox/home-$scheme/config
 mkdir -p "$config"
+export M9_PLASMA=${M9_PLASMA:-1} M9_LAYOUT=$project/plasma/layout.js M9_LOGDIR=$dev/build
+if [[ $M9_PLASMA == 1 ]]; then
+    # The Plasma style and a fresh layout (sandbox files only), its own
+    # empty Desktop folder.
+    python3 -I "$project/plasma/make-plasma.py" > /dev/null
+    mkdir -p "$dev/build/sandbox/data/plasma/desktoptheme" "$dev/build/sandbox/desktop"
+    ln -sfn "$project/plasma/platinum" "$dev/build/sandbox/data/plasma/desktoptheme/platinum"
+    rm -f "$config/plasma-org.kde.plasma.desktop-appletsrc" "$config/plasmashellrc"
+    kwriteconfig6 --file "$config/plasmarc" --group Theme --key name platinum
+    printf 'XDG_DESKTOP_DIR="%s"\n' "$dev/build/sandbox/desktop" > "$config/user-dirs.dirs"
+fi
 # Platinum decoration with the Mac OS 9 button layout: close box left, zoom
 # and collapse right (collapse = minimize: KWin 6.8 can't shade Wayland
 # windows).
