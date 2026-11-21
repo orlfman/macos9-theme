@@ -37,7 +37,8 @@ file. Needs a running Wayland session for the Qt Quick renders.
 `dev/run.sh SCHEME STYLE command...` runs any command in the sandbox. Options
 (environment): `FONT`, `TITLEFONT`, `EXTRA_FONT_DIRS` (stand-in fonts visible
 to the sandbox only), `SCALE` (Qt scale factor), `QSTYLE` (a QStyle instead
-of Union), `PLATFORM=wayland` (for Qt Quick).
+of Union; also written as the sandbox's `widgetStyle`, so Qt Quick apps use
+`org.kde.desktop` and draw through it), `PLATFORM=wayland` (for Qt Quick).
 
 ## Real KWin, real apps
 

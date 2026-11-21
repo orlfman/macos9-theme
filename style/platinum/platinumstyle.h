@@ -75,6 +75,7 @@ constexpr int HeaderHeight = 21;        // Finder list header
 constexpr int HeaderMargin = 8;         // label from the section's left line
 constexpr int FrameWidth = 2;           // list / text area frame: sunken edge + black line
 constexpr int ToolButtonPadding = 9;   // 16 px icon -> 25 px bevel (Mac Help's toolbar)
+constexpr int ToolTipFrame = 10;       // balloon outline to text (Mac pads ~12)
 } // namespace Metrics
 
 class Style : public QProxyStyle

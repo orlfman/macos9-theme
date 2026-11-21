@@ -2,6 +2,33 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — real-app pass, Qt Quick, tooltips
+
+Claimed `style` and `shared`, released at the end. Done over Remote
+Control.
+
+- Real apps, headless (`dev/app-test.sh` with `QSTYLE=Platinum`,
+  `M9_DECORATION=platinum`): Dolphin and Kate look Platinum throughout.
+  System Settings first looked untouched: `dev/run.sh` wrote
+  `widgetStyle=Union` into the sandbox even with `QSTYLE`, so Qt Quick used
+  `org.kde.union`. Now `dev/run.sh` writes `QSTYLE` as the widget style,
+  KDE picks `org.kde.desktop`, and Qt Quick apps draw their controls
+  through the Platinum style (docs/FINDINGS.md). This also applies to
+  `dev/live-test.sh`, so the user's next live test will show it.
+- Tooltips: Mac OS 9 help balloons without the tail (white, 1 px black
+  top/left, 2 px right/bottom, measured corners; top-right derived),
+  see-through corners, 10 px padding.
+- `dev/check-style.sh`: the balloon outline by pixel class (131 regions).
+- AUDIT finding 3 (open): Qt Quick menus, tooltips and switches are drawn
+  by qqc2-desktop-style itself, not through the QStyle.
+
+Checks: `dev/check-style.sh` 131 of 131; ASan + UBSan clean (styleshot,
+tooltip, Kirigami gallery). Not seen live by the user.
+
+Next: the user's live check (now with Qt Quick themed), then finding 3
+(how to reach Qt Quick menus / tooltips), editable combo boxes, the size
+grip.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — step 4: application style, batch 7 (tool buttons)
 
 Claimed `style` (and `shared` for tools/dev/docs), released at the end.

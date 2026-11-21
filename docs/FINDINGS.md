@@ -124,3 +124,22 @@ check layout and shadow in the nested KWin (`dev/kwin-test.sh`,
 - Qt hides shortcuts in context menus by default on this platform
   (`QAction::isShortcutVisibleInContextMenu`); tests set it per action.
 
+### Qt Quick apps follow the widget style (2026-11-21, Claude Code)
+
+- KDE's platform theme picks the Qt Quick Controls style from
+  `kdeglobals` `[KDE] widgetStyle`: `org.kde.union` when it is Union,
+  otherwise `org.kde.desktop` (qqc2-desktop-style), which draws buttons,
+  check boxes, radios, sliders, progress bars, fields, spin boxes, combo
+  boxes, tabs, scroll bars and tool buttons through the application's
+  QStyle. With `widgetStyle=Platinum`, System Settings and other Kirigami
+  apps get the Platinum controls (checked in the sandbox: `kcm_mouse`,
+  `kcm_style`, `dev/kirigami.qml`, `dev/gallery.qml`).
+- Not drawn through the QStyle there: Qt Quick menus and tooltips (their
+  own rounded panels with shadows), switches, Kirigami cards and the
+  inline message's frame. `dev/run.sh` used to write `widgetStyle=Union`
+  even with `QSTYLE=Platinum`, so Qt Quick apps in the sandbox and in the
+  first live tests used Union; fixed 2026-11-21.
+- Qt tooltips (`QTipLabel`) take `WA_TranslucentBackground` from
+  `polish()`, and `SH_ToolTip_Mask` = 0 keeps the window unmasked, so a
+  rounded balloon's corners stay see-through.
+

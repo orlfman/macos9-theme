@@ -83,7 +83,11 @@ if [[ -n ${FONT:-} ]]; then
     done
     kwriteconfig6 --file "$globals" --group WM --key activeFont "${TITLEFONT:-$FONT}"
 fi
-kwriteconfig6 --file "$globals" --group KDE --key widgetStyle Union
+# The widget style as an install would set it: Union with a Union style, or
+# the QStyle given in QSTYLE (KDE then picks the matching Qt Quick Controls
+# style: org.kde.union for Union, org.kde.desktop, which draws through the
+# QStyle, otherwise).
+kwriteconfig6 --file "$globals" --group KDE --key widgetStyle "${QSTYLE:-Union}"
 kwriteconfig6 --file "$globals" --group KDE --key unionStyle "$style"
 
 # A fontconfig for the sandbox: the system's, plus EXTRA_FONT_DIRS.

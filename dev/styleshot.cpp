@@ -383,6 +383,16 @@ int main(int argc, char **argv)
             report(b.name, b.r);
         }
     }
+    // A tooltip balloon the size of reference/help-balloon.png's (160x121),
+    // on magenta so check-style.sh can tell outside from white.
+    {
+        p.fillRect(QRect(500, 1060, 160, 121), QColor(255, 0, 255));
+        QStyleOption o;
+        o.initFrom(host);
+        o.rect = QRect(500, 1060, 160, 121);
+        style->drawPrimitive(QStyle::PE_PanelTipLabel, &o, &p, host);
+        report("balloon", o.rect);
+    }
     // Menu bar: an empty stretch, and the "File" title open (35 px like the
     // capture's).
     {

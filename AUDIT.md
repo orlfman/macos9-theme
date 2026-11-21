@@ -3,7 +3,47 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: nine checks so far (decoration, style batches 1-7, first live test; 2026-11-21). Open findings: none.
+Status: ten checks so far (decoration, style batches 1-7, real-app pass, first live test; 2026-11-21). Open findings: 3 (P3).
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — real-app pass (headless) and tooltips, finding 3
+
+Audited: the whole theme (decoration + style + colors) in Dolphin, Kate
+and System Settings (`kcm_mouse`, `kcm_style`) via `dev/app-test.sh`
+(headless nested KWin, 1440x900), plus the QML and Kirigami galleries;
+style tooltips added in the same session. Working tree after 36673ab.
+
+### Findings
+
+3. **P3, open: Qt Quick menus, tooltips and switches aren't Platinum.**
+   qqc2-desktop-style draws them itself (rounded panels with shadows,
+   Breeze-like switch) instead of through the QStyle
+   (`dev/shots/platinum-quick.png`). Reference: menus `menu-view-checked.png`,
+   balloons `help-balloon.png`. Mac OS 9 has no switch; a check box would be
+   the closest. Needs a different hook (a Qt Quick Controls style of our
+   own, or palette-only tweaks); not done yet.
+
+Found and fixed during the pass (sandbox, not the theme): `dev/run.sh`
+wrote `widgetStyle=Union` regardless of `QSTYLE`, so Qt Quick apps fell
+back to `org.kde.union`; now `QSTYLE` is written (docs/FINDINGS.md).
+
+### Checks
+
+Dolphin and Kate: frames, toolbars and bevel buttons, menus and menu bar,
+document tabs, buttons, scroll bars all Platinum; nothing left in Fusion
+that showed. System Settings: with `org.kde.desktop` its controls (search
+field with focus ring, buttons, check boxes, radios, sliders, spin boxes,
+pop-ups, tool buttons, scroll bars) are Platinum; the style page lists
+"Platinum" with a working preview. Tooltip balloon: `dev/check-style.sh`
+compares its outline by pixel class with `help-balloon.png` (10 px band,
+tail corner left out): 0 of 4880 differ; 131 of 131 regions in total. A
+real `QToolTip` renders with see-through corners. ASan + UBSan: styleshot,
+the tooltip test and the Kirigami gallery, no reports.
+
+### Limits
+
+Headless and offscreen only; not seen by the user. One window size, empty
+data (no mouse found, no recent files). The balloon's top-right corner is
+derived; tooltips have no tail.
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — style batch 7 fidelity check (tool buttons)
 

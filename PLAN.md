@@ -14,7 +14,7 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | reference  | reference/, docs/REFERENCE.md | nobody | capture pass done (81 captures, CAPTURES.md); measurements partial |
 | colors     | colors/                   | nobody     | Platinum.colors done (sandbox-checked) |
 | decoration | decoration/               | nobody     | plugin works in nested KWin; frame pixel exact (AUDIT.md) |
-| style      | style/                    | nobody     | batches 1-7 done (pixel exact): scroll bars, buttons, toggles, pop-ups, sliders, progress, tabs, menus + menu bar, text fields + spin boxes, group boxes, separators, list headers, triangles, tool buttons; next: live check of 5-7, then editable combo, size grip, a real-app pass |
+| style      | style/                    | nobody     | batches 1-7 + tooltips done (pixel exact); real apps checked headless (Dolphin, Kate, System Settings: Qt Quick follows it); open: Qt Quick menus/tooltips/switches (AUDIT 3), editable combo, size grip |
 | plasma     | plasma/                   | nobody     | not started |
 | icons      | icons/                    | nobody     | not started |
 | cursors    | cursors/                  | nobody     | not started |

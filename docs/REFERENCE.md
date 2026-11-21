@@ -162,6 +162,7 @@ current item). Measured.
 | Finder name being edited | `finder-rename.png` ("Sherlock 2") | name sits in a 1 px black-framed edit box, text selected with the `#CCCCFF` highlight (black text), icon stays darkened |
 | Pop-up window tab (closed) | `finder-popup-tab.png` (x≈632–818, y=1061–1080, column x=720) | sits on the bottom screen edge; rounded top corners; black edge, `#FFFFFF` highlight, `#CCCCCC` fill; folder icon + title in the large system font |
 | Help balloon | `help-balloon.png` (x≈1688–1852, y≈138–272) | white fill, 1 px black outline with a heavier black edge right and bottom (shadow), rounded corners, a pointed tail to the hovered spot (top right here), text in the small system font |
+| Help balloon outline | `help-balloon.png` (box x=1690–1849, y=149–269) | 1 px black on the top and left, 2 px on the right and bottom; corners as row spans (from the box's edges): top-left rows 1–5 cover columns 3–5, 2–3, 1–2, 1, 0–1, then column 0; top row starts 5 px in; bottom two rows start 5 and 3 px in and end 5 and 3 px before the right edge; bottom-right rows (from the bottom) 2–6: 6–2, 4–1, 3–1, 2–0, 2–0 px back from the right edge. The top-right corner is under the tail here |
 
 ## Text colors (for the color scheme)
 

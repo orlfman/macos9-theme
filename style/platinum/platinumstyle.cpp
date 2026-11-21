@@ -7,7 +7,7 @@
  * barber pole), tabs on top of their pane (normal, current, pressed), menus,
  * pop-up menu lists, the menu bar, text fields with the focus ring,
  * spin boxes, group boxes, separators, list headers, disclosure triangles,
- * and tool buttons (bevel buttons).
+ * tool buttons (bevel buttons), and tooltips (help balloons).
  * Everything else is still drawn by Fusion underneath.
  *
  * Sources: docs/REFERENCE.md, docs/FINDINGS.md (scroll bar spike), and the
@@ -520,6 +520,56 @@ void drawBevel(QPainter *p, const QRect &r, bool small, bool pressed)
     drawNineSlice(p, r, s);
 }
 
+// Tooltips as Mac OS 9 help balloons (help-balloon.png), without the tail
+// (a Qt tooltip doesn't point at anything): white, a 1 px black outline on
+// the top and left, 2 px on the right and bottom, rounded corners. Rows
+// are drawn as spans: the outline pixels at each end, white between.
+// Top-left, bottom-left and bottom-right corners measured; the top-right
+// one is under the tail in the capture, so it mirrors the top-left with
+// the 2 px right edge.
+void drawBalloon(QPainter *p, const QRect &r)
+{
+    const int x0 = r.left(), x1 = r.right(), y0 = r.top(), y1 = r.bottom();
+    if (r.width() < 16 || r.height() < 16) {
+        p->fillRect(r, White);
+        return;
+    }
+    // {from, to} offsets: left spans from x0, right spans back from x1.
+    static const int tl[6][2] = {{0, 0}, {3, 5}, {2, 3}, {1, 2}, {1, 1}, {0, 1}};
+    static const int bl[6][2] = {{0, 0}, {0, 0}, {2, 4}, {1, 2}, {1, 1}, {0, 1}};
+    static const int tr[7][2] = {{0, 0}, {6, 3}, {4, 2}, {3, 1}, {2, 1}, {2, 0}, {1, 0}};
+    static const int br[7][2] = {{0, 0}, {0, 0}, {6, 2}, {4, 1}, {3, 1}, {2, 0}, {2, 0}};
+    for (int y = y0; y <= y1; ++y) {
+        const int t = y - y0, b = y1 - y;
+        if (t == 0) {
+            p->fillRect(QRect(x0 + 5, y, (x1 - 6) - (x0 + 5) + 1, 1), Black);
+            continue;
+        }
+        if (b == 0 || b == 1) {
+            const int from = x0 + (b == 0 ? 5 : 3), to = x1 - (b == 0 ? 5 : 3);
+            p->fillRect(QRect(from, y, to - from + 1, 1), Black);
+            continue;
+        }
+        int l0 = 0, l1 = 0, r0 = 1, r1 = 0;
+        if (t <= 5) {
+            l0 = tl[t][0], l1 = tl[t][1];
+        } else if (b <= 5) {
+            l0 = bl[b][0], l1 = bl[b][1];
+        }
+        if (t <= 6) {
+            r0 = tr[t][0], r1 = tr[t][1];
+        } else if (b <= 6) {
+            r0 = br[b][0], r1 = br[b][1];
+        }
+        p->fillRect(QRect(x0 + l0, y, l1 - l0 + 1, 1), Black);
+        p->fillRect(QRect(x1 - r0, y, r0 - r1 + 1, 1), Black);
+        const int w0 = x0 + l1 + 1, w1 = x1 - r0 - 1;
+        if (w1 >= w0) {
+            p->fillRect(QRect(w0, y, w1 - w0 + 1, 1), White);
+        }
+    }
+}
+
 } // namespace
 
 Style::Style()
@@ -563,6 +613,8 @@ int Style::pixelMetric(PixelMetric metric, const QStyleOption *option, const QWi
         // Qt uses it on all four sides (and twice in the section size);
         // the 8 px label inset is set in SE_HeaderLabel instead.
         return 2;
+    case PM_ToolTipLabelFrameWidth:
+        return ToolTipFrame;
     case PM_MenuPanelWidth:
         return 1;
     case PM_MenuHMargin:
@@ -1403,6 +1455,12 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption *option, 
             return;
         }
         break;
+    case PE_PanelTipLabel:
+        painter->save();
+        painter->setRenderHint(QPainter::Antialiasing, false);
+        drawBalloon(painter, option->rect);
+        painter->restore();
+        return;
     case PE_PanelButtonTool:
         painter->save();
         painter->setRenderHint(QPainter::Antialiasing, false);
@@ -1587,6 +1645,9 @@ void Style::polish(QWidget *widget)
     if (qobject_cast<QTabWidget *>(widget)) {
         widget->installEventFilter(this);
     }
+    if (widget->inherits("QTipLabel")) {
+        widget->setAttribute(Qt::WA_TranslucentBackground);
+    }
     if (widget->inherits("QComboBoxPrivateContainer")) {
         // Pop-up menu lists look like menus (popup-open.png): the panel is
         // painted by eventFilter, the list sits inside the black line and
@@ -1646,6 +1707,12 @@ int Style::styleHint(StyleHint hint, const QStyleOption *option, const QWidget *
     switch (hint) {
     case SH_Menu_AllowActiveAndDisabled:
         return 0;
+    case SH_ToolTip_Mask:
+        // The balloon's corners are see-through (WA_TranslucentBackground),
+        // no window mask.
+        return 0;
+    case SH_ToolTipLabel_Opacity:
+        return 255;
     case SH_ComboBox_PopupFrameStyle:
         return QFrame::NoFrame;
     case SH_ComboBox_Popup:

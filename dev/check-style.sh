@@ -209,5 +209,32 @@ bevel_check bevel-large controls-monitors.png 855 315 10 1130 38 40
 bevel_check bevel-large-selected controls-monitors.png 800 315 60 1130 38 40
 bevel_check bevel-small help-viewer.png 14 50 110 1130 25 25
 
+# Tooltip balloon: its outline by pixel class (black / white / outside),
+# since the capture's desktop shows around it. A 10 px band around the
+# edge (the text starts 12 px in), without the tail's corner (top right).
+total=$((total + 1))
+if result=$(python3 -I - "reference/help-balloon.png" "$shot" << 'EOF'
+import sys
+from PIL import Image
+ref = Image.open(sys.argv[1]).convert("RGB")
+ours = Image.open(sys.argv[2]).convert("RGB")
+cls = lambda p: "B" if p == (0, 0, 0) else "W" if p == (255, 255, 255) else "-"
+n = bad = 0
+for y in range(121):
+    for x in range(160):
+        if not (x < 10 or y < 10 or x >= 150 or y >= 111) or (x >= 130 and y < 14):
+            continue
+        n += 1
+        bad += cls(ref.getpixel((1690 + x, 149 + y))) != cls(ours.getpixel((500 + x, 1060 + y)))
+print(f"{bad} of {n}")
+sys.exit(1 if bad else 0)
+EOF
+); then
+    printf 'ok      %-30s %s\n' balloon-outline "$result"
+else
+    printf 'DIFF    %-30s %s\n' balloon-outline "$result"
+    failed=$((failed + 1))
+fi
+
 echo "$((total - failed)) of $total regions pixel exact"
 exit $((failed > 0))
