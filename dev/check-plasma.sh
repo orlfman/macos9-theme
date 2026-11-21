@@ -2,7 +2,8 @@
 # Runs dev/plasma-test.sh and compares the menu bar with the captures: a
 # column of the empty bar (desktop-first-check.png, x=700), the bar's two
 # rounded ends and the divider before the Application menu, and a column of
-# an open menu title (menu-file-open.png "File", x=40, 3 px into the title).
+# an open menu title (menu-file-open.png "File", x=40, 3 px into the title),
+# and the dock's top corners against the pop-up window tab.
 # The title's x depends on the font, so it's found by its #333399 fill.
 #
 # usage: check-plasma.sh        (exit 1 if anything differs)
@@ -44,5 +45,21 @@ if not xs:
     print("DIFF    menubar-open-title            no open title found")
     sys.exit(1)
 report("menubar-open-title", col(menu, xs[0] + 3), col(ref_title, 40))
+# The dock against Mac OS 9's pop-up window tab (finder-popup-tab.png, outline
+# from x=632, y=1061): its top corners, 8 columns x 8 rows each, where the
+# capture shows the tab (gray pixels; the desktop shows around it). The dock
+# is found by its top black row at the screen's bottom.
+tab = Image.open("reference/finder-popup-tab.png").convert("RGB")
+H = desk.height
+top = next(y for y in range(H - 120, H) if desk.getpixel((desk.width // 2, y)) == (0, 0, 0))
+row = [x for x in range(desk.width) if desk.getpixel((x, top)) == (0, 0, 0)]
+x0, x1 = row[0] - 2, row[-1] + 2
+gray = lambda p: p[0] == p[1] == p[2]
+def masked(name, rx, ox):
+    a = [(desk.getpixel((ox + i, top + j)), tab.getpixel((rx + i, 1061 + j))) for i in range(8) for j in range(8)]
+    a = [(o, r) for o, r in a if gray(r)]
+    report(name, [o for o, _ in a], [r for _, r in a])
+masked("dock-top-left", 632, x0)
+masked("dock-top-right", 811, x1 - 6)
 sys.exit(1 if failed else 0)
 PYEND

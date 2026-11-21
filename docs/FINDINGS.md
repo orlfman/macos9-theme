@@ -169,4 +169,9 @@ check layout and shadow in the nested KWin (`dev/kwin-test.sh`,
 - Menus opened from the global menu sit 1 px below the bar's black line and
   1 px right of the title (Mac OS 9: on the black line, aligned); placed by
   Plasma, not reachable from the style.
+- A bottom panel picks the `south-` elements of `widgets/panel-background`
+  (falling back to the unprefixed ones), so the menu bar and the dock can
+  look different with one Plasma style. The dock's apps (icontasks) also
+  get the panel's full thickness, so the task frames carry their own inset
+  (transparent margins inside the frame) to stay off the dock's border.
 

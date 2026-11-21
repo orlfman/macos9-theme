@@ -17,6 +17,8 @@ Parts:
   widgets/tooltip           help balloons (no tail)
   widgets/viewitem          list highlights in popups (#333399, white text
                             via this style's own colors file)
+  widgets/tasks             dock apps as bevel buttons
+  widgets/panel-background  also "south-": the dock as a pop-up window tab
   widgets/button, lineedit, frame, tabbar, plasmoidheading
   colors                    Platinum.colors with the menu highlight as the
                             selection (Plasma only; apps keep #CCCCFF)
@@ -222,11 +224,36 @@ def panel():
                                               (0, h - 2, w, 1, GRAY[0x99]), (0, h - 1, w, 1, BLACK)],
             center=(2, 18))
     s.frame("mask", (0, 0, 2, 0), lambda w, h: [(0, 0, w, h, FACE)], center=(2, 18))
+    # The dock (a bottom panel; Plasma picks "south-" elements there).
+    s.frame("south", (4, 3, 3, 3), popup_tab)
+    s.frame("south-mask", (4, 3, 3, 3), lambda w, h: [(0, 2, w - 1, h - 2, FACE), (2, 0, w - 5, 2, FACE)])
+    s.hints("south", (6, 6, 3, 5), insets=False)
     # Plasma gives applets the full height anyway (an open title draws the
     # black row itself, see lavender_title).
     s.hints(None, (0, 0, 0, 0), insets=True)
     s.hints("thick", (0, 0, 0, 0))
     return s
+
+
+def popup_tab(w, h):
+    """The dock: Mac OS 9's pop-up window tab (finder-popup-tab.png, black
+    outline x=632-817 from y=1061 down to the screen edge): rounded top
+    corners, white top / left highlight, #CCCCCC fill, #999999 right edge
+    with a #444444 shadow column outside it from the 5th row. The bottom
+    border is the screen edge (Plasma drops it); it's drawn like the right
+    edge in case the dock floats."""
+    cc, n99, n44 = GRAY[0xCC], GRAY[0x99], GRAY[0x44]
+    return [
+        (3, 3, w - 6, h - 6, cc), (3, 2, w - 6, 2, cc),
+        # top: black row from x=2, white row from x=2 (1 px in), corners
+        (2, 0, w - 5, 1, BLACK), (2, 1, w - 5, 1, WHITE), (1, 1, 1, 1, BLACK), (w - 3, 1, 1, 1, BLACK),
+        (1, 2, 1, 1, WHITE), (0, 2, 1, h - 2, BLACK), (1, 3, 1, h - 3, WHITE), (2, 2, 1, h - 2, cc),
+        (2, 2, 1, 1, WHITE),
+        # right: #999999, black, shadow from row 4
+        (w - 3, 2, 1, h - 2, n99), (w - 2, 2, 1, h - 2, BLACK), (w - 1, 4, 1, h - 4, n44),
+        # bottom (only when the dock floats): #999999, black, shadow
+        (1, h - 3, w - 3, 1, n99), (0, h - 2, w - 1, 1, BLACK), (2, h - 1, w - 2, 1, n44),
+    ]
 
 
 def menubaritem():
@@ -257,6 +284,39 @@ def tooltip():
     s.frame(None, (6, 7, 7, 6), balloon)
     s.frame("mask", (6, 7, 7, 6), lambda w, h: [(1, 1, w - 3, h - 3, FACE)])
     s.hints(None, (10, 11, 11, 10), insets=True)
+    return s
+
+
+def tasks():
+    """Dock apps as Mac OS 9 bevel buttons (the Monitors control panel's
+    large ones, like the Launcher's): a running app's window = the raised
+    bevel, the active window = the selected bevel; pinned apps without a
+    window get no frame (Plasma draws none). Mac OS 9 has no hover look,
+    so hover = raised. Attention and progress (derived): the raised bevel
+    over #CCCCFF.
+
+    Plasma gives the dock's apps its full thickness, so each frame carries
+    its own inset: 8 px at the top (the dock's 4 border rows + 4), 4 at
+    the bottom, 1 at each side. In a 52 px dock that leaves the bevel the
+    Monitors buttons' 40 px."""
+    s = Sheet()
+    k, normal = nineslice("BevelNormal")
+    _, pressed = nineslice("BevelPressed")
+    top, right, bottom, left = 8, 1, 4, 1
+
+    def inset(shapes):
+        def f(w, h):
+            return [(x + left, y + top, pw, ph, c) for (x, y, pw, ph, c) in shapes(w - left - right, h - top - bottom)]
+        return f
+
+    def washed(w, h):
+        return [(x, y, pw, ph, SELECTION if c == FACE else c) for (x, y, pw, ph, c) in normal(w, h)]
+    borders = (k + top, k + right, k + bottom, k + left)
+    for state, shapes in (("normal", normal), ("hover", normal), ("minimized", normal),
+                          ("focus", pressed), ("attention", washed), ("progress", washed)):
+        s.frame(state, borders, inset(shapes))
+    for state in ("normal", "hover", "minimized", "focus", "attention", "progress"):
+        s.hints(state, (top + 4, right + 4, bottom + 4, left + 4))
     return s
 
 
@@ -516,6 +576,7 @@ def main():
         "dialogs/background.svg": dialog(),
         "widgets/tooltip.svg": tooltip(),
         "widgets/viewitem.svg": viewitem(),
+        "widgets/tasks.svg": tasks(),
         "widgets/button.svg": button(),
         "widgets/lineedit.svg": lineedit(),
         "widgets/frame.svg": frame(),

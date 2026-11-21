@@ -15,7 +15,7 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | colors     | colors/                   | nobody     | Platinum.colors done (sandbox-checked) |
 | decoration | decoration/               | nobody     | plugin works in nested KWin; frame pixel exact (AUDIT.md) |
 | style      | style/                    | nobody     | batches 1-7 + tooltips done (pixel exact); real apps checked headless (Dolphin, Kate, System Settings: Qt Quick follows it); open: Qt Quick menus/tooltips/switches (AUDIT 3), editable combo, size grip |
-| plasma     | plasma/                   | nobody     | menu bar, Plasma style, bar ends + divider, look-and-feel package done (headless, exact); next: Apple menu icon, clock/divider spacing; install script must set the button order |
+| plasma     | plasma/                   | nobody     | menu bar, global theme, dock done (headless; corners/bar/title exact); next: Apple menu icon, clock/divider spacing; install script must set the button order |
 | icons      | icons/                    | nobody     | not started |
 | cursors    | cursors/                  | nobody     | not started |
 | gtk        | gtk/                      | nobody     | not started |
@@ -72,6 +72,14 @@ Open decisions need the user. Record the answer here with the date.
 8. **Cursors.** **Decided 2026-11-21 (user):** our own, or one of the many
    Mac OS X cursor packs as a temporary stand-in ("not ideal but a temp
    thing ... while focusing more on the meat").
+9. **Dock.** **Decided 2026-11-21 (user):** window management may stray
+   from Mac OS 9: "even though the dock came in OS X, I would like to use
+   it in 'os 9.' Bring the dock over, but make it designed around os 9
+   look." Design (Claude Code, same day): a bottom panel styled like Mac OS
+   9's pop-up window tab (`finder-popup-tab.png`, the OS 9 element that
+   already sits on the bottom screen edge), apps as bevel buttons like the
+   Launcher control panel (running = raised bevel, active = selected
+   bevel, pinned but not running = bare icon).
 
 ## Components
 

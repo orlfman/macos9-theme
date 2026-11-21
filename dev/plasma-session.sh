@@ -21,6 +21,10 @@ else
     qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$(cat "$M9_LAYOUT")" > "$M9_OUT.layout.log" 2>&1
 fi
 sleep 3
+# A second window first, so the dock shows a running app that isn't the
+# active one (raised bevel) next to the active one (selected bevel).
+/usr/lib/qt6/bin/qml "$dev/kwin-window.qml" -- "Background" &
+sleep 2
 "$dev/build/livedemo" &
 sleep 4
 spectacle -b -n -f -o "$M9_OUT-desktop.png"

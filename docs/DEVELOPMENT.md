@@ -83,14 +83,16 @@ dev/check-plasma.sh
 `plasma/make-plasma.py` writes the Plasma style into `plasma/platinum/`
 (regenerate, don't edit). `dev/plasma-test.sh [THEME]` runs plasmashell in a
 headless nested KWin with a fresh layout from `plasma/layout.js` (your own
-panel files are never read), starts `dev/build/livedemo`, clicks the first
+panel files are never read), opens a plain window and then
+`dev/build/livedemo` (so the dock shows a running and an active app),
+clicks the first
 global menu title (`dev/build/fakeinput`), opens the launcher, and saves
 `dev/shots/plasma-THEME-{desktop,menu,launcher}.png`. The sandbox gets its
 own empty Desktop folder. With `M9_APPLY=lnf` it applies the
 look-and-feel package (`plasma-apply-lookandfeel --resetLayout`, sandbox
 only) instead of evaluating the layout, and prints what the package set.
 `dev/check-plasma.sh` runs it and compares the bar, its rounded ends, the
-divider and an open title with the captures. Plasma needs
+divider, an open title and the dock's top corners with the captures. Plasma needs
 `kactivitymanagerd` and, for the global menu, `kded6` started by hand in the
 private session (no systemd there).
 

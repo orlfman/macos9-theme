@@ -3,7 +3,32 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: twelve checks so far (decoration, style batches 1-7, real-app pass, Plasma menu bar x2, first live test; 2026-11-21). Open findings: 3 (P3).
+Status: thirteen checks so far (decoration, style batches 1-7, real-app pass, Plasma menu bar x2, dock, first live test; 2026-11-21). Open findings: 3 (P3).
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — the dock
+
+Audited: the dock (PLAN.md decision 9): `south-` panel background,
+`widgets/tasks.svg`, the dock in `plasma/layout.js`; headless
+(`dev/plasma-test.sh`), working tree after 2b3465b.
+
+Findings: none. Fixed during development: one missing white pixel inside
+the tab's top-left corner; task frames spanned the dock's full thickness
+(now inset inside the frame).
+
+### Checks
+
+`dev/check-plasma.sh`: 7 of 7 exact; new: the dock's top-left and
+top-right corners against `finder-popup-tab.png` (57 tab pixels each,
+desktop pixels around the tab left out). Looked at (4x): pinned apps as
+bare icons, a running app in the raised bevel, the active one in the
+selected bevel, both 40 px tall like the Monitors buttons.
+
+### Limits
+
+Headless only; not seen by the user. The bevels are wider than the
+Monitors ones (icontasks sizes items by the dock's thickness), the icons
+are the icon theme's, attention / progress looks are derived, and the
+dock's design itself is ours (Mac OS 9 had no dock).
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — menu bar ends, divider, look-and-feel package
 

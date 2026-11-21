@@ -2,6 +2,30 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — plasma: the dock
+
+Claimed `plasma` (and `shared` for dev/docs), released at the end. Over
+Remote Control. The user's design decision (PLAN.md decision 9): bring the
+dock over, designed around the Mac OS 9 look.
+
+- Design: a bottom panel (52 px, sized to its apps, centered) drawn as
+  Mac OS 9's pop-up window tab (the OS 9 element that already lives on the
+  bottom screen edge): rounded top corners, white highlight, `#CCCCCC`,
+  `#999999` edge and `#444444` shadow. Apps are the Monitors / Launcher
+  bevel buttons: pinned = bare icon, running = raised, active = selected.
+- `plasma/make-plasma.py`: `south-` panel background elements (the menu
+  bar keeps the unprefixed ones), `widgets/tasks.svg` with insets built
+  into the frames. `plasma/layout.js` (and so the global theme): the dock
+  with Dolphin, Kate and System Settings pinned.
+- `dev/plasma-session.sh` opens a second window so the dock shows both
+  running states; `dev/check-plasma.sh` checks the dock's corners.
+- docs: REFERENCE (pop-up tab outline), FINDINGS (south prefix, task
+  insets), DEVELOPMENT.
+
+Checks: `dev/check-plasma.sh` 7 of 7 exact. Headless only; the user's
+next live test shows it (`dev/live-test.sh` uses this layout). From the
+previews: "I love it so far".
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — plasma: bar ends, divider, look-and-feel package
 
 Claimed `plasma` (and `shared` for dev/docs), released at the end. Over
