@@ -2,6 +2,34 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — step 4: application style, batch 7 (tool buttons)
+
+Claimed `style` (and `shared` for tools/dev/docs), released at the end.
+Done over Remote Control.
+
+- Tool buttons (`QToolButton`) as Mac OS 9 bevel buttons, always drawn:
+  toolbar (auto-raise) buttons use Mac Help's small square 25x25 bevel
+  (16 px icons; pressed / checked derived from the large bevel's color
+  change), others the Monitors panel's large rounded bevel (normal and
+  selected both measured). Menu buttons get a second bevel with the arrow;
+  buttons with a menu a small triangle (derived). Pressed / checked text
+  is white.
+- Toolbars: no background or handle (window gray, like Mac Help's);
+  separators are the etched `#888888` / white pair.
+- `tools/gen-style-data.sh`: `BevelNormal`, `BevelPressed`, `ToolNormal`
+  nine-slices. `dev/styleshot.cpp` / `dev/check-style.sh`: the three
+  bevels. `dev/livedemo.cpp`: a toolbar (back, disabled forward, home,
+  separator, two checkable view modes).
+- `docs/REFERENCE.md`: bevel button sizes.
+
+Checks: `dev/check-style.sh` 130 of 130 regions pixel exact; ASan + UBSan
+clean. Not seen live by the user yet (batches 5 and 6 neither); from the
+previews sent to the phone: "everything is looking great so far".
+
+Next: the user's live check of batches 5-7; then editable combo boxes, the
+size grip, and a pass over real apps (Dolphin, Kate, System Settings) for
+whatever is still Fusion.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — step 4: application style, batch 6 (groups, lists)
 
 Claimed `style` (and `shared` for tools/dev/docs), released at the end.

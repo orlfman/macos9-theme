@@ -12,6 +12,7 @@
 class QStyleOptionSlider;
 class QStyleOptionSpinBox;
 class QStyleOptionGroupBox;
+class QStyleOptionToolButton;
 
 namespace Platinum
 {
@@ -73,6 +74,7 @@ constexpr int GroupTitleGap = 4;
 constexpr int HeaderHeight = 21;        // Finder list header
 constexpr int HeaderMargin = 8;         // label from the section's left line
 constexpr int FrameWidth = 2;           // list / text area frame: sunken edge + black line
+constexpr int ToolButtonPadding = 9;   // 16 px icon -> 25 px bevel (Mac Help's toolbar)
 } // namespace Metrics
 
 class Style : public QProxyStyle
@@ -103,6 +105,7 @@ private:
     void drawSlider(const QStyleOptionSlider *option, QPainter *painter, const QWidget *widget) const;
     void drawSpinBox(const QStyleOptionSpinBox *option, QPainter *painter, const QWidget *widget) const;
     void drawGroupBox(const QStyleOptionGroupBox *option, QPainter *painter, const QWidget *widget) const;
+    void drawToolButton(const QStyleOptionToolButton *option, QPainter *painter, const QWidget *widget) const;
 };
 
 } // namespace Platinum

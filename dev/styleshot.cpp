@@ -356,6 +356,33 @@ int main(int argc, char **argv)
         style->drawControl(QStyle::CE_ShapedFrame, &f, &p, host);
         report("separator", f.rect);
     }
+    // Bevel buttons: the Monitors control panel's large ones (38x40,
+    // "Color" normal, "Monitor" selected) and Mac Help's small toolbar one
+    // (25x25); no icons.
+    {
+        QToolButton large, small;
+        small.setAutoRaise(true);
+        const struct {
+            const char *name;
+            QToolButton *w;
+            QRect r;
+            bool on;
+        } tools[] = {
+            {"bevel-large", &large, QRect(10, 1130, 38, 40), false},
+            {"bevel-large-selected", &large, QRect(60, 1130, 38, 40), true},
+            {"bevel-small", &small, QRect(110, 1130, 25, 25), false},
+        };
+        for (const auto &b : tools) {
+            QStyleOptionToolButton o;
+            o.initFrom(b.w);
+            o.rect = b.r;
+            o.subControls = QStyle::SC_ToolButton;
+            o.state = QStyle::State_Enabled | QStyle::State_Active | (b.on ? QStyle::State_On : QStyle::State_Off);
+            o.toolButtonStyle = Qt::ToolButtonIconOnly;
+            style->drawComplexControl(QStyle::CC_ToolButton, &o, &p, b.w);
+            report(b.name, b.r);
+        }
+    }
     // Menu bar: an empty stretch, and the "File" title open (35 px like the
     // capture's).
     {

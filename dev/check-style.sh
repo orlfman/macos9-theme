@@ -195,5 +195,19 @@ check triangle-closed disclosure-triangles.png@108,194,17,17 360,1040,17,17
 check triangle-open disclosure-triangles.png@108,270,17,17 390,1040,17,17
 check separator appearance-3-fonts-clean.png@600,400,100,4 360,1080,100,4
 
+# Bevel buttons outside their icons: large (controls-monitors.png, 38x40,
+# 3 px bands; its icons reach the 4th column) normal and selected, small
+# (help-viewer.png, 25x25, 3 px bands).
+bevel_check() { # name ref.png rx ry ox oy W H
+    local n=$1 img=$2 rx=$3 ry=$4 ox=$5 oy=$6 W=$7 H=$8
+    check "$n-top" "$img@$rx,$ry,$W,3" "$ox,$oy,$W,3"
+    check "$n-bottom" "$img@$rx,$((ry + H - 3)),$W,3" "$ox,$((oy + H - 3)),$W,3"
+    check "$n-left" "$img@$rx,$ry,3,$H" "$ox,$oy,3,$H"
+    check "$n-right" "$img@$((rx + W - 3)),$ry,3,$H" "$((ox + W - 3)),$oy,3,$H"
+}
+bevel_check bevel-large controls-monitors.png 855 315 10 1130 38 40
+bevel_check bevel-large-selected controls-monitors.png 800 315 60 1130 38 40
+bevel_check bevel-small help-viewer.png 14 50 110 1130 25 25
+
 echo "$((total - failed)) of $total regions pixel exact"
 exit $((failed > 0))

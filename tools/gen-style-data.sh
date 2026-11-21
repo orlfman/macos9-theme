@@ -41,6 +41,13 @@ out=style/platinum
     # (the sorted one has its dark shadow there).
     py $ref/disclosure-triangles.png 343 154 149 21 2 HeaderSection --skip 3,3,145,17
     py $ref/disclosure-triangles.png 105 154 238 21 2 HeaderSorted --skip 3,3,234,17
+    # Bevel buttons. Large (Monitors control panel, 38x40, K=4): "Color"
+    # normal, "Monitor" selected (pressed colors); their icons reach the
+    # inner bevel column, so the check skips from column 3. Small (Mac
+    # Help's toolbar, 25x25 square, K=2): normal only.
+    py $ref/controls-monitors.png 855 315 38 40 4 BevelNormal --bg DDDDDD --skip 3,4,34,35
+    py $ref/controls-monitors.png 800 315 38 40 4 BevelPressed --bg DDDDDD --skip 3,4,34,35
+    py $ref/help-viewer.png 14 50 25 25 2 ToolNormal --skip 3,3,21,21
     echo "} // namespace Platinum::Slices"
 } > "$out/slices.h"
 

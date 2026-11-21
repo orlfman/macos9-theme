@@ -231,6 +231,20 @@ int main(int argc, char **argv)
     for (const char *s : {"Get Info", "Duplicate", "Make Alias"}) {
         window.addAction(new QAction(QString::fromLatin1(s), &window));
     }
+    auto *toolbar = new QToolBar;
+    toolbar->setIconSize(QSize(16, 16));
+    toolbar->addAction(QIcon::fromTheme(QStringLiteral("go-previous")), QStringLiteral("Back"));
+    toolbar->addAction(QIcon::fromTheme(QStringLiteral("go-next")), QStringLiteral("Forward"))->setEnabled(false);
+    toolbar->addAction(QIcon::fromTheme(QStringLiteral("go-home")), QStringLiteral("Home"));
+    toolbar->addSeparator();
+    auto *viewModes = new QActionGroup(toolbar);
+    for (const char *icon : {"view-list-icons", "view-list-details"}) {
+        QAction *a = toolbar->addAction(QIcon::fromTheme(QString::fromLatin1(icon)), QString::fromLatin1(icon));
+        a->setCheckable(true);
+        viewModes->addAction(a);
+    }
+    viewModes->actions().constFirst()->setChecked(true);
+    layout->addWidget(toolbar);
     auto *tabs = new QTabWidget;
     tabs->addTab(controlsPage(), QStringLiteral("Controls"));
     tabs->addTab(scrollingPage(), QStringLiteral("Scrolling"));

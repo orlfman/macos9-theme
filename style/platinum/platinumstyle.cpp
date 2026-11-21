@@ -6,8 +6,8 @@
  * boxes), sliders with tick marks, progress bars (determinate and the
  * barber pole), tabs on top of their pane (normal, current, pressed), menus,
  * pop-up menu lists, the menu bar, text fields with the focus ring,
- * spin boxes, group boxes, separators, list headers, and disclosure
- * triangles.
+ * spin boxes, group boxes, separators, list headers, disclosure triangles,
+ * and tool buttons (bevel buttons).
  * Everything else is still drawn by Fusion underneath.
  *
  * Sources: docs/REFERENCE.md, docs/FINDINGS.md (scroll bar spike), and the
@@ -29,6 +29,7 @@
 
 #include <QAbstractItemView>
 #include <QComboBox>
+#include <QToolButton>
 #include <QGroupBox>
 #include <QLineEdit>
 #include <QSpinBox>
@@ -474,6 +475,51 @@ void drawSunkenFrame(QPainter *p, const QRect &r)
     p->drawRect(r.adjusted(1, 1, -2, -2));
 }
 
+// Bevel buttons. Toolbar buttons (auto-raise) use the small square bevel
+// from Mac Help's toolbar; other tool buttons the large rounded one from
+// the Monitors control panel (both states measured). The small one's
+// pressed look isn't captured: its colors are mapped the way the large
+// one's change (white highlight -> #555555, fill -> #666666, shadow ->
+// #777777), the #666666 / #333333 outline kept.
+void drawBevel(QPainter *p, const QRect &r, bool small, bool pressed)
+{
+    if (!small) {
+        drawNineSlice(p, r, pressed ? Slices::BevelPressed : Slices::BevelNormal);
+        return;
+    }
+    if (!pressed) {
+        drawNineSlice(p, r, Slices::ToolNormal);
+        return;
+    }
+    NineSlice<2> s = Slices::ToolNormal;
+    auto map = [](int v) {
+        switch (v) {
+        case 0xFFFFFF:
+            return 0x555555;
+        case 0xCCCCCC:
+            return 0x666666;
+        case 0x888888:
+            return 0x777777;
+        default:
+            return v;
+        }
+    };
+    for (auto *corner : {&s.tl, &s.tr, &s.bl, &s.br}) {
+        for (auto &row : *corner) {
+            for (int &v : row) {
+                v = map(v);
+            }
+        }
+    }
+    for (auto *edge : {&s.top, &s.bottom, &s.left, &s.right}) {
+        for (int &v : *edge) {
+            v = map(v);
+        }
+    }
+    s.fill = map(s.fill);
+    drawNineSlice(p, r, s);
+}
+
 } // namespace
 
 Style::Style()
@@ -584,6 +630,9 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption *option, con
         if (const auto *sb = qstyleoption_cast<const QStyleOptionSpinBox *>(option); sb && sb->frame) {
             return QSize(size.width() + 2 * FieldFrame + SpinArrowsGap + SpinArrowsWidth, std::max(size.height() + 2 * FieldFrame, FieldMinHeight));
         }
+    }
+    if (type == CT_ToolButton) {
+        return QSize(size.width() + ToolButtonPadding, size.height() + ToolButtonPadding);
     }
     if (type == CT_HeaderSection) {
         const QSize s = QProxyStyle::sizeFromContents(type, option, size, widget);
@@ -982,6 +1031,42 @@ void Style::drawGroupBox(const QStyleOptionGroupBox *gb, QPainter *painter, cons
     painter->restore();
 }
 
+void Style::drawToolButton(const QStyleOptionToolButton *tb, QPainter *painter, const QWidget *widget) const
+{
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing, false);
+    const auto *button = qobject_cast<const QToolButton *>(widget);
+    const bool small = !button || button->autoRaise();
+    const QRect main = subControlRect(CC_ToolButton, tb, SC_ToolButton, widget);
+    const bool pressed = ((tb->state & State_Sunken) && (tb->activeSubControls & SC_ToolButton)) || (tb->state & State_On);
+    // Mac OS 9 bevel buttons are always drawn (no hover-only buttons).
+    drawBevel(painter, main, small, pressed);
+    if (tb->subControls & SC_ToolButtonMenu) {
+        const QRect menu = subControlRect(CC_ToolButton, tb, SC_ToolButtonMenu, widget);
+        const bool menuPressed = (tb->state & State_Sunken) && (tb->activeSubControls & SC_ToolButtonMenu);
+        drawBevel(painter, menu, small, menuPressed);
+        QStyleOption arrow(*tb);
+        arrow.rect = menu;
+        proxy()->drawPrimitive(PE_IndicatorArrowDown, &arrow, painter, widget);
+    } else if (tb->features & QStyleOptionToolButton::HasMenu) {
+        // Not captured: a small black down triangle in the lower right,
+        // like the pop-up arrow's.
+        const QColor c = (tb->state & State_Enabled) ? (pressed ? White : Black) : DisabledText;
+        const int x = main.right() - 8, y = main.bottom() - 6;
+        for (int row = 0; row < 3; ++row) {
+            painter->fillRect(QRect(x + row, y + row, 5 - 2 * row, 1), c);
+        }
+    }
+    QStyleOptionToolButton label(*tb);
+    label.rect = main;
+    label.state &= ~State_MouseOver;
+    if (pressed) {
+        label.palette.setColor(QPalette::ButtonText, White);
+    }
+    proxy()->drawControl(CE_ToolButtonLabel, &label, painter, widget);
+    painter->restore();
+}
+
 void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex *option, QPainter *painter, const QWidget *widget) const
 {
     if (control == CC_ComboBox) {
@@ -1008,6 +1093,12 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
     if (control == CC_GroupBox) {
         if (const auto *gb = qstyleoption_cast<const QStyleOptionGroupBox *>(option)) {
             drawGroupBox(gb, painter, widget);
+            return;
+        }
+    }
+    if (control == CC_ToolButton) {
+        if (const auto *tb = qstyleoption_cast<const QStyleOptionToolButton *>(option)) {
+            drawToolButton(tb, painter, widget);
             return;
         }
     }
@@ -1123,6 +1214,9 @@ void Style::drawControl(ControlElement element, const QStyleOption *option, QPai
             }
         }
         break;
+    case CE_ToolBar:
+        // No toolbar background or lines (Mac Help's toolbar is window gray).
+        return;
     case CE_MenuEmptyArea:
         // PE_PanelMenu already drew the whole menu, frame and shadow.
         return;
@@ -1309,6 +1403,30 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption *option, 
             return;
         }
         break;
+    case PE_PanelButtonTool:
+        painter->save();
+        painter->setRenderHint(QPainter::Antialiasing, false);
+        drawBevel(painter, option->rect, true, option->state & (State_Sunken | State_On));
+        painter->restore();
+        return;
+    case PE_PanelToolBar:
+    case PE_IndicatorToolBarHandle:
+        // Toolbars sit on the window's #DDDDDD with no handle.
+        return;
+    case PE_IndicatorToolBarSeparator: {
+        // An etched #888888 / white line pair, like other separators.
+        const QRect &r = option->rect;
+        if (option->state & State_Horizontal) {
+            const int x = r.x() + r.width() / 2 - 1;
+            painter->fillRect(QRect(x, r.y() + 2, 1, r.height() - 4), gray(0x88));
+            painter->fillRect(QRect(x + 1, r.y() + 2, 1, r.height() - 4), White);
+        } else {
+            const int y = r.y() + r.height() / 2 - 1;
+            painter->fillRect(QRect(r.x() + 2, y, r.width() - 4, 1), gray(0x88));
+            painter->fillRect(QRect(r.x() + 2, y + 1, r.width() - 4, 1), White);
+        }
+        return;
+    }
     case PE_IndicatorHeaderArrow:
         // Mac OS 9 list headers show the sorted column by its darker
         // section, not an arrow.

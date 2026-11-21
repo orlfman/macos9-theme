@@ -3,7 +3,34 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: eight checks so far (decoration, style batches 1-6, first live test; 2026-11-21). Open findings: none.
+Status: nine checks so far (decoration, style batches 1-7, first live test; 2026-11-21). Open findings: none.
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — style batch 7 fidelity check (tool buttons)
+
+Audited: `style/platinum/` tool buttons, toolbars, working tree before
+commit. Reference: `controls-monitors.png`, `help-viewer.png` (regions in
+`dev/check-style.sh`).
+
+Findings: none.
+
+### Checks
+
+`dev/check-style.sh`: 130 of 130 regions pixel exact. New (12): the large
+bevel button normal and selected, the small toolbar bevel (3 px bands on
+all four sides, icons excluded). A real `QMainWindow` toolbar (offscreen,
+looked at 2x): normal, disabled and checked actions, a separator, a menu
+button, text beside icon; a standalone "…" tool button and a checked
+large one. ASan + UBSan: no reports, identical render.
+
+### Limits
+
+Offscreen only; not seen by the user yet. Derived: the small bevel's
+pressed / checked look (colors mapped like the large bevel's), the menu
+triangle on tool buttons with a menu, the toolbar separator (etched pair),
+no toolbar background or handle. Which bevel goes where is a judgment:
+auto-raise (toolbar) buttons get the small one, others the large one;
+Mac OS 9 has no hover-only buttons, so both are always drawn. The size
+grip is still Fusion.
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — style batch 6 fidelity check (groups, lists)
 
