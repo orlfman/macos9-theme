@@ -185,7 +185,9 @@ auditing doesn't give you the right to edit a component you haven't claimed.
   QEMU's own PPM dump, converted to PNG and checked pixel for pixel) as
   `reference/<name>.png` and logs it in `reference/INDEX.tsv`. Never use
   desktop screenshots of the QEMU window: they are scaled.
-  `tools/capture.py --check` tests the connection. When asking the user to
+  `tools/capture.py --check` tests the connection; `--delay` and `--burst`
+  (continuous capture, keeps changed frames) are described in
+  `docs/CAPTURES.md`. When asking the user to
   set something up in the VM, remind them to release it with Ctrl+Alt+G
   before Alt+Tab: Alt+Tab is typed into the focused field otherwise (stray
   `^`), and the agent can't click in the VM (no absolute pointer device).

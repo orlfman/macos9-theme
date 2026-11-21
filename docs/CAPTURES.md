@@ -17,6 +17,16 @@ part is built. Measurements go to `docs/REFERENCE.md`; the files go to
   ```
 
   then switches to the VM and holds the button until the beep.
+- **States too short to time by hand** (a Finder copy's progress bar, an
+  animation): the user runs a burst, which captures every 0.1 s and keeps
+  each frame that changed as `<name>-001.png`, `-002`, ...:
+
+  ```bash
+  python3 -I /home/pieman/Files/Archive/projects/macos9-theme/tools/capture.py --delay 5 --burst 20 <name>
+  ```
+
+  then triggers the action in the VM during the burst. Afterwards the agent
+  keeps the useful frames and deletes the rest (with their INDEX lines).
 - **Menus and pop-ups stay open after one click** (Mac OS 8+ sticky
   menus): click to open, hover the item, Ctrl+Alt+G, and the agent
   captures. No `--delay` needed for open menus.
@@ -136,6 +146,9 @@ Use a Finder window (open the Mac OS hard disk) and a SimpleText window.
       comments field; check box; push button. Bonus: selected alias icon
       in the Finder (dark icon, white-on-black italic name), View menu
       dimmed.
+- [x] `dialog-get-info-inactive` (extra, 2026-11-20): an inactive Get Info
+      window (Applications folder) next to an active one: inactive pop-ups,
+      labels, and group box drawn dimmed, title bar without pinstripes.
 - [x] `dialog-about-this-computer`: Apple menu > About This Computer
       (memory bars). Done 2026-11-20: Lavender memory bars, a list with
       scroll bar, active window with close/zoom/collapse. Bonus: Apple
@@ -213,16 +226,22 @@ Smart Scrolling is on (both arrows at one end, proportional thumb).
 
 - [x] `scroll-vertical-active` (also in `disclosure-triangles.png`): Finder window with more items than fit,
       front window.
-- [ ] `scroll-vertical-inactive`: same window inactive (no thumb, no arrows
-      shown in Platinum?).
+- [x] `scroll-vertical-inactive`: same window inactive (no thumb, no arrows
+      shown in Platinum?). Done 2026-11-20: confirmed, an inactive window
+      with overflowing content shows a flat empty `#EEEEEE` bar, no scroll
+      box, no arrows. Active System Folder list alongside for comparison.
 - [x] `scroll-horizontal-active` (in `disclosure-triangles.png`): window wide enough content to need a
       horizontal bar.
 - [ ] `scroll-nothing-to-scroll`: active window where all content fits
       (empty track?).
-- [ ] `scroll-arrow-pressed`: hold the down arrow (delay).
-- [ ] `scroll-thumb-dragging`: drag the scroll box and hold (delay); is
-      there a ghost outline?
-- [ ] `scroll-track-pressed`: hold in the track (delay).
+- [x] `scroll-arrow-pressed`: hold the down arrow (delay). Done 2026-11-20
+      (System Folder): arrow box goes dark, glyph stays black.
+- [x] `scroll-thumb-dragging`: drag the scroll box and hold (delay); is
+      there a ghost outline? Done 2026-11-20: no ghost; the scroll box
+      darkens to `#6666CC` and the Finder list scrolls live. (Other apps
+      might not scroll live; the Finder does.)
+- [x] `scroll-track-pressed`: hold in the track (delay). Done 2026-11-20:
+      no visual change to the track or scroll box, only paging.
 - [x] `slider-states` (sliders with tick marks in
       `controls-general-controls.png`, a disabled one in
       `controls-memory.png`): sliders (Sound control panel volume, Mouse tracking
@@ -230,9 +249,18 @@ Smart Scrolling is on (both arrows at one end, proportional thumb).
 - [x] `slider-pressed`: drag a slider thumb and hold (delay). Done
       2026-11-20: the real thumb stays and darkens to `#6666CC`; a gray
       ghost thumb follows the pointer (no live tracking).
-- [ ] `progress-determinate`: copy a big file in the Finder (duplicate the
+- [~] `progress-copy-window` (burst, 2026-11-20): the Finder's "Copy to
+      the Desktop" window, visible for under 0.3 s when duplicating
+      Starcraft_BSNG.sit: collapse box only, empty progress bar (sunken
+      gray trough), Stop button, closed "Time remaining" triangle. The bar
+      never showed any fill; a longer copy is needed for a partly filled
+      one.
+- [x] `progress-determinate` (2026-11-20, burst while duplicating the
+      625 MB Starcraft zip: `progress-determinate-early`, `-40`, `-55`,
+      `-80`, and `-expanded` with the "Time remaining" details open): copy a big file in the Finder (duplicate the
       Toast or Starcraft archive), capture mid-copy.
-- [ ] `progress-indeterminate`: barber pole (start of a copy, "Preparing to
+- [x] `progress-indeterminate` (2026-11-20, burst during a Sherlock 2
+      search; two frames, `-a` and `-b`, 4 px apart in the animation): barber pole (start of a copy, "Preparing to
       copy", or Sherlock while searching).
 
 ## 5. Text, lists, tabs (A) — style
@@ -258,9 +286,10 @@ Smart Scrolling is on (both arrows at one end, proportional thumb).
 
 ## 6. Menus (B) — style + Plasma
 
-- [ ] `menubar-title-pressed`: a menu title held down in the menu bar
+- [x] `menubar-title-pressed` (in `menu-file-open.png`): a menu title held down in the menu bar
       (inverted title) with the menu open (delay).
-- [ ] `menu-file-open`: Finder File menu open: enabled and disabled items,
+- [x] `menu-file-open` (caught in the copy burst, 2026-11-20; no item
+      highlighted, pointer on Duplicate): Finder File menu open: enabled and disabled items,
       separators, ⌘ shortcuts.
 - [ ] `menu-item-highlight`: mouse over an item while the menu is held open
       (delay): Lavender highlight.

@@ -116,8 +116,40 @@ Two missed captures (radio, pop-up) were deleted and retaken. From
 a mixed check box is optional. Captures pushed to the reference repo
 (`ce910d1`, 41 captures).
 
-Next: recheck the Themes tab still says Mac OS Default after the Fonts edits,
-then CAPTURES.md group 4 (scroll bars, sliders, progress).
+Group 4 started: `scroll-vertical-inactive` (inactive windows hide the
+scroll box and arrows even when content overflows), `scroll-arrow-pressed`,
+`scroll-thumb-dragging` (scroll box one step darker, Finder scrolls live, no
+ghost), `scroll-track-pressed` (no visual change). Corrected REFERENCE.md:
+the normal scroll box is highlight `#CCCCFF` / fill `#9999FF` / shadow
+`#6666CC`; the earlier "fill `#CCCCFF`" came from the top row of a 16 px box.
+
+A Finder copy is too quick to capture by hand, so `tools/capture.py` got
+`--burst SECONDS` (and `--interval`, default 0.1 s): one QMP connection,
+PPM frames to a temp dir under `$XDG_RUNTIME_DIR`, consecutive identical
+frames dropped, the rest saved as `NAME-001.png`... with the same PNG check
+and INDEX lines. Refuses if `NAME-001.png` etc. exist; limits 0–120 s and
+≥ 0.02 s. Tested against throwaway QEMUs: 5 s burst while typing 5 keys
+into the console = 50 frames, 5 kept; a static 2 s burst = 1 kept; reuse
+and limits refused; no temp dirs left. Not yet run on the real VM.
+
+Burst mode worked on the real VM. Group 4 finished:
+
+- A small file copies too fast for the progress window to stay up
+  (`progress-copy-window.png`, empty bar, under 0.3 s); duplicating the
+  625 MB Starcraft zip gave a 35 s copy: `progress-determinate-early`,
+  `-40`, `-55`, `-80`, `-expanded`. The fill is a Lavender tube
+  (`#333399`→`#EEEEEE` center→`#000055`), the empty part a sunken
+  `#BBBBBB` trough.
+- Barber pole from a Sherlock 2 search (`progress-indeterminate-a/-b`):
+  diagonal 8 px Lavender / 8 px gray stripes, tube-shaded, moving 4 px
+  right per 0.2 s.
+- Bonus frames kept: `menu-file-open.png` (File menu with disabled items,
+  shortcuts, submenu arrows, pressed menu title) and
+  `dialog-get-info-inactive.png` (dimmed controls in an inactive window).
+- Bursts are pruned by hand: only the useful frames are kept (renamed),
+  the rest deleted with their INDEX lines.
+
+Next: commit; then CAPTURES.md group 5 (text, lists, tabs).
 
 ## 2026-11-19, Claude Code (Claude Opus 5.5) — project setup
 

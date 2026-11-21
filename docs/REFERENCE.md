@@ -75,8 +75,8 @@ Profiler list, active window). Measured; edges, bevels, and other states TBD.
 | List cell, sorted column | `#DDDDDD` | (500,322) |
 | List cell, other columns | `#EEEEEE` | (620,322) |
 | Scroll track (active) | `#AAAAAA` | (912,350) |
-| Scroll box fill (Lavender) | `#CCCCFF` | (912,423) |
-| Scroll box grip lines | `#333399` on `#CCCCFF`, 4 lines 1 px apart, `#9999FF` above and below | x=912, y=424–435 |
+| Scroll box (Lavender), normal | highlight `#CCCCFF` (top/left), fill `#9999FF`, shadow `#6666CC` (bottom/right), black frame | `disclosure-triangles.png` row y=250; `scroll-vertical-inactive.png` row y=330 (corrected 2026-11-20: (912,423) is the top highlight row of a 16 px box, not its fill) |
+| Scroll box grip | 4 dark `#333399` lines alternating with light `#CCCCFF` lines, centered on the box | x=912, y=426–433 |
 | List selection (highlight color "Purple") | `#CCCCFF` | `dialog-file-open.png` (780,341) |
 | List background (Standard File) | `#FFFFFF` | `dialog-file-open.png` (780,377) |
 
@@ -120,3 +120,13 @@ current item). Measured.
 | Radio button, disabled (off) | `controls-monitors.png` (731–745,404–418) | flat: only a `#888888` circle outline on `#DDDDDD`, no shading |
 | Bevel button, normal | `controls-monitors.png` (Color, column x=860, y=315–354) | rounded corners; black, `#DDDDDD`, `#FFFFFF` highlight, `#DDDDDD` fill, `#AAAAAA`, `#777777`, black |
 | Bevel button, selected (on) | `controls-monitors.png` (Monitor, column x=805) | same as a pressed push button: black, `#444444`, `#555555`, `#666666` fill, `#777777`, `#888888`, black; icon drawn dark on it |
+| Scroll bar track, active (vertical) | `scroll-vertical-inactive.png` (System Folder, row y=480, x=787–802) | 16 px wide: black, `#777777`, `#888888`, `#AAAAAA` ×10, `#BBBBBB`, `#CCCCCC`, black (sunken track) |
+| Scroll bar, inactive (scrollable content) | `scroll-vertical-inactive.png` (Applications, row y=400, x=1656–1671) | flat `#EEEEEE` with a `#555555` frame line; **no scroll box and no arrows** even though the content overflows |
+| Scroll arrow, pressed | `scroll-arrow-pressed.png` (System Folder down arrow, x=780–806, y=578–594) | column x=790: normal = black, `#FFFFFF`, `#DDDDDD` fill, `#BBBBBB`, black; pressed = black, `#555555`, `#777777` fill, `#999999`, black (same as the pressed check box); black arrow glyph unchanged; the two arrow boxes are stacked at the end of the bar (Smart Scrolling) |
+| Scroll box, dragging | `scroll-thumb-dragging.png` (System Folder, row y=380, x=787–803) | one step darker: highlight `#9999FF`, fill `#6666CC`, shadow `#333399` (normal `#CCCCFF` / `#9999FF` / `#6666CC`); **the Finder list scrolls live**, no ghost outline (unlike the slider) |
+| Scroll track, pressed | `scroll-track-pressed.png` (System Folder) | **no visible change**: track rows and scroll box look the same as unpressed; the list just pages |
+| Progress bar track, empty | `progress-copy-window.png` (column x=650, y=276–289) | 12 px between the outer lines: `#AAAAAA` (outer shadow above), black, `#888888`, `#BBBBBB` ×8, `#DDDDDD`, black, `#FFFFFF` (outer highlight below) — a sunken gray trough |
+| Menu bar title, pressed | `menu-file-open.png` ("File") | title highlighted `#333399` with white text while its menu is open (same as a menu item highlight) |
+| Progress bar, filled part | `progress-determinate-55.png` (column x=620, y=277–287) | a Lavender "tube", 10 px between black lines, top to bottom: `#333399`, `#6666CC`, `#9999FF`, `#CCCCFF`, `#EEEEEE` (center highlight), `#CCCCFF`, `#9999FF`, `#6666CC`, `#333399`, `#000055` |
+| Progress bar, end of fill | `progress-determinate-55.png` (row y=282, x=690–696) | the fill ends in `#CCCCFF`, `#333399`, `#000055`, black; the empty trough right after it starts with a `#555555`, `#888888` shadow before its `#BBBBBB` |
+| Barber pole (indeterminate progress) | `progress-indeterminate-a.png` / `-b.png` (Sherlock 2 "Searching…", bar at x≈1076–1175, y≈470–483) | diagonal stripes, 8 px Lavender + 8 px gray along a row (16 px period), each stripe tube-shaded top to bottom: gray `#555555`, `#777777`, `#AAAAAA`, `#BBBBBB`…; blue `#CCCCFF`, `#9999FF`, `#6666CC`, `#333399`, `#000088`, `#000055`; black frame. Moves **4 px to the right** between frames 0.2 s apart |
