@@ -11,7 +11,7 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | Component  | Folder(s)                 | Claimed by | Status      |
 |------------|---------------------------|------------|-------------|
 | shared     | docs, tools, dev, scripts | nobody     | docs set up |
-| reference  | reference/, docs/REFERENCE.md | nobody | not started |
+| reference  | reference/, docs/REFERENCE.md | nobody | capture tool works; first capture + menu bar measured |
 | colors     | colors/                   | nobody     | not started |
 | decoration | decoration/               | nobody     | not started |
 | style      | style/                    | nobody     | not started |
@@ -83,10 +83,13 @@ measurements.
 
 0. **Setup** (done 2026-11-19): AGENTS.md, PLAN.md, CHANGELOG.md, AUDIT.md,
    README.md, .gitignore, git repo + private GitHub repo orlfman/macos9-theme.
-1. **Reference.** Get a running Mac OS 9.2.2 (user supplies media; QEMU
-   `qemu-system-ppc -M mac99` or SheepShaver) and capture 1x screenshots of
-   every widget, window state, menu, and the Finder into `reference/`.
-   Measure into `docs/REFERENCE.md`. Without this, no theme work starts.
+1. **Reference.** Mac OS 9.2.2 runs in QEMU (user set it up 2026-11-19, see
+   AGENTS.md "The reference VM"); `tools/capture.py` takes lossless 1x
+   captures (tested 2026-11-20 against a throwaway QEMU). Next: relaunch the
+   VM with a QMP socket, confirm the Appearance control panel is at defaults,
+   then capture every widget, window state, menu, and the Finder into
+   `reference/` and measure into `docs/REFERENCE.md`. Without this, no theme
+   work starts.
 2. **Sandbox.** Port windows2000-union's `dev/` tooling (sandbox, offscreen
    gallery, nested KWin, screenshot scripts) and add a screenshot comparison
    tool. Settle decision 1 (scale).

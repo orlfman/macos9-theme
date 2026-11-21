@@ -160,6 +160,20 @@ auditing doesn't give you the right to edit a component you haven't claimed.
   `docs/REFERENCE.md`, and every entry there names its source (reference
   screenshot and pixel position, or documented Apple value) and confidence. An
   unmeasured value stays marked `TBD` until measured.
+- **The reference VM** (set up by the user 2026-11-19, outside this repo):
+  `/mnt/storage1/local/VM/mac-os-9/`, launcher `mac9` (passes extra
+  arguments to QEMU), disk `system.qcow2`, install ISO next to it, QEMU 9.1
+  "screamer" fork in `screamer/` (mac99, G4, 512 MB, GTK display). The VM
+  belongs to the user: don't edit the launcher, disk, or fork, and don't
+  start or stop the VM without asking (only one QEMU can use the disk).
+- **Captures**: the VM must run with a QMP socket. The user's launch command
+  for that is `/mnt/storage1/local/VM/mac-os-9/mac9 -boot c -qmp
+  unix:$XDG_RUNTIME_DIR/mac9-qmp.sock,server=on,wait=off`. Then
+  `tools/capture.py <name>` saves the guest framebuffer (1x, unscaled, from
+  QEMU's own PPM dump, converted to PNG and checked pixel for pixel) as
+  `reference/<name>.png` and logs it in `reference/INDEX.tsv`. Never use
+  desktop screenshots of the QEMU window: they are scaled.
+  `tools/capture.py --check` tests the connection.
 - Compare results against the reference with screenshots at the same scale,
   not by eye alone (`tools/` will hold the comparison script). Record the
   comparison in `AUDIT.md`.
