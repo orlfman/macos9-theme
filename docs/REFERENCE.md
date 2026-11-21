@@ -60,3 +60,20 @@ Column x=700 of `desktop-first-check.png`, top to bottom:
 
 Total height 20 px. Confidence: measured (one column; corners, rounded
 screen corners, and the menu title highlight are TBD).
+
+## Lists and scroll bars (first samples)
+
+Single pixels from `list-view-profiler-applications.png` (Apple System
+Profiler list, active window). Measured; edges, bevels, and other states TBD.
+
+| What | Value | Pixel |
+|------|-------|-------|
+| List header, sorted column | `#888888` | (450,297) |
+| List header, other columns | `#CCCCCC` | (560,297) |
+| List cell, sorted column | `#DDDDDD` | (500,322) |
+| List cell, other columns | `#EEEEEE` | (620,322) |
+| Scroll track (active) | `#AAAAAA` | (912,350) |
+| Scroll box fill (Lavender) | `#CCCCFF` | (912,423) |
+| Scroll box grip lines | `#333399` on `#CCCCFF`, 4 lines 1 px apart, `#9999FF` above and below | x=912, y=424–435 |
+| List selection (highlight color "Purple") | `#CCCCFF` | `dialog-file-open.png` (780,341) |
+| List background (Standard File) | `#FFFFFF` | `dialog-file-open.png` (780,377) |

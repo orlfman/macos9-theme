@@ -91,17 +91,60 @@ Use a Finder window (open the Mac OS hard disk) and a SimpleText window.
 
 ## 2. Dialogs and alerts (A) — decoration + style
 
-- [ ] `dialog-modal-alert`: Special > Empty Trash with something in the
-      Trash ("are you sure" alert: caution icon, default + cancel buttons).
-- [ ] `dialog-movable-modal`: a movable modal dialog with a title bar (e.g.
+- [x] `dialog-save-changes`: SimpleText "Save changes … before closing?"
+      alert. Done 2026-11-20: movable alert (pinstriped strip, no title),
+      caution icon, Don't Save / Cancel / Save with the default ring on
+      Save; menu titles dimmed except Help while it's up.
+- [x] `dialog-save-as-standard-file`: SimpleText Save As, the classic
+      Standard File dialog (folder pop-up, list with dimmed entries,
+      Eject / Desktop / New, name field, format radio buttons). Done
+      2026-11-20 (caught by accident; Navigation Services dialogs are
+      still `dialog-file-open`).
+- [x] `dialog-modal-alert`: Special > Empty Trash with something in the
+      Trash. Done 2026-11-20: same movable-alert shape as
+      `dialog-save-changes`, but the top strip is **red-tinted**: where the
+      SimpleText alert has `#CCCCCC` / `#777777` / `#999999`, this one has
+      `#FFCCCC` / `#FF6666` / `#FF9999` (same values with red forced to
+      `FF`). Consistent and exact, so probably deliberate (a "danger"
+      strip for irreversible actions?), but unconfirmed: compare with a
+      screenshot from real hardware before relying on it. Bonus: full
+      Trash icon, Apple menu icon dimmed while the alert is up.
+- [x] `dialog-movable-modal`: a movable modal dialog with a title bar (e.g.
       SimpleText File > Save As, or Finder File > Get Info if it shows as
-      one).
-- [ ] `dialog-file-open`: SimpleText File > Open (Navigation Services
-      dialog: list, pop-up, buttons).
-- [ ] `dialog-get-info`: Finder File > Get Info on a file (Platinum
-      window with pop-up, check boxes, text).
-- [ ] `dialog-about-this-computer`: Apple menu > About This Computer
-      (memory bars).
+      one). Done 2026-11-20 with SimpleText Edit > Find: pinstriped drag
+      strip without a title (same frame as `dialog-save-changes`), text
+      field **without** a focus ring (classic Dialog Manager field), two
+      check boxes, Cancel + default Find. The field reads "apple pie^": the
+      `^` is the Alt+Tab artifact again; harmless for measuring.
+- [x] `dialog-file-open`: SimpleText File > Open (Navigation Services
+      dialog: list, pop-up, buttons). Done 2026-11-20: SimpleText uses the
+      classic Standard File dialog with a QuickTime preview pane, not
+      Navigation Services: plain modal frame (no title bar), folder pop-up,
+      list in the large font with the selected row highlighted, Lavender
+      scroll box, disabled Eject and Create buttons, default ring on Open,
+      Show Preview check box. A Navigation Services dialog is still
+      wanted (another app's Open).
+- [x] `dialog-get-info`: Finder File > Get Info on a file (Platinum
+      window with pop-up, check boxes, text). Done 2026-11-20 (Late
+      Breaking News, an alias): close + collapse boxes but no zoom box;
+      name field with selected text (highlight color); "Show:" pop-up in
+      the large font and a smaller "Label:" pop-up; group box; empty
+      comments field; check box; push button. Bonus: selected alias icon
+      in the Finder (dark icon, white-on-black italic name), View menu
+      dimmed.
+- [x] `dialog-about-this-computer`: Apple menu > About This Computer
+      (memory bars). Done 2026-11-20: Lavender memory bars, a list with
+      scroll bar, active window with close/zoom/collapse. Bonus: Apple
+      System Profiler behind it, inactive: a row of small tabs, open and
+      closed disclosure triangles, group boxes with the title on the frame
+      line, and inactive scroll bars.
+
+- [x] `list-view-profiler-applications` (extra, the user's idea): Apple
+      System Profiler, Applications tab, active. Sorted column header and
+      cells darker, active vertical scroll bar with the Lavender scroll box
+      and grip, horizontal bar, small tabs, two-pane info area. Counts
+      toward `list-view-header` and `scroll-vertical-active`; the Finder
+      versions are still wanted.
 
 ## 3. Buttons and toggles (A) — style
 

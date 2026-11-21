@@ -73,8 +73,26 @@ At the user's request, `reference/` became its own git repo, pushed to the
 .gitignore for capture.py's temp PPMs). This repo keeps ignoring
 `reference/`. AGENTS.md says how to clone it and when to push captures.
 
+Group 2 (dialogs and alerts) finished: 8 captures plus the user's extra
+System Profiler list shot (`list-view-profiler-applications.png`). Findings:
+
+- Alerts and movable modals share a frame with a pinstriped drag strip and
+  no title. The Finder's Empty Trash alert has a **red-tinted** strip
+  (`#FFCCCC`/`#FF6666`/`#FF9999` instead of `#CCCCCC`/`#777777`/
+  `#999999`); unconfirmed, check against real hardware.
+- SimpleText uses the classic Standard File Open and Save As dialogs (plain
+  modal frame, no title bar); a Navigation Services dialog is still to get.
+- Get Info windows have no zoom box. Classic Dialog Manager text fields
+  (SimpleText Find) have no focus ring; Appearance-aware ones do.
+- First list and scroll bar values went into REFERENCE.md: Purple
+  selection `#CCCCFF`, active track `#AAAAAA`, Lavender scroll box
+  `#CCCCFF` with `#333399` grip lines, sorted column header `#888888`.
+- Renamed two captures: the accidental Save As shot is
+  `dialog-save-as-standard-file.png`, the user's extra shot is
+  `list-view-profiler-applications.png` (INDEX.tsv updated).
+
 Next: recheck the Themes tab still says Mac OS Default after the Fonts edits,
-then CAPTURES.md group 2 (dialogs and alerts).
+then CAPTURES.md group 3 (buttons and toggles).
 
 ## 2026-11-19, Claude Code (Claude Opus 5.5) — project setup
 
