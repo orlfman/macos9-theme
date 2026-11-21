@@ -13,8 +13,8 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | shared     | docs, tools, dev, scripts | nobody     | dev/ sandbox + tools/compare.py done (step 2) |
 | reference  | reference/, docs/REFERENCE.md | nobody | capture pass done (81 captures, CAPTURES.md); measurements partial |
 | colors     | colors/                   | nobody     | not started |
-| decoration | decoration/               | nobody     | not started |
-| style      | style/                    | nobody     | not started |
+| decoration | decoration/               | nobody     | engine decided: C++ KDecoration3 |
+| style      | style/                    | nobody     | engine decided: C++ QStyle |
 | plasma     | plasma/                   | nobody     | not started |
 | icons      | icons/                    | nobody     | not started |
 | cursors    | cursors/                  | nobody     | not started |
@@ -43,13 +43,18 @@ Open decisions need the user. Record the answer here with the date.
    options considered: Plasma 200%, a fixed 2x theme at 100%, a build-time
    multiplier.
 2. **Application style engine.** Union can't draw scroll bar arrows or two
-   bevel layers in Qt Widgets (windows2000-union findings, recheck on 6.8.3).
-   Options: Union style (supported, limited), a C++ QStyle (full control, more
-   work, must follow Plasma/Qt updates), or Union now and C++ later.
-   Kvantum is another candidate to evaluate. *Open; a spike in step 3 decides.*
-3. **Decoration engine.** C++ KDecoration3 (like windows2000-union, exact
-   pixels, collapse = window shade) vs Aurorae SVG (simpler, less control).
-   *Leaning C++, open.*
+   bevel layers in Qt Widgets. **Step 3 spike (2026-11-20, see
+   docs/FINDINGS.md):** Union gives scroll bar arrows zero size on 6.8.3;
+   a C++ QStyle drew the Platinum scroll bar pixel exact in two captured
+   cases. **Recommended: a C++ QStyle** (Qt Widgets; Qt Quick / Kirigami
+   apps would get it through KDE's qqc2-desktop-style, to verify). Kvantum
+   not evaluated (not installed). **Decided 2026-11-20 (user): C++ QStyle.**
+3. **Decoration engine.** **Step 3 spike:** Aurorae draws the title as
+   elided text over a fixed SVG, so it can't stop pinstripes around the
+   title, condense it, or drop it; a C++ QPainter title bar matched the
+   captures pixel exact in two window widths (title text excluded).
+   **Recommended: C++ KDecoration3**, like windows2000-union. **Decided
+   2026-11-20 (user): C++ KDecoration3.**
 4. **Name and IDs.** Neutral installable IDs without "Apple"/"Mac OS".
    *Open.*
 5. **Fonts.** Charcoal (system) and Geneva (small) can't ship. Find the
@@ -106,6 +111,7 @@ measurements.
    `docs/DEVELOPMENT.md`); decoration test tools come with the decoration.
 3. **Spikes.** Decide the style engine (decision 2) and decoration engine
    (decision 3) by drawing one scroll bar and one title bar each way.
+   **Done 2026-11-20** (`spikes/`, docs/FINDINGS.md); both point to C++.
 4. **colors** → **decoration** → **style** (the bulk of the look).
 5. **plasma**: menu bar layout, Plasma style, look-and-feel package.
 6. **icons**, **cursors**, fonts.

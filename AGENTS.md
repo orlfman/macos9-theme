@@ -20,9 +20,10 @@ in `PLAN.md`):
 
 - Color scheme (`.colors`)
 - Window decoration (Platinum title bar: pinstripes, close box left, zoom and
-  collapse boxes right)
+  collapse boxes right): a C++ KDecoration3 plugin (decided 2026-11-20)
 - Application style for Qt Widgets and Qt Quick apps (Platinum buttons,
-  scroll bars with arrows, tabs, check boxes, etc.)
+  scroll bars with arrows, tabs, check boxes, etc.): a C++ QStyle (decided
+  2026-11-20; Union and Aurorae can't do it, see docs/FINDINGS.md)
 - Plasma style + layout: top menu bar (Apple-menu stand-in, global menu, clock,
   application menu on the right); optional Control Strip-like panel
 - Icons, cursors, fonts (substitutes), wallpaper
@@ -61,6 +62,7 @@ style/       application style (Union style or C++ QStyle, see PLAN.md)
 plasma/      Plasma style (desktoptheme), look-and-feel package, layout script
 icons/  cursors/  wallpapers/  gtk/  extras/ (konsole, alacritty, kitty, ...)
 dev/         sandbox and screenshot tooling, builds go in dev/build (ignored)
+spikes/      throwaway experiments that settled a decision (docs/FINDINGS.md)
 tools/       checkers and generators
 packaging/   later: PKGBUILD
 install.sh  uninstall.sh   later: user-scope install and full undo

@@ -2,6 +2,35 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-20, Claude Code (Claude Opus 5.5) — step 3 spikes: style and decoration engines
+
+Claimed `style` and `decoration` for the spikes, released at the end.
+Details and numbers in the new `docs/FINDINGS.md`.
+
+- `spikes/scrollbar/probe.cpp`: Union 6.8.3 gives a scroll bar's arrow,
+  groove and page areas 0×0 (Qt Windows/Fusion give 16×16 arrows), so
+  Union can't draw Platinum scroll arrows.
+- `spikes/scrollbar/platinum.cpp`: a C++ QProxyStyle (over Fusion) drawing
+  a vertical Platinum scroll bar from the measured values. After three
+  fixes (thumb shadow start, grip `#EEEEEE` pixels, track starting below
+  the bar's top edge) it matches two captures pixel exact: 0 of 5536 px
+  (System Folder, thumb at top) and 0 of 5152 px (Applications, thumb
+  partway down).
+- Aurorae (read in `/usr/share/kwin/aurorae/aurorae.qml`): the title is
+  elided `Text` over a fixed FrameSvg, so no pinstripe gap around the
+  title, no condensing, no dropping.
+- `spikes/titlebar/titlebar.cpp`: a QPainter Platinum title bar (frame,
+  drop shadow, three boxes with their gradient and glyphs, etched
+  pinstripes); first try pixel exact on both sides of the title in the
+  417 px Mac OS window (0 of 6940 px) and in the 289 px long-title window
+  (0 of 920 px left; 2 of 980 px right, both in the drop-shadow corner
+  where the window behind shows).
+
+PLAN.md decisions 2 and 3: the user approved C++ for both (C++ QStyle,
+C++ KDecoration3), same day. Not checked: pressed/inactive states in the spikes, horizontal bars,
+title text, real KDecoration3 plugin, Qt Quick apps through
+qqc2-desktop-style, Kvantum (not installed).
+
 ## 2026-11-20, Claude Code (Claude Opus 5.5) — step 2: sandbox, compare tool, scale
 
 Claimed `shared` for PLAN step 2, released at the end.
