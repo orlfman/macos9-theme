@@ -55,6 +55,22 @@ windows (or any app) screenshotted by Spectacle. `M9_STYLE`, `M9_DECORATION`
 `VT_MAXIMIZED=1` for a maximized window. When `decoration/build/plugins`
 exists, it's on `QT_PLUGIN_PATH`.
 
+### Trying it by hand
+
+```bash
+dev/live-test.sh
+```
+
+Opens a nested KWin as a normal window on the user's desktop (windowed
+Wayland backend, 1600×1000 at 1x, `M9_SIZE` to change) with the Platinum
+decoration, style and colors, sandboxed like `run.sh` (own XDG folders,
+private D-Bus, nothing installed). It rebuilds the style, the decoration
+and `dev/build/livedemo` (every themed control, plus a "Not Themed Yet"
+tab), then starts the demo, Dolphin and Kate, or the commands given as
+arguments. Closing the apps or the nested KWin window ends it; the log is
+`dev/build/live-test.log`. Agents can't screenshot inside it (its D-Bus is
+private), so it's for the user's eyes.
+
 ## The window decoration
 
 ```bash

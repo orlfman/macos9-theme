@@ -30,6 +30,7 @@
 #include <QProgressBar>
 #include <QPushButton>
 #include <QTabBar>
+#include <QTabWidget>
 #include <QTimer>
 #include <QStyleFactory>
 #include <QStyleOption>
@@ -295,6 +296,14 @@ bool isNorth(QTabBar::Shape shape)
     return shape == QTabBar::RoundedNorth || shape == QTabBar::TriangularNorth;
 }
 
+// The pane under a north tab bar: from the tab bar's last 3 rows down.
+QRect tabPane(const QStyleOptionTabWidgetFrame *tw)
+{
+    QRect r = tw->rect;
+    r.setTop(r.top() + tw->tabBarSize.height() - TabPaneOverlap);
+    return r;
+}
+
 // One tab, row by row from the measured edges (tabs.h): background, slanted
 // left edge, fill, slanted right edge. The last 3 rows lie on the pane's top
 // edge; a normal tab repeats it there, the current one opens into the pane.
@@ -359,6 +368,7 @@ int Style::pixelMetric(PixelMetric metric, const QStyleOption *option, const QWi
         return TabPaneOverlap;
     case PM_TabBarTabHSpace:
         return 2 * TabTextPadding;
+    case PM_TabBarTabVSpace: // the height is fixed (CT_TabBarTab); no padding in the label layout
     case PM_TabBarTabOverlap:
     case PM_TabBarTabShiftHorizontal:
     case PM_TabBarTabShiftVertical:
@@ -425,6 +435,13 @@ QRect Style::subElementRect(SubElement element, const QStyleOption *option, cons
             r.translate(TabInset, 0);
             r.setRight(std::min(r.right(), tw->rect.right() - TabInset));
             return r;
+        }
+        break;
+    case SE_TabWidgetTabPane:
+        // Also in document mode, where Qt would leave out the overlap: the
+        // pane is drawn there too (eventFilter).
+        if (const auto *tw = qstyleoption_cast<const QStyleOptionTabWidgetFrame *>(option); tw && isNorth(tw->shape)) {
+            return tabPane(tw);
         }
         break;
     case SE_TabWidgetTabContents:
@@ -682,20 +699,30 @@ void Style::drawControl(ControlElement element, const QStyleOption *option, QPai
         }
         break;
     case CE_TabBarTabLabel:
-        if (const auto *tab = qstyleoption_cast<const QStyleOptionTab *>(option);
-            tab && isNorth(tab->shape) && tab->icon.isNull()) {
+        if (const auto *tab = qstyleoption_cast<const QStyleOptionTab *>(option); tab && isNorth(tab->shape)) {
             // Centered in the tab's 20 rows below its top line; black, white
             // on the pressed tab.
             const bool enabled = tab->state & State_Enabled;
             const bool pressed = enabled && (tab->state & State_Sunken) && !(tab->state & State_Selected);
-            QPalette pal = tab->palette;
-            pal.setColor(QPalette::WindowText, !enabled ? DisabledText : pressed ? White : Black);
-            int flags = Qt::AlignCenter | Qt::TextShowMnemonic;
-            if (!proxy()->styleHint(SH_UnderlineShortcut, option, widget)) {
-                flags |= Qt::TextHideMnemonic;
+            const QColor color = !enabled ? DisabledText : pressed ? White : Black;
+            const QRect area(tab->rect.x(), tab->rect.y() + 1, tab->rect.width(), TabHeight - TabPaneOverlap - 1);
+            if (tab->icon.isNull()) {
+                QPalette pal = tab->palette;
+                pal.setColor(QPalette::WindowText, color);
+                int flags = Qt::AlignCenter | Qt::TextShowMnemonic;
+                if (!proxy()->styleHint(SH_UnderlineShortcut, option, widget)) {
+                    flags |= Qt::TextHideMnemonic;
+                }
+                proxy()->drawItemText(painter, area, flags, pal, true, tab->text, QPalette::WindowText);
+            } else {
+                // Icon tabs (KDE settings pages): Qt's icon + text layout,
+                // in the same area and color.
+                QStyleOptionTab label(*tab);
+                label.rect = area;
+                label.palette.setColor(QPalette::WindowText, color);
+                label.palette.setColor(QPalette::Disabled, QPalette::WindowText, color);
+                QProxyStyle::drawControl(element, &label, painter, widget);
             }
-            const QRect text(tab->rect.x(), tab->rect.y() + 1, tab->rect.width(), TabHeight - TabPaneOverlap - 1);
-            proxy()->drawItemText(painter, text, flags, pal, true, tab->text, QPalette::WindowText);
             return;
         }
         break;
@@ -801,9 +828,36 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption *option, 
     QProxyStyle::drawPrimitive(element, option, painter, widget);
 }
 
+bool Style::eventFilter(QObject *object, QEvent *event)
+{
+    // Document-mode tab widgets (KDE settings pages use them) get no pane
+    // from Qt, which leaves the tabs' pane rows and the current tab's
+    // #EEEEEE opening loose over the window. Mac OS 9 tabs always sit on a
+    // pane, so draw it there too.
+    if (event->type() == QEvent::Paint) {
+        if (auto *tw = qobject_cast<QTabWidget *>(object); tw && tw->documentMode() && tw->tabPosition() == QTabWidget::North) {
+            QStyleOptionTabWidgetFrame o;
+            o.initFrom(tw);
+            o.shape = tw->tabShape() == QTabWidget::Triangular ? QTabBar::TriangularNorth : QTabBar::RoundedNorth;
+            o.tabBarSize = tw->tabBar()->isVisibleTo(tw) ? tw->tabBar()->sizeHint() : QSize();
+            o.tabBarSize.setHeight(tw->tabBar()->isVisibleTo(tw) ? tw->tabBar()->height() : TabPaneOverlap);
+            o.rect = tw->rect();
+            QPainter p(tw);
+            QStyleOptionTabWidgetFrame pane(o);
+            pane.rect = tabPane(&o);
+            proxy()->drawPrimitive(PE_FrameTabWidget, &pane, &p, tw);
+            return true;
+        }
+    }
+    return QProxyStyle::eventFilter(object, event);
+}
+
 void Style::polish(QWidget *widget)
 {
     QProxyStyle::polish(widget);
+    if (qobject_cast<QTabWidget *>(widget)) {
+        widget->installEventFilter(this);
+    }
     // Busy progress bars need repaints to move the barber pole.
     if (auto *bar = qobject_cast<QProgressBar *>(widget)) {
         auto *timer = new QTimer(bar);
@@ -820,6 +874,9 @@ void Style::polish(QWidget *widget)
 
 void Style::unpolish(QWidget *widget)
 {
+    if (qobject_cast<QTabWidget *>(widget)) {
+        widget->removeEventFilter(this);
+    }
     if (auto *bar = qobject_cast<QProgressBar *>(widget)) {
         delete bar->findChild<QTimer *>(QStringLiteral("platinum-barber-pole"), Qt::FindDirectChildrenOnly);
     }

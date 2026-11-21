@@ -2,6 +2,31 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — live test script, document-mode tabs
+
+- `dev/live-test.sh` + `dev/live-session.sh` + `dev/livedemo.cpp`: the
+  theme on the user's own desktop for trying by hand: a windowed nested
+  KWin (sandboxed config, private D-Bus, nothing installed) with the
+  Platinum decoration, style and colors, running an interactive demo of
+  every themed control, Dolphin and Kate. Documented in
+  `docs/DEVELOPMENT.md`.
+- First live test by the user: two findings (AUDIT.md 1-2).
+- Style fix (finding 1): document-mode tab widgets (KDE settings pages)
+  now get the Platinum pane; Qt draws none there, which left a white seam
+  under the tabs. The pane rect is computed the same way in both modes.
+  Icon tabs use the Platinum label area and colors (were Fusion's, text
+  clipped); `PM_TabBarTabVSpace` = 0.
+- Finding 2 (Fusion's frame around a checked menu item's icon, touching
+  the menu border) waits for the menu batch.
+
+Checks: `dev/check-style.sh` 78 of 78; document mode renders identical to
+normal mode offscreen. Not yet seen by the user after the fix.
+
+Next (user's call, asked 2026-11-21): the menu batch (finding 2,
+`menu-view-checked.png`, `menu-file-open.png`, `menu-submenu.png`,
+`popup-open.png`) or text fields + focus ring first. Also open: how
+standalone document-mode tab bars (Dolphin/Kate document tabs) should look.
+
 ## 2026-11-20, Claude Code (Claude Opus 5.5) — step 4: application style, batch 3 (tabs)
 
 Claimed `style` (and `shared` for the tools/dev/docs edits), released at

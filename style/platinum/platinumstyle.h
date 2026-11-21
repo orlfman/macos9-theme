@@ -62,6 +62,7 @@ public:
     int styleHint(StyleHint hint, const QStyleOption *option, const QWidget *widget, QStyleHintReturn *returnData) const override;
     void polish(QWidget *widget) override;
     void unpolish(QWidget *widget) override;
+    bool eventFilter(QObject *object, QEvent *event) override;
     using QProxyStyle::polish;
     using QProxyStyle::unpolish;
 

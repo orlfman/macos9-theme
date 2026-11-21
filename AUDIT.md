@@ -3,7 +3,52 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: four checks so far (decoration, style batches 1-3; 2026-11-20). Open findings: none.
+Status: five checks so far (decoration, style batches 1-3, first live test; 2026-11-21). Open findings: 2 (P3, menus: Fusion until the menu batch).
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — first live test (user), findings 1-2
+
+Audited: the user ran `dev/live-test.sh` (nested KWin window on their
+desktop, Platinum decoration + style + colors) with Dolphin, Kate and the
+demo, at commit c2e581f plus the uncommitted test scripts.
+
+### Findings
+
+1. **P2, fixed (working tree, 2026-11-21): tabs without a pane in document
+   mode.** Dolphin's settings (`dolphin-settings-tab-lines-seam.png` in the
+   user's `~/Pictures/Screenshots/testing/`) use a document-mode
+   `QTabWidget`, for which Qt draws no pane: the tabs' pane rows (black,
+   `#CCCCCC`, white) and the current tab's `#EEEEEE` opening ended loose
+   over the `#DDDDDD` window, a white seam under the tabs. Reference:
+   Mac OS 9 tabs always sit on a pane (`appearance-1-themes.png`, REFERENCE
+   "Tab pane"). Fix: the style draws the Platinum pane for document-mode
+   tab widgets too (event filter on their paint event) and puts the pane
+   rect under the tab bar's last 3 rows in both modes. Verified: a
+   document-mode tab widget now renders pixel-identical to a normal one
+   (offscreen). Also found there: tabs with icons fell back to Fusion's
+   label (no white label when pressed, text 3 px low and clipped once the
+   padding was right); they now use the Platinum label area and colors
+   with Qt's icon + text layout, and `PM_TabBarTabVSpace` is 0.
+2. **P3, open (menu batch): checked menu items with an icon.** Dolphin's
+   view-mode menu (`dolphin-menu-icon-selected-close-to-border.png`): the
+   checked first item gets Fusion's sunken frame around its icon, touching
+   the menu's top border. Reference: `menu-view-checked.png` (Mac OS 9 marks
+   checked items with a check mark, no icon frame). Menus are still Fusion;
+   fix with the menu batch (item metrics, check marks, `#333399` highlight).
+
+### Checks
+
+`dev/check-style.sh`: 78 of 78 regions pixel exact after the fix.
+Document-mode vs normal tab widget render: identical. Icon tabs in
+document mode, pressed: label centered like plain tabs, white on the
+pressed tab (looked at 2x, not diffed: no capture of icon tabs).
+
+### Limits
+
+The fix itself was checked offscreen only; the user hasn't rerun the live
+test since. Standalone document-mode tab bars (Dolphin's and Kate's own
+document tabs, no `QTabWidget`) still draw the pane rows under the tabs
+with no pane below: Mac OS 9 had no document tabs, so that look is still
+undecided. Tab scroll buttons are Fusion's.
 
 ## 2026-11-20, Claude Code (Claude Opus 5.5) — style batch 3 fidelity check (tabs)
 
