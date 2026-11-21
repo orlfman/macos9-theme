@@ -26,8 +26,18 @@ INDEX.tsv, and git ignores it as intended. Started `docs/REFERENCE.md` with
 the guest resolution, desktop base color `#63639C`, and the 20 px menu bar
 (1 px `#FFFFFF`, 17 px `#DDDDDD`, 1 px `#999999`, 1 px `#000000`).
 
-Next: confirm the Appearance control panel is at defaults, then plan the
-capture list (every widget and state) and start capturing.
+Then captured every tab of the Appearance control panel
+(`reference/appearance-1-themes.png` … `appearance-6-options.png`) and
+recorded the settings in `docs/REFERENCE.md`: Mac OS Default theme, Apple
+platinum, Purple highlight, Lavender variation, Charcoal / Geneva / Geneva
+10, smoothing from 12 pt, Mac OS Default pattern, Platinum Sounds, Smart
+Scrolling on, double-click collapse off. Alt+Tab out of the VM typed `^` into
+the focused size box twice; the user retyped 10 and 12, and
+`appearance-3-fonts-clean.png` is the clean Fonts capture. Release the VM
+with Ctrl+Alt+G before switching away.
+
+Next: recheck the Themes tab still says Mac OS Default after the Fonts edits,
+then plan the capture list (every widget and state) and start capturing.
 
 ## 2026-11-19, Claude Code (Claude Opus 5.5) — project setup
 

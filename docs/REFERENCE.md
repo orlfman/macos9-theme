@@ -13,9 +13,33 @@ Confidence: **measured** = read from a capture at the given pixels;
 
 - Guest resolution: 1440×1050, millions of colors (24-bit RGB in the dump).
   Source: `desktop-first-check.png` (2026-11-20). Measured.
-- Appearance control panel not yet confirmed at defaults (theme, highlight
-  and accent colors, fonts, smoothing). Until it is, treat colors below as
-  provisional.
+- Appearance control panel (captured 2026-11-20, one capture per tab):
+
+| Tab | Setting | Value | Capture |
+|-----|---------|-------|---------|
+| Themes | Current theme | Mac OS Default (Save Theme… disabled = unmodified) | `appearance-1-themes.png` |
+| Appearance | Appearance | Apple platinum | `appearance-2-appearance.png` |
+| Appearance | Highlight color (selected text) | Purple | same |
+| Appearance | Variation (menus and controls) | Lavender | same |
+| Fonts | Large system font (menus, headings) | Charcoal | `appearance-3-fonts-clean.png` |
+| Fonts | Small system font (labels) | Geneva | same |
+| Fonts | Views font (lists, icons) | Geneva 10 | same |
+| Fonts | Smooth all fonts on screen | on, for 12 pt and larger | same |
+| Desktop | Pattern | Mac OS Default, 128×128 tile | `appearance-4-desktop.png` |
+| Desktop | Picture | None | same |
+| Sound | Sound track | Platinum Sounds; menus, windows, controls, Finder all on | `appearance-5-sound.png` |
+| Options | Smart Scrolling | **on**: both arrows at the bottom/right end, proportional scroll box | `appearance-6-options.png` |
+| Options | Double-click title bar to collapse | off | same |
+
+  Smart Scrolling on is taken as part of the Mac OS Default theme because
+  the Themes tab showed the theme unmodified (inferred; recheck the Themes
+  tab still says Mac OS Default after the Fonts-tab edits below).
+
+  Not clean: `appearance-3-fonts.png` and `appearance-3-fonts-fixed.png`
+  have a stray `^` in a size box (Alt+Tab out of the VM types into the
+  focused field; release the VM with Ctrl+Alt+G first). The Views size was
+  retyped as 10 and the smoothing size as 12 before the clean capture. Both
+  flawed captures still show the lavender focus ring on a text field.
 
 ## Desktop
 
