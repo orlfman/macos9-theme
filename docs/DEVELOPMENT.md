@@ -83,6 +83,34 @@ button layout, no shadow, 1 px smaller). With `M9_DECORATION=platinum`,
 "Mac OS". The nested KWin's background is black, so the black drop shadow
 doesn't show there.
 
+## The application style
+
+```bash
+style/build.sh
+```
+
+```bash
+dev/check-style.sh
+```
+
+```bash
+QSTYLE=Platinum dev/run.sh platinum breeze dev/build/gallery dev/shots/platinum-widgets.png
+```
+
+`style/build.sh` builds the C++ Qt style into
+`style/build/plugins/styles/platinumstyle.so` (no install); `dev/run.sh` puts
+it on `QT_PLUGIN_PATH`, and `QSTYLE=Platinum` selects it.
+`dev/check-style.sh` renders every state with `dev/styleshot` through the
+style's own draw calls, at the captures' sizes, and diffs each captured one
+with its reference (push buttons on their edge bands, since labels need
+Charcoal; regions the captures' pointer covers are left out). It exits 1 on
+any difference.
+
+The bevelled parts are data measured from the captures:
+`tools/gen-style-data.sh` regenerates `style/platinum/slices.h` (9-slices,
+via `tools/nineslice.py`) and `style/platinum/sprites.h` (fixed-size parts,
+via `tools/sprite.py`). It needs `reference/`.
+
 ## Measure and compare
 
 `tools/compare.py` works on reference captures and sandbox renders alike.

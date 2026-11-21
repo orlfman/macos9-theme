@@ -14,7 +14,7 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | reference  | reference/, docs/REFERENCE.md | nobody | capture pass done (81 captures, CAPTURES.md); measurements partial |
 | colors     | colors/                   | nobody     | Platinum.colors done (sandbox-checked) |
 | decoration | decoration/               | nobody     | plugin works in nested KWin; frame pixel exact (AUDIT.md) |
-| style      | style/                    | nobody     | engine decided: C++ QStyle |
+| style      | style/                    | nobody     | batch 1 done: scroll bars, push buttons, check boxes, radios (pixel exact); rest still Fusion |
 | plasma     | plasma/                   | nobody     | not started |
 | icons      | icons/                    | nobody     | not started |
 | cursors    | cursors/                  | nobody     | not started |
@@ -123,5 +123,10 @@ measurements.
 
 - Which Mac OS 9.2.2 media/emulator does the user have?
 - Include Mac OS 9 sound set equivalents? (Can't ship Apple sounds.)
+- Before going public: the style's check box and radio sprites and button
+  corners (`style/platinum/sprites.h`, `slices.h`) are measured pixel by
+  pixel from the captures. They're tiny generic UI shapes, but redrawing
+  the check mark and radio dot by hand is the safe choice for a public
+  release.
 - Window shade (collapse) vs minimize: KWin supports shading; check that the
   collapse box can trigger it and how it looks.

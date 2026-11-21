@@ -3,7 +3,41 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: one check so far (decoration fidelity, 2026-11-20). Open findings: none.
+Status: two checks so far (decoration, style batch 1; 2026-11-20). Open findings: none.
+
+## 2026-11-20, Claude Code (Claude Opus 5.5) — style batch 1 fidelity check
+
+Audited: `style/platinum/` (C++ Qt style), working tree before its first
+commit. Reference: the captures named in `dev/check-style.sh`; values in
+REFERENCE.md and FINDINGS.md.
+
+Findings: none open. Fixed during development: derived marks for uncaptured
+radio states first took the whole shading (now only black mark pixels);
+push button corner diffs turned out to be the white dialog behind the
+captures (the render now matches it); the default button's bottom band
+included the "p" of "Open" (now starts a row lower).
+
+### Checks
+
+`dev/check-style.sh`: 31 of 31 regions pixel exact (0 differing pixels each):
+push buttons normal / pressed / disabled / default / default pressed (four
+edge bands each), check box off / on / off pressed / on disabled, radio off
+/ on / off pressed / off disabled, vertical scroll bars with the thumb at
+the top and partway down, and the horizontal scroll bar (drawn by
+transposing the vertical one, exact on the first try). The style also
+renders the real widget gallery without warnings.
+
+### Limits
+
+- Labels not compared (no Charcoal); the label color rule (black, white when
+  pressed, `#777777` disabled) is from REFERENCE.md, not diffed.
+- Not captured, so derived and unchecked: check box on + pressed, off +
+  disabled; radio on + pressed, on + disabled; the mixed (partial) check
+  box isn't themed yet.
+- The pressed captures' pointer hides a few pixels; those were taken from
+  the unpressed outline (gen-style-data.sh says where).
+- Rendered offscreen at 1x only; not in a running app in a real compositor,
+  not at scale 2. Nothing installed; the user hasn't seen it.
 
 ## 2026-11-20, Claude Code (Claude Opus 5.5) — decoration fidelity check
 

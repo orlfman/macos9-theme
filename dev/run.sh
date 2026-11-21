@@ -16,7 +16,8 @@
 #   EXTRA_FONT_DIRS  optional, colon-separated font folders made visible to
 #           the sandbox only (stand-in fonts without installing them)
 #   SCALE   optional, Qt scale factor (default 1)
-#   QSTYLE  optional, a QStyle instead of Union (e.g. Fusion, Windows)
+#   QSTYLE  optional, a QStyle instead of Union: Platinum (this project's
+#           C++ style, built with style/build.sh), Fusion, Windows, ...
 #
 # Adapted from the user's windows2000-union project (BSD-2-Clause).
 set -euo pipefail
@@ -48,7 +49,7 @@ fi
 # run, so edits under style/ show up right away and the project can move.
 mkdir -p "$sandbox/data/union/styles"
 for dir in "$project"/style/*/; do
-    [[ -d $dir ]] || continue
+    [[ -d $dir/contents ]] || continue # Union styles only (not the C++ style)
     ln -sfn "${dir%/}" "$sandbox/data/union/styles/$(basename "$dir")"
 done
 # Named icons the style uses go to hicolor, which every icon theme falls back to.
@@ -107,6 +108,12 @@ export DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent
 export QT_FORCE_STDERR_LOGGING=1
 export QT_QPA_PLATFORM=${PLATFORM:-offscreen} QT_QPA_PLATFORMTHEME=kde QT_STYLE_OVERRIDE=${QSTYLE:-Union}
 export QT_SCALE_FACTOR=${SCALE:-1}
+# This project's built plugins (C++ style, decoration), without installing.
+for plugins in "$project/style/build/plugins" "$project/decoration/build/plugins"; do
+    if [[ -d $plugins ]]; then
+        export QT_PLUGIN_PATH=$plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}
+    fi
+done
 export UNION_STYLE_NAME=$style UNION_DISABLE_STYLE_CACHE=1
 if [[ $QT_QPA_PLATFORM != wayland ]]; then
     unset WAYLAND_DISPLAY

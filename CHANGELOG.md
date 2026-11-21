@@ -2,6 +2,38 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-20, Claude Code (Claude Opus 5.5) — step 4: application style, batch 1
+
+Claimed `style`, released at the end (more batches to come).
+
+- `style/platinum/`: a Qt style plugin ("Platinum", a QProxyStyle over
+  Fusion, built by `style/build.sh`). Themed so far: scroll bars (vertical
+  from the spike, horizontal by transposition), push buttons (normal,
+  pressed, disabled, default ring, default pressed), check boxes and radio
+  buttons (captured states plus derived pressed-on / disabled states), no
+  focus rectangle on buttons. Metrics in `Metrics` in `platinumstyle.h`.
+- Measured data instead of hand-coded pixels: `tools/nineslice.py`
+  (9-slice tables, checks edge uniformity, marks only background connected
+  to the outside), `tools/sprite.py` (fixed-size parts), and
+  `tools/gen-style-data.sh`, which regenerates `slices.h` and `sprites.h`
+  from the captures and repairs the few pointer-covered pixels from the
+  unpressed outline. The default ring measured from two different captures
+  came out identical (289 values).
+- `dev/styleshot.cpp` + `dev/check-style.sh`: render every state through
+  the style's draw calls at the captures' sizes and diff them;
+  `dev/run.sh` now puts the built style and decoration on QT_PLUGIN_PATH
+  and only links folders with `contents/` as Union styles.
+
+Checks: `dev/check-style.sh` 31 of 31 regions pixel exact; the widget
+gallery renders with the style. Limits in AUDIT.md (labels, derived states,
+offscreen only). PLAN.md notes that the measured check mark and radio dot
+should be redrawn by hand before any public release.
+
+Next batches: pop-up menus (combo boxes), tabs, sliders, progress bars
+(determinate and barber pole), text fields and focus ring, group boxes,
+list headers and disclosure triangles, menus, the mixed check box, the size
+grip.
+
 ## 2026-11-20, Claude Code (Claude Opus 5.5) — step 4: window decoration plugin
 
 Claimed `decoration`, released at the end.
