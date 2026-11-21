@@ -18,6 +18,9 @@ Usage:
                                           reference/NAME-001.png, -002, ...
                                           (states too short to time by hand,
                                           e.g. a Finder copy's progress bar)
+    tools/capture.py --fast --burst 10 NAME
+                                       -> same, every 0.01 s (~100 frames/s;
+                                          a dump takes ~4 ms at 1920x1080)
     tools/capture.py --check           -> just test the connection
     tools/capture.py --socket PATH ... -> another QMP socket
 
@@ -132,6 +135,9 @@ def countdown(seconds):
     time.sleep(seconds - int(seconds))
 
 
+MIN_FREE = 1 << 30  # stop a burst early when the temp dir has < 1 GiB free
+
+
 def burst(q, name, seconds, interval):
     """Dump frames for `seconds`; save the ones that differ from the last kept."""
     tmp = Path(tempfile.mkdtemp(prefix="mac9-burst-", dir=RUNTIME))
@@ -142,6 +148,9 @@ def burst(q, name, seconds, interval):
         end = time.monotonic() + seconds
         print(f"bursting for {seconds:g} s (every {interval:g} s)...", flush=True)
         while time.monotonic() < end:
+            if n % 25 == 0 and shutil.disk_usage(tmp).free < MIN_FREE:
+                print(f"stopping early: less than 1 GiB free in {RUNTIME}", flush=True)
+                break
             t0 = time.monotonic()
             ppm = tmp / f"{n:05d}.ppm"
             q.dump(ppm)
@@ -177,6 +186,8 @@ def main():
                          "frame that changed")
     ap.add_argument("--interval", type=float, default=0.1, metavar="SECONDS",
                     help="time between burst frames (default 0.1)")
+    ap.add_argument("--fast", action="store_true",
+                    help="burst every 0.01 s (about 100 frames/s); needs --burst")
     a = ap.parse_args()
 
     if not a.socket.exists():
@@ -191,8 +202,12 @@ def main():
 
     if not a.name or not re.fullmatch(r"[a-z0-9][a-z0-9._-]*", a.name):
         sys.exit("give a name of lowercase letters, digits, '.', '_' or '-'")
-    if a.burst < 0 or a.burst > 120 or a.interval < 0.02:
-        sys.exit("--burst must be 0-120 s and --interval at least 0.02 s")
+    if a.fast:
+        if not a.burst:
+            sys.exit("--fast needs --burst SECONDS")
+        a.interval = 0.01
+    if a.burst < 0 or a.burst > 120 or a.interval < 0.005:
+        sys.exit("--burst must be 0-120 s and --interval at least 0.005 s")
 
     REF.mkdir(exist_ok=True)
     if a.burst:

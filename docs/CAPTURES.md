@@ -4,6 +4,12 @@ Everything to capture from the Mac OS 9.2.2 VM before the matching theme
 part is built. Measurements go to `docs/REFERENCE.md`; the files go to
 `reference/` (git-ignored).
 
+## Status
+
+Capture pass finished 2026-11-20: 81 captures, all priority A and B items
+done. Open items below are optional (marked so) or skipped with a reason.
+Retakes and new captures are welcome any time; keep using the same rules.
+
 ## How to capture
 
 - The user sets up each state in the VM; the agent runs
@@ -27,6 +33,18 @@ part is built. Measurements go to `docs/REFERENCE.md`; the files go to
 
   then triggers the action in the VM during the burst. Afterwards the agent
   keeps the useful frames and deletes the rest (with their INDEX lines).
+  **Pruning rule** (after a mistake on 2026-11-20): rename the keepers
+  first, check that every keeper exists under its new name, and only then
+  delete the leftover frames. Do it in one Python script, not a shell loop
+  (zsh doesn't word-split `$var`, which broke a rename loop and let the
+  delete step remove the keepers too).
+- **Very short states** (a cursor that flashes by, one animation frame):
+  add `--fast` for a frame every 0.01 s (~100 frames/s; a dump takes ~4 ms
+  at 1920×1080). Keep fast bursts short (5–10 s) and the pointer still
+  when possible: every changed frame is kept (6 MB each in the temp dir
+  until saved, and saving takes a while), and the burst stops early if
+  less than 1 GiB is free. Each dump briefly pauses QEMU, so a fast burst
+  may slow the VM a little (not measured).
 - **Menus and pop-ups stay open after one click** (Mac OS 8+ sticky
   menus): click to open, hover the item, Ctrl+Alt+G, and the agent
   captures. No `--delay` needed for open menus.
@@ -238,7 +256,7 @@ Smart Scrolling is on (both arrows at one end, proportional thumb).
       box, no arrows. Active System Folder list alongside for comparison.
 - [x] `scroll-horizontal-active` (in `disclosure-triangles.png`): window wide enough content to need a
       horizontal bar.
-- [ ] `scroll-nothing-to-scroll`: active window where all content fits
+- [x] `scroll-nothing-to-scroll` (`window-document-active.png`): active window where all content fits
       (empty track?).
 - [x] `scroll-arrow-pressed`: hold the down arrow (delay). Done 2026-11-20
       (System Folder): arrow box goes dark, glyph stays black.
@@ -255,7 +273,7 @@ Smart Scrolling is on (both arrows at one end, proportional thumb).
 - [x] `slider-pressed`: drag a slider thumb and hold (delay). Done
       2026-11-20: the real thumb stays and darkens to `#6666CC`; a gray
       ghost thumb follows the pointer (no live tracking).
-- [~] `progress-copy-window` (burst, 2026-11-20): the Finder's "Copy to
+- [x] `progress-copy-window` (burst, 2026-11-20): the Finder's "Copy to
       the Desktop" window, visible for under 0.3 s when duplicating
       Starcraft_BSNG.sit: collapse box only, empty progress bar (sunken
       gray trough), Stop button, closed "Time remaining" triangle. The bar
@@ -370,16 +388,40 @@ Smart Scrolling is on (both arrows at one end, proportional thumb).
 
 ## 8. Help, cursors, misc (C)
 
-- [ ] `help-balloon`: Help > Show Balloons, hover something.
-- [~] `cursor-arrow`, `cursor-ibeam` (I-beam done: `cursor-ibeam.png`), `cursor-watch`, `cursor-hand`,
+- [x] `help-balloon`: Help > Show Balloons, hover something. Done
+      2026-11-20 (a DropStuff document on the desktop).
+- [~] `cursor-arrow`, `cursor-ibeam` (arrow: nearly every capture, e.g.
+      `window-document-active.png`; I-beam: `cursor-ibeam.png`), `cursor-watch`, `cursor-hand`,
       `cursor-crosshair`: the cursor is drawn into the framebuffer, so it
       shows in captures; position it over an empty area.
+- [x] `finder-icon-opening` (extra, cursor burst 2026-11-20): a launching
+      app's icon switches to the "open item" look, a dark navy dotted
+      fill; the launch was too quick for a watch cursor.
+- [x] `dialog-modal-plain` (extra, same burst): "About Balloon Help", a
+      plain modal dialog: thick double frame, no title or drag strip,
+      default OK button.
+- [x] Watch and busy cursors (2026-11-20, `--fast` burst while opening
+      Apple System Profiler): `cursor-watch.png`, `cursor-spinning-1/-2/-3`
+      (the black-and-white spinning disc, three rotation steps), and
+      `cursor-contextual.png` (arrow with a small menu glyph, shown while
+      Control is held). They **are** in the framebuffer; they're just on
+      screen for a fraction of a second, which the 0.2 s bursts missed (the
+      earlier "not in the framebuffer" guess was wrong). These five are
+      32×32 crops around the pointer: the full frames were deleted by a
+      pruning mistake and the crops were recovered pixel-exact from a 4×
+      nearest-neighbour zoom made before the deletion. Hand cursor still
+      missing (optional). Seen instead: opened
+      folders/apps switch to the dark dotted "open" icon, and the pointer
+      is hidden briefly while a window zooms open.
 - [ ] `cursor-watch-frames`: several captures during a busy moment for the
       watch animation (C, optional).
-- [ ] `alert-icons`: note, caution, and stop alert icons (measure only; the
-      art can't be shipped).
-- [ ] `sherlock`: Sherlock window (brushed-metal look is NOT Platinum;
-      capture only to record the difference).
+- [~] `alert-icons`: note, caution, and stop alert icons (measure only; the
+      art can't be shipped). Caution: `dialog-modal-alert.png`,
+      `dialog-save-changes.png`; note and stop are optional (no easy
+      harmless way to trigger them).
+- [x] `sherlock`: Sherlock window (brushed-metal look is NOT Platinum;
+      capture only to record the difference). In
+      `progress-indeterminate-a.png` / `-b.png`.
 - [ ] `startup-screen`: optional, the "Welcome to Mac OS" startup screen
       and extension icons (for a splash screen idea); needs a VM restart,
       user's call.

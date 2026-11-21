@@ -11,7 +11,7 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | Component  | Folder(s)                 | Claimed by | Status      |
 |------------|---------------------------|------------|-------------|
 | shared     | docs, tools, dev, scripts | nobody     | docs set up |
-| reference  | reference/, docs/REFERENCE.md | nobody | capture tool works; first capture + menu bar measured |
+| reference  | reference/, docs/REFERENCE.md | nobody | capture pass done (81 captures, CAPTURES.md); measurements partial |
 | colors     | colors/                   | nobody     | not started |
 | decoration | decoration/               | nobody     | not started |
 | style      | style/                    | nobody     | not started |
@@ -90,7 +90,10 @@ measurements.
    defaults (done 2026-11-20, see REFERENCE.md), then work through
    `docs/CAPTURES.md` (priority A first) and measure into
    `docs/REFERENCE.md`. A part of the theme starts once its A captures are
-   measured.
+   measured. **Capture pass done 2026-11-20** (81 captures, all A and B
+   items). REFERENCE.md has first measurements for most widgets; a full
+   measuring pass per component (exact sizes, corners, fonts) is still to
+   do, ideally right before that component is built.
 2. **Sandbox.** Port windows2000-union's `dev/` tooling (sandbox, offscreen
    gallery, nested KWin, screenshot scripts) and add a screenshot comparison
    tool. Settle decision 1 (scale).

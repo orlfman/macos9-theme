@@ -186,7 +186,44 @@ Control Strip frames from a burst (volume slider pop-up, module menus that
 open upward). Launcher and spring-loaded folders are optional and skipped.
 Bursts pruned to the useful frames.
 
-Next: commit; then CAPTURES.md group 8 (help, cursors, misc).
+Group 8 (help, cursors, misc) finished as far as practical:
+`help-balloon.png` (white rounded balloon, black outline heavier right and
+bottom, pointed tail). The user saw the watch and hand cursors during two
+bursts, but no dump contains them; probably they aren't in the guest
+framebuffer that `screendump` reads (unverified). Skipped for now (see
+CAPTURES.md for options). Bonus keepers: `finder-icon-opening.png` (opening items get a
+dark dotted "open" icon) and `dialog-modal-plain.png` ("About Balloon Help":
+plain modal, thick double frame, no drag strip). Note and stop alert icons
+and the startup screen are optional.
+
+**Capture pass done**: 81 captures in the private reference repo, all
+priority A and B items in CAPTURES.md ticked. PLAN.md step 1 updated.
+
+At the user's request, `tools/capture.py` got `--fast` (burst every 0.01 s,
+interval floor lowered to 0.005 s) and stops a burst early when the temp dir
+has under 1 GiB free. Measured on the real VM first (20 dumps to scratch,
+nothing written to `reference/`): a 1920×1080 dump takes 4.0–4.5 ms, hashing
+it ~2 ms. Tested on a throwaway QEMU: a 2 s `--fast` burst took 199 frames
+and kept the 4 that changed while 3 keys were typed; `--fast` without
+`--burst` and too small intervals are refused; no temp dirs left. Then run on
+the real VM: an 8 s `--fast` burst took 791 frames (175 different) while the
+user opened Apple System Profiler and caught the watch cursor, three steps of
+the spinning-disc cursor, and the contextual-menu cursor. So those cursors
+are in the framebuffer after all, just very brief; the earlier guess was
+wrong and the notes are corrected. The user also confirmed an earlier
+all-identical fast burst was their own miss, not the VM freezing.
+
+**Mistake:** while pruning that burst I used a zsh `for` loop with
+`set -- $p`; zsh doesn't word-split, every rename failed, and the following
+`rm` still ran and deleted all 175 frames, keepers included (not yet backed
+up). Recovered the five cursor crops (32×32 around the pointer) pixel-exact
+from the 4× nearest-neighbour zoom image I'd made just before, verified by
+round trip, and logged them in INDEX.tsv. Full-frame context is lost.
+CAPTURES.md now has a pruning rule: rename keepers, verify, then delete, in
+one Python script.
+
+Next: commit; then PLAN.md step 2 (sandbox tooling from windows2000-union,
+plus a screenshot comparison tool) and settle decision 1 (scale).
 
 ## 2026-11-19, Claude Code (Claude Opus 5.5) — project setup
 
