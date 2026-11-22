@@ -16,7 +16,7 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | reference  | reference/, docs/REFERENCE.md | nobody | capture pass done (81 captures, CAPTURES.md); measurements partial |
 | colors     | colors/                   | nobody     | Platinum.colors done (sandbox-checked) |
 | decoration | decoration/               | nobody | plugin works in nested KWin; frame pixel exact; only the three Mac OS 9 boxes are created (AUDIT 20) |
-| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); next: Qt Quick menus/tooltips/switches (AUDIT 3, plan below); open: editable combo, size grip |
+| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); next: Qt Quick menus/tooltips/switches (AUDIT 3, plan below; spike done, menus pixel exact); Qt Quick row context read from styleObject; open: editable combo, size grip |
 | plasma     | plasma/                   | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); main screen only (decision 10); menu bar resizing on hold (AUDIT 23, user) |
 | icons      | icons/                    | nobody     | not started |
 | cursors    | cursors/                  | nobody     | not started |
@@ -156,8 +156,14 @@ measurements.
 
 ## Plan: Qt Quick menus, tooltips and switches (AUDIT.md finding 3)
 
-Asked for by the user 2026-11-21. Plan only; nothing built yet. Revised
-the same day after Codex's review (AUDIT.md findings 43-48).
+Asked for by the user 2026-11-21. Revised the same day after Codex's
+review (AUDIT.md findings 43-48). **Step 1 (spike) done 2026-11-21**:
+results in docs/FINDINGS.md "Qt Quick style spike", code in
+`spikes/qtquick/`. It confirmed the approach with these changes: KDE's
+parts are hidden (`opacity: 0` through a `Binding`), never replaced, and
+our item sits next to them; a hidden `QWidget` tells the items when the
+app's style changes; `Menu.delegate` is overridden too; the Kirigami link
+is needed.
 
 **What's wrong.** Qt Quick apps (System Settings pages, Discover, other
 Kirigami apps) use KDE's Qt Quick Controls style, `org.kde.desktop`
@@ -252,7 +258,8 @@ compiled plugin; breaks with every KDE Frameworks update), or the Union
 style engine (the whole style would have to be redone in its format).
 
 **Steps.**
-1. **Spike, sandbox only.** A minimal style: `ToolTip` and `Menu`/
+1. **Spike, sandbox only.** (Done; combo rows and real pop-up windows in
+   the nested KWin moved to steps 3 and 7.) A minimal style: `ToolTip` and `Menu`/
    `MenuItem` overrides drawn with our item, `import org.kde.desktop 1.0`.
    Check in `dev/kirigami.qml`, `dev/gallery.qml` and System Settings in
    the nested KWin (`dev/app-test.sh`), and in a Qt Quick app without

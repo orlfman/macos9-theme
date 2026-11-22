@@ -16,3 +16,8 @@ __pycache__/
 /dev/shots/
 /decoration/build/
 /style/build/
+
+# spike build outputs
+/spikes/qtquick/moc_*.cpp
+/spikes/qtquick/*.moc
+/spikes/qtquick/Platinum/*.so

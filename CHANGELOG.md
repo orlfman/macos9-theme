@@ -2,6 +2,17 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — Qt Quick spike (finding 3, step 1)
+
+- **Spike** in `spikes/qtquick/`: a Qt Quick Controls style overriding
+  tooltips and menus, falling back to KDE's, drawn by a small C++ item
+  through the QStyle. Qt Quick menus now match widget menus pixel for
+  pixel; the overrides follow the app's style at run time; plain Qt Quick
+  apps are unaffected; Kirigami needs a link to KDE's platform plugin.
+- **Style:** menu rows read their place (first, last, combo, shortcuts)
+  from `styleObject` when there's no widget. Style 131/131, Plasma 7/7.
+- Results in docs/FINDINGS.md; PLAN.md's plan updated with what changed.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — revise the Qt Quick plan (#43–#48)
 
 Rewrote PLAN.md's plan for #3 after Codex's review: the fallback import

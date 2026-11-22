@@ -214,3 +214,58 @@ check layout and shadow in the nested KWin (`dev/kwin-test.sh`,
   Fusion draws no `PE_FrameFocusRect` for push buttons (its bevel does
   that), so a style that replaces the bevel has to draw it in
   `CE_PushButton`.
+
+## Qt Quick style spike (2026-11-21, Claude Code)
+
+Step 1 of PLAN.md "Plan: Qt Quick menus, tooltips and switches", in
+`spikes/qtquick/`, sandbox only (`dev/run.sh`, software Qt Quick renderer,
+and System Settings in the nested KWin). Qt 6.12, qqc2-desktop-style and
+Kirigami 6.32.
+
+- **Loading.** A style module with `import org.kde.desktop 1.0` in its
+  `qmldir` and four overrides (`ToolTip`, `Menu`, `MenuItem`,
+  `MenuSeparator`) loads; every other control is KDE's (a button's
+  background is KDE's `KQuickStyleItem`). KDE's platform theme leaves an
+  already-set `QT_QUICK_CONTROLS_STYLE` alone. System Settings runs with
+  it (module loaded, no QML errors).
+- **Kirigami needs the link.** Kirigami looks for
+  `kf6/kirigami/platform/<style name>.so`. Without one it falls back to
+  its basic theme: the colors come from the palette, but link, negative,
+  positive, focus and hover colors are Breeze's, and the Complementary set
+  is wrong (white instead of #333333). With `Platinum.so` linked to
+  `org.kde.desktop.so`, all seven color sets and the units are identical
+  to KDE's style.
+- **Menus match the widget menus pixel for pixel.** A Qt Quick menu drawn
+  through our C++ item (QQuickPaintedItem calling the QStyle) equals a
+  widget `QMenu` with the same rows in 16,376 of 16,380 pixels, with the
+  first and with the last row selected; the other 4 are see-through
+  shadow corners in both. What it took:
+  - the row's place passed to the style on `QStyleOption::styleObject`
+    (`_platinum_first`, `_platinum_last`, `_platinum_combo`,
+    `_platinum_shortcuts`), read only when there's no widget;
+  - the menu's shortcut column (its widest shortcut) added to every row,
+    as `QMenu` does;
+  - each row painting its slice of the menu panel first, so text blends
+    with the same pixels (on a transparent item it's antialiased
+    differently);
+  - `Menu.delegate` overridden too: KDE's `Menu` makes rows for actions
+    and submenus with its own `MenuItem` (the same pattern as the combo
+    box's pop-up);
+  - the menu's height from its rows: KDE's list adds 1 px.
+- **Following the app's style at run time** took two things:
+  - `QApplication::setStyle()` tells only widgets (`QEvent::StyleChange`).
+    One hidden, never shown `QWidget` hears it for all items.
+  - KDE's parts are never replaced, only hidden with `opacity: 0` through
+    a `Binding` (our item sits next to them). Qt hides an item it takes
+    out of a control and doesn't show it again when it's put back. A
+    `Binding` on `visible` doesn't work either: `visible` reads false
+    while the pop-up is closed, and that's the value it restores.
+  With both, switching to Fusion brings KDE's look back and switching back
+  brings Platinum's, in a running app.
+- **A plain Qt Quick app** (`QGuiApplication`, with or without KDE's
+  platform theme) opens normally with the style set; it has no QStyle, so
+  our items stay off and it looks as with KDE's style.
+- **Captures.** Menus opened at the window's center whatever position was
+  asked (`popupType` read back as 0), so the comparison finds the menu by
+  its pixels in a window big enough to hold it.
+

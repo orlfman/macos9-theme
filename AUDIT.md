@@ -3,7 +3,42 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: Nothing blocks the first desktop install except the user's go-ahead. Open: #3 (P3): the plan in PLAN.md now takes in #43–#48 (all addressed in the plan, to be proven in its spike) with the user's choice of drawing made (our own item, PLAN.md decision 13). User decisions still apply to #21 (main screen only), #26 (RTL unsupported), #23 (resizing on hold) and #25 (deferred until publication).
+Status: Nothing blocks the first desktop install except the user's go-ahead. Open: #3 (P3): plan in PLAN.md, its spike done (step 1); #43–#48 addressed in the plan, #43, #45 and the run-time part of #44 proven by the spike. User decisions still apply to #21 (main screen only), #26 (RTL unsupported), #23 (resizing on hold) and #25 (deferred until publication).
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — Qt Quick spike (finding 3, step 1)
+
+Built the spike in `spikes/qtquick/` (sandbox only) and ran the checks the
+plan lists; full results in docs/FINDINGS.md "Qt Quick style spike". Also
+changed `style/platinum/platinumstyle.cpp`: with no widget, a menu row's
+place and the shortcut gap come from properties on `styleObject`.
+
+| Finding | What the spike showed |
+|---|---|
+| #43 | `import org.kde.desktop 1.0` loads; fallback controls are KDE's (`KQuickStyleItem` button background), ours are used. |
+| #44 | The run-time part works: switching the app's QStyle to Fusion brings KDE's look back and back again (after two fixes: a hidden `QWidget` for `StyleChange`, and hiding KDE's parts by opacity instead of replacing them). The login-script part is for step 8. |
+| #45 | Rows drawn through our item with the row's place on `styleObject` match the widget `QMenu` pixel for pixel, selected first and last rows included. |
+| #46 | Not exercised (lists are step 6). |
+| #47 | Same pattern found in `Menu` itself: KDE's `Menu.delegate` makes KDE's `MenuItem` for actions and submenus, so ours overrides it; the combo box is step 3. |
+| #48 | Menus ignored the asked position; comparisons find the pop-up by its pixels and fail if it's missing. |
+
+### Checks
+
+- Menu vs widget `QMenu`: 16,376 of 16,380 pixels equal (the other 4 are
+  see-through in both), first and last row selected.
+- Kirigami's seven color sets and units: identical to KDE's style with the
+  link, different without it.
+- `QGuiApplication` with and without KDE's platform theme: opens, KDE's
+  look.
+- System Settings (`kcm_mouse`) in the nested KWin: runs, our module and
+  KDE's Kirigami plugin loaded, no QML errors.
+- `dev/check-style.sh` 131/131 and `dev/check-plasma.sh` 7/7 after the
+  style change; no build warnings.
+
+### Limits
+
+- Software Qt Quick renderer and the nested KWin only; no keyboard or
+  screen reader checks yet; real pop-up windows not checked.
+- The spike's code isn't installed by install.sh.
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — the Qt Quick plan revised for findings #43–#48
 

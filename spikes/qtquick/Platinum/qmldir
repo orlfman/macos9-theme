@@ -1,0 +1,8 @@
+module Platinum
+plugin platinumquickspike
+classname PlatinumQuickPlugin
+import org.kde.desktop 1.0
+ToolTip 1.0 ToolTip.qml
+Menu 1.0 Menu.qml
+MenuItem 1.0 MenuItem.qml
+MenuSeparator 1.0 MenuSeparator.qml

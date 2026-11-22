@@ -716,7 +716,8 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption *option, con
             // width itself.
             const bool icon = !mi->icon.isNull();
             int w = (icon ? MenuIconTextLeft : MenuTextLeft) + size.width() + MenuTextRight + 1;
-            if (menuHasShortcuts(widget)) {
+            // (Qt Quick, no widget: the caller says so on styleObject.)
+            if (menuHasShortcuts(widget) || (!widget && option->styleObject && option->styleObject->property("_platinum_shortcuts").toBool())) {
                 w += MenuShortcutGap;
             }
             return QSize(w, icon ? MenuIconItemHeight : MenuItemHeight);
@@ -1315,9 +1316,15 @@ void Style::drawControl(ControlElement element, const QStyleOption *option, QPai
             painter->save();
             painter->setRenderHint(QPainter::Antialiasing, false);
             const QRect r = mi->rect;
+            // Where the row is: from the QMenu or QComboBox it's drawn in,
+            // or, with no widget (Qt Quick), from properties the caller sets
+            // on styleObject: _platinum_first, _platinum_last, _platinum_combo.
+            const auto *combo = qobject_cast<const QComboBox *>(widget);
+            const QObject *context = widget ? nullptr : option->styleObject;
+            const bool inCombo = combo || (context && context->property("_platinum_combo").toBool());
             if (mi->menuItemType == QStyleOptionMenuItem::Separator) {
                 // 6 rows: two of menu, a #888888 line, a white line, two of menu.
-                if (qobject_cast<const QComboBox *>(widget)) {
+                if (inCombo) {
                     drawMenuItemBevel(painter, r, false, false, White, gray(0xDD), gray(0x99));
                 }
                 const int y = r.y() + (r.height() - MenuSeparatorHeight) / 2;
@@ -1331,7 +1338,6 @@ void Style::drawControl(ControlElement element, const QStyleOption *option, QPai
             // First / last item: on the menu's top / bottom bevel row. In a
             // QMenu the items start 1 px down (inside the black line); in a
             // pop-up's list (widget = the QComboBox) they start at 0.
-            const auto *combo = qobject_cast<const QComboBox *>(widget);
             bool first = false, last = false;
             if (combo && combo->view()) {
                 first = r.top() <= 0;
@@ -1339,10 +1345,13 @@ void Style::drawControl(ControlElement element, const QStyleOption *option, QPai
             } else if (widget) {
                 first = r.top() <= 1;
                 last = qobject_cast<const QMenu *>(widget) && r.bottom() >= widget->height() - 3;
+            } else if (context) {
+                first = context->property("_platinum_first").toBool();
+                last = context->property("_platinum_last").toBool();
             }
             if (selected) {
                 drawMenuItemBevel(painter, r, first, last, QColor(0x66, 0x66, 0xCC), QColor(0x33, 0x33, 0x99), QColor(0x00, 0x00, 0x88));
-            } else if (combo) {
+            } else if (inCombo) {
                 drawMenuItemBevel(painter, r, first, last, White, gray(0xDD), gray(0x99));
             }
             const QColor color = !enabled ? DisabledText : selected ? White : Black;
