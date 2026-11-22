@@ -758,18 +758,39 @@ can_make_dir() { # path
     [[ -d $dir ]]
 }
 
+passthrough_qmldir() {
+    printf '%s\n' "$passthrough_marker" 'module Platinum' 'import org.kde.desktop 1.0'
+}
+
+# Publish a completed file or folder without replacing a path that appeared
+# during uninstall. The install record still owns the temporary on failure.
+publish_passthrough_temp() {
+    mv -nT "$made_temp" "$1" && [[ ! -e $made_temp ]] ||
+        die "couldn't leave the pass-through at $1. Run uninstall.sh again"
+    done_temp "$made_temp"
+}
+
 # Only into empty places, so nothing of yours is touched (findings 54-56):
 # the module only where nothing is, the link only where none is (and only
 # a link it made is removed later), the one-shot script under a free name.
-# In a dry run what the real run will have removed counts as gone (`gone`,
+# In a dry run what the real run will have removed counts as free (`planned_path`,
 # uninstall.sh; finding 58).
 leave_passthrough() {
-    local made=() dir make_link=0 script n
+    local made=() dir make_link=0 script n module_sum tmp
     [[ -n $kirigami_desktop ]] || return 0
     # (free: nothing there; in a dry run also what the real run will have
     # removed and not put something back at)
-    free() { [[ ( ! -e $1 && ! -L $1 ) || ( $dry_run == 1 && -n ${gone[$1]:-} ) ]]; }
+    free() {
+        if ((dry_run)); then
+            case ${planned_path[$1]:-} in
+                removed) return 0 ;;
+                restored) return 1 ;;
+            esac
+        fi
+        [[ ! -e $1 && ! -L $1 ]]
+    }
     if ! free "$quick_module" || ! can_make_dir "$quick_module"; then
+        warn "leaving $quick_module as it is. Qt Quick apps from this session may need you to log out and back in before they start"
         return 0
     fi
     free "$kirigami_link" && can_make_dir "$(dirname "$kirigami_link")" && make_link=1
@@ -797,18 +818,20 @@ leave_passthrough() {
             dir=$(dirname "$dir")
         done
     fi
-    mkdir -p "$quick_module" "$(dirname "$script")"
-    printf '%s\nmodule Platinum\nimport org.kde.desktop 1.0\n' "$passthrough_marker" > "$quick_module/qmldir"
-    if ((make_link)); then
-        mkdir -p "$(dirname "$kirigami_link")"
-        ln -s "$kirigami_desktop" "$kirigami_link"
-    fi
+    # Publish the complete hook before creating the files it will clean up.
+    make_parents "$(dirname "$script")"
+    make_temp file "$(dirname "$script")"
+    tmp=$made_temp
+    module_sum=$(passthrough_qmldir | sha256sum)
     {
-        printf '%s\n' "$passthrough_marker"
-        printf '# Removes the pass-through macos9-theme'"'"'s uninstall.sh left for Qt Quick apps\n'
-        printf '# started before you logged out (only what it made), then itself.\n'
+        printf '%s\n' "$passthrough_marker" '# Generated cleanup, format 2' '('
+        printf 'self=%s\n' "$(sh_quote "$script")"
+        cat <<'CHECK_HOOK'
+[ -f "$self" ] && [ ! -L "$self" ] || exit 0
+[ "$(tail -n 1 "$self")" = "# checksum $(sed '$d' "$self" | sha256sum)" ] || exit 0
+CHECK_HOOK
         printf 'macos9_theme_m=%s\n' "$(sh_quote "$quick_module")"
-        printf 'if [ -f "$macos9_theme_m/qmldir" ] && [ "$(head -n 1 "$macos9_theme_m/qmldir")" = %s ]; then\n' "$(sh_quote "$passthrough_marker")"
+        printf 'if [ ! -L "$macos9_theme_m" ] && [ ! -L "$macos9_theme_m/qmldir" ] && [ -f "$macos9_theme_m/qmldir" ] && [ "$(sha256sum < "$macos9_theme_m/qmldir")" = %s ]; then\n' "$(sh_quote "$module_sum")"
         printf '    rm -f "$macos9_theme_m/qmldir"\n'
         printf 'fi\n'
         if ((make_link)); then
@@ -817,28 +840,90 @@ leave_passthrough() {
             printf '    rm -f %s\n' "$(sh_quote "$kirigami_link")"
             printf 'fi\n'
         fi
-        printf 'unset macos9_theme_m\n'
-        printf 'rm -f %s\n' "$(sh_quote "$script")"
+        printf 'rm -f "$self"\n'
         # The folders it made, deepest first, if empty.
         printf '%s\n' "${made[@]}" | awk '{ print length($0) "\t" $0 }' | sort -rn | cut -f2- | while IFS= read -r dir; do
             printf 'rmdir %s 2> /dev/null\n' "$(sh_quote "$dir")"
         done
-        printf 'true\n'
-    } > "$script"
+        printf ')\ntrue\n'
+    } > "$tmp"
+    printf '# checksum %s\n' "$(sha256sum < "$tmp")" >> "$tmp"
+    publish_passthrough_temp "$script"
+    if ((make_link)); then
+        mkdir -p "$(dirname "$kirigami_link")"
+        ln -s "$kirigami_desktop" "$kirigami_link"
+    fi
+    mkdir -p "$quick_qml"
+    make_temp dir "$quick_qml"
+    passthrough_qmldir > "$made_temp/qmldir"
+    publish_passthrough_temp "$quick_module"
     say "Left a pass-through in $quick_module, so Qt Quick apps started before you log out keep working (with KDE's look); $script removes it at your next login"
 }
 
-# A pass-through an earlier uninstall.sh left (a reinstall before the next
-# login): removed, so the install takes its place.
+# Unchecksummed hooks from the two previous versions. Compare their entire
+# body, ignoring only exact rmdir commands for eligible parent directories.
+legacy_cleanup_matches() {
+    local script=$1 link=$2 description=$3
+    shift 3
+    local quoted_link dir
+    quoted_link=$(sh_quote "$kirigami_link")
+    case $description in
+        '# started before you logged out (only what it made), then itself.' | \
+        '# started before you logged out (only what it recognizes), then itself.') ;;
+        *) return 1 ;;
+    esac
+    cmp -s <(
+        printf '%s\n' "$passthrough_marker" "# Removes the pass-through macos9-theme's uninstall.sh left for Qt Quick apps" "$description"
+        printf 'macos9_theme_m=%s\n' "$(sh_quote "$quick_module")"
+        printf 'if [ -f "$macos9_theme_m/qmldir" ] && [ "$(head -n 1 "$macos9_theme_m/qmldir")" = %s ]; then\n' "$(sh_quote "$passthrough_marker")"
+        printf '%s\n' '    rm -f "$macos9_theme_m/qmldir"' fi
+        if ((link)); then
+            printf 'if [ -L %s ] && [ "$(readlink %s)" = %s ] && [ ! -e %s ]; then\n' "$quoted_link" "$quoted_link" \
+                "$(sh_quote "$kirigami_desktop")" "$(sh_quote "$plugins/styles/platinumstyle.so")"
+            printf '    rm -f %s\nfi\n' "$quoted_link"
+        fi
+        printf 'unset macos9_theme_m\nrm -f %s\ntrue\n' "$(sh_quote "$script")"
+    ) <(grep -Fvx -f <(for dir in "$@"; do printf 'rmdir %s 2> /dev/null\n' "$(sh_quote "$dir")"; done) "$script")
+}
+
+# A reinstall reads pending hooks as data. Only operate on our known paths;
+# never execute a program discovered in the user's login folder.
 remove_passthrough() {
-    local script
-    for script in "${cleanup_script%.sh}"*.sh; do
+    local script dir start link description dirs=()
+    for script in "$cleanup_script" "${cleanup_script%.sh}"-[2-9].sh "${cleanup_script%.sh}"-[1-9][0-9].sh; do
         [[ -f $script && ! -L $script && $(head -n 1 "$script") == "$passthrough_marker" ]] || continue
+        link=0
+        grep -Fxq "    rm -f $(sh_quote "$kirigami_link")" "$script" && link=1
+        dirs=()
+        for start in "$quick_module" "$(dirname "$kirigami_link")" "$(dirname "$script")"; do
+            dir=$start
+            while [[ $dir != / && $dir != "$home" ]]; do
+                grep -Fxq "rmdir $(sh_quote "$dir") 2> /dev/null" "$script" && dirs+=("$dir")
+                dir=$(dirname "$dir")
+            done
+        done
+        if [[ $(sed -n '2p' "$script") == '# Generated cleanup, format 2' ]]; then
+            grep -Fxq "self=$(sh_quote "$script")" "$script" || continue
+            [[ $(tail -n 1 "$script") == "# checksum $(sed '$d' "$script" | sha256sum)" ]] || continue
+        else
+            description=$(sed -n '3p' "$script")
+            legacy_cleanup_matches "$script" "$link" "$description" "${dirs[@]}" || continue
+            # The earliest version didn't record whether the link was its own.
+            [[ $description == *'what it recognizes'* ]] && link=0
+        fi
         plan "remove the pass-through uninstall.sh left ($script)"
         ((dry_run)) && continue
-        # Its own script knows what it made, the folders included.
-        sh "$script" || true
+        if [[ ! -L $quick_module && ! -L $quick_module/qmldir && -f $quick_module/qmldir ]] &&
+            passthrough_qmldir | cmp -s - "$quick_module/qmldir"; then
+            rm -f "$quick_module/qmldir"
+        fi
+        if ((link)) && [[ -L $kirigami_link && $(readlink "$kirigami_link") == "$kirigami_desktop" && ! -e $plugins/styles/platinumstyle.so ]]; then
+            rm -f "$kirigami_link"
+        fi
         rm -f "$script"
+        # Each branch is deepest first. Shared ancestors may still hold the
+        # other branch on the first visit and become empty on the last.
+        for dir in "${dirs[@]}"; do rmdir "$dir" 2> /dev/null || true; done
     done
     return 0
 }

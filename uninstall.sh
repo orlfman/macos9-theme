@@ -145,7 +145,7 @@ if [[ -d $backup ]]; then
                 # a \ before the line, \\ and \n in the name; finding 57)
                 if [[ $line =~ $sums_line ]]; then
                     name=${BASH_REMATCH[2]}
-                    [[ -n ${BASH_REMATCH[1]} ]] && name=$(printf '%b' "$name")
+                    [[ -n ${BASH_REMATCH[1]} ]] && printf -v name '%b' "$name"
                     listed[$name]=1
                 else
                     damaged+=("$backup/SUMS has a damaged line")
@@ -155,7 +155,9 @@ if [[ -d $backup ]]; then
                 [[ -n ${listed[$file]:-} ]] || damaged+=("$backup/$file isn't on the checksum list")
             done < <(cd "$backup" && find config home -type f -print0 2> /dev/null)
             if ((${#listed[@]})); then
-                sums_out=$(cd "$backup" && sha256sum --strict --quiet -c SUMS 2> /dev/null) || true
+                if ! sums_out=$(cd "$backup" && LC_ALL=C sha256sum --strict --quiet -c SUMS 2> /dev/null); then
+                    [[ -n $sums_out ]] || damaged+=("$backup/SUMS could not be verified")
+                fi
                 while IFS= read -r line; do
                     case $line in
                         '') ;;
@@ -229,10 +231,10 @@ fi
 entries=("${manifest_entries[@]}")
 had_plasma_style=0
 # Only files whose content is what install.sh put there are removed; what
-# you added or changed stays (finding 35). `gone` lets a dry run know what
-# the real run will have removed (finding 37).
+# you added or changed stays (finding 35). Track the simulated occupancy
+# of targets through removal and restoration for a dry run.
 index_sums
-declare -A gone=()
+declare -A planned_path=()
 for ((i = ${#entries[@]} - 1; i >= 1; i--)); do
     entry=${entries[i]}
     IFS=$'\t' read -r kind path _ <<< "$entry"
@@ -256,7 +258,7 @@ for ((i = ${#entries[@]} - 1; i >= 1; i--)); do
         if installed_link "$path"; then
             plan "remove the link $path"
             ((dry_run)) || rm -f "$path"
-            gone[$path]=1
+            planned_path[$path]=removed
         else
             warn "$path points somewhere else now; left alone as yours"
         fi
@@ -267,7 +269,7 @@ for ((i = ${#entries[@]} - 1; i >= 1; i--)); do
         if installed_file "$path"; then
             plan "remove $path"
             ((dry_run)) || rm -f "$path"
-            gone[$path]=1
+            planned_path[$path]=removed
         else
             warn "$path was changed since it was installed; left alone as yours"
         fi
@@ -290,7 +292,7 @@ for ((i = ${#entries[@]} - 1; i >= 1; i--)); do
     if ((${#kept[@]} == 0)); then
         plan "remove $path"
         ((dry_run)) || rm -rf "$path"
-        gone[$path]=1
+        planned_path[$path]=removed
     else
         plan "remove the installed files in $path"
         if ((!dry_run)); then
@@ -337,18 +339,25 @@ for entry in "${entries[@]:1}"; do
     elif [[ $saved != "$displaced"/* || ! (-e $saved || -L $saved) ]]; then
         warn "the moved-aside copy of $path isn't in $displaced any more"
         manifest_drop "$entry"
-    elif [[ (-e $path || -L $path) && -z ${gone[$path]:-} ]]; then
+    elif [[ (-e $path || -L $path) && ${planned_path[$path]:-} != removed ]]; then
         warn "$path is taken by something else, so the earlier one stays in $saved; move that away and run uninstall.sh again"
     else
         plan "put back the earlier $path"
         ((dry_run)) || mv -T "$saved" "$path"
-        unset 'gone[$path]' # (taken again)
+        planned_path[$path]=restored
         manifest_drop "$entry"
         say "Put back the earlier $path"
     fi
 done
 
 ((had_plasma_style)) && drop_plasma_caches
+
+# A previous run may have published its cleanup hook and link, then failed
+# before publishing the module. Retire them before collecting empty parents.
+find_kde_quick
+if [[ ! -e $quick_module && ! -L $quick_module ]]; then
+    remove_passthrough
+fi
 
 # Folders install.sh created, deepest first, if nothing else is in them now.
 for ((i = ${#entries[@]} - 1; i >= 1; i--)); do
@@ -374,7 +383,6 @@ fi
 
 # Qt Quick apps started from the session's environment (it still names the
 # Platinum Qt Quick style until the next login) keep working (finding 49).
-find_kde_quick
 leave_passthrough
 
 # Anything still to do keeps the record for another run.

@@ -211,7 +211,11 @@ if ((apply)); then
     notify_style
     say "Set the title bar buttons: close on the left, zoom and collapse on the right"
     case ":${QT_PLUGIN_PATH:-}:" in
-        *":$plugins:"*) ;;
+        *":$plugins:"*)
+            if [[ -n $kde_quick_version && -z ${QT_QUICK_CONTROLS_STYLE:-} ]]; then
+                note "Log out and back in for Qt Quick apps to use the Platinum controls."
+            fi
+            ;;
         *) note "Log out and back in once: the application style and the window decoration load from then on." ;;
     esac
 fi

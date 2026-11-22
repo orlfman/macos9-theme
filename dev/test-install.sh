@@ -185,7 +185,8 @@ check "a second plain install exits 0" run install-2 "$project/install.sh"
 check "the record still lists 9 targets, nothing moved aside" \
     bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 9 ]] && ! grep -q '^displaced' '$state/installed'"
 
-check "--apply exits 0" run apply "$project/install.sh" --apply
+check "--apply exits 0" run apply env QT_PLUGIN_PATH="$plugins/style:$plugins/decoration" "$project/install.sh" --apply
+check "--apply explains the next login for Qt Quick apps" grep -Fq 'Log out and back in for Qt Quick apps' "$root/$n-apply.log"
 check "--apply refreshed the copy (taken: apply)" grep -qx apply "$state/backup/TAKEN"
 check "--apply noted the absent ones" grep -qxP 'config\tkdedefaults' "$state/backup/ABSENT"
 check "--apply switched the global theme" grep -q "LookAndFeelPackage=platinum.desktop" "$config/kdeglobals"
@@ -687,6 +688,7 @@ mkdir -p "$(dirname "$module")"
 printf 'mine' > "$module"
 check "install exits 0" run install "$project/install.sh"
 check "uninstall exits 0 (a file there)" run uninstall "$project/uninstall.sh"
+check "  it explains when Qt Quick apps may need a new login" grep -Fq 'may need you to log out' "$root/$n-uninstall.log"
 check "  the user's file is back, nothing added" bash -c "[[ -f '$module' && \$(cat '$module') == mine ]]"
 check "  a second uninstall exits 0 too" run uninstall-2 "$project/uninstall.sh"
 rm -f "$module"
@@ -698,6 +700,19 @@ check "  the user's folder is back with nothing added" bash -c "[[ \$(ls -A '$mo
 next_login
 check "  and still so after the next login" bash -c "[[ \$(ls -A '$module') == notes.txt ]]"
 
+# The installed folder was moved away before uninstall. The dry run must
+# still reserve its place for the original folder when it simulates restore.
+check "install the theme again" run install-again "$project/install.sh"
+mv "$module" "$root/moved-quick-module"
+check "uninstall dry run exits 0" run preview "$project/uninstall.sh" --dry-run
+if grep -q 'would leave a pass-through' "$root/$n-preview.log"; then
+    fail "the preview reserves the vacant path for the original folder"
+else
+    pass "the preview reserves the vacant path for the original folder"
+fi
+check "uninstall exits 0" run restore "$project/uninstall.sh"
+check "  the original folder occupies the path" grep -Fxq mine "$module/notes.txt"
+
 # --------------------------------------------------------------------------
 fresh "finding 57: a backslash in a copied file's name"
 mkdir -p "$config/gtk-3.0/assets"
@@ -707,6 +722,77 @@ check "install --apply exits 0" run apply "$project/install.sh" --apply
 check "  the checksum list escapes its name" grep -q '^\\' "$state/backup/SUMS"
 check "uninstall exits 0" run uninstall "$project/uninstall.sh"
 check "  and puts the seed back" same "$seed" "$(config_state)"
+
+# --------------------------------------------------------------------------
+fresh "a reinstall preserves personal copies of the one-shot login script"
+check "install exits 0" run install "$project/install.sh"
+check "uninstall exits 0" run uninstall "$project/uninstall.sh"
+hook=$config/plasma-workspace/env/macos9-theme-cleanup.sh
+cp "$hook" "${hook%.sh}-saved.sh"
+cp "$hook" "${hook%.sh}-2.sh"
+check "reinstall exits 0" run reinstall "$project/install.sh"
+check "  both personal copies survive under their own names" \
+    cmp "${hook%.sh}-saved.sh" "${hook%.sh}-2.sh"
+check "  the original cleanup hook was retired" test ! -e "$hook"
+
+fresh "a login preserves edits and replacements in the temporary Qt Quick module"
+check "install exits 0" run install "$project/install.sh"
+check "uninstall exits 0" run uninstall "$project/uninstall.sh"
+module=$home/.local/lib/macos9-theme/qml/Platinum
+printf '# my extra settings\n' >> "$module/qmldir"
+next_login
+check "  the edited qmldir survives the next login" grep -Fxq '# my extra settings' "$module/qmldir"
+check "install over the edited file exits 0" run reinstall "$project/install.sh"
+check "uninstall exits 0" run uninstall "$project/uninstall.sh"
+check "  and restores my edited qmldir" grep -Fxq '# my extra settings' "$module/qmldir"
+
+fresh "a personal edit to the generated login hook survives login and reinstall"
+check "install exits 0" run install "$project/install.sh"
+check "uninstall exits 0" run uninstall "$project/uninstall.sh"
+hook=$config/plasma-workspace/env/macos9-theme-cleanup.sh
+printf '# local note\n' >> "$hook"
+cp "$hook" "$root/edited-hook"
+next_login
+check "  login preserves the edited hook" cmp "$root/edited-hook" "$hook"
+check "reinstall exits 0" run reinstall "$project/install.sh"
+check "  reinstall preserves the edited hook" cmp "$root/edited-hook" "$hook"
+
+# Interrupt each of the last two publications, then rerun the real uninstaller.
+for operation in ln mv; do
+    fresh "uninstall can retry a failed $operation while leaving the temporary Qt Quick module"
+    check "install exits 0" run install "$project/install.sh"
+    module=$home/.local/lib/macos9-theme/qml/Platinum
+    target=$module
+    [[ $operation != ln ]] || target=$home/.local/lib/macos9-theme/style/kf6/kirigami/platform/Platinum.so
+    bin=$root/fail-publish-$operation
+    mkdir -p "$bin"
+    cat > "$bin/$operation" <<'STUB'
+#!/bin/bash
+[[ ${!#} != "$M9_TEST_TARGET" ]] || exit 1
+exec "/usr/bin/${0##*/}" "$@"
+STUB
+    chmod +x "$bin/$operation"
+    if run interrupted env PATH="$bin:$PATH" M9_TEST_TARGET="$target" "$project/uninstall.sh"; then
+        fail "uninstall reports the failed publication"
+    else
+        pass "uninstall reports the failed publication"
+    fi
+    check "  no partial module is visible" test ! -e "$module"
+    check "retry exits 0" run retry "$project/uninstall.sh"
+    check "  the session's module is complete" grep -Fxq 'import org.kde.desktop 1.0' "$module/qmldir"
+    next_login
+    check "  login removes the temporary library folders" test ! -e "$home/.local/lib"
+    check "  login removes the temporary login folder" test ! -e "$config/plasma-workspace"
+done
+
+fresh "a backup filename ending in a line break restores byte for byte"
+mkdir -p "$config/gtk-3.0/assets"
+asset=$config/gtk-3.0/assets/$'blue\n'
+printf 'original' > "$asset"
+check "install --apply exits 0" run apply "$project/install.sh" --apply
+printf 'changed' > "$asset"
+check "uninstall exits 0" run uninstall "$project/uninstall.sh"
+check "  the original file and name are restored" grep -Fxq original "$asset"
 
 fresh "a home with spaces and quotes in its path"
 weird="$root/my 'odd' \$home"
