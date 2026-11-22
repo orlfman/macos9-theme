@@ -314,4 +314,14 @@ switches", steps 2-5 and 7):
 - **Switches stay switches**: with the Platinum style, Space still toggles
   `Switch` and `SwitchDelegate`, and screen readers get the same role and
   state as with KDE's style (`dev/quickkeys.cpp`).
+- **Dialogs, drawers, range sliders** (2026-11-21): KDE's Qt Quick dialogs
+  use the View colors, so their body is white, like the captured Mac OS 9
+  dialogs; the plain modal frame (measured, `PE_PlatinumModalFrame`) fits
+  them since an in-window dialog can't be dragged. The style draws the
+  slider's groove and thumb only when `subControls` asks (QSlider asks for
+  both), so a range slider gets one groove and two thumbs; KDE's hidden
+  handles, given the thumb's size and the groove's 3 px inset as padding,
+  sit exactly on the drawn thumbs. Qt's `RangeSlider` has a FINAL
+  `horizontal` property (a derived type can't declare one). A drawer with
+  its `enter` transition removed stays at position 0; tests set `position`.
 

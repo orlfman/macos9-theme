@@ -1,7 +1,8 @@
 // The Qt Quick counterparts of dev/quickref.cpp's widget pieces, one per
 // step on a magenta window (so dev/check-quick.sh finds each piece by its
 // own pixels): 0/1 menu with the first/last row selected, 2 the combo
-// box's open list, 3 the menu bar, 4 a checked switch, 5 a tooltip. With
+// box's open list, 3 the menu bar, 4 a checked switch, 5 a tooltip, 6 a
+// dialog (its frame), 7 a range slider, 8 a drawer (its open edge). With
 // --switch-to-fusion it switches the app to Fusion first (the fallback
 // check: it must then look exactly like KDE's own style).
 import QtQuick
@@ -13,7 +14,7 @@ QQC2.ApplicationWindow {
     height: 360
     visible: false
     color: "#ff00ff"
-    property int steps: 6
+    property int steps: 9
     property int step: -1
     // dev/check-quick.sh's fallback run: switch the app's style to Fusion
     // first (only works with M9_QUICK_TEST set and this project's style).
@@ -30,7 +31,14 @@ QQC2.ApplicationWindow {
         if (i === 2) combo.popup.open()
         // (no fade-in, so the shot holds the finished tooltip)
         tipAnchor.QQC2.ToolTip.toolTip.enter = null
+        tipAnchor.QQC2.ToolTip.toolTip.exit = null
         tipAnchor.QQC2.ToolTip.visible = i === 5
+        // (no fade or slide, so the shots hold the finished pop-ups)
+        dialog.enter = null; dialog.exit = null
+        if (i === 6) dialog.open(); else dialog.close()
+        // (a drawer slides by its position; set it rather than wait)
+        drawer.enter = null; drawer.exit = null
+        if (i === 8) { drawer.open(); drawer.position = 1 } else drawer.close()
         // Where each piece is, for dev/check-quick.sh (after layout).
         logLater.step = i
         logLater.restart()
@@ -55,8 +63,17 @@ QQC2.ApplicationWindow {
                 const tip = tipAnchor.QQC2.ToolTip.toolTip
                 const p = (tip.balloon || tip.background).mapToItem(root.contentItem, 0, 0)
                 console.log("REGION tooltip", Math.round(p.x), Math.round(p.y))
-                console.log("TIPSIZE popup", tip.width, tip.implicitWidth, "bg", tip.background.x, tip.background.width, "balloon", tip.balloon.width, tip.balloon.implicitWidth, "insets", tip.leftInset, tip.rightInset, "pad", tip.leftPadding)
             }
+            if (i === 6) {
+                const p = (dialog.frame || dialog.background).mapToItem(root.contentItem, 0, 0)
+                console.log("REGION dialog", Math.round(p.x), Math.round(p.y))
+            }
+            if (i === 7) {
+                console.log("REGION rangeslider", range.x, range.y)
+                // KDE's (hidden) handles take the clicks: where they are.
+                console.log("HANDLES", range.first.handle.x, range.second.handle.x)
+            }
+            if (i === 8) console.log("REGION drawer", 0, 0, drawer.width, drawer.height)
         }
     }
     QQC2.Menu {
@@ -89,6 +106,26 @@ QQC2.ApplicationWindow {
         visible: root.step === 4
         text: "Switch on"
         checked: true
+    }
+    QQC2.Dialog {
+        id: dialog
+        width: 220
+        height: 120
+        title: "Dialog"
+    }
+    QQC2.RangeSlider {
+        id: range
+        x: 20; y: 150
+        width: 200
+        visible: root.step === 7
+        from: 0; to: 100
+        first.value: 20
+        second.value: 70
+    }
+    QQC2.Drawer {
+        id: drawer
+        width: 160
+        height: root.height
     }
     Item {
         id: tipAnchor

@@ -154,6 +154,14 @@ check popup-list-right-b popup-open.png@747,331,5,50 "$pr,893,5,50"
 check menubar-empty menu-file-open.png@72,0,7,20 10,930,7,20
 check menubar-title-left menu-file-open.png@37,0,7,20 100,930,7,20
 check menubar-title-right menu-file-open.png@64,0,8,20 127,930,8,20
+
+# The plain modal dialog frame (Qt Quick dialogs): its four edge bands,
+# frame and shadow (the shadow's open corners left out: the capture's
+# desktop shows there).
+check modal-frame-top dialog-modal-plain.png@766,194,386,4 10,1220,386,4
+check modal-frame-left dialog-modal-plain.png@766,194,4,189 10,1220,4,189
+check modal-frame-right dialog-modal-plain.png@1149,196,4,188 393,1222,4,188
+check modal-frame-bottom dialog-modal-plain.png@768,380,385,4 12,1406,385,4
 check menubar-title-top menu-file-open.png@37,0,35,2 100,930,35,2
 check menubar-title-bottom menu-file-open.png@37,17,35,3 100,947,35,3
 

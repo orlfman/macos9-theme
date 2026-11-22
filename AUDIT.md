@@ -3,7 +3,42 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: Nothing blocks the first desktop install except the user's go-ahead. Open: #3 (P3): the Qt Quick style is built and now installed by install.sh for menus, menu bar, combo lists, tooltips and switches (check-quick 13/13); dialogs, drawer and range slider remain. #43–#48 addressed; #44's login part is now done. User decisions still apply to #21 (main screen only), #26 (RTL unsupported), #23 (resizing on hold) and #25 (deferred until publication).
+Status: Nothing blocks the first desktop install except the user's go-ahead. Open: #3 (P3): the Qt Quick style is built and installed for menus, menu bar, combo lists, tooltips, switches, dialogs, drawers and range sliders (check-quick 19/19); waits for an audit and the user's review. User decisions still apply to #21 (main screen only), #26 (RTL unsupported), #23 (resizing on hold) and #25 (deferred until publication).
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — Qt Quick dialogs, drawers and range sliders (finding 3, step 6)
+
+Working tree after `6e3d450`; uncommitted at the time of writing.
+
+### What was done
+
+- **Measured** the plain modal dialog frame (`dialog-modal-plain.png`) and
+  the movable alert frame (`dialog-save-changes.png`) into REFERENCE.md
+  "Dialog frames".
+- **Style**: `PE_PlatinumModalFrame` (a custom primitive) draws the plain
+  modal frame; the slider draws its groove and thumb only when
+  `subControls` asks (QSlider always asks for both).
+- **Qt Quick**: `Dialog` in the modal frame on its white (View) body,
+  without KDE's dimmed backdrop; `Drawer` framed like a menu on its open
+  side (derived: Mac OS 9 had none); `RangeSlider` from the QSlider's groove
+  and two thumbs, KDE's hidden handles kept on the thumbs.
+
+### Checks
+
+- `dev/check-style.sh`: 135 of 135 (new: the frame's four edge bands
+  against the capture, 0 differing pixels; the 131 others unchanged).
+- `dev/check-quick.sh`: 19 of 19 (new: the dialog's frame bands, the range
+  slider against a QSlider with a second thumb, KDE's handles within 1 px
+  of the thumbs, the drawer's edge against a menu's; each also after a
+  switch to Fusion against KDE's style).
+- `dev/test-install.sh`: 230 of 230.
+
+### Limits
+
+- KDE's dialog header keeps its close button (Mac OS 9 modal dialogs had
+  none); the dialog's title stays KDE's heading.
+- Vertical range sliders and the other drawer edges (right, top, bottom)
+  are drawn but not checked.
+- Not seen on the user's screens.
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — Qt Quick style installed (finding 3, step 8), switch and real-session checks
 

@@ -44,8 +44,9 @@ global theme when you install, your settings are copied as they are then,
 so uninstalling brings back that state, not what you had before Platinum.
 
 Qt Quick apps (System Settings, Discover and other Kirigami apps) get
-Platinum menus, menu bars, pop-up lists, help balloons and check-box
-switches; their other controls come from KDE's style, which draws through
+Platinum menus, menu bars, pop-up lists, help balloons, check-box
+switches, two-thumb sliders, dialogs in the Mac OS 9 modal frame, and
+slide-out panels framed like menus; their other controls come from KDE's style, which draws through
 the Platinum style already. The login script turns this on only while
 Platinum is your application style, you haven't chosen a Qt Quick style
 yourself, and KDE's Qt Quick style is the version it was checked with; an

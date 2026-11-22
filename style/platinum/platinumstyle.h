@@ -78,6 +78,12 @@ constexpr int ToolButtonPadding = 9;   // 16 px icon -> 25 px bevel (Mac Help's 
 constexpr int ToolTipFrame = 10;       // balloon outline to text (Mac pads ~12)
 } // namespace Metrics
 
+// Drawn by drawPrimitive for callers outside the widget world (the Qt Quick
+// style in style/quick uses the same number): the plain modal dialog
+// frame, option->rect including its 1 px shadow, filled with the palette's
+// Window color.
+constexpr QStyle::PrimitiveElement PE_PlatinumModalFrame = QStyle::PrimitiveElement(QStyle::PE_CustomBase + 1);
+
 class Style : public QProxyStyle
 {
     Q_OBJECT

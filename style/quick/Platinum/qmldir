@@ -3,11 +3,14 @@ plugin platinumquick
 classname PlatinumQuickPlugin
 import org.kde.desktop 1.0
 ComboBox 1.0 ComboBox.qml
+Dialog 1.0 Dialog.qml
+Drawer 1.0 Drawer.qml
 Menu 1.0 Menu.qml
 MenuBar 1.0 MenuBar.qml
 MenuBarItem 1.0 MenuBarItem.qml
 MenuItem 1.0 MenuItem.qml
 MenuSeparator 1.0 MenuSeparator.qml
+RangeSlider 1.0 RangeSlider.qml
 Switch 1.0 Switch.qml
 SwitchDelegate 1.0 SwitchDelegate.qml
 ToolTip 1.0 ToolTip.qml

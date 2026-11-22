@@ -2,6 +2,16 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — Qt Quick dialogs, drawers and range sliders (finding 3, step 6)
+
+- **Dialogs**: the Mac OS 9 plain modal frame, measured from the captures
+  and drawn by the style (`PE_PlatinumModalFrame`, pixel exact against the
+  capture); white body; no dimmed window behind.
+- **Drawers**: framed like a menu on the side that slides in.
+- **Range sliders**: the Platinum slider groove with two Platinum thumbs.
+- **Style**: sliders draw only the parts asked for (no change for QSlider).
+- Checks: style 135/135, Qt Quick 19/19, install 230/230.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — install the Qt Quick style (finding 3, step 8)
 
 - **install.sh / uninstall.sh**: install the Qt Quick style and Kirigami's

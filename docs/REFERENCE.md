@@ -180,6 +180,13 @@ current item). Measured.
 | Help balloon | `help-balloon.png` (x≈1688–1852, y≈138–272) | white fill, 1 px black outline with a heavier black edge right and bottom (shadow), rounded corners, a pointed tail to the hovered spot (top right here), text in the small system font |
 | Help balloon outline | `help-balloon.png` (box x=1690–1849, y=149–269) | 1 px black on the top and left, 2 px on the right and bottom; corners as row spans (from the box's edges): top-left rows 1–5 cover columns 3–5, 2–3, 1–2, 1, 0–1, then column 0; top row starts 5 px in; bottom two rows start 5 and 3 px in and end 5 and 3 px before the right edge; bottom-right rows (from the bottom) 2–6: 6–2, 4–1, 3–1, 2–0, 2–0 px back from the right edge. The top-right corner is under the tail here |
 
+## Dialog frames
+
+| What | Capture | Value |
+|------|---------|-------|
+| Plain modal dialog frame | `dialog-modal-plain.png` ("About Balloon Help", black outline x=766–1151, y=194–382) | 1 px black outline; inside it `#BBBBBB` on the top row and left column; `#555555` on the right column and bottom row, `#999999` one in from those (the right column from 3 rows down, the bottom row from 3 columns in), with one `#BBBBBB` pixel where each meets the light edge (top right, bottom left); a 1 px black shadow right of and below the outline, starting 2 px in. Inside white (the app's body). Used for Qt Quick dialogs (`PE_PlatinumModalFrame`; check-style `modal-frame-*`) |
+| Movable alert frame | `dialog-save-changes.png` (x=537–902) | the same right and bottom edges (`#999999`, `#555555`, black, black shadow); the light left edge is `#DDDDDD`; a pinstriped drag strip on top (black, white, `#CCCCCC`×2, `#777777`/white stripes, `#CCCCCC`×4, `#999999`, black). Not used yet |
+
 ## Text colors (for the color scheme)
 
 | What | Value | Source |

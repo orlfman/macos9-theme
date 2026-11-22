@@ -378,6 +378,34 @@ void drawMenuPanel(QPainter *p, const QRect &r)
     p->fillRect(QRect(in.left() + 1, in.bottom(), in.width() - 1, 1), gray(0x99));
 }
 
+// The plain modal dialog frame (dialog-modal-plain.png, "About Balloon
+// Help"; docs/REFERENCE.md "Modal dialog frame"), measured: a 1 px black
+// outline; inside it #BBBBBB on the top row and left column, #555555 on the
+// right column and bottom row, then a #999999 column and row inside those
+// (with a #BBBBBB pixel where they meet the light edges); a 1 px black
+// shadow outside the right and bottom, starting 2 px in. `r` includes the
+// shadow; the inside is filled with `fill` (white in the capture, the
+// window color for Qt Quick dialogs).
+void drawModalFrame(QPainter *p, const QRect &r, const QColor &fill)
+{
+    const int x0 = r.left(), y0 = r.top(), x1 = r.right() - 1, y1 = r.bottom() - 1;
+    if (x1 - x0 < 8 || y1 - y0 < 8) {
+        return;
+    }
+    p->fillRect(QRect(x1 + 1, y0 + 2, 1, y1 - y0 - 1), Black);
+    p->fillRect(QRect(x0 + 2, y1 + 1, x1 - x0, 1), Black);
+    p->fillRect(QRect(x0, y0, x1 - x0 + 1, y1 - y0 + 1), Black);
+    p->fillRect(QRect(x0 + 1, y0 + 1, x1 - x0 - 1, y1 - y0 - 1), fill);
+    p->fillRect(QRect(x0 + 1, y0 + 1, x1 - x0 - 1, 1), gray(0xBB));
+    p->fillRect(QRect(x0 + 1, y0 + 1, 1, y1 - y0 - 1), gray(0xBB));
+    p->fillRect(QRect(x1 - 1, y0 + 2, 1, y1 - y0 - 2), gray(0x55));
+    p->fillRect(QRect(x0 + 2, y1 - 1, x1 - x0 - 2, 1), gray(0x55));
+    p->fillRect(QRect(x1 - 2, y0 + 3, 1, y1 - y0 - 4), gray(0x99));
+    p->fillRect(QRect(x0 + 3, y1 - 2, x1 - x0 - 4, 1), gray(0x99));
+    p->fillRect(QRect(x1 - 2, y0 + 2, 1, 1), gray(0xBB));
+    p->fillRect(QRect(x0 + 2, y1 - 2, 1, 1), gray(0xBB));
+}
+
 // One item's slice of the menu bevel: light left column and top row,
 // dark right column and bottom row, the two corners where they meet in the
 // fill color; the top / bottom row only where the item covers the menu's
@@ -966,16 +994,20 @@ void Style::drawSlider(const QStyleOptionSlider *o, QPainter *p, const QWidget *
     }
     const bool enabled = o->state & State_Enabled;
     const SliderLayout l = sliderLayout(r, o, true);
-    // Groove: left end, stretched middle, right end.
+    // Groove: left end, stretched middle, right end. (Each part only when
+    // asked for: QSlider asks for all; the Qt Quick range slider draws one
+    // groove and two thumbs separately.)
     const QRect g = l.groove;
     const Sprite &gl = enabled ? Sprites::GrooveLeft : Sprites::GrooveLeftDisabled;
     const Sprite &gm = enabled ? Sprites::GrooveMid : Sprites::GrooveMidDisabled;
     const Sprite &gr = enabled ? Sprites::GrooveRight : Sprites::GrooveRightDisabled;
-    drawSprite(p, g.x(), g.y(), gl);
-    for (int x = g.x() + gl.w; x < g.right() - gr.w + 1; ++x) {
-        drawSprite(p, x, g.y(), gm);
+    if (o->subControls & SC_SliderGroove) {
+        drawSprite(p, g.x(), g.y(), gl);
+        for (int x = g.x() + gl.w; x < g.right() - gr.w + 1; ++x) {
+            drawSprite(p, x, g.y(), gm);
+        }
+        drawSprite(p, g.right() - gr.w + 1, g.y(), gr);
     }
-    drawSprite(p, g.right() - gr.w + 1, g.y(), gr);
     // Tick marks under the thumb's center for each interval.
     if ((o->subControls & SC_SliderTickmarks) && (o->tickPosition & QSlider::TicksBelow) && enabled) {
         const int travel = std::max(0, r.width() - 2 * SliderInset - SliderThumbWidth);
@@ -1001,7 +1033,9 @@ void Style::drawSlider(const QStyleOptionSlider *o, QPainter *p, const QWidget *
         }
     }
     const bool pressed = (o->activeSubControls & SC_SliderHandle) && (o->state & State_Sunken);
-    drawSprite(p, l.handle.x(), l.handle.y(), !enabled ? Sprites::SliderThumbDisabled : pressed ? Sprites::SliderThumbPressed : Sprites::SliderThumb);
+    if (o->subControls & SC_SliderHandle) {
+        drawSprite(p, l.handle.x(), l.handle.y(), !enabled ? Sprites::SliderThumbDisabled : pressed ? Sprites::SliderThumbPressed : Sprites::SliderThumb);
+    }
     p->restore();
 }
 
@@ -1507,6 +1541,14 @@ void Style::drawControl(ControlElement element, const QStyleOption *option, QPai
 
 void Style::drawPrimitive(PrimitiveElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const
 {
+    // (a custom element, outside the enum's switch)
+    if (element == PE_PlatinumModalFrame) {
+        painter->save();
+        painter->setRenderHint(QPainter::Antialiasing, false);
+        drawModalFrame(painter, option->rect, option->palette.color(QPalette::Window));
+        painter->restore();
+        return;
+    }
     switch (element) {
     case PE_FrameFocusRect:
         // Mac OS 9 shows no focus rectangle on buttons, toggles and tabs.

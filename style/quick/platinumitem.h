@@ -11,7 +11,7 @@ class PlatinumItem : public QQuickPaintedItem
 {
     Q_OBJECT
     // What to draw: menu, menuitem, separator, menubar, menubaritem,
-    // tooltip, checkbox.
+    // tooltip, checkbox, dialog, drawer, slidergroove, sliderthumb.
     Q_PROPERTY(QString elementType MEMBER m_type NOTIFY changed)
     Q_PROPERTY(QString text MEMBER m_text NOTIFY changed)
     Q_PROPERTY(QString shortcut MEMBER m_shortcut NOTIFY changed)
@@ -32,6 +32,13 @@ class PlatinumItem : public QQuickPaintedItem
     // slice of the panel first, as QMenu paints rows over its panel (the
     // text then blends with the same pixels).
     Q_PROPERTY(QRectF panel MEMBER m_panel NOTIFY changed)
+    // Sliders: the orientation, and a thumb's visual position (0..1 along
+    // the groove, as Qt Quick's visualPosition).
+    Q_PROPERTY(bool horizontal MEMBER m_horizontal NOTIFY changed)
+    Q_PROPERTY(qreal position MEMBER m_position NOTIFY changed)
+    // Drawers: the window edge it slides from (Qt::Edge); its other sides
+    // lie outside the window, so only the open side's frame is drawn.
+    Q_PROPERTY(int edge MEMBER m_edge NOTIFY changed)
     // True while the application's QStyle is Platinum: the controls fall
     // back to KDE's own look otherwise (another style, or a Qt Quick app
     // without widgets).
@@ -66,4 +73,7 @@ private:
     bool m_first = false, m_last = false, m_combo = false, m_active = false;
     int m_shortcutColumn = 0;
     QRectF m_panel;
+    bool m_horizontal = true;
+    qreal m_position = 0;
+    int m_edge = Qt::LeftEdge;
 };

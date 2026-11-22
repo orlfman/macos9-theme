@@ -162,7 +162,7 @@ int main(int argc, char **argv)
     QWidget w;
     host = &w;
     std::printf("style %s\n", qPrintable(style->name()));
-    QImage img(1000, 1200, QImage::Format_RGB32);
+    QImage img(1000, 1420, QImage::Format_RGB32);
     img.fill(QColor(0xDD, 0xDD, 0xDD));
     QPainter p(&img);
     using S = QStyle;
@@ -406,6 +406,21 @@ int main(int argc, char **argv)
         o.state = QStyle::State_Enabled | QStyle::State_Selected | QStyle::State_Sunken;
         style->drawControl(QStyle::CE_MenuBarItem, &o, &p, host);
         report("menubar-file", o.rect);
+    }
+    // The plain modal dialog frame (the Qt Quick style's dialogs) at the
+    // size of reference/dialog-modal-plain.png's (outline 386x189, plus its
+    // 1 px shadow), with that dialog's white inside; on magenta so the
+    // shadow's open corners show.
+    {
+        const QRect r(10, 1220, 387, 190);
+        p.fillRect(r, QColor(255, 0, 255));
+        QStyleOption o;
+        o.initFrom(host);
+        o.rect = r;
+        o.palette.setColor(QPalette::Window, Qt::white);
+        // (Platinum::PE_PlatinumModalFrame, see platinumstyle.h)
+        style->drawPrimitive(QStyle::PrimitiveElement(QStyle::PE_CustomBase + 1), &o, &p, host);
+        report("modal-frame", r);
     }
     p.end();
     return img.save(QString::fromLocal8Bit(argv[1])) ? 0 : 1;

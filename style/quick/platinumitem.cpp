@@ -2,6 +2,7 @@
 #include "platinumitem.h"
 
 #include <QApplication>
+#include <algorithm>
 #include <QPainter>
 #include <QQmlEngine>
 #include <QQmlExtensionPlugin>
@@ -168,6 +169,13 @@ void PlatinumItem::updateImplicitSize()
         setImplicitSize(0, size.height());
     } else if (is(m_type, "checkbox")) {
         setImplicitSize(style->pixelMetric(QStyle::PM_IndicatorWidth), style->pixelMetric(QStyle::PM_IndicatorHeight));
+    } else if (is(m_type, "slidergroove")) {
+        // The thumb's thickness across, as a QSlider without tick marks.
+        const int thick = style->pixelMetric(QStyle::PM_SliderThickness);
+        setImplicitSize(m_horizontal ? 0 : thick, m_horizontal ? thick : 0);
+    } else if (is(m_type, "sliderthumb")) {
+        const int length = style->pixelMetric(QStyle::PM_SliderLength), thick = style->pixelMetric(QStyle::PM_SliderThickness);
+        setImplicitSize(m_horizontal ? length : thick, m_horizontal ? thick : length);
     } else if (drawsText()) {
         // As QTipLabel sizes itself: the text, its margin on each side, its
         // 1 px indent, and 1 px more width (1 more px height for a font
@@ -239,6 +247,71 @@ void PlatinumItem::paint(QPainter *painter)
             style->drawItemText(painter, r.adjusted(m + 1, m, -m, -m), Qt::AlignLeft | Qt::TextExpandTabs, QToolTip::palette(), true, m_text,
                                 QPalette::ToolTipText);
         }
+    } else if (is(m_type, "dialog")) {
+        // The plain modal dialog frame (Platinum::PE_PlatinumModalFrame),
+        // filled with the view color as KDE's Qt Quick dialogs are (white,
+        // like the captured Mac OS 9 dialogs).
+        QStyleOption opt;
+        opt.rect = r;
+        opt.palette = QApplication::palette();
+        opt.palette.setColor(QPalette::Window, opt.palette.color(QPalette::Base));
+        opt.state = QStyle::State_Enabled;
+        opt.styleObject = this;
+        style->drawPrimitive(QStyle::PrimitiveElement(QStyle::PE_CustomBase + 1), &opt, painter, nullptr);
+    } else if (is(m_type, "drawer")) {
+        // A panel framed like a menu, its sides other than the open one
+        // pushed outside the item (and so outside the window).
+        QStyleOption opt;
+        const int out = 4;
+        QRect panel = r.adjusted(-out, -out, out, out);
+        switch (m_edge) {
+        case Qt::LeftEdge:
+            panel.setRight(r.right());
+            break;
+        case Qt::RightEdge:
+            panel.setLeft(r.left());
+            break;
+        case Qt::TopEdge:
+            panel.setBottom(r.bottom());
+            break;
+        default:
+            panel.setTop(r.top());
+            break;
+        }
+        opt.rect = panel;
+        opt.palette = QApplication::palette("QMenu");
+        opt.state = QStyle::State_Enabled;
+        opt.styleObject = this;
+        style->drawPrimitive(QStyle::PE_PanelMenu, &opt, painter, nullptr);
+    } else if (is(m_type, "slidergroove") || is(m_type, "sliderthumb")) {
+        // One part of a QSlider drawing: the groove, or a thumb at its
+        // position (the groove's travel as the style lays it out).
+        QStyleOptionSlider opt;
+        opt.rect = r;
+        opt.palette = QApplication::palette("QSlider");
+        opt.orientation = m_horizontal ? Qt::Horizontal : Qt::Vertical;
+        opt.minimum = 0;
+        opt.maximum = 10000;
+        opt.sliderPosition = opt.sliderValue = qRound(std::clamp<qreal>(m_position, 0, 1) * 10000);
+        opt.upsideDown = false;
+        opt.state = QStyle::State_None;
+        if (isEnabled()) {
+            opt.state |= QStyle::State_Enabled;
+        }
+        if (m_horizontal) {
+            opt.state |= QStyle::State_Horizontal;
+        }
+        if (is(m_type, "slidergroove")) {
+            opt.subControls = QStyle::SC_SliderGroove;
+        } else {
+            opt.subControls = QStyle::SC_SliderHandle;
+            if (m_pressed) {
+                opt.activeSubControls = QStyle::SC_SliderHandle;
+                opt.state |= QStyle::State_Sunken;
+            }
+        }
+        opt.styleObject = this;
+        style->drawComplexControl(QStyle::CC_Slider, &opt, painter, nullptr);
     } else if (is(m_type, "checkbox")) {
         QStyleOptionButton opt;
         opt.rect = r;

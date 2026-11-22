@@ -1,14 +1,20 @@
 // The widget counterparts of the Qt Quick style's pieces, for
 // dev/check-quick.sh: saves OUT-menu-0.png / -1.png (first / last row
 // selected), OUT-combo.png (the open list), OUT-menubar.png,
-// OUT-checkbox.png (the indicator of a checked QCheckBox) and
-// OUT-tooltip.png, and prints their sizes. Run with the Platinum style.
+// OUT-checkbox.png (the indicator of a checked QCheckBox),
+// OUT-tooltip.png, OUT-dialog.png (the modal dialog frame, 220x120),
+// OUT-rangeslider.png (a QSlider at 20 with a second thumb at 70) and
+// OUT-menuedge.png (a menu's right edge, for the drawer's), and prints
+// their sizes. Run with the Platinum style.
 #include <QApplication>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QEventLoop>
 #include <QMenu>
 #include <QMenuBar>
+#include <QPainter>
+#include <QSlider>
+#include <QStyleOptionSlider>
 #include <QPixmap>
 #include <QStyle>
 #include <QStyleOptionButton>
@@ -110,6 +116,54 @@ int main(int argc, char **argv)
     boxShot.save(out + QStringLiteral("-checkbox.png"));
     printf("checkbox %d %d\n", indicator.width(), indicator.height());
     box.hide();
+
+    // The modal dialog frame at the Qt Quick dialog's size, on its white
+    // body (Platinum::PE_PlatinumModalFrame).
+    {
+        QImage frame(220, 120, QImage::Format_ARGB32_Premultiplied);
+        frame.fill(Qt::transparent);
+        QPainter p(&frame);
+        QStyleOption o;
+        o.rect = frame.rect();
+        o.palette = QApplication::palette();
+        o.palette.setColor(QPalette::Window, o.palette.color(QPalette::Base));
+        o.state = QStyle::State_Enabled;
+        QApplication::style()->drawPrimitive(QStyle::PrimitiveElement(QStyle::PE_CustomBase + 1), &o, &p, nullptr);
+        p.end();
+        frame.save(out + QStringLiteral("-dialog.png"));
+        printf("dialog 220 120\n");
+    }
+
+    // The range slider: a QSlider (200 wide, 0..100) at 20, and the second
+    // thumb at 70 drawn by the style on top.
+    {
+        QSlider slider(Qt::Horizontal);
+        slider.setRange(0, 100);
+        slider.setValue(20);
+        slider.resize(200, slider.sizeHint().height());
+        slider.show();
+        settle(150);
+        QPixmap shot(slider.size());
+        shot.fill(Qt::transparent);
+        slider.render(&shot, QPoint(), QRegion(), QWidget::DrawChildren);
+        QStyleOptionSlider o;
+        o.initFrom(&slider);
+        o.orientation = Qt::Horizontal;
+        o.minimum = 0;
+        o.maximum = 100;
+        o.sliderPosition = o.sliderValue = 70;
+        o.subControls = QStyle::SC_SliderHandle;
+        o.rect = slider.rect();
+        QPainter p(&shot);
+        slider.style()->drawComplexControl(QStyle::CC_Slider, &o, &p, &slider);
+        p.end();
+        shot.save(out + QStringLiteral("-rangeslider.png"));
+        const QRect h1 = slider.style()->subControlRect(QStyle::CC_Slider, &o, QStyle::SC_SliderHandle, &slider);
+        o.sliderPosition = o.sliderValue = 20;
+        const QRect h0 = slider.style()->subControlRect(QStyle::CC_Slider, &o, QStyle::SC_SliderHandle, &slider);
+        printf("rangeslider %d %d handles %d %d\n", slider.width(), slider.height(), h0.x(), h1.x());
+        slider.hide();
+    }
 
     // A tooltip.
     QToolTip::showText(QPoint(300, 300), QStringLiteral("A help balloon"));

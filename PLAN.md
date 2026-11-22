@@ -16,7 +16,7 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | reference  | reference/, docs/REFERENCE.md | nobody | capture pass done (81 captures, CAPTURES.md); measurements partial |
 | colors     | colors/                   | nobody     | Platinum.colors done (sandbox-checked) |
 | decoration | decoration/               | nobody | plugin works in nested KWin; frame pixel exact; only the three Mac OS 9 boxes are created (AUDIT 20) |
-| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); Qt Quick style in style/quick: menus, menu bar, combo list, tooltips, switches (AUDIT 3, check-quick 13/13; installed by install.sh); next: dialogs/drawer/range slider; open: editable combo, size grip |
+| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); Qt Quick style in style/quick: menus, menu bar, combo list, tooltips, switches (AUDIT 3, check-quick 19/19; installed by install.sh); also dialogs (measured modal frame), drawers, range sliders; open: editable combo, size grip |
 | plasma     | plasma/                   | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); main screen only (decision 10); menu bar resizing on hold (AUDIT 23, user) |
 | icons      | icons/                    | nobody     | not started |
 | cursors    | cursors/                  | nobody     | not started |
@@ -171,8 +171,10 @@ installs it, the login script turns it on as planned), switches checked
 (Space, accessible role and state as with KDE's style), and real pop-ups
 in the nested KWin (in-window pop-ups, which is what Qt Quick uses by
 default, and a menu as its own window: frame, shadow and see-through
-corners right). Left: step 6 (dialog and drawer frames, range slider;
-list rows are already right), and step 9 (audit, the user's review).
+corners right). **Step 6 done (same day):** dialogs in the measured plain
+modal frame (white body, no dimming), drawers framed like menus on their
+open side, the range slider from the QSlider's groove and thumbs; list
+rows were already right. Left: step 9 (audit, the user's review).
 Open: a menu opened as its own window lands at the window's corner, not
 where asked (KDE's style not compared: its menu didn't open in that
 test).

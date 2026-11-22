@@ -18,8 +18,11 @@ QQC2.ApplicationWindow {
         if (i === 1) { menu.popup(); menu.currentIndex = 0 }
         if (i === 2) { combo.popup.open(); Qt.callLater(() => console.log("WIDTHS combo", combo.width, "popup", combo.popup.width, "avail", combo.popup.availableWidth, "list", combo.popup.contentItem.width, "row0", combo.popup.itemAt(0).width, "row0 menu", combo.popup.itemAt(0).menu, "platinum", combo.popup.itemAt(0).platinum, "implicit", combo.popup.itemAt(0).implicitWidth, "menu avail", combo.popup.itemAt(0).menu.availableWidth, "same menu", combo.popup.itemAt(0).menu === combo.popup, "row menu name", combo.popup.itemAt(0).menu.objectName, "popup name", combo.popup.objectName, "row menu visible", combo.popup.itemAt(0).menu.visible))  }
         tipButton.QQC2.ToolTip.visible = i === 3
+        // (no fade or slide, so the shots hold the finished pop-ups)
+        dialog.enter = null; dialog.exit = null; drawer.enter = null; drawer.exit = null
+        tipButton.QQC2.ToolTip.toolTip.exit = null
         if (i === 4) dialog.open()
-        if (i === 5) drawer.open()
+        if (i === 5) { drawer.open(); drawer.position = 1 }
     }
     menuBar: QQC2.MenuBar {
         QQC2.Menu { title: "File"; QQC2.MenuItem { text: "Open" } }

@@ -184,8 +184,9 @@ M9_QUICK=1 QSTYLE=Platinum dev/run.sh platinum breeze env QT_QUICK_BACKEND=softw
 the C++ item that paints with the QStyle) and links Kirigami's platform
 plugin for it (`style/build/plugins/kf6/kirigami/platform/Platinum.so`).
 `M9_QUICK=1` with `QSTYLE=Platinum` makes `dev/run.sh` use it.
-`dev/check-quick.sh` (13 checks) renders the Qt Quick menus (first and last row
-selected), combo box list, menu bar, switch indicator and tooltip
+`dev/check-quick.sh` (19 checks) renders the Qt Quick menus (first and last row
+selected), combo box list, menu bar, switch indicator, tooltip, dialog
+frame, range slider (and where KDE's hidden handles sit) and drawer edge
 (`dev/quick-regions.qml`) and compares each with its widget counterpart
 (`dev/quickref.cpp`) pixel for pixel; then it switches the app to Fusion
 while running and compares the same pieces with KDE's own style under
