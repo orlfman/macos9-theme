@@ -16,7 +16,7 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | reference  | reference/, docs/REFERENCE.md | nobody | capture pass done (81 captures, CAPTURES.md); measurements partial |
 | colors     | colors/                   | nobody     | Platinum.colors done (sandbox-checked) |
 | decoration | decoration/               | nobody | plugin works in nested KWin; frame pixel exact; only the three Mac OS 9 boxes are created (AUDIT 20) |
-| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); next: Qt Quick menus/tooltips/switches (AUDIT 3, plan below; spike done, menus pixel exact); Qt Quick row context read from styleObject; open: editable combo, size grip |
+| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); Qt Quick style in style/quick: menus, menu bar, combo list, tooltips, switches (AUDIT 3, check-quick 12/12; not installed yet); next: dialogs/drawer/range slider, packaging; open: editable combo, size grip |
 | plasma     | plasma/                   | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); main screen only (decision 10); menu bar resizing on hold (AUDIT 23, user) |
 | icons      | icons/                    | nobody     | not started |
 | cursors    | cursors/                  | nobody     | not started |
@@ -163,7 +163,13 @@ results in docs/FINDINGS.md "Qt Quick style spike", code in
 parts are hidden (`opacity: 0` through a `Binding`), never replaced, and
 our item sits next to them; a hidden `QWidget` tells the items when the
 app's style changes; `Menu.delegate` is overridden too; the Kirigami link
-is needed.
+is needed. **Built in `style/quick` 2026-11-21 (steps 2-5, 7):** menus,
+menu bar, combo box list, tooltips and switches; `dev/check-quick.sh` 12
+of 12 (each piece equals its widget counterpart, and after a switch to
+Fusion equals KDE's own style). Left: step 6 (dialog and drawer frames,
+range slider; list rows are already right), keyboard and screen reader
+checks for switches, real pop-up windows in the nested KWin, step 8
+(packaging), step 9.
 
 **What's wrong.** Qt Quick apps (System Settings pages, Discover, other
 Kirigami apps) use KDE's Qt Quick Controls style, `org.kde.desktop`

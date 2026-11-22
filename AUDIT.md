@@ -3,7 +3,35 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: Nothing blocks the first desktop install except the user's go-ahead. Open: #3 (P3): plan in PLAN.md, its spike done (step 1); #43–#48 addressed in the plan, #43, #45 and the run-time part of #44 proven by the spike. User decisions still apply to #21 (main screen only), #26 (RTL unsupported), #23 (resizing on hold) and #25 (deferred until publication).
+Status: Nothing blocks the first desktop install except the user's go-ahead. Open: #3 (P3): the Qt Quick style is built in `style/quick` for menus, menu bar, combo lists, tooltips and switches (check-quick 12/12), not installed yet; dialogs, drawer and range slider remain. #43–#48 addressed in the plan; #43, #45, #47, #48 and the run-time part of #44 now shown by checks. User decisions still apply to #21 (main screen only), #26 (RTL unsupported), #23 (resizing on hold) and #25 (deferred until publication).
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — Qt Quick style built (finding 3, steps 2-5 and 7)
+
+Built `style/quick` from the spike (menus, menu bar, combo box list,
+tooltips, switches) and a pixel check for it, `dev/check-quick.sh`.
+Working tree after `3fd0e68`; uncommitted at the time of writing.
+
+### Checks
+
+- `dev/check-quick.sh`: 12 of 12. Each Qt Quick piece equals its widget
+  counterpart pixel for pixel (menu with the first and with the last row
+  selected, the combo box's open list, the menu bar, a switch's indicator,
+  a tooltip); after switching the app to Fusion while running, each equals
+  KDE's own style under Fusion. The fallback half found two bugs first
+  (rows kept a bound width; KDE's list stayed over the button), both fixed.
+- System Settings (`kcm_mouse`) in the nested KWin with the style: runs, no
+  QML errors, the sidebar's switch is a Platinum check box.
+- `dev/check-style.sh` and `dev/check-plasma.sh` not rerun: the widget
+  style is unchanged since 131/131 and 7/7.
+
+### Limits
+
+- Software renderer and offscreen windows; real pop-up windows (menus as
+  their own Wayland surfaces) not checked; no menu opened in a real app.
+- Switches: Space toggling and the accessible checked state not checked.
+- Not installed: install.sh and the login script don't know the Qt Quick
+  style yet (step 8).
+- Dialog, drawer and range slider still KDE's (step 6).
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — Qt Quick spike (finding 3, step 1)
 

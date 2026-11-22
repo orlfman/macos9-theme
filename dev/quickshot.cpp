@@ -3,8 +3,9 @@
 //
 // A scene with an int property "steps" and a function prepare(i) is shot
 // once per step instead: prepare(i) is called, then the window is saved as
-// OUT-i.png. Windows are never shown, so this is how a scene shows states
-// that can't exist side by side, like keyboard focus.
+// OUT-i.png. Windows are never shown on a real display (only on the
+// offscreen platform, see below), so this is how a scene shows states that
+// can't exist side by side, like keyboard focus.
 #include <QApplication>
 #include <QEventLoop>
 #include <QQmlApplicationEngine>
@@ -33,6 +34,15 @@ int main(int argc, char **argv)
     if (engine.rootObjects().isEmpty())
         return 2;
     qInfo() << "QtQuick style:" << QQuickStyle::name();
+    // On the offscreen platform (no real screen) the window is shown, so
+    // its pop-up layer gets the window's size: pop-ups that place
+    // themselves when they open (menus, combo box lists) land where they
+    // would on a real screen. Never shown on a real display.
+    if (QGuiApplication::platformName() == QLatin1String("offscreen")) {
+        if (auto window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst())) {
+            window->show();
+        }
+    }
     QTimer::singleShot(1200, [&] {
         auto window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
         if (!window) {

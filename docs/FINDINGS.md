@@ -269,3 +269,36 @@ Kirigami 6.32.
   asked (`popupType` read back as 0), so the comparison finds the menu by
   its pixels in a window big enough to hold it.
 
+## The Qt Quick Controls style (2026-11-21, Claude Code)
+
+From building `style/quick` (PLAN.md "Plan: Qt Quick menus, tooltips and
+switches", steps 2-5 and 7):
+
+- **Inventory** (`dev/quick-inventory.qml`, before the style): wrong and
+  visible were the menu bar, menus, the combo box's list, switches (also
+  in list rows), the range slider, the dialog frame and the drawer edge.
+  Already right: buttons, check boxes, radios, the closed combo box, group
+  boxes, frames, and list selection (#CCCCFF with black text from the
+  color scheme, as `dialog-file-open.png`). The busy indicator, page
+  indicator and round button have no Mac OS 9 counterpart. Kirigami's own
+  cards, inline messages and drawer highlight keep Kirigami's shapes.
+- **KDE's ComboBox makes its list even when a derived type replaces
+  `popup`**: both lists exist and the rows register with KDE's. So the
+  style restyles KDE's list (as the Menu override does) and only replaces
+  the rows (`delegate`).
+- **Qt Quick menus size a row to the list only while the row has no width
+  of its own**; binding a width stops that for good (and a Binding gives
+  back a stale width when it ends).
+- **A Binding element on a pop-up's `y` doesn't give the original binding
+  back** when it ends (KDE's list stayed over the button after switching
+  to Fusion); one `Qt.binding` that covers both looks does.
+- **The widget tooltip's geometry** (`QTipLabel`): margin 1 +
+  `PM_ToolTipLabelFrameWidth` on each side, a 1 px indent, and 1 px more
+  width; text left-aligned in `QToolTip::font()` and `ToolTipText`. Drawn
+  that way by our item, the Qt Quick tooltip equals the widget one. KDE's
+  tooltip fades in (`enter` transition), so a shot right after opening it
+  is still see-through.
+- **quickshot's never-shown window has a 0x0 pop-up layer**, so menus and
+  combo lists placed themselves at the window's center. Showing the window
+  on the offscreen platform fixes it.
+

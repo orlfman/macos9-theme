@@ -165,6 +165,35 @@ via `tools/sprite.py`), `style/platinum/progress.h` (progress bar column
 profiles) and `style/platinum/tabs.h` (tab edges row by row, via
 `tools/tabs.py`). It needs `reference/`.
 
+### The Qt Quick Controls style
+
+```bash
+style/quick/build.sh
+```
+
+```bash
+dev/check-quick.sh
+```
+
+```bash
+M9_QUICK=1 QSTYLE=Platinum dev/run.sh platinum breeze env QT_QUICK_BACKEND=software dev/build/quickshot dev/quick-inventory.qml /tmp/inventory.png
+```
+
+`style/quick/build.sh` builds the Platinum Qt Quick Controls style into
+`style/build/qml/Platinum` (QML overrides of KDE's `org.kde.desktop` plus
+the C++ item that paints with the QStyle) and links Kirigami's platform
+plugin for it (`style/build/plugins/kf6/kirigami/platform/Platinum.so`).
+`M9_QUICK=1` with `QSTYLE=Platinum` makes `dev/run.sh` use it.
+`dev/check-quick.sh` renders the Qt Quick menus (first and last row
+selected), combo box list, menu bar, switch indicator and tooltip
+(`dev/quick-regions.qml`) and compares each with its widget counterpart
+(`dev/quickref.cpp`) pixel for pixel; then it switches the app to Fusion
+while running and compares the same pieces with KDE's own style under
+Fusion (the fallback). `dev/quick-inventory.qml` shows every control the
+plan covers, one pop-up per step. On the offscreen platform `quickshot`
+shows its window (nothing reaches a real display), so pop-ups place
+themselves as on a screen.
+
 ## Install and uninstall
 
 ```bash

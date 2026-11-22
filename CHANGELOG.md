@@ -2,6 +2,19 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — Qt Quick Controls style (finding 3, steps 2-5 and 7)
+
+- **`style/quick`**: the Platinum Qt Quick Controls style, built from the
+  spike. Menus, the menu bar, the combo box's list (Mac style: over the
+  button, current row checked), tooltips (the help balloon, laid out like
+  the widget tooltip) and switches (drawn as check boxes) now match the
+  widget style; everything else falls back to KDE's style, and so does
+  everything when the app's style isn't Platinum. Not installed yet.
+- **Checks**: `dev/check-quick.sh` 12/12 (widget equality and fallback
+  equality); `dev/quick-inventory.qml` lists every control the plan covers.
+- **Tools**: `dev/run.sh` takes `M9_QUICK=1`; `quickshot` shows its window
+  on the offscreen platform so pop-ups place themselves correctly.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — Qt Quick spike (finding 3, step 1)
 
 - **Spike** in `spikes/qtquick/`: a Qt Quick Controls style overriding

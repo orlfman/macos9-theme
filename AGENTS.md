@@ -58,7 +58,8 @@ docs/        REFERENCE.md (measured spec), FINDINGS.md (verified platform facts)
 reference/   Mac OS 9.2.2 captures: ignored here, its own private repo (below)
 colors/      color scheme(s)
 decoration/  KWin decoration (C++ KDecoration3 or Aurorae, see PLAN.md)
-style/       application style (Union style or C++ QStyle, see PLAN.md)
+style/       application style (C++ QStyle in style/platinum, Qt Quick
+             Controls style in style/quick, see PLAN.md)
 plasma/      Plasma style (desktoptheme), look-and-feel package, layout script
 icons/  cursors/  wallpapers/  gtk/  extras/ (konsole, alacritty, kitty, ...)
 dev/         sandbox and screenshot tooling, builds go in dev/build (ignored)

@@ -18,6 +18,8 @@
 #   SCALE   optional, Qt scale factor (default 1)
 #   QSTYLE  optional, a QStyle instead of Union: Platinum (this project's
 #           C++ style, built with style/build.sh), Fusion, Windows, ...
+#   M9_QUICK  1 = with QSTYLE=Platinum, Qt Quick apps use this project's
+#           Qt Quick Controls style too (built with style/quick/build.sh)
 #
 # Adapted from the user's windows2000-union project (BSD-2-Clause).
 set -euo pipefail
@@ -118,6 +120,10 @@ for plugins in "$project/style/build/plugins" "$project/decoration/build/plugins
         export QT_PLUGIN_PATH=$plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}
     fi
 done
+if [[ ${M9_QUICK:-} == 1 && ${QSTYLE:-} == Platinum ]]; then
+    export QT_QUICK_CONTROLS_STYLE=Platinum
+    export QML_IMPORT_PATH=$project/style/build/qml${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}
+fi
 export UNION_STYLE_NAME=$style UNION_DISABLE_STYLE_CACHE=1
 if [[ $QT_QPA_PLATFORM != wayland ]]; then
     unset WAYLAND_DISPLAY
