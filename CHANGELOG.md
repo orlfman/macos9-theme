@@ -2,6 +2,12 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Codex (GPT-6) — audit rollback before the first desktop install
+
+Recorded open findings #34–38 in AUDIT.md against `05cd9bd`. An apply/uninstall cycle changed a linked dotfile permanently, and plain uninstall deleted a user-added theme file. A missing backup file and a failed shell restart also exposed gaps in recovery. The dry-run collision warning can be deferred.
+
+The sandbox passed 131/131 style regions, 7/7 Plasma regions, 155/155 installer checks and 14/14 nested live checks. Rendered four scale factors and ran the style and decoration renderers under ASan/UBSan. Physical mixed-DPI monitors, real systemd recovery and a plugin upgrade remain unverified. The packaging maintainer should address #34–36 and #38 before the first desktop install. This pass changed the two review logs only.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for Codex's findings #27–#33
 
 Verified and fixed all seven (AUDIT.md has the per-finding table).

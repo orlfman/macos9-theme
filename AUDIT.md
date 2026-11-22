@@ -3,7 +3,29 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: Packaging findings #27–#31 are fixed and tested in throwaway homes; the first real install still waits for the user. Open P1 #25 (publication only). Open P3 #3, #23, #26. Earlier fixes and their tested scope are recorded below.
+Status: Hold the first desktop install for P1 #34–35 and rollback findings P2 #36 and #38. Open P3 #3, #23, #26 and #37 can wait. Open P1 #25 concerns publication.
+
+## 2026-11-21, Codex (GPT-6) — third pre-install audit
+
+Reviewed main at `05cd9bd`. All desktop operations used throwaway homes. The following cases are additional to the project's passing tests.
+
+| Finding | Location | Impact and verification |
+|---|---|---|
+| #34 · P1 · open | `scripts/common.sh:496`, `scripts/common.sh:525` | A link inside a backed-up directory can lose its target's original contents. Linked `kdedefaults/kdeglobals` to a custom dotfile in the test home, then ran apply and uninstall. Both exited 0. The dotfile's original `ColorScheme=Custom` became `Platinum` and stayed that way. The link check visits the listed entries only, and the recursive backup preserves the child link itself. |
+| #35 · P1 · open | `uninstall.sh:181`, `uninstall.sh:184`, `README.md:62` | Uninstall deletes user additions inside an installed package. Added `my-variant.svg` to the installed Platinum desktop theme after an ordinary install. Uninstall succeeded and no copy of that file remained in the throwaway home. The removal checks only the recorded path's type before recursively deleting it. The same type check also treats a replacement regular file as installed, despite the README's promise to preserve a user's replacement. |
+| #36 · P2 · open | `uninstall.sh:96`, `uninstall.sh:136`, `uninstall.sh:146` | An incomplete backup can produce a successful partial restore. After apply, moved the saved original `kwinrc` out of the backup while retaining its entry and the absence list. Uninstall reported success and archived the backup. The left button setting stayed at Platinum's `X` instead of the original `M`. |
+| #37 · P3 · open | `uninstall.sh:184`, `uninstall.sh:203` | Dry-run reports a collision that the real uninstall resolves. Installed over an existing Platinum color scheme, then ran preview and actual uninstall consecutively. Preview warned that the earlier file would stay displaced. Actual uninstall returned 0 and put it back. Preview checks the path while the installed file is still there. |
+| #38 · P2 · open | `uninstall.sh:144`, `uninstall.sh:148`, `scripts/common.sh:597` | If both shell start attempts fail, retrying uninstall can succeed while Plasma remains stopped. A private systemctl stub recorded a successful stop and two failed starts. Uninstall exited 1. Enabled starts and retried. Uninstall exited 0 without calling systemctl, and the simulated service remained inactive. The script had already archived the backup and only starts the shell inside the restore branch. |
+
+### Coverage and limits
+
+1. **Install and restore.** The installer suite passed 155/155. The nested live suite passed 14/14, including replacement of the shell process, both original panels with their widgets, the clock's seconds setting, and byte-for-byte restoration of the fixture's config and GTK files. The extra cases above identify configurations outside those tests. Coverage applies to the tested plugin builds, service paths and config files. A real login, a Qt/KWin upgrade, and a real systemd failure were outside this run.
+2. **Application style.** The build passed and all 131 reference regions matched. Rendered the gallery at 1, 1.25, 1.5 and 2. The fractional-scale gallery views retained recognizable controls and visible selection. The exact pixel count applies to the native-scale test. ASan/UBSan completed the stock style render with leak detection disabled. These exercises do not cover every style transition, null option, keyboard traversal, or hot path.
+3. **Decoration.** The instrumented decoration renderer completed and displayed title bars and controls for the fixture windows. Physical mixed-DPI output, interactive tiling and compositor upgrades remain unverified in this pass.
+4. **Plasma.** All seven measured parts matched. All 11 theme SVGs parsed. Inspected the nested desktop with the menu open. The main-screen-only panel layout remains the accepted #21 behavior. Edit mode, vertical/auto-hide docks and two physical 4K screens were outside this run.
+5. **Fidelity.** Independently sampled the private desktop capture. Pixel (5,500) was `#63639C`. At x=700 the menu bar was white at y=0, `#DDDDDD` at y=1 and 17, `#999999` at y=18 and black at y=19, matching the reference notes. Visually compared the enlarged check, radio and disclosure triangle crops.
+6. **Documentation.** The four requested check counts in the audit request matched this checkout. The README's recovery promises need qualification for #35 and #38.
+7. **Publication.** A filename and binary-diff scan of the 33 reachable commits found no reference image paths, font binaries or ROMs. That scan cannot establish provenance of numeric tables. The glyph-derived menu data and naming decision remain release questions under #25 and PLAN.md. The private reference checkout was read only.
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for Codex's findings #27–#33
 
