@@ -35,6 +35,7 @@ EOF
     # Build the plugins once; install.sh copies them (M9_PREBUILT).
     "$project/style/build.sh" "$root/prebuilt/style" > /dev/null
     "$project/decoration/build.sh" "$root/prebuilt/decoration" > /dev/null
+    "$project/style/quick/build.sh" "$root/prebuilt/quick" > /dev/null
     exec env -i HOME="$root/home" USER="$USER" PATH="$root/bin:/usr/local/bin:/usr/bin" \
         XDG_CONFIG_HOME="$root/home/.config" XDG_DATA_HOME="$root/home/.local/share" \
         XDG_CACHE_HOME="$root/home/.cache" XDG_STATE_HOME="$root/home/.local/state" \
@@ -139,10 +140,13 @@ check "install exits 0" run install "$project/install.sh"
 for f in .local/lib/macos9-theme/style/styles/platinumstyle.so .local/lib/macos9-theme/decoration/org.kde.kdecoration3/platinum.so \
     .config/plasma-workspace/env/macos9-theme.sh .local/share/color-schemes/Platinum.colors \
     .local/share/plasma/desktoptheme/platinum/metadata.json .local/share/plasma/plasmoids/platinum.menubarpiece/metadata.json \
-    .local/share/plasma/look-and-feel/platinum.desktop/metadata.json; do
+    .local/share/plasma/look-and-feel/platinum.desktop/metadata.json .local/lib/macos9-theme/qml/Platinum/qmldir \
+    .local/lib/macos9-theme/qml/Platinum/libplatinumquick.so; do
     check "installed $f" test -s "$home/$f"
 done
-check "the record lists the 7 targets" test "$(grep -cE '^(file|dir)	' "$state/installed")" -eq 7
+check "the record lists the 9 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 9
+check "Kirigami's plugin link for the Qt Quick style points at KDE's" \
+    bash -c "[[ \$(readlink '$home/.local/lib/macos9-theme/style/kf6/kirigami/platform/Platinum.so') == */kf6/kirigami/platform/org.kde.desktop.so ]]"
 check "install alone leaves the config files alone" same "$seed" "$(config_state)"
 check "install already copied the config files (taken: install)" grep -qx install "$state/backup/TAKEN"
 plugins=$home/.local/lib/macos9-theme
@@ -151,6 +155,11 @@ check "the login script adds both plugin folders" \
 check "the login script doesn't add them twice" \
     bash -c "QT_PLUGIN_PATH=/x; for i in 1 2; do source '$config/plasma-workspace/env/macos9-theme.sh'; done; [[ \$QT_PLUGIN_PATH == '$plugins/style:$plugins/decoration:/x' ]]"
 check "the login script runs in plain sh" sh -c ". '$config/plasma-workspace/env/macos9-theme.sh' && [ -n \"\$QT_PLUGIN_PATH\" ]"
+env_script=$config/plasma-workspace/env/macos9-theme.sh
+quick_vars() { # runs the login script in sh with the given setup, prints the Qt Quick variables
+    env -u QT_QUICK_CONTROLS_STYLE -u QML_IMPORT_PATH "$@" sh -c ". '$env_script'; echo \"style=\${QT_QUICK_CONTROLS_STYLE:-} qml=\${QML_IMPORT_PATH:-}\""
+}
+check "with Breeze as the widget style, the Qt Quick style stays off" bash -c "[[ \$($(declare -f quick_vars); env_script='$env_script'; quick_vars) == 'style= qml=' ]]"
 sed 's|readlink -f \(.[^ ]*libkdecorations3.so[^ ]*\)|readlink -f /nonexistent|' "$config/plasma-workspace/env/macos9-theme.sh" > "$root/env-upgraded.sh"
 check "after a KDecoration upgrade it leaves the decoration out" \
     bash -c "unset QT_PLUGIN_PATH; source '$root/env-upgraded.sh'; [[ \$QT_PLUGIN_PATH == '$plugins/style' ]]"
@@ -161,8 +170,8 @@ else
     echo "skip    the installed style plugin loads (build dev/build/styleshot first: dev/check-style.sh)"
 fi
 check "a second plain install exits 0" run install-2 "$project/install.sh"
-check "the record still lists 7 targets, nothing moved aside" \
-    bash -c "[[ \$(grep -cE '^(file|dir)	' '$state/installed') -eq 7 ]] && ! grep -q '^displaced' '$state/installed'"
+check "the record still lists 9 targets, nothing moved aside" \
+    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 9 ]] && ! grep -q '^displaced' '$state/installed'"
 
 check "--apply exits 0" run apply "$project/install.sh" --apply
 check "--apply refreshed the copy (taken: apply)" grep -qx apply "$state/backup/TAKEN"
@@ -170,6 +179,17 @@ check "--apply noted the absent ones" grep -qxP 'config\tkdedefaults' "$state/ba
 check "--apply switched the global theme" grep -q "LookAndFeelPackage=platinum.desktop" "$config/kdeglobals"
 check "--apply set the widget style" grep -q "widgetStyle=Platinum" "$config/kdedefaults/kdeglobals"
 check "--apply set the button order" bash -c "grep -q '^ButtonsOnLeft=X' '$config/kwinrc' && grep -q '^ButtonsOnRight=AI' '$config/kwinrc'"
+quick_on="style=Platinum qml=$home/.local/lib/macos9-theme/qml"
+check "after --apply the login script turns the Qt Quick style on" \
+    bash -c "[[ \$($(declare -f quick_vars); env_script='$env_script'; quick_vars) == '$quick_on' ]]"
+check "  once, sourced twice" \
+    bash -c "[[ \$(env -u QT_QUICK_CONTROLS_STYLE -u QML_IMPORT_PATH sh -c \". '$env_script'; unset QT_QUICK_CONTROLS_STYLE; . '$env_script'; echo \\\$QML_IMPORT_PATH\") == '$home/.local/lib/macos9-theme/qml' ]]"
+check "  but not over a Qt Quick style you chose" \
+    bash -c "[[ \$(env QT_QUICK_CONTROLS_STYLE=Fusion sh -c \". '$env_script'; echo \\\$QT_QUICK_CONTROLS_STYLE\") == Fusion ]]"
+# (the version the login script expects, changed to one KDE doesn't have)
+sed "/kde-qmlmodule.version/s/= '[^']*' \\]/= '0.0.0' ]/" "$env_script" > "$root/env-kde-upgraded.sh"
+check "  and not after a KDE Frameworks upgrade (its Qt Quick style changed)" \
+    bash -c "grep -q \"= '0.0.0'\" '$root/env-kde-upgraded.sh' && [[ \$(env -u QT_QUICK_CONTROLS_STYLE sh -c \". '$root/env-kde-upgraded.sh'; echo \\\${QT_QUICK_CONTROLS_STYLE:-none}\") == none ]]"
 fake_gtk_sync
 check "a second --apply exits 0" run apply-2 "$project/install.sh" --apply
 check "a plain install after --apply exits 0" run install-3 "$project/install.sh"
@@ -552,6 +572,24 @@ check "a reinstall exits 0" run install-3 "$project/install.sh"
 check "  it moved the changed folder aside" grep -q "^displaced	$data/plasma/desktoptheme/platinum	" "$state/installed"
 check "uninstall exits 0" run uninstall-2 "$project/uninstall.sh"
 check "  the folder is back" test -d "$data/plasma/desktoptheme/platinum/user-templates"
+
+# --------------------------------------------------------------------------
+fresh "Kirigami's plugin link: what's there before is kept, a changed link stays"
+link=$home/.local/lib/macos9-theme/style/kf6/kirigami/platform/Platinum.so
+mkdir -p "$(dirname "$link")"
+ln -s /nonexistent/mine.so "$link"
+before=$(snapshot)
+check "install exits 0" run install "$project/install.sh"
+check "  the earlier link was moved aside" grep -q "^displaced	$link	" "$state/installed"
+check "uninstall exits 0" run uninstall "$project/uninstall.sh"
+check "  the earlier link is back, nothing else changed" same "$before" "$(clean_snapshot)"
+rm -f "$link"
+rm -rf "$home/.local/lib"
+check "install again exits 0" run install-2 "$project/install.sh"
+ln -sfn /nonexistent/other.so "$link"
+check "uninstall exits 0" run uninstall-2 "$project/uninstall.sh"
+check "  a link pointed elsewhere since is left alone" bash -c "[[ \$(readlink '$link') == /nonexistent/other.so ]]"
+check "  and uninstall says so" grep -q "points somewhere else now" "$root/$n-uninstall-2.log"
 
 fresh "a home with spaces and quotes in its path"
 weird="$root/my 'odd' \$home"

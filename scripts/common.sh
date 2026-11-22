@@ -104,6 +104,11 @@ displaced=$state/displaced
 libdir=$home/.local/lib/macos9-theme
 plugins=$libdir/style
 deco_plugins=$libdir/decoration
+# The Qt Quick Controls style (style/quick), and the link Kirigami finds its
+# color and size plugin by (named after the style, pointing at KDE's).
+quick_qml=$libdir/qml
+quick_module=$quick_qml/Platinum
+kirigami_link=$plugins/kf6/kirigami/platform/Platinum.so
 env_script=$config_home/plasma-workspace/env/macos9-theme.sh
 
 scheme_name=Platinum
@@ -121,6 +126,8 @@ targets=(
     "dir	$data/plasma/desktoptheme/$plasma_theme"
     "dir	$data/plasma/plasmoids/$piece_id"
     "dir	$data/plasma/look-and-feel/$lnf_id"
+    "dir	$quick_module"
+    "link	$kirigami_link"
 )
 
 # What applying the global theme (and --apply) changes, copied whole before
@@ -194,12 +201,14 @@ drop_plasma_caches() {
 #   data PATH, config PATH    and the data and config folders
 #   madedir PATH REAL         a folder install.sh created
 #   file PATH REAL            an installed file,
-#   dir PATH REAL             or folder
+#   dir PATH REAL             folder,
+#   link PATH REAL            or symbolic link
 #   displaced PATH SAVED REAL what was at PATH before, moved to SAVED
 #   temp PATH REAL            a temporary copy being written
 #   sum PATH SHA256           a file install.sh installed (also inside an
-#                             installed folder) and its content; written
-#                             before the copy, old ones dropped after it
+#                             installed folder) and its content, or
+#   sum PATH ->TARGET         a link and where it points; written before
+#                             the copy, old ones dropped after it
 # REAL is where PATH led when it was recorded (real_path).
 manifest_entries=()
 record_version=4
@@ -229,7 +238,7 @@ manifest_load() {
             home) [[ $value == "$home" ]] || die "$manifest was made for the home $value, not $home; nothing was changed" ;;
             data) [[ $value == "$data" ]] || die "$manifest was made with the data folder $value (XDG_DATA_HOME), not $data; run this again with XDG_DATA_HOME=$value; nothing was changed" ;;
             config) [[ $value == "$config_home" ]] || die "$manifest was made with the config folder $value (XDG_CONFIG_HOME), not $config_home; run this again with XDG_CONFIG_HOME=$value; nothing was changed" ;;
-            madedir | file | dir | displaced | temp | sum) ;;
+            madedir | file | dir | link | displaced | temp | sum) ;;
             *) die "$manifest has an entry this version doesn't know ($kind); nothing was changed" ;;
         esac
     done
@@ -244,7 +253,7 @@ check_record_paths() {
         IFS=$'\t' read -r kind path saved real <<< "$entry"
         case $kind in
             displaced) ;;
-            madedir | file | dir | temp) real=$saved ;;
+            madedir | file | dir | link | temp) real=$saved ;;
             *) continue ;;
         esac
         [[ $real == "$(real_path "$path")" ]] || moved+=("$path (was $real)")
@@ -432,7 +441,35 @@ installed_unchanged() { # kind path
     case $1 in
         file) installed_file "$2" ;;
         dir) installed_tree "$2" ;;
+        link) installed_link "$2" ;;
     esac
+}
+
+# Is PATH a link pointing where install.sh made it point? (index_sums first.)
+installed_link() { # path
+    [[ -L $1 && -n ${sum_index[$1	->$(readlink "$1")]:-} ]]
+}
+
+# Installs a symbolic link: record (with where it points), then make it
+# under a temporary name and rename it into place.
+place_link() { # points-to target
+    local target=$2 staging
+    displace_foreign link "$target"
+    make_parents "$(dirname "$target")"
+    manifest_add link "$target"
+    new_sums=([$target]="->$1")
+    if ! manifest_has "sum	$target	->$1"; then
+        manifest_entries+=("sum	$target	->$1")
+        manifest_write
+    fi
+    plan "link $target to $1"
+    ((dry_run)) && return 0
+    make_temp file "$(dirname "$target")"
+    staging=$made_temp
+    ln -sfn "$1" "$staging"
+    mv -fT "$staging" "$target"
+    done_temp "$staging"
+    prune_sums "$target"
 }
 
 # Is TARGET (kind<TAB>path) one of the install targets, or a folder above
@@ -454,8 +491,10 @@ is_target_parent() { # path
     return 1
 }
 
-# Does the thing at PATH have the kind (file or dir), not through a link?
+# Does the thing at PATH have the kind (file, dir or link), not through a
+# link?
 is_kind() { # kind path
+    [[ $1 == link ]] && { [[ -L $2 ]]; return; }
     [[ -L $2 ]] && return 1
     case $1 in
         file) [[ -f $2 ]] ;;
@@ -574,7 +613,11 @@ remove_temporaries() {
     for entry in "${entries[@]}"; do
         IFS=$'\t' read -r kind path real <<< "$entry"
         [[ $kind == temp ]] || continue
-        if [[ -e $path && ! -L $path ]]; then
+        if [[ -L $path ]]; then
+            # (a link being made; removed itself, never followed)
+            plan "remove the leftover $path"
+            ((dry_run)) || rm -f "$path"
+        elif [[ -e $path ]]; then
             plan "remove the leftover $path"
             ((dry_run)) || rm -rf "$path"
         fi

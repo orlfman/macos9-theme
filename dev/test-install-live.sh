@@ -30,6 +30,7 @@ EOF
     chmod +x "$root/bin/systemctl"
     "$project/style/build.sh" "$root/prebuilt/style" > /dev/null
     "$project/decoration/build.sh" "$root/prebuilt/decoration" > /dev/null
+    "$project/style/quick/build.sh" "$root/prebuilt/quick" > /dev/null
     status=0
     env -i HOME="$root/home" USER="$USER" PATH="$root/bin:/usr/local/bin:/usr/bin" \
         XDG_CONFIG_HOME="$root/home/.config" XDG_DATA_HOME="$root/home/.local/share" \
@@ -150,6 +151,19 @@ check "--apply replaced the panels with the menu bar and the dock" \
 after_files=$(files_state)
 check "install.sh again after the switch exits 0 (an update; no links in the copied folders)" \
     bash -c "'$project/install.sh' > '$root/install-2.log' 2>&1"
+# A Qt Quick app started with the login script's environment (as after the
+# next login) gets the Platinum Qt Quick style.
+cat > "$root/quick-probe.qml" << 'QML'
+import QtQuick
+import QtQuick.Controls as QQC2
+QQC2.ApplicationWindow { width: 100; height: 60; visible: false; QQC2.Button { id: b; text: "x" }
+    Component.onCompleted: console.log("PROBE style ok", b.background !== null) }
+QML
+quick_style() {
+    sh -c ". '$config/plasma-workspace/env/macos9-theme.sh'; QT_FORCE_STDERR_LOGGING=1 exec '$dev/build/quickshot' '$root/quick-probe.qml' '$root/quick-probe.png'" 2>&1 |
+        sed -n 's/^QtQuick style: "\(.*\)"$/\1/p'
+}
+check "after the switch, a Qt Quick app gets the Platinum Qt Quick style" bash -c "[[ \$($(declare -f quick_style); root='$root' config='$config' dev='$dev'; quick_style) == Platinum ]]"
 if [[ $after_files != "$before_files" ]]; then
     echo "info    the switch changed these config/GTK files (incl. Plasma's GTK sync):"
     diff <(printf '%s\n' "$before_files" | grep -v '^[0-9a-f]\{64\}') <(printf '%s\n' "$after_files" | grep -v '^[0-9a-f]\{64\}') |
@@ -173,6 +187,8 @@ restored_widgets=$(widgets)
 echo "info    their widgets after uninstall: $restored_widgets"
 check "  with their widgets and the clock's setting" same "$before_widgets" "$restored_widgets"
 check "every config and GTK file is back byte for byte" same "$before_files" "$(files_state)"
+check "after uninstall, Qt Quick apps get KDE's style again" bash -c "[[ ! -e '$config/plasma-workspace/env/macos9-theme.sh' ]] &&
+    [[ \$(QT_FORCE_STDERR_LOGGING=1 '$dev/build/quickshot' '$root/quick-probe.qml' '$root/quick-probe.png' 2>&1 | sed -n 's/^QtQuick style: \"\\(.*\\)\"\$/\\1/p') == org.kde.desktop ]]"
 check "nothing touched a real systemd session" bash -c "! grep -qv 'is-active' '$root/systemctl.log' 2> /dev/null"
 
 echo

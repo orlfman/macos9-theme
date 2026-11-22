@@ -301,4 +301,17 @@ switches", steps 2-5 and 7):
 - **quickshot's never-shown window has a 0x0 pop-up layer**, so menus and
   combo lists placed themselves at the window's center. Showing the window
   on the offscreen platform fixes it.
+- **Pop-ups in a real session**: `popupType` reads 0 in a real Wayland
+  window too, so Qt Quick menus, lists and tooltips are drawn inside the
+  app's window unless an app asks for `Popup.Window`. A pop-up window gets
+  its grab on Wayland only for an input event ("Failed to create grabbing
+  popup ... has received input" otherwise, KDE's style as well), so tests
+  open it from a real click (`dev/build/fakeinput`). Opened that way, a
+  Platinum menu window draws its frame and shadow with see-through
+  corners, but lands at the window's corner rather than where asked.
+- **qInfo goes to the journal** when stderr isn't a terminal; tests that
+  read Qt's own lines (`QtQuick style: ...`) set `QT_FORCE_STDERR_LOGGING=1`.
+- **Switches stay switches**: with the Platinum style, Space still toggles
+  `Switch` and `SwitchDelegate`, and screen readers get the same role and
+  state as with KDE's style (`dev/quickkeys.cpp`).
 

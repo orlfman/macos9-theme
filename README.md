@@ -43,6 +43,14 @@ without changing anything and tells you which. If Platinum is already your
 global theme when you install, your settings are copied as they are then,
 so uninstalling brings back that state, not what you had before Platinum.
 
+Qt Quick apps (System Settings, Discover and other Kirigami apps) get
+Platinum menus, menu bars, pop-up lists, help balloons and check-box
+switches; their other controls come from KDE's style, which draws through
+the Platinum style already. The login script turns this on only while
+Platinum is your application style, you haven't chosen a Qt Quick style
+yourself, and KDE's Qt Quick style is the version it was checked with; an
+app also goes back to KDE's look by itself when you switch styles.
+
 After a Plasma upgrade, run `./install.sh` again: the window decoration is
 built for one KDecoration version, and until it's rebuilt KWin uses
 Breeze's title bars instead of loading it.

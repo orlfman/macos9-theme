@@ -2,7 +2,9 @@
 # Installs the Platinum theme for KDE Plasma 6.8 for the current user, all
 # inside your home (no root):
 #   - the Platinum application style and window decoration (Qt and KWin
-#     plugins, built here) in ~/.local/lib/macos9-theme
+#     plugins, built here) in ~/.local/lib/macos9-theme, and the Platinum
+#     style for Qt Quick apps (menus, tooltips, switches; KDE's style for
+#     the rest) next to them
 #   - a Plasma login script that lets Qt and KWin find them
 #     (~/.config/plasma-workspace/env/macos9-theme.sh)
 #   - the Platinum color scheme, Plasma style, menu bar piece widget and the
@@ -72,11 +74,27 @@ else
     build=$(mktemp -d)
     trap 'rm -rf "${build:-/nonexistent}"' EXIT
     if [[ -n ${M9_PREBUILT:-} ]]; then # tests only: dev/test-install.sh builds once
-        cp -R "$M9_PREBUILT/style" "$M9_PREBUILT/decoration" "$build/"
+        cp -R "$M9_PREBUILT/style" "$M9_PREBUILT/decoration" "$M9_PREBUILT/quick" "$build/"
     else
         "$here/style/build.sh" "$build/style" > /dev/null || die "building the application style failed (needs Qt 6 development files); nothing was installed"
         "$here/decoration/build.sh" "$build/decoration" > /dev/null || die "building the window decoration failed (needs KDecoration 3 development files); nothing was installed"
+        "$here/style/quick/build.sh" "$build/quick" > /dev/null || die "building the Qt Quick style failed (needs Qt 6 Quick development files); nothing was installed"
     fi
+fi
+
+# The Qt Quick style builds on KDE's (qqc2-desktop-style) and needs
+# Kirigami's plugin for it; it's left out if they aren't there.
+qtpaths=$(pkg-config --variable=bindir Qt6Core 2> /dev/null)/qtpaths6
+[[ -x $qtpaths ]] || qtpaths=$(command -v qtpaths6 || command -v qtpaths || true)
+kde_quick_version_file="" kde_quick_version="" kirigami_desktop=""
+if [[ -n $qtpaths ]]; then
+    kde_quick_version_file=$("$qtpaths" --query QT_INSTALL_QML 2> /dev/null)/org/kde/desktop/kde-qmlmodule.version
+    kirigami_desktop=$("$qtpaths" --query QT_INSTALL_PLUGINS 2> /dev/null)/kf6/kirigami/platform/org.kde.desktop.so
+fi
+if [[ -f $kde_quick_version_file && -e $kirigami_desktop ]]; then
+    kde_quick_version=$(< "$kde_quick_version_file")
+else
+    note "KDE's Qt Quick style or Kirigami isn't installed: Qt Quick apps keep KDE's look."
 fi
 
 # The login script. The decoration is only put on the path while the
@@ -105,6 +123,32 @@ case ":\${QT_PLUGIN_PATH:-}:" in
 esac
 unset macos9_theme_path
 EOF
+    if [[ -n $kde_quick_version ]]; then
+        cat >> "$build/env.sh" << EOF
+
+# Qt Quick apps: the Platinum Qt Quick style, only while Platinum is the
+# application style chosen in System Settings, you haven't chosen a Qt
+# Quick style yourself, and KDE's Qt Quick style (which it builds on) is
+# the version it was checked with. Each app also falls back to KDE's look
+# by itself if its style changes later.
+macos9_theme_style() {
+    awk -F= '/^\[/ { kde = (\$0 == "[KDE]") } kde && \$1 == "widgetStyle" { v = substr(\$0, index(\$0, "=") + 1) } END { print v }' "\$1" 2> /dev/null
+}
+macos9_theme_config=\${XDG_CONFIG_HOME:-\$HOME/.config}
+macos9_theme_widget_style=\$(macos9_theme_style "\$macos9_theme_config/kdeglobals")
+[ -n "\$macos9_theme_widget_style" ] || macos9_theme_widget_style=\$(macos9_theme_style "\$macos9_theme_config/kdedefaults/kdeglobals")
+if [ -z "\${QT_QUICK_CONTROLS_STYLE:-}" ] && [ "\$macos9_theme_widget_style" = Platinum ] &&
+    [ "\$(cat $(sh_quote "$kde_quick_version_file") 2> /dev/null)" = $(sh_quote "$kde_quick_version") ]; then
+    export QT_QUICK_CONTROLS_STYLE=Platinum
+    case ":\${QML_IMPORT_PATH:-}:" in
+        *:$(sh_quote "$quick_qml"):*) ;;
+        *) export QML_IMPORT_PATH=$(sh_quote "$quick_qml")"\${QML_IMPORT_PATH:+:\$QML_IMPORT_PATH}" ;;
+    esac
+fi
+unset -f macos9_theme_style
+unset macos9_theme_config macos9_theme_widget_style
+EOF
+    fi
 fi
 
 place_file "$build/style/plugins/styles/platinumstyle.so" "$plugins/styles/platinumstyle.so" 755
@@ -112,6 +156,11 @@ place_file "$build/decoration/plugins/org.kde.kdecoration3/platinum.so" "$deco_p
 say "Installed the application style and the window decoration into $libdir"
 place_file "$build/env.sh" "$env_script" 644
 say "Installed the login script $env_script"
+if [[ -n $kde_quick_version ]]; then
+    place_dir "$build/quick/qml/Platinum" "$quick_module"
+    place_link "$kirigami_desktop" "$kirigami_link"
+    say "Installed the Qt Quick style into $quick_qml"
+fi
 place_file "$here/colors/$scheme_name.colors" "$data/color-schemes/$scheme_name.colors" 644
 say "Installed the color scheme \"Platinum\""
 place_dir "$here/plasma/platinum" "$data/plasma/desktoptheme/$plasma_theme"

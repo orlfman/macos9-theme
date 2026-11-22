@@ -184,12 +184,18 @@ M9_QUICK=1 QSTYLE=Platinum dev/run.sh platinum breeze env QT_QUICK_BACKEND=softw
 the C++ item that paints with the QStyle) and links Kirigami's platform
 plugin for it (`style/build/plugins/kf6/kirigami/platform/Platinum.so`).
 `M9_QUICK=1` with `QSTYLE=Platinum` makes `dev/run.sh` use it.
-`dev/check-quick.sh` renders the Qt Quick menus (first and last row
+`dev/check-quick.sh` (13 checks) renders the Qt Quick menus (first and last row
 selected), combo box list, menu bar, switch indicator and tooltip
 (`dev/quick-regions.qml`) and compares each with its widget counterpart
 (`dev/quickref.cpp`) pixel for pixel; then it switches the app to Fusion
 while running and compares the same pieces with KDE's own style under
-Fusion (the fallback). `dev/quick-inventory.qml` shows every control the
+Fusion (the fallback); and it checks with `dev/quickkeys.cpp` that switches
+still toggle with Space and look the same to screen readers as with KDE's
+style. `dev/quick-live.qml` is a visible window for `dev/app-test.sh` that
+opens its own pop-up (`-- popup=menu|combo|tooltip|menubar|windowmenu|
+windowclick`; `windowclick` needs a real click: chain
+`dev/build/fakeinput click X Y` in the app command, as Wayland gives a
+pop-up window its grab only for input). `dev/quick-inventory.qml` shows every control the
 plan covers, one pop-up per step. On the offscreen platform `quickshot`
 shows its window (nothing reaches a real display), so pop-ups place
 themselves as on a screen.
@@ -223,7 +229,11 @@ reinstall), an incomplete or changed config copy, a dry run that matches
 the real run, and a shell that won't start again (a stand-in systemd);
 from findings 39-42: two versions of the same file moved aside, a file
 missing inside a copied folder, an empty folder the user added, and a dry
-run on a fresh home printing no errors; a
+run on a fresh home printing no errors; the Qt Quick style (its folder and
+Kirigami's plugin link installed and removed, a link of the user's moved
+aside and back, a re-pointed link left alone, and the login script turning
+it on only with Platinum selected, never over the user's own choice, and
+not after a KDE Frameworks upgrade); a
 leftover half-made backup, a held lock, and a home path with spaces and
 quotes. The plugins are built once and
 handed to install.sh through `M9_PREBUILT` (tests only). It uses
@@ -245,7 +255,9 @@ is gone) and started a new one (the `kquitapp6` path; the systemd path
 can't be tested without your real user session), that both panels are
 back on their screens with their widgets and a widget setting of the
 user's (a clock with seconds), and that every config and GTK file is back
-byte for byte. It also runs `install.sh` again after the switch (an update).
+byte for byte. It also runs `install.sh` again after the switch (an update), and
+checks that a Qt Quick app started with the login script's environment
+gets the Platinum Qt Quick style, and KDE's again after uninstall.
 
 ## Measure and compare
 

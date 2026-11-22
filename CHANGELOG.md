@@ -2,6 +2,18 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — install the Qt Quick style (finding 3, step 8)
+
+- **install.sh / uninstall.sh**: install the Qt Quick style and Kirigami's
+  plugin link for it (links are a new, checked target kind); the login
+  script turns the Qt Quick style on only with Platinum selected, never
+  over your own choice, and not after a KDE Frameworks upgrade.
+- **Checks**: switches still toggle with Space and look the same to
+  screen readers (`dev/quickkeys.cpp`, in `dev/check-quick.sh`, 13/13);
+  real pop-ups in the nested KWin (`dev/quick-live.qml`); install 230/230,
+  live 17/17.
+- **Open**: a menu opened as its own window lands at the window's corner.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — Qt Quick Controls style (finding 3, steps 2-5 and 7)
 
 - **`style/quick`**: the Platinum Qt Quick Controls style, built from the

@@ -5,7 +5,9 @@
 # and a tooltip. Both sides draw through the same QStyle, so any difference
 # is a layout or context difference (PLAN.md "Plan: Qt Quick menus,
 # tooltips and switches", step 7). Then the same pieces after the app is
-# switched to Fusion while running must equal KDE's own style under Fusion. Sandboxed like dev/run.sh, offscreen,
+# switched to Fusion while running must equal KDE's own style under Fusion.
+# And switches must still toggle with Space and look the same to screen
+# readers (dev/quickkeys.cpp). Sandboxed like dev/run.sh, offscreen,
 # with Qt Quick's software renderer.
 #
 # usage: check-quick.sh    (exit 1 if a region differs)
@@ -20,8 +22,13 @@ mkdir -p "$out"
 "$project/style/quick/build.sh" > /dev/null
 [[ -x $dev/build/quickshot && $dev/build/quickshot -nt $dev/quickshot.cpp ]] || "$dev/build.sh" > /dev/null
 g++ -std=c++17 -O1 -fPIC "$dev/quickref.cpp" -o "$dev/build/quickref" $(pkg-config --cflags --libs Qt6Widgets)
+g++ -std=c++17 -O1 -fPIC "$dev/quickkeys.cpp" -o "$dev/build/quickkeys" $(pkg-config --cflags --libs Qt6Widgets Qt6Quick Qt6Qml Qt6Test) 2> /dev/null
 
 QSTYLE=Platinum "$dev/run.sh" platinum breeze "$dev/build/quickref" "$out/widget" > "$out/widget.log" 2>&1
+# Switches stay switches: Space toggles them, screen readers see the same
+# role and state as with KDE's style.
+M9_QUICK=1 QSTYLE=Platinum "$dev/run.sh" platinum breeze env QT_QUICK_BACKEND=software "$dev/build/quickkeys" 2>&1 | grep 'space-toggles' > "$out/keys-platinum.txt" || true
+QSTYLE=Platinum "$dev/run.sh" platinum breeze env QT_QUICK_BACKEND=software "$dev/build/quickkeys" 2>&1 | grep 'space-toggles' > "$out/keys-kde.txt" || true
 M9_QUICK=1 QSTYLE=Platinum "$dev/run.sh" platinum breeze env QT_QUICK_BACKEND=software \
     "$dev/build/quickshot" "$dev/quick-regions.qml" "$out/quick.png" > "$out/quick.log" 2>&1
 
@@ -76,7 +83,13 @@ for name, step in steps.items():
         failed += 1
         print(f"FAIL    {name:10} after switching to Fusion: {n} px differ from KDE's style (bbox {diff.getbbox()})")
         diff.point(lambda v: 255 if v else 0).save(f"{out}/diff-fallback-{name}.png")
-total = 2 * len(steps)
-print(f"\n{total - failed} of {total} Qt Quick checks pixel exact" + (f" (diffs in {out})" if failed else ""))
+keys_p = open(f"{out}/keys-platinum.txt").read().split("\n")
+keys_k = open(f"{out}/keys-kde.txt").read().split("\n")
+keys_ok = keys_p == keys_k and len([l for l in keys_p if "space-toggles=1" in l]) == 2
+print(("ok      " if keys_ok else "FAIL    ") + "switches: Space toggles them; role and state as with KDE's style"
+      + ("" if keys_ok else f" (Platinum {keys_p}, KDE {keys_k})"))
+failed += 0 if keys_ok else 1
+total = 2 * len(steps) + 1
+print(f"\n{total - failed} of {total} Qt Quick checks passed" + (f" (diffs in {out})" if failed else ""))
 sys.exit(1 if failed else 0)
 PY

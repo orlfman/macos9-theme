@@ -16,13 +16,13 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | reference  | reference/, docs/REFERENCE.md | nobody | capture pass done (81 captures, CAPTURES.md); measurements partial |
 | colors     | colors/                   | nobody     | Platinum.colors done (sandbox-checked) |
 | decoration | decoration/               | nobody | plugin works in nested KWin; frame pixel exact; only the three Mac OS 9 boxes are created (AUDIT 20) |
-| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); Qt Quick style in style/quick: menus, menu bar, combo list, tooltips, switches (AUDIT 3, check-quick 12/12; not installed yet); next: dialogs/drawer/range slider, packaging; open: editable combo, size grip |
+| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); Qt Quick style in style/quick: menus, menu bar, combo list, tooltips, switches (AUDIT 3, check-quick 13/13; installed by install.sh); next: dialogs/drawer/range slider; open: editable combo, size grip |
 | plasma     | plasma/                   | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); main screen only (decision 10); menu bar resizing on hold (AUDIT 23, user) |
 | icons      | icons/                    | nobody     | not started |
 | cursors    | cursors/                  | nobody     | not started |
 | gtk        | gtk/                      | nobody     | not started |
 | extras     | extras/, wallpapers/      | nobody     | not started |
-| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's four audits (#4-#14, #27-#31, #34-#42 fixed: moved-aside targets, record written first and taken off step by step so a retry never redoes a step, GTK files in the backup, shell stopped while restoring, decoration version guard, paths checked against where they led, recorded temporaries, same XDG folders required, checksums so your own additions and changes stay, a checked config copy, a stopped shell started by the next run); test-install 214/214, test-install-live 15/15 (running Plasma, two screens); not run on the real desktop yet |
+| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's four audits (#4-#14, #27-#31, #34-#42 fixed: moved-aside targets, record written first and taken off step by step so a retry never redoes a step, GTK files in the backup, shell stopped while restoring, decoration version guard, paths checked against where they led, recorded temporaries, same XDG folders required, checksums so your own additions and changes stay, a checked config copy, a stopped shell started by the next run); also installs the Qt Quick style (with a link target kind for Kirigami's plugin); test-install 230/230, test-install-live 17/17 (running Plasma, two screens); not run on the real desktop yet |
 
 ## Goal
 
@@ -166,10 +166,16 @@ app's style changes; `Menu.delegate` is overridden too; the Kirigami link
 is needed. **Built in `style/quick` 2026-11-21 (steps 2-5, 7):** menus,
 menu bar, combo box list, tooltips and switches; `dev/check-quick.sh` 12
 of 12 (each piece equals its widget counterpart, and after a switch to
-Fusion equals KDE's own style). Left: step 6 (dialog and drawer frames,
-range slider; list rows are already right), keyboard and screen reader
-checks for switches, real pop-up windows in the nested KWin, step 8
-(packaging), step 9.
+Fusion equals KDE's own style). **Then (same day):** step 8 (install.sh
+installs it, the login script turns it on as planned), switches checked
+(Space, accessible role and state as with KDE's style), and real pop-ups
+in the nested KWin (in-window pop-ups, which is what Qt Quick uses by
+default, and a menu as its own window: frame, shadow and see-through
+corners right). Left: step 6 (dialog and drawer frames, range slider;
+list rows are already right), and step 9 (audit, the user's review).
+Open: a menu opened as its own window lands at the window's corner, not
+where asked (KDE's style not compared: its menu didn't open in that
+test).
 
 **What's wrong.** Qt Quick apps (System Settings pages, Discover, other
 Kirigami apps) use KDE's Qt Quick Controls style, `org.kde.desktop`

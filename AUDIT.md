@@ -3,7 +3,54 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: Nothing blocks the first desktop install except the user's go-ahead. Open: #3 (P3): the Qt Quick style is built in `style/quick` for menus, menu bar, combo lists, tooltips and switches (check-quick 12/12), not installed yet; dialogs, drawer and range slider remain. #43–#48 addressed in the plan; #43, #45, #47, #48 and the run-time part of #44 now shown by checks. User decisions still apply to #21 (main screen only), #26 (RTL unsupported), #23 (resizing on hold) and #25 (deferred until publication).
+Status: Nothing blocks the first desktop install except the user's go-ahead. Open: #3 (P3): the Qt Quick style is built and now installed by install.sh for menus, menu bar, combo lists, tooltips and switches (check-quick 13/13); dialogs, drawer and range slider remain. #43–#48 addressed; #44's login part is now done. User decisions still apply to #21 (main screen only), #26 (RTL unsupported), #23 (resizing on hold) and #25 (deferred until publication).
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — Qt Quick style installed (finding 3, step 8), switch and real-session checks
+
+Working tree after `f00439e`; uncommitted at the time of writing.
+
+### What was done
+
+- **Packaging.** install.sh builds `style/quick` and installs it in
+  `~/.local/lib/macos9-theme/qml/Platinum` (a folder target with checksums)
+  and links `kf6/kirigami/platform/Platinum.so` to KDE's plugin in the
+  style's plugin folder. Links are a new target kind: recorded with where
+  they point, put in place under a recorded temporary name, removed only
+  while they still point there (a re-pointed link is left alone), and a
+  link already in the way is moved aside and put back. The login script
+  sets `QT_QUICK_CONTROLS_STYLE=Platinum` and `QML_IMPORT_PATH` only when
+  `widgetStyle` is Platinum (`kdeglobals`, else `kdedefaults/kdeglobals`),
+  the user hasn't set the variable, and KDE's `org.kde.desktop`
+  (`kde-qmlmodule.version`) is the version install.sh saw (finding 44's
+  login part). If KDE's Qt Quick style or Kirigami's plugin is missing,
+  the Qt Quick style is left out.
+- **Switches** (plan step 5): `dev/quickkeys.cpp` presses Space on a
+  `Switch` and a `SwitchDelegate` and reads their accessible role and
+  state: the same as with KDE's style. Part of `dev/check-quick.sh` now.
+- **Real session**: `dev/quick-live.qml` in the nested KWin with the
+  Platinum decoration: the menu, the combo box's list over its button and
+  the help balloon render right as in-window pop-ups (Qt Quick's default).
+  A menu as its own window, opened by a real click, draws its frame and
+  shadow with see-through corners.
+
+### Checks
+
+- `dev/test-install.sh`: 230 of 230 (new: the Qt Quick folder and link
+  installed and removed, a user's link moved aside and back, a re-pointed
+  link left alone, the login script on with Platinum, off with Breeze, not
+  over the user's own choice, not after a KDE Frameworks upgrade, no
+  duplicate path).
+- `dev/test-install-live.sh`: 17 of 17 (new: a Qt Quick app started with
+  the login script's environment after `--apply` gets the Platinum Qt
+  Quick style; after uninstall KDE's).
+- `dev/check-quick.sh`: 13 of 13.
+
+### Limits
+
+- A menu opened as its own window lands at the window's corner, not where
+  asked; KDE's style wasn't compared (its menu didn't open in that test).
+- Not on the user's desktop; no real login.
+- Dialogs, drawers and the range slider are still KDE's.
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — Qt Quick style built (finding 3, steps 2-5 and 7)
 

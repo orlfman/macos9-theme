@@ -216,7 +216,7 @@ declare -A gone=()
 for ((i = ${#entries[@]} - 1; i >= 1; i--)); do
     entry=${entries[i]}
     IFS=$'\t' read -r kind path _ <<< "$entry"
-    [[ $kind == file || $kind == dir ]] || continue
+    [[ $kind == file || $kind == dir || $kind == link ]] || continue
     if ! is_target "$kind" "$path"; then
         warn "the record lists $path, which isn't a place install.sh installs to; left alone"
         continue
@@ -231,6 +231,18 @@ for ((i = ${#entries[@]} - 1; i >= 1; i--)); do
         continue
     fi
     [[ $path == */desktoptheme/* ]] && had_plasma_style=1
+    if [[ $kind == link ]]; then
+        # Removed only while it points where install.sh made it point.
+        if installed_link "$path"; then
+            plan "remove the link $path"
+            ((dry_run)) || rm -f "$path"
+            gone[$path]=1
+        else
+            warn "$path points somewhere else now; left alone as yours"
+        fi
+        manifest_drop "$entry"
+        continue
+    fi
     if [[ $kind == file ]]; then
         if installed_file "$path"; then
             plan "remove $path"
@@ -300,7 +312,7 @@ done
 for entry in "${entries[@]:1}"; do
     IFS=$'\t' read -r kind path saved _ <<< "$entry"
     [[ $kind == displaced && ${first_aside[$path]} == "$entry" ]] || continue
-    if ! is_target file "$path" && ! is_target dir "$path"; then
+    if ! is_target file "$path" && ! is_target dir "$path" && ! is_target link "$path"; then
         warn "the record lists $path as moved aside, which isn't a place install.sh installs to; left alone"
     elif [[ $saved != "$displaced"/* || ! (-e $saved || -L $saved) ]]; then
         warn "the moved-aside copy of $path isn't in $displaced any more"
@@ -342,7 +354,7 @@ fi
 # Anything still to do keeps the record for another run.
 left=0
 for entry in "${manifest_entries[@]:1}"; do
-    case ${entry%%	*} in file | dir | displaced | temp) left=1 ;; esac
+    case ${entry%%	*} in file | dir | link | displaced | temp) left=1 ;; esac
 done
 if ((left)); then
     if ((dry_run)); then
@@ -359,7 +371,7 @@ if ((!dry_run)); then
 else
     plan "remove the install record $manifest"
 fi
-say "Removed the Platinum style, decoration, color scheme, Plasma style, global theme and login script"
+say "Removed the Platinum style (widgets and Qt Quick), decoration, color scheme, Plasma style, global theme and login script"
 if ((shell_failed)); then
     warn "$shell_failed_message"
     exit 1
