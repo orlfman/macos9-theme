@@ -36,25 +36,22 @@ KDE.ComboBox {
     Binding { target: control.popup; property: "topPadding"; value: 1; when: control.platinum }
     Binding { target: control.popup; property: "rightPadding"; value: 2; when: control.platinum }
     Binding { target: control.popup; property: "bottomPadding"; value: 2; when: control.platinum }
-    // At least as wide as the button; as tall as its rows (KDE's list adds 1 px).
+    // As wide as the widget combo box's list: the button, or its width hint
+    // for the longest item if that's more (QComboBox::showPopup; finding
+    // 53). The rows stretch to it. As tall as its rows (KDE's list adds 1 px).
     Binding {
         target: control.popup; property: "implicitWidth"; when: control.platinum
-        // (A Binding's value is evaluated even while it's off: only read the
-        // rows while Platinum, or it loops with KDE's own width binding.)
+        // (A Binding's value is evaluated even while it's off: only work it
+        // out while Platinum.)
         value: {
             if (!control.platinum) {
                 return 0;
             }
-            let max = 0;
-            for (let i = 0; i < control.popup.count; i++) {
-                // (while the style changes, rows already back in KDE's look
-                // are skipped: their width follows the list's)
-                const row = control.popup.itemAt(i);
-                if (row && row.platinum === true) {
-                    max = Math.max(max, row.implicitWidth);
-                }
+            const texts = [];
+            for (let i = 0; i < control.count; i++) {
+                texts.push(control.textAt(i));
             }
-            return Math.max(control.width, max + 3);
+            return Math.max(control.width, control.listPanel.comboWidthHint(texts));
         }
     }
     Binding {

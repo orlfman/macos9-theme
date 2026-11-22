@@ -64,6 +64,10 @@ public:
     // For dev/ test scenes only (does nothing unless M9_QUICK_TEST is set):
     // switches the application's QStyle.
     Q_INVOKABLE static void setApplicationStyle(const QString &name);
+    // A combo box's width hint for these item texts, as QComboBox works it
+    // out (its widest text through the style's CT_ComboBox): its open list
+    // is at least that wide (finding 53).
+    Q_INVOKABLE int comboWidthHint(const QStringList &texts) const;
 
 Q_SIGNALS:
     void changed();

@@ -138,10 +138,15 @@ if [[ -d $backup ]]; then
             # caught), every listed one is there and unchanged. An empty list
             # is right when none of the files existed (finding 50).
             declare -A listed=()
+            sums_line='^(\\?)[0-9a-f]{64}  (.+)$'
             while IFS= read -r line; do
                 [[ -n $line ]] || continue
-                if [[ $line =~ ^[0-9a-f]{64}\ \ (.+)$ ]]; then
-                    listed[${BASH_REMATCH[1]}]=1
+                # (sha256sum escapes a name with \ or a line break in it:
+                # a \ before the line, \\ and \n in the name; finding 57)
+                if [[ $line =~ $sums_line ]]; then
+                    name=${BASH_REMATCH[2]}
+                    [[ -n ${BASH_REMATCH[1]} ]] && name=$(printf '%b' "$name")
+                    listed[$name]=1
                 else
                     damaged+=("$backup/SUMS has a damaged line")
                 fi
@@ -337,6 +342,7 @@ for entry in "${entries[@]:1}"; do
     else
         plan "put back the earlier $path"
         ((dry_run)) || mv -T "$saved" "$path"
+        unset 'gone[$path]' # (taken again)
         manifest_drop "$entry"
         say "Put back the earlier $path"
     fi

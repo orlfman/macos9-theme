@@ -69,7 +69,8 @@ kept in `~/.local/state/macos9-theme-uninstalled-*`. Log out and back in
 once afterwards. Until then, apps you start keep working: your session
 still names the Platinum Qt Quick style, so uninstall leaves a small
 pass-through in its place (it just hands over to KDE's style) that removes
-itself at your next login.
+itself at your next login. It only goes where nothing of yours is, and
+removes only what it made.
 
 Files and folders you added to or changed in what the theme installed (an
 extra SVG in its Plasma style, an edited color scheme) are left where they

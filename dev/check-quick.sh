@@ -44,7 +44,7 @@ import re, sys
 from PIL import Image, ImageChops
 out = sys.argv[1]
 steps = {"menu-0": 0, "menu-1": 1, "combo": 2, "menubar": 3, "checkbox": 4, "tooltip": 5,
-         "dialog": 6, "rangeslider": 7, "drawer": 8}
+         "dialog": 6, "rangeslider": 7, "drawer": 8, "combo-narrow": 9}
 where = {}
 handles = None
 for line in open(f"{out}/quick.log"):

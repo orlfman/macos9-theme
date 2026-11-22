@@ -2,6 +2,22 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for findings #53–#58
+
+- **Pass-through after uninstall (#54–#56, #58)**: never over anything of
+  yours (a login script, a link or a file or folder at its places); removes
+  only what it made; shown by a dry run.
+- **Backslash in a copied file's name (#57)** no longer blocks uninstall.
+- **Narrow combo boxes (#53)**: the Qt Quick list widens exactly as the
+  widget one (QComboBox's width hint).
+- Checks: install 272/272, live 19/19, Qt Quick 21/21.
+
+## 2026-11-21, Codex (GPT-6) — audit uninstall cleanup and retest Qt Quick fixes
+
+Reviewed `0cd95a2` and recorded #54–58 in AUDIT.md. The original inherited-launcher case now passes. Uninstall can overwrite a personal login script, and its next-login cleanup can delete a user's restored Kirigami link. Other rollback cases involve an occupied QML module path and an escaped filename in a valid checksum list. The packaging maintainer should address #54–57 before desktop installation. The dry-run omission and narrow combo width mismatch can wait.
+
+All 429 project checks passed in disposable homes. The original 102 px combo fixture still reproduced #53 in a separate run. Instrumented Quick and decoration renders completed. Physical login and systemd behavior remain unverified. Only the review logs changed.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for findings #49–#53
 
 - **Uninstall keeps the session's Qt Quick apps working (#49)**: a

@@ -749,59 +749,98 @@ mark_backup() { # install|apply
 # Kirigami's link, until the next login, when a one-shot login script
 # removes them (only what it recognizes) and itself.
 
+# Can a folder be made at PATH (the nearest existing folder above is one)?
+can_make_dir() { # path
+    local dir=$1
+    while [[ ! -e $dir && ! -L $dir ]]; do
+        dir=$(dirname "$dir")
+    done
+    [[ -d $dir ]]
+}
+
+# Only into empty places, so nothing of yours is touched (findings 54-56):
+# the module only where nothing is, the link only where none is (and only
+# a link it made is removed later), the one-shot script under a free name.
+# In a dry run what the real run will have removed counts as gone (`gone`,
+# uninstall.sh; finding 58).
 leave_passthrough() {
-    local made=() dir i
+    local made=() dir make_link=0 script n
     [[ -n $kirigami_desktop ]] || return 0
-    [[ -e $quick_module/qmldir || -L $quick_module/qmldir ]] && return 0
-    plan "leave a pass-through in $quick_module for Qt Quick apps started before you log out (removed at your next login)"
+    # (free: nothing there; in a dry run also what the real run will have
+    # removed and not put something back at)
+    free() { [[ ( ! -e $1 && ! -L $1 ) || ( $dry_run == 1 && -n ${gone[$1]:-} ) ]]; }
+    if ! free "$quick_module" || ! can_make_dir "$quick_module"; then
+        return 0
+    fi
+    free "$kirigami_link" && can_make_dir "$(dirname "$kirigami_link")" && make_link=1
+    script=$cleanup_script
+    for ((n = 2; n < 100; n++)); do
+        free "$script" && break
+        script=${cleanup_script%.sh}-$n.sh
+    done
+    if ! free "$script" || ! can_make_dir "$(dirname "$script")"; then
+        warn "couldn't leave a pass-through for Qt Quick apps started before you log out (no place for its login script); they may not start until you do"
+        return 0
+    fi
+    plan "leave a pass-through in $quick_module for Qt Quick apps started before you log out, removed at your next login by $script"
     ((dry_run)) && return 0
-    for dir in "$quick_module" "$(dirname "$kirigami_link")" "$(dirname "$cleanup_script")"; do
+    for dir in "$quick_module" "$(dirname "$script")"; do
         while [[ ! -e $dir && ! -L $dir ]]; do
-            made=("$dir" "${made[@]}")
+            made+=("$dir")
             dir=$(dirname "$dir")
         done
     done
-    mkdir -p "$quick_module" "$(dirname "$kirigami_link")" "$(dirname "$cleanup_script")"
+    if ((make_link)); then
+        dir=$(dirname "$kirigami_link")
+        while [[ ! -e $dir && ! -L $dir ]]; do
+            made+=("$dir")
+            dir=$(dirname "$dir")
+        done
+    fi
+    mkdir -p "$quick_module" "$(dirname "$script")"
     printf '%s\nmodule Platinum\nimport org.kde.desktop 1.0\n' "$passthrough_marker" > "$quick_module/qmldir"
-    if [[ ! -e $kirigami_link && ! -L $kirigami_link ]]; then
+    if ((make_link)); then
+        mkdir -p "$(dirname "$kirigami_link")"
         ln -s "$kirigami_desktop" "$kirigami_link"
     fi
     {
         printf '%s\n' "$passthrough_marker"
         printf '# Removes the pass-through macos9-theme'"'"'s uninstall.sh left for Qt Quick apps\n'
-        printf '# started before you logged out (only what it recognizes), then itself.\n'
+        printf '# started before you logged out (only what it made), then itself.\n'
         printf 'macos9_theme_m=%s\n' "$(sh_quote "$quick_module")"
         printf 'if [ -f "$macos9_theme_m/qmldir" ] && [ "$(head -n 1 "$macos9_theme_m/qmldir")" = %s ]; then\n' "$(sh_quote "$passthrough_marker")"
         printf '    rm -f "$macos9_theme_m/qmldir"\n'
         printf 'fi\n'
-        printf 'if [ -L %s ] && [ "$(readlink %s)" = %s ] && [ ! -e %s ]; then\n' "$(sh_quote "$kirigami_link")" "$(sh_quote "$kirigami_link")" \
-            "$(sh_quote "$kirigami_desktop")" "$(sh_quote "$plugins/styles/platinumstyle.so")"
-        printf '    rm -f %s\n' "$(sh_quote "$kirigami_link")"
-        printf 'fi\n'
-        # the folders it made, deepest first, if empty
-        for ((i = ${#made[@]} - 1; i >= 0; i--)); do
-            printf 'rmdir %s 2> /dev/null\n' "$(sh_quote "${made[i]}")"
-        done
+        if ((make_link)); then
+            printf 'if [ -L %s ] && [ "$(readlink %s)" = %s ] && [ ! -e %s ]; then\n' "$(sh_quote "$kirigami_link")" "$(sh_quote "$kirigami_link")" \
+                "$(sh_quote "$kirigami_desktop")" "$(sh_quote "$plugins/styles/platinumstyle.so")"
+            printf '    rm -f %s\n' "$(sh_quote "$kirigami_link")"
+            printf 'fi\n'
+        fi
         printf 'unset macos9_theme_m\n'
-        printf 'rm -f %s\n' "$(sh_quote "$cleanup_script")"
-        for ((i = ${#made[@]} - 1; i >= 0; i--)); do
-            [[ ${made[i]} == "$(dirname "$cleanup_script")"* || "$(dirname "$cleanup_script")" == "${made[i]}"* ]] &&
-                printf 'rmdir %s 2> /dev/null\n' "$(sh_quote "${made[i]}")"
+        printf 'rm -f %s\n' "$(sh_quote "$script")"
+        # The folders it made, deepest first, if empty.
+        printf '%s\n' "${made[@]}" | awk '{ print length($0) "\t" $0 }' | sort -rn | cut -f2- | while IFS= read -r dir; do
+            printf 'rmdir %s 2> /dev/null\n' "$(sh_quote "$dir")"
         done
         printf 'true\n'
-    } > "$cleanup_script"
-    say "Left a pass-through in $quick_module, so Qt Quick apps started before you log out keep working (with KDE's look); it's removed at your next login"
+    } > "$script"
+    say "Left a pass-through in $quick_module, so Qt Quick apps started before you log out keep working (with KDE's look); $script removes it at your next login"
 }
 
 # A pass-through an earlier uninstall.sh left (a reinstall before the next
 # login): removed, so the install takes its place.
 remove_passthrough() {
-    [[ -f $cleanup_script && ! -L $cleanup_script && $(head -n 1 "$cleanup_script") == "$passthrough_marker" ]] || return 0
-    plan "remove the pass-through uninstall.sh left"
-    ((dry_run)) && return 0
-    # Its own script knows what it left and the folders it made.
-    sh "$cleanup_script" || true
-    rm -f "$cleanup_script"
+    local script
+    for script in "${cleanup_script%.sh}"*.sh; do
+        [[ -f $script && ! -L $script && $(head -n 1 "$script") == "$passthrough_marker" ]] || continue
+        plan "remove the pass-through uninstall.sh left ($script)"
+        ((dry_run)) && continue
+        # Its own script knows what it made, the folders included.
+        sh "$script" || true
+        rm -f "$script"
+    done
+    return 0
 }
 
 # --- Plasma's shell ---------------------------------------------------------

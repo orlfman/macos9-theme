@@ -114,19 +114,20 @@ fake_gtk_sync() {
 }
 
 no_record_left() { [[ ! -e $state ]]; }
-# The next login: the one-shot script uninstall.sh leaves runs (it removes
-# the pass-through for the session's running apps, finding 49).
+# The next login: Plasma runs every login script, so the one-shot script
+# uninstall.sh leaves runs (it removes the pass-through for the session's
+# running apps, finding 49).
 next_login() {
-    local script=$config/plasma-workspace/env/macos9-theme-cleanup.sh
-    if [[ -f $script ]]; then
-        sh -c '. "$1"' _ "$script"
-    fi
+    local script
+    for script in "$config"/plasma-workspace/env/*.sh; do
+        [[ -f $script ]] && sh -c '. "$1"' _ "$script"
+    done
     return 0
 }
 theme_files_gone() {
     next_login
     ! ls -d "$home"/.local/lib/macos9-theme "$data"/plasma/*/platinum* "$data/color-schemes/Platinum.colors" \
-        "$config/plasma-workspace/env/macos9-theme.sh" "$config/plasma-workspace/env/macos9-theme-cleanup.sh" > /dev/null 2>&1
+        "$config/plasma-workspace/env/macos9-theme.sh" "$config"/plasma-workspace/env/macos9-theme-cleanup*.sh > /dev/null 2>&1
 }
 kept_dir() { ls -d "$home"/.local/state/macos9-theme-uninstalled-* 2> /dev/null | tail -1; }
 # The home without what uninstall keeps on purpose (its dated folder).
@@ -648,10 +649,64 @@ if [[ -x $M9_PROJECT_BUILD/quickshot ]]; then
 fi
 check "install again before logging out exits 0" run install-2 "$project/install.sh"
 check "  it took the pass-through's place (nothing moved aside)" bash -c "! grep -q '^displaced' '$state/installed' && [[ ! -e '$config/plasma-workspace/env/macos9-theme-cleanup.sh' ]]"
+run uninstall-dry "$project/uninstall.sh" --dry-run || true
+check "  a dry run says it would leave the pass-through (finding 58)" grep -q "would leave a pass-through" "$root/$n-uninstall-dry.log"
 check "uninstall exits 0" run uninstall-2 "$project/uninstall.sh"
 next_login
 check "after the next login, nothing of the theme is left" bash -c "[[ ! -e '$home/.local/lib' && ! -e '$config/plasma-workspace' ]]"
 check "  and the config is as seeded" same "$seed" "$(config_state)"
+
+# --------------------------------------------------------------------------
+fresh "finding 54: a login script of the user's at the pass-through script's name stays"
+mkdir -p "$config/plasma-workspace/env"
+printf '# mine\nexport MINE=1\n' > "$config/plasma-workspace/env/macos9-theme-cleanup.sh"
+check "install exits 0" run install "$project/install.sh"
+check "uninstall exits 0" run uninstall "$project/uninstall.sh"
+check "  the user's script is untouched" grep -qx 'export MINE=1' "$config/plasma-workspace/env/macos9-theme-cleanup.sh"
+check "  the pass-through's script took another name" test -f "$config/plasma-workspace/env/macos9-theme-cleanup-2.sh"
+next_login
+check "  after the next login the user's script is still there" grep -qx 'export MINE=1' "$config/plasma-workspace/env/macos9-theme-cleanup.sh"
+check "  and the pass-through is gone" bash -c "[[ ! -e '$home/.local/lib' && ! -e '$config/plasma-workspace/env/macos9-theme-cleanup-2.sh' ]]"
+
+# --------------------------------------------------------------------------
+fresh "finding 55: a Kirigami link of the user's survives the next login"
+link=$home/.local/lib/macos9-theme/style/kf6/kirigami/platform/Platinum.so
+mkdir -p "$(dirname "$link")"
+ln -s "$(readlink "$(ls -d /usr/lib/qt6/plugins/kf6/kirigami/platform/org.kde.desktop.so)" 2> /dev/null || echo /usr/lib/qt6/plugins/kf6/kirigami/platform/org.kde.desktop.so)" "$link"
+target=$(readlink "$link")
+check "install exits 0" run install "$project/install.sh"
+check "uninstall exits 0" run uninstall "$project/uninstall.sh"
+check "  the user's link is back" bash -c "[[ \$(readlink '$link') == '$target' ]]"
+next_login
+check "  and still there after the next login" bash -c "[[ \$(readlink '$link') == '$target' ]]"
+
+# --------------------------------------------------------------------------
+fresh "finding 56: something of the user's at the Qt Quick module's place stays as it was"
+module=$home/.local/lib/macos9-theme/qml/Platinum
+mkdir -p "$(dirname "$module")"
+printf 'mine' > "$module"
+check "install exits 0" run install "$project/install.sh"
+check "uninstall exits 0 (a file there)" run uninstall "$project/uninstall.sh"
+check "  the user's file is back, nothing added" bash -c "[[ -f '$module' && \$(cat '$module') == mine ]]"
+check "  a second uninstall exits 0 too" run uninstall-2 "$project/uninstall.sh"
+rm -f "$module"
+mkdir -p "$module"
+printf 'mine' > "$module/notes.txt"
+check "install exits 0" run install-2 "$project/install.sh"
+check "uninstall exits 0 (a folder there)" run uninstall-3 "$project/uninstall.sh"
+check "  the user's folder is back with nothing added" bash -c "[[ \$(ls -A '$module') == notes.txt ]]"
+next_login
+check "  and still so after the next login" bash -c "[[ \$(ls -A '$module') == notes.txt ]]"
+
+# --------------------------------------------------------------------------
+fresh "finding 57: a backslash in a copied file's name"
+mkdir -p "$config/gtk-3.0/assets"
+printf 'svg' > "$config/gtk-3.0/assets/custom\\blue.svg"
+seed=$(config_state)
+check "install --apply exits 0" run apply "$project/install.sh" --apply
+check "  the checksum list escapes its name" grep -q '^\\' "$state/backup/SUMS"
+check "uninstall exits 0" run uninstall "$project/uninstall.sh"
+check "  and puts the seed back" same "$seed" "$(config_state)"
 
 fresh "a home with spaces and quotes in its path"
 weird="$root/my 'odd' \$home"

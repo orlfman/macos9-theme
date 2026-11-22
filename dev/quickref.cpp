@@ -93,6 +93,24 @@ int main(int argc, char **argv)
     combo.hidePopup();
     combo.hide();
 
+    // The same, narrower than its items: its list widens to the combo
+    // box's width hint.
+    QComboBox narrow;
+    narrow.addItems({"Lavender", "Purple", "Platinum"});
+    narrow.setCurrentIndex(1);
+    narrow.resize(60, narrow.sizeHint().height());
+    narrow.move(300, 100);
+    narrow.show();
+    settle(150);
+    narrow.showPopup();
+    settle(300);
+    if (QWidget *list = topLevel("QComboBoxPrivateContainer")) {
+        list->grab().save(out + QStringLiteral("-combo-narrow.png"));
+        printf("combo-narrow %d %d button %d %d\n", list->width(), list->height(), narrow.width(), narrow.height());
+    }
+    narrow.hidePopup();
+    narrow.hide();
+
     // The menu bar.
     QMenuBar bar;
     bar.addMenu("File")->addAction("Open");

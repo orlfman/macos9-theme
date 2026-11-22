@@ -184,9 +184,10 @@ M9_QUICK=1 QSTYLE=Platinum dev/run.sh platinum breeze env QT_QUICK_BACKEND=softw
 the C++ item that paints with the QStyle) and links Kirigami's platform
 plugin for it (`style/build/plugins/kf6/kirigami/platform/Platinum.so`).
 `M9_QUICK=1` with `QSTYLE=Platinum` makes `dev/run.sh` use it.
-`dev/check-quick.sh` (19 checks) renders the Qt Quick menus (first and last row
+`dev/check-quick.sh` (21 checks) renders the Qt Quick menus (first and last row
 selected), combo box list, menu bar, switch indicator, tooltip, dialog
-frame, range slider (and where KDE's hidden handles sit) and drawer edge
+frame, range slider (and where KDE's hidden handles sit), drawer edge and a
+combo box narrower than its items
 (`dev/quick-regions.qml`) and compares each with its widget counterpart
 (`dev/quickref.cpp`) pixel for pixel; then it switches the app to Fusion
 while running and compares the same pieces with KDE's own style under
@@ -240,7 +241,11 @@ leftover half-made backup, a held lock, and a home path with spaces and
 quotes. From findings 49 and 50: apps started from the session's old
 environment after uninstall (the pass-through it leaves until the next
 login; `next_login` runs the one-shot cleanup), a reinstall before that
-login, a profile with none of the copied files, a cut-short checksum list. The plugins are built once and
+login, a profile with none of the copied files, a cut-short checksum list;
+from findings 54-58: a login script of the user's at the pass-through
+script's name, a Kirigami link of the user's, a file or folder of the
+user's at the Qt Quick module's place, a backslash in a copied file's
+name, and a dry run that shows the pass-through. The plugins are built once and
 handed to install.sh through `M9_PREBUILT` (tests only). It uses
 `dev/build/styleshot` (from `dev/check-style.sh`) to check the installed
 style plugin loads.

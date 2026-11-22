@@ -2,7 +2,8 @@
 // step on a magenta window (so dev/check-quick.sh finds each piece by its
 // own pixels): 0/1 menu with the first/last row selected, 2 the combo
 // box's open list, 3 the menu bar, 4 a checked switch, 5 a tooltip, 6 a
-// dialog (its frame), 7 a range slider, 8 a drawer (its open edge). With
+// dialog (its frame), 7 a range slider, 8 a drawer (its open edge), 9 a
+// combo box narrower than its items (its list widens as QComboBox's). With
 // --switch-to-fusion it switches the app to Fusion first (the fallback
 // check: it must then look exactly like KDE's own style).
 import QtQuick
@@ -14,7 +15,7 @@ QQC2.ApplicationWindow {
     height: 360
     visible: false
     color: "#ff00ff"
-    property int steps: 9
+    property int steps: 10
     property int step: -1
     // dev/check-quick.sh's fallback run: switch the app's style to Fusion
     // first (only works with M9_QUICK_TEST set and this project's style).
@@ -29,6 +30,7 @@ QQC2.ApplicationWindow {
         if (i === 0 || i === 1) menu.currentIndex = i === 0 ? 0 : menu.count - 1
         else menu.close()
         if (i === 2) combo.popup.open()
+        if (i === 9) narrowCombo.popup.open(); else narrowCombo.popup.close()
         // (no fade-in, so the shot holds the finished tooltip)
         tipAnchor.QQC2.ToolTip.toolTip.enter = null
         tipAnchor.QQC2.ToolTip.toolTip.exit = null
@@ -74,6 +76,10 @@ QQC2.ApplicationWindow {
                 console.log("HANDLES", range.first.handle.x, range.second.handle.x)
             }
             if (i === 8) console.log("REGION drawer", 0, 0, drawer.width, drawer.height)
+            if (i === 9) {
+                const p = (narrowCombo.listPanel || narrowCombo.popup.background).mapToItem(root.contentItem, 0, 0)
+                console.log("REGION combo-narrow", Math.round(p.x), Math.round(p.y))
+            }
         }
     }
     QQC2.Menu {
@@ -92,6 +98,14 @@ QQC2.ApplicationWindow {
         x: 100; y: 100
         width: 140  // wider than its rows need in any font; dev/quickref.cpp's widget combo box gets the same width
         visible: root.step === 2
+        model: ["Lavender", "Purple", "Platinum"]
+        currentIndex: 1
+    }
+    QQC2.ComboBox {
+        id: narrowCombo
+        x: 300; y: 100
+        width: 60  // narrower than any item; dev/quickref.cpp's gets the same width
+        visible: root.step === 9
         model: ["Lavender", "Purple", "Platinum"]
         currentIndex: 1
     }

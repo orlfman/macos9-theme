@@ -344,4 +344,15 @@ switches", steps 2-5 and 7):
   the slider's height). Two #6666CC lines beside the focused thumb show it,
   also on Qt Quick sliders (KDE's bridge passes keyboard focus) and on each
   range slider handle (finding 52).
+- **QComboBox's list width** (finding 53): the wider of the button and the
+  combo box's width hint (its widest item text through `CT_ComboBox`), not
+  the rows' own width. The Qt Quick list now asks the style the same way.
+- **sha256sum escapes names** with a backslash or line break: a `\` before
+  the line, `\\` and `\n` in the name (finding 57).
+- **The pass-through after uninstall** (findings 54-56, 58) goes only where
+  nothing is: not over a file or folder of the user's at the module's
+  place, its login script under a free name, Kirigami's link only if none
+  is there (and only a link it made is removed at the next login). A dry
+  run counts what the real run will remove as free, unless something is put
+  back there.
 

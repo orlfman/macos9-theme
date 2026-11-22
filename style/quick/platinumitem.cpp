@@ -153,6 +153,23 @@ int PlatinumItem::margin() const
     return m_active ? 1 + QApplication::style()->pixelMetric(QStyle::PM_ToolTipLabelFrameWidth) : 0;
 }
 
+int PlatinumItem::comboWidthHint(const QStringList &texts) const
+{
+    if (!m_active) {
+        return 0;
+    }
+    const QFontMetrics fm(QApplication::font("QComboBox"));
+    int width = 0;
+    for (const QString &text : texts) {
+        width = std::max(width, fm.horizontalAdvance(text));
+    }
+    QStyleOptionComboBox opt;
+    opt.palette = QApplication::palette("QComboBox");
+    opt.state = QStyle::State_Enabled;
+    opt.frame = true;
+    return QApplication::style()->sizeFromContents(QStyle::CT_ComboBox, &opt, QSize(width, 0), nullptr).width();
+}
+
 int PlatinumItem::shortcutWidth() const
 {
     return m_shortcut.isEmpty() ? 0 : QFontMetrics(QApplication::font("QMenu")).horizontalAdvance(m_shortcut);

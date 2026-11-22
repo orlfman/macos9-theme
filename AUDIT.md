@@ -3,7 +3,50 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: Findings #49–#53 are fixed and tested; nothing blocks the first desktop install except the user's go-ahead. Open: #3 (P3) waits for the user's review of the Qt Quick style. User decisions still apply to #21 (main screen only), #26 (RTL unsupported), #23 (resizing on hold) and #25 (deferred until publication).
+Status: Findings #53–#58 are fixed and tested; nothing blocks the first desktop install except the user's go-ahead. Open: #3 (P3) waits for the user's review of the Qt Quick style. User decisions still apply to #21 (main screen only), #26 (RTL unsupported), #23 (resizing on hold) and #25 (deferred until publication).
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for Codex's findings #53–#58
+
+Verified each by reading the code (and, for #57, sha256sum's output for
+such a name), then fixed them with a test for each. Uncommitted at the time
+of writing.
+
+| Finding | Verified | Fix |
+|---|---|---|
+| #53 (reopened) | yes (read: QComboBox::showPopup widens the list to the combo box's width hint, its widest text through `CT_ComboBox`; the Qt Quick list took the rows' width, 2 px more) | The item works out the same hint (`comboWidthHint`); the list is the wider of it and the button. New narrow fixture (60 px, narrower than its items) on both sides: both lists 90 px, pixel exact. |
+| #54 | yes (read: the script was written with `>`) | The pass-through's login script takes a free name (`macos9-theme-cleanup-2.sh`, ...); install finds any of them by its first line. Tested with a script of the user's at the name. |
+| #55 | yes (read: the cleanup removed any link pointing at KDE's plugin) | The link is made only if none is there, and the cleanup removes it only if it made it. Tested with a link of the user's. |
+| #56 | yes (read: only `qmldir` was checked; `mkdir` on a file fails) | No pass-through if anything is at the module's place (or a folder can't be made there). Tested with a file and with a folder of the user's. |
+| #57 | yes (sha256sum writes `\<hash>  name\\x` for such names) | The parser takes the leading `\` and unescapes the name. Tested with `custom\blue.svg` in `gtk-3.0/assets`. |
+| #58 | yes (read: the dry run saw the module still there) | In a dry run, what the real run will have removed counts as free, unless something is put back there (which also fixed the real run's check: it now looks only at what's on disk). Tested. |
+
+### Checks
+
+- `dev/test-install.sh`: 272 of 272. `dev/test-install-live.sh`: 19 of 19.
+- `dev/check-quick.sh`: 21 of 21. Style and Plasma unchanged since 135/135
+  and 7/7.
+
+### Limits
+
+- Not on the user's desktop; no real login.
+
+## 2026-11-21, Codex (GPT-6) — review the fixes for #49–53
+
+Reviewed main at `0cd95a2`. All 429 project checks passed. The new pass-through lets an existing launcher start Qt Quick apps after an ordinary uninstall. The additional cases below concern what happens when uninstall encounters files that already belong to the user. All cases used fresh throwaway homes and the project's scripts.
+
+| Finding | Location | What happened and how it was verified |
+|---|---|---|
+| #54 · P1 · fixed (next section up) | `scripts/common.sh:792`, `scripts/common.sh:786` | Uninstall overwrites an existing login script. Seeded a personal `plasma-workspace/env/macos9-theme-cleanup.sh`, then ran plain install and uninstall. Both exited 0. The original contents were replaced with the generated cleanup script. Running that script to simulate the next login deleted the file. The hook needs the same ownership protection as other install targets. |
+| #55 · P1 · fixed (next section up) | `scripts/common.sh:766`, `scripts/common.sh:777` | The next login deletes a user's restored Kirigami link. Seeded the target link to KDE's desktop plugin before install. Uninstall restored it. The generated cleanup script subsequently removed it because it pointed to the expected plugin, even though this cleanup had never created that link. Verified the link existed immediately after uninstall and was gone after running the hook. |
+| #56 · P2 · fixed (next section up) | `uninstall.sh:372`, `scripts/common.sh:755`, `scripts/common.sh:764` | Uninstall tries to create the pass-through inside a path it just restored to the user. Seeded a regular file at the Platinum QML module path. Install succeeded and uninstall restored its contents, but then failed at mkdir. A second uninstall failed identically. With a pre-existing directory containing only a personal file, uninstall instead succeeded and added its own qmldir inside the restored directory. |
+| #57 · P2 · fixed (next section up) | `uninstall.sh:143`, `uninstall.sh:150` | A valid GTK asset filename can block rollback. Seeded a regular file named `custom\blue.svg` in gtk-3.0/assets. Apply succeeded. Uninstall refused the untouched backup as damaged. Running GNU sha256sum in strict check mode directly on that same SUMS file reported OK. Its escaped filename format includes a leading backslash before the hash, which the new parser rejects. |
+| #58 · P3 · fixed (next section up) | `scripts/common.sh:755`, `uninstall.sh:372` | Uninstall preview misses the pass-through and login cleanup. In another fresh home, plain install, preview and uninstall all exited 0. The preview omitted the pass-through; the actual run created it and reported doing so. The preview checks for the existing qmldir while the real uninstall first removes it. |
+
+**Previous findings.** The nested suite now launches a Qt Quick app from an environment inherited before uninstall, covering the original #49 failure. Empty backups, the named menu icon and slider focus checks passed (#50–52). **#53 (P3, reopened for narrow controls):** the replacement fixture at `dev/quick-regions.qml:93` sets the button to 140 px and passes. Restoring just the original 102 px width in temporary copies of the two fixtures reproduced the original difference: a 103×51 Quick popup beside a 102×51 widget popup and 145 differing pixels along the right edge. The wider test does not establish narrow-popup parity.
+
+**Other checks and limits.** Installer 249/249, nested live 19/19, Qt Widgets 135/135, Qt Quick 19/19 and Plasma 7/7. Built all three plugins with ASan/UBSan and ran the Quick scenes and decoration preview without sanitizer diagnostics (leak detection disabled). Rendered widget galleries at scales 1, 1.25, 1.5 and 2. Inspected the nested maximized window and desktop menu. Compared checkbox, radio and disclosure-triangle crops with the private reference at 4×. Independent samples matched the documented desktop color (#63639C) and menu-bar column. Parsed 11 SVGs, three Plasma metadata files and the color scheme. A path and binary-diff scan of 42 reachable commits found no reference assets or font binaries; the text-table provenance question remains deferred under #25.
+
+Physical screens, a real login or systemd session, library upgrades and a screen reader session remain unverified. Deferred login behavior was exercised by running the actual generated hook in throwaway homes. This review changed only the two logs.
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for Codex's findings #49–#53
 
