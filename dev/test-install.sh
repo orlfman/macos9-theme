@@ -414,6 +414,102 @@ check "with the same folders, uninstall exits 0" run uninstall "$project/uninsta
 check "  and removed everything" bash -c "$(declare -f theme_files_gone no_record_left); home='$home' data='$data' config='$config' state='$state'; theme_files_gone && no_record_left"
 rm -rf "$root/other-data" "$root/other-config"
 
+# --------------------------------------------------------------------------
+fresh "finding 34: a link inside a copied folder is refused before any change"
+mkdir -p "$config/kdedefaults" "$root/dotfiles"
+printf '[General]\nColorScheme=Custom\n' > "$root/dotfiles/kdeglobals"
+ln -s "$root/dotfiles/kdeglobals" "$config/kdedefaults/kdeglobals"
+before=$(snapshot)
+check "install --apply refuses (exit 1)" bash -c "! '$project/install.sh' --apply > '$root/34.log' 2>&1"
+check "  and names the link" grep -qF "$config/kdedefaults/kdeglobals" "$root/34.log"
+check "  and changed nothing" same "$before" "$(snapshot)"
+check "  the linked dotfile is untouched" grep -qx 'ColorScheme=Custom' "$root/dotfiles/kdeglobals"
+rm -rf "$root/dotfiles"
+
+# --------------------------------------------------------------------------
+fresh "finding 35: files the user added to or changed in installed things stay"
+check "install exits 0" run install "$project/install.sh"
+printf 'mine' > "$data/plasma/desktoptheme/platinum/my-variant.svg"
+printf '\n' >> "$data/plasma/look-and-feel/platinum.desktop/metadata.json"
+edited=$(sha256sum < "$data/plasma/look-and-feel/platinum.desktop/metadata.json")
+printf '# my own Platinum\n' > "$data/color-schemes/Platinum.colors"
+check "uninstall exits 0" run uninstall "$project/uninstall.sh"
+check "  the added file is still there" grep -qx mine "$data/plasma/desktoptheme/platinum/my-variant.svg"
+check "  the changed file is still there, as changed" bash -c "[[ \$(sha256sum < '$data/plasma/look-and-feel/platinum.desktop/metadata.json') == '$edited' ]]"
+check "  the replaced color scheme is still the user's" grep -qx '# my own Platinum' "$data/color-schemes/Platinum.colors"
+check "  the installed files around them are gone" \
+    bash -c "[[ ! -e '$data/plasma/desktoptheme/platinum/metadata.json' && ! -e '$data/plasma/plasmoids' && ! -e '$home/.local/lib' && \$(ls '$data/plasma/desktoptheme/platinum') == my-variant.svg ]]"
+check "  and it said what it kept" grep -q "kept" "$root/$n-uninstall.log"
+check "  no record left" no_record_left
+
+fresh "finding 35: installing again keeps a changed installed file"
+before=$(snapshot)
+check "install exits 0" run install "$project/install.sh"
+printf '# my own Platinum\n' > "$data/color-schemes/Platinum.colors"
+check "a second install exits 0" run install-2 "$project/install.sh"
+check "  ours is in place again" grep -q '^\[General\]' "$data/color-schemes/Platinum.colors"
+check "uninstall exits 0" run uninstall "$project/uninstall.sh"
+check "  the user's version is back" grep -qx '# my own Platinum' "$data/color-schemes/Platinum.colors"
+# (its folders stay with it; without them the rest is as before)
+rm -r "$data/color-schemes"
+rmdir "$data" "$home/.local/share" 2> /dev/null || true
+check "  and the rest is as before" same "$before" "$(clean_snapshot)"
+
+# --------------------------------------------------------------------------
+fresh "finding 36: an incomplete or changed copy is refused before any change"
+check "install --apply exits 0" run apply "$project/install.sh" --apply
+fake_gtk_sync
+mv "$state/backup/config/kwinrc" "$root/kwinrc.saved"
+before=$(snapshot)
+check "uninstall with a file missing from the copy refuses (exit 1)" bash -c "! '$project/uninstall.sh' > '$root/36-1.log' 2>&1"
+check "  and names it" grep -q "kwinrc" "$root/36-1.log"
+check "  and changed nothing" same "$before" "$(snapshot)"
+printf 'changed' > "$state/backup/config/kwinrc"
+before=$(snapshot)
+check "uninstall with a changed file in the copy refuses (exit 1)" bash -c "! '$project/uninstall.sh' > '$root/36-2.log' 2>&1"
+check "  and changed nothing" same "$before" "$(snapshot)"
+mv -f "$root/kwinrc.saved" "$state/backup/config/kwinrc"
+check "with the copy whole again, uninstall exits 0" run uninstall "$project/uninstall.sh"
+check "  and puts the seed back" same "$seed" "$(config_state)"
+
+# --------------------------------------------------------------------------
+fresh "finding 37: a dry run tells what the real uninstall does"
+mkdir -p "$data/color-schemes"
+printf 'mine' > "$data/color-schemes/Platinum.colors"
+check "install exits 0" run install "$project/install.sh"
+run uninstall-dry "$project/uninstall.sh" --dry-run || true
+check "  the dry run says it would put the earlier one back" grep -q "would put back the earlier $data/color-schemes/Platinum.colors" "$root/$n-uninstall-dry.log"
+check "  and warns about nothing" bash -c "! grep -q warning '$root/$n-uninstall-dry.log'"
+check "uninstall exits 0" run uninstall "$project/uninstall.sh"
+check "  and put it back" grep -qx mine "$data/color-schemes/Platinum.colors"
+
+# --------------------------------------------------------------------------
+fresh "finding 38: a shell that couldn't be started again is started by the next run"
+mkdir -p "$root/sdbin"
+rm -f "$root/sd.log" "$root/sd.active" "$root/sd.fail"
+cat > "$root/sdbin/systemctl" << EOF
+#!/bin/bash
+# A user systemd with a plasmashell service; starts fail while sd.fail exists.
+echo "systemctl \$*" >> '$root/sd.log'
+case "\$*" in
+    *is-active*) [[ -f '$root/sd.active' ]] ;;
+    *stop*) rm -f '$root/sd.active' ;;
+    *start*) [[ ! -f '$root/sd.fail' ]] && touch '$root/sd.active' ;;
+    *) exit 1 ;;
+esac
+EOF
+chmod +x "$root/sdbin/systemctl"
+check "install --apply exits 0" run apply "$project/install.sh" --apply
+touch "$root/sd.active" "$root/sd.fail"
+check "uninstall exits 1 (the shell won't start)" bash -c "! PATH='$root/sdbin:$PATH' '$project/uninstall.sh' > '$root/38-1.log' 2>&1"
+check "  and says so" grep -q "couldn't start Plasma's shell" "$root/38-1.log"
+check "  the config was put back" same "$seed" "$(config_state)"
+rm -f "$root/sd.fail"
+: > "$root/sd.log"
+check "uninstall again exits 0" bash -c "PATH='$root/sdbin:$PATH' '$project/uninstall.sh' > '$root/38-2.log' 2>&1"
+check "  and started the shell" bash -c "grep -q 'start plasma-plasmashell' '$root/sd.log' && test -f '$root/sd.active'"
+check "  no record left" no_record_left
+
 fresh "a home with spaces and quotes in its path"
 weird="$root/my 'odd' \$home"
 rm -rf "$weird"

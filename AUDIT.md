@@ -3,7 +3,39 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: Hold the first desktop install for P1 #34–35 and rollback findings P2 #36 and #38. Open P3 #3, #23, #26 and #37 can wait. Open P1 #25 concerns publication.
+Status: Findings #34–#38 are fixed and tested in throwaway homes; nothing blocks the first desktop install except the user's go-ahead. Open: #3 (P3, plan in PLAN.md). Deferred by the user: #25 (P1, until going public), #23 (P3, on hold). Closed by the user: #26 (right-to-left not supported), #21 (main screen only).
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for Codex's findings #34–#38
+
+Wrote a test scenario for each first and ran it against `1c47e23`: #34 and
+#35 failed as described (the run stopped in #35's second case). Then fixed
+all five. Uncommitted at the time of writing.
+
+### Verification and what was done
+
+| Finding | Verified | Fix |
+|---|---|---|
+| #34 | yes, reproduced (a link `kdedefaults/kdeglobals` → a dotfile: the switch rewrote the dotfile, uninstall put back only the link) | `check_backup_links` also looks inside every copied folder (`kdedefaults`, GTK `assets`) and stops before any change, naming the link. Tested: install `--apply` refuses, nothing changes, the dotfile keeps `ColorScheme=Custom`. The live test now runs `install.sh` again after the switch, which passes, so Plasma itself puts no links there. The user's real config has none either (checked read-only). |
+| #35 | yes, reproduced (an added `my-variant.svg`, a changed `metadata.json` and a replaced color scheme were all deleted) | The record keeps a checksum of every file installed, inside folders too (record format 4; written before each copy, old ones dropped after it). Uninstall removes only files that still match, then the folders that held them if empty; anything else stays and is listed in a warning. A changed installed file is left as the user's. A reinstall moves a changed installed file or folder aside like anything else in its way, and uninstall puts it back. Tested both. |
+| #36 | yes (read; reproduced in the new test) | The config copy has a `SUMS` file. Before stopping the shell, uninstall checks every listed entry is in the copy (or was absent) and every checksum matches; if not, it stops with nothing changed, names what's wrong, and says how to remove the theme without restoring (move the copy away). Tested with a missing and with a changed `kwinrc`. |
+| #37 | yes, reproduced (the dry run warned the earlier color scheme would stay aside) | The dry run remembers what the real run would have removed, so it reports the same put-backs. |
+| #38 | yes (read; reproduced with a stand-in systemd whose starts fail) | Uninstall writes `shell-stopped` in its state folder before stopping the shell and removes it once the shell is up (the direct route now waits for the shell on the session bus). If the start fails, it finishes the rest, exits 1 and says how to start the shell; the next run starts it first, even when nothing else is left. Tested: first run exits 1 with the config restored, second run starts the service and exits 0. |
+
+### Checks
+
+- `dev/test-install.sh`: 193 of 193 (38 new).
+- `dev/test-install-live.sh`: 15 of 15 (new: `install.sh` again after the
+  switch).
+- Style and Plasma checks not rerun: no style or Plasma file changed since
+  131/131 and 7/7.
+
+### Limits
+
+- Still no real desktop, real login or real systemd failure.
+- The checksum check costs one `sha256sum` per installed file (about 50)
+  on install and uninstall.
+- A record or config copy from an earlier version (format 3, no `SUMS`) is
+  refused; only test homes had them.
 
 ## 2026-11-21, Codex (GPT-6) — third pre-install audit
 
@@ -11,11 +43,11 @@ Reviewed main at `05cd9bd`. All desktop operations used throwaway homes. The fol
 
 | Finding | Location | Impact and verification |
 |---|---|---|
-| #34 · P1 · open | `scripts/common.sh:496`, `scripts/common.sh:525` | A link inside a backed-up directory can lose its target's original contents. Linked `kdedefaults/kdeglobals` to a custom dotfile in the test home, then ran apply and uninstall. Both exited 0. The dotfile's original `ColorScheme=Custom` became `Platinum` and stayed that way. The link check visits the listed entries only, and the recursive backup preserves the child link itself. |
-| #35 · P1 · open | `uninstall.sh:181`, `uninstall.sh:184`, `README.md:62` | Uninstall deletes user additions inside an installed package. Added `my-variant.svg` to the installed Platinum desktop theme after an ordinary install. Uninstall succeeded and no copy of that file remained in the throwaway home. The removal checks only the recorded path's type before recursively deleting it. The same type check also treats a replacement regular file as installed, despite the README's promise to preserve a user's replacement. |
-| #36 · P2 · open | `uninstall.sh:96`, `uninstall.sh:136`, `uninstall.sh:146` | An incomplete backup can produce a successful partial restore. After apply, moved the saved original `kwinrc` out of the backup while retaining its entry and the absence list. Uninstall reported success and archived the backup. The left button setting stayed at Platinum's `X` instead of the original `M`. |
-| #37 · P3 · open | `uninstall.sh:184`, `uninstall.sh:203` | Dry-run reports a collision that the real uninstall resolves. Installed over an existing Platinum color scheme, then ran preview and actual uninstall consecutively. Preview warned that the earlier file would stay displaced. Actual uninstall returned 0 and put it back. Preview checks the path while the installed file is still there. |
-| #38 · P2 · open | `uninstall.sh:144`, `uninstall.sh:148`, `scripts/common.sh:597` | If both shell start attempts fail, retrying uninstall can succeed while Plasma remains stopped. A private systemctl stub recorded a successful stop and two failed starts. Uninstall exited 1. Enabled starts and retried. Uninstall exited 0 without calling systemctl, and the simulated service remained inactive. The script had already archived the backup and only starts the shell inside the restore branch. |
+| #34 · P1 · fixed (next section up) | `scripts/common.sh:496`, `scripts/common.sh:525` | A link inside a backed-up directory can lose its target's original contents. Linked `kdedefaults/kdeglobals` to a custom dotfile in the test home, then ran apply and uninstall. Both exited 0. The dotfile's original `ColorScheme=Custom` became `Platinum` and stayed that way. The link check visits the listed entries only, and the recursive backup preserves the child link itself. |
+| #35 · P1 · fixed (next section up) | `uninstall.sh:181`, `uninstall.sh:184`, `README.md:62` | Uninstall deletes user additions inside an installed package. Added `my-variant.svg` to the installed Platinum desktop theme after an ordinary install. Uninstall succeeded and no copy of that file remained in the throwaway home. The removal checks only the recorded path's type before recursively deleting it. The same type check also treats a replacement regular file as installed, despite the README's promise to preserve a user's replacement. |
+| #36 · P2 · fixed (next section up) | `uninstall.sh:96`, `uninstall.sh:136`, `uninstall.sh:146` | An incomplete backup can produce a successful partial restore. After apply, moved the saved original `kwinrc` out of the backup while retaining its entry and the absence list. Uninstall reported success and archived the backup. The left button setting stayed at Platinum's `X` instead of the original `M`. |
+| #37 · P3 · fixed (next section up) | `uninstall.sh:184`, `uninstall.sh:203` | Dry-run reports a collision that the real uninstall resolves. Installed over an existing Platinum color scheme, then ran preview and actual uninstall consecutively. Preview warned that the earlier file would stay displaced. Actual uninstall returned 0 and put it back. Preview checks the path while the installed file is still there. |
+| #38 · P2 · fixed (next section up) | `uninstall.sh:144`, `uninstall.sh:148`, `scripts/common.sh:597` | If both shell start attempts fail, retrying uninstall can succeed while Plasma remains stopped. A private systemctl stub recorded a successful stop and two failed starts. Uninstall exited 1. Enabled starts and retried. Uninstall exited 0 without calling systemctl, and the simulated service remained inactive. The script had already archived the backup and only starts the shell inside the restore branch. |
 
 ### Coverage and limits
 
@@ -49,7 +81,7 @@ Correction to the #19 row below: right-to-left horizontal scroll bars aren't
 doesn't mirror them. They work consistently (clicks match what's drawn)
 but run left to right. Added to #26.
 
-**#26 (P3, open) widened:** besides menu items, horizontal scroll bars
+**#26 (P3, closed later by the user) widened:** besides menu items, horizontal scroll bars
 don't mirror in right-to-left layouts.
 
 ### Checks
@@ -137,7 +169,7 @@ time of writing.
 | #24 | yes | DEVELOPMENT.md says exactly what each tool isolates. AGENTS.md, PLAN.md and README.md stale lines fixed. |
 | #25 | yes | The raw crops with mouse-pointer pixels (`TrianglePressedRaw`, `CheckOffPressedRaw`, `RadioOffPressedRaw`, `PopupArrowPressedA/B`) are no longer written to `sprites.h`. The clean sprites are byte-identical. README no longer says "everything is redrawn". Stays open: the measured tables and git history need the user's decision before anything goes public. |
 
-**#26 P3, open — menu items don't mirror in right-to-left layouts.**
+**#26 P3, closed (user: right-to-left isn't supported, PLAN.md decision 11) — menu items don't mirror in right-to-left layouts.**
 `style/platinum/platinumstyle.cpp` CE_MenuItem uses fixed left offsets
 (check, icon, text) and a right-hand shortcut and submenu arrow. Found while
 fixing #19 (read only). Mac OS 9 had no right-to-left menus.
@@ -285,7 +317,7 @@ post-upgrade load were not tested.
 |---|---|---|
 | **#21 P2, closed (user's decision: main screen only, PLAN.md decision 10)** — the second monitor loses its panel | `plasma/layout.js:16`, `plasma/layout.js:53` | Seeded a bottom panel on virtual output 0 and a left panel on output 1. Queried the running shell before and after the actual installer's `--resetLayout`. Both new panels reported screen 0, top and bottom. Output 1 had no panel. The layout also changes wallpaper on every desktop at line 65. This affects the user's two-screen setup. |
 | **#22 P2, fixed** — selected secondary text can have zero contrast | `plasma/make-plasma.py:413`, `plasma/platinum/colors:105` | The generated Selection group sets both `ForegroundInactive` and `BackgroundNormal` to RGB (51,51,153), a 1:1 contrast ratio. A consumer using that pair will hide the text. Normal selected text is white and readable in the rendered File menu. No particular applet using the inactive role was identified. |
-| **#23 P3, open** — resizing the top panel breaks the corner treatment | `plasma/make-plasma.py:216`, `plasma/plasmoids/platinum.menubarpiece/contents/ui/main.qml:23` | In the 20 px render the top-left pixel is black as in `reference/desktop-first-check.png` (REFERENCE “Menu bar”). At 32 px it was white and the bar gained a blended #F4F4F4 second row at x=300. The applet's rows remain fixed at 0–19. The 1.5× virtual output showed uneven device-pixel steps in the corner. |
+| **#23 P3, on hold (user, PLAN.md decision 12)** — resizing the top panel breaks the corner treatment | `plasma/make-plasma.py:216`, `plasma/plasmoids/platinum.menubarpiece/contents/ui/main.qml:23` | In the 20 px render the top-left pixel is black as in `reference/desktop-first-check.png` (REFERENCE “Menu bar”). At 32 px it was white and the bar gained a blended #F4F4F4 second row at x=300. The applet's rows remain fixed at 0–19. The 1.5× virtual output showed uneven device-pixel steps in the corner. |
 
 - Inspected desktop, open menu, launcher, edit mode, auto-hide and vertical
   dock renders. Edit mode opened with its controls visible. The left dock
@@ -347,7 +379,7 @@ the need to isolate user systemd.
 
 ### 7. Provenance and publication
 
-**#25 P1, open for publication — the generated source includes sampled
+**#25 P1, open for publication, deferred until the user goes public (PLAN.md decision 12) — the generated source includes sampled
 glyph and pointer pixels.** `tools/gen-style-data.sh:182` and :209 emit the
 9×8 normal menu check and its highlighted RGB version from the captures.
 The clean and raw inputs also coexist in `style/platinum/sprites.h:120`
@@ -495,7 +527,7 @@ style tooltips added in the same session. Working tree after 36673ab.
 
 ### Findings
 
-3. **P3, open: Qt Quick menus, tooltips and switches aren't Platinum.**
+3. **P3, open (plan in PLAN.md, 2026-11-21): Qt Quick menus, tooltips and switches aren't Platinum.**
    qqc2-desktop-style draws them itself (rounded panels with shadows,
    Breeze-like switch) instead of through the QStyle
    (`dev/shots/platinum-quick.png`). Reference: menus `menu-view-checked.png`,

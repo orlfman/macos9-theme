@@ -148,6 +148,8 @@ echo "info    after --apply: $after_panels"
 check "--apply replaced the panels with the menu bar and the dock" \
     bash -c "[[ '$after_panels' == *':top:20'* && '$after_panels' == *':bottom:52'* && '$after_panels' != *'left'* ]]"
 after_files=$(files_state)
+check "install.sh again after the switch exits 0 (an update; no links in the copied folders)" \
+    bash -c "'$project/install.sh' > '$root/install-2.log' 2>&1"
 if [[ $after_files != "$before_files" ]]; then
     echo "info    the switch changed these config/GTK files (incl. Plasma's GTK sync):"
     diff <(printf '%s\n' "$before_files" | grep -v '^[0-9a-f]\{64\}') <(printf '%s\n' "$after_files" | grep -v '^[0-9a-f]\{64\}') |

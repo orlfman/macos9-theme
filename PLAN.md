@@ -16,13 +16,13 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | reference  | reference/, docs/REFERENCE.md | nobody | capture pass done (81 captures, CAPTURES.md); measurements partial |
 | colors     | colors/                   | nobody     | Platinum.colors done (sandbox-checked) |
 | decoration | decoration/               | nobody | plugin works in nested KWin; frame pixel exact; only the three Mac OS 9 boxes are created (AUDIT 20) |
-| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math); open: Qt Quick menus/tooltips/switches (AUDIT 3), RTL menus (AUDIT 26), editable combo, size grip |
-| plasma     | plasma/                   | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); open: one screen only (AUDIT 21, user decision), resize limit (AUDIT 23); next: Apple menu icon, clock/divider spacing |
+| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); next: Qt Quick menus/tooltips/switches (AUDIT 3, plan below); open: editable combo, size grip |
+| plasma     | plasma/                   | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); main screen only (decision 10); menu bar resizing on hold (AUDIT 23, user) |
 | icons      | icons/                    | nobody     | not started |
 | cursors    | cursors/                  | nobody     | not started |
 | gtk        | gtk/                      | nobody     | not started |
 | extras     | extras/, wallpapers/      | nobody     | not started |
-| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's two audits (#4-#14, #27-#31 fixed: moved-aside targets, record written first and taken off step by step so a retry never redoes a step, GTK files in the backup, shell stopped while restoring, decoration version guard, paths checked against where they led, recorded temporaries, same XDG folders required); test-install 155/155, test-install-live 14/14 (running Plasma, two screens); not run on the real desktop yet |
+| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's three audits (#4-#14, #27-#31, #34-#38 fixed: moved-aside targets, record written first and taken off step by step so a retry never redoes a step, GTK files in the backup, shell stopped while restoring, decoration version guard, paths checked against where they led, recorded temporaries, same XDG folders required, checksums so your own additions and changes stay, a checked config copy, a stopped shell started by the next run); test-install 193/193, test-install-live 15/15 (running Plasma, two screens); not run on the real desktop yet |
 
 ## Goal
 
@@ -87,6 +87,13 @@ Open decisions need the user. Record the answer here with the date.
     as on Mac OS 9, and other screens get no panel (AUDIT.md finding 21).
     In Plasma 6 the primary screen is always screen 0, where the layout
     script's new panels go.
+11. **Right-to-left layouts.** **Decided 2026-11-21 (user):** not
+    supported ("I don't plan on supporting that"). AUDIT.md finding 26 is
+    closed. The fallbacks already in the style stay (they keep clicks and
+    drawing consistent), but nothing more is done for right-to-left.
+12. **Deferred by the user, 2026-11-21:** AUDIT.md finding 25 (measured
+    pixel tables and git history) waits until the user is ready to go
+    public; finding 23 (menu bar drawn wrong when resized) is on hold.
 
 ## Components
 
@@ -144,14 +151,107 @@ measurements.
 8. **packaging**: install/uninstall to user scope with backups; full audit;
    user's on-screen review.
 
+## Plan: Qt Quick menus, tooltips and switches (AUDIT.md finding 3)
+
+Asked for by the user 2026-11-21. Plan only; nothing built yet.
+
+**What's wrong.** Qt Quick apps (System Settings pages, Discover, other
+Kirigami apps) use KDE's Qt Quick Controls style, `org.kde.desktop`
+(qqc2-desktop-style 6.32). It draws buttons, check boxes, radios, sliders,
+progress bars, fields, spin boxes, combo boxes, tabs, scroll bars and
+tool buttons through the QStyle, so those are Platinum already. These are
+drawn in its own QML instead (read in
+`/usr/lib/qt6/qml/org/kde/desktop/`):
+- `Menu`: a `Kirigami.ShadowedRectangle` with rounded corners and a soft
+  shadow; `MenuItem`: a highlight `Rectangle` in the focus color at 30%
+  opacity, Kirigami icons and labels; `MenuSeparator`, `MenuBar`,
+  `MenuBarItem` likewise.
+- `ToolTip`: a rounded `ShadowedRectangle` (its own source has a TODO to
+  use the QStyle).
+- `Switch` and `SwitchDelegate`: a Breeze-like sliding switch
+  (`private/SwitchIndicator.qml`). Mac OS 9 had no switches.
+- `ItemDelegate`, `CheckDelegate`, `RadioDelegate`, `SwipeDelegate`
+  (list rows), `Popup`, `Dialog`, `Drawer`, the combo box's pop-up list,
+  `RangeSlider`, `BusyIndicator`, `PageIndicator`, `RoundButton`.
+- Kirigami's own components (cards, inline messages, page headers) are
+  drawn by Kirigami, not by any Qt Quick Controls style: only their colors
+  follow the theme.
+Plasma's own panels and pop-ups use Plasma Components and the Plasma
+style, so they're not part of this.
+
+**Approach.** A small Qt Quick Controls style of our own that overrides
+only those controls and falls back to `org.kde.desktop` for everything
+else (Qt 6 style modules can fall back through `import org.kde.desktop
+auto` in their `qmldir`). Where qqc2-desktop-style's `StyleItem` bridge
+has an element for it, the override draws through our QStyle (`menu`,
+`menuitem`, `menubaritem`, `checkbox`, `itemrow`, `focusrect` and others
+are in its plugin), so Qt Quick menus are the same pixels as the widget
+menus and nothing is drawn twice. The tooltip has no such element: it
+gets either a small C++ Qt Quick item of ours that paints with the
+QStyle's tooltip drawing (preferred, one source of truth) or QML drawing
+from the measured balloon values.
+
+How it's switched on: the login script sets `QT_QUICK_CONTROLS_STYLE` to
+our style (only if you haven't set it yourself) and adds our folder to
+`QML_IMPORT_PATH`. Kirigami finds its color and size plugin by the style's
+name (`kf6/kirigami/platform/<style>.so`; `org.kde.breeze` and
+`org.kde.union` ship one each), so ours needs one too: a link to
+`org.kde.desktop.so` (same colors and sizes, always the installed
+version) in our plugin folder.
+
+Not chosen: patching or copying `org.kde.desktop` (57 files plus a
+compiled plugin; breaks with every KDE Frameworks update), or the Union
+style engine (the whole style would have to be redone in its format).
+
+**Steps.**
+1. **Spike, sandbox only.** A minimal style with one override (`ToolTip`)
+   and the fallback. Check in `dev/kirigami.qml`, `dev/gallery.qml` and
+   System Settings in the nested KWin (`dev/app-test.sh`): the override is
+   used; every other control still comes from `org.kde.desktop`;
+   Kirigami's colors and sizes still load through the linked plugin (and
+   what happens without it); KDE's platform theme leaves an already-set
+   `QT_QUICK_CONTROLS_STYLE` alone (it chooses the style from
+   `widgetStyle` otherwise); a Qt Quick app without KDE's platform theme
+   still runs. Record the results in docs/FINDINGS.md. If the variable
+   route doesn't hold, stop and bring the options to the user.
+2. **Inventory.** Render the galleries and a few System Settings pages,
+   list every control from the list above that's visible and wrong, and
+   pair each with its Mac OS 9 capture (menus `menu-view-checked.png`,
+   balloons `help-balloon.png`, list highlight from REFERENCE.md
+   "Highlighted item").
+3. **Menus** (most visible): `Menu`, `MenuItem`, `MenuSeparator`,
+   `MenuBar`, `MenuBarItem` through `StyleItem`. Compare against the
+   widget menu renders, which are already pixel exact.
+4. **Tooltips**: the help balloon, as the widget tooltip draws it.
+5. **Switches**: drawn as Platinum check boxes (`checkbox` element), as
+   Mac OS 9 would have used one.
+6. **List rows and pop-ups**: the Lavender highlight (#333399, white text)
+   for delegates; square pop-up, dialog, drawer and combo list frames
+   like the widget ones.
+7. **Checks**: Qt Quick regions added to `dev/check-style.sh` (rendered
+   with `dev/build/quickshot`), compared with the widget renders and the
+   captures; sanitizer run; app pass with System Settings.
+8. **Packaging**: the style folder and the Kirigami link become install
+   targets (record, checksums, uninstall); the login script sets the two
+   variables, guarded like the decoration: only while `org.kde.desktop` is
+   installed at the version it was checked with (our overrides use its
+   private `StyleItem` module). Install tests and the live test cover it.
+9. **Audit and the user's on-screen review.**
+
+**Risks.** `StyleItem` is qqc2-desktop-style's private module and can
+change with a KDE Frameworks update (hence the guard). The variable
+reaches every Qt Quick app in the session, KDE or not. Kirigami's own
+components keep Kirigami's shapes.
+
 ## Open questions
 
 - Include Mac OS 9 sound set equivalents? (Can't ship Apple sounds.)
-- Before going public: the style's check box and radio sprites and button
-  corners (`style/platinum/sprites.h`, `slices.h`) are measured pixel by
-  pixel from the captures. They're tiny generic UI shapes, but redrawing
-  the check mark and radio dot by hand is the safe choice for a public
-  release.
+- Before going public (AUDIT.md finding 25; the user: it waits until
+  they're ready to go public): the style's check box and radio sprites and
+  button corners (`style/platinum/sprites.h`, `slices.h`) are measured
+  pixel by pixel from the captures. They're tiny generic UI shapes, but
+  redrawing the check mark and radio dot by hand is the safe choice for a
+  public release, and the git history still has the older raw tables.
 - Window shade (collapse) vs minimize: settled for Wayland (KWin 6.8 doesn't
   shade Wayland windows, so the collapse box minimizes; docs/FINDINGS.md).
   X11 shading is untested.

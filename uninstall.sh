@@ -49,9 +49,16 @@ take_lock
 manifest_load
 check_record_paths
 remove_temporaries
+# A shell an earlier run stopped and couldn't start again (finding 38).
+shell_failed=0
+if ! shell_resume; then
+    warn "$shell_failed_message"
+    shell_failed=1
+fi
 
 if [[ ! -d $backup && ${#manifest_entries[@]} -eq 0 ]]; then
-    note "Nothing to remove: there's no install record in $state."
+    ((shell_failed)) && exit 1
+    ((shell_resumed)) || note "Nothing to remove: there's no install record in $state."
     if ((!dry_run)); then
         # What an earlier run stopped just before removing.
         rm -f "$state/lock"
@@ -112,9 +119,27 @@ if [[ -d $backup ]]; then
             printf '  %s\n' "${moved[@]}" >&2
             die "these lead somewhere else now than when your config files were copied (a folder link above them was changed). Point the link back, then run this again; nothing was changed"
         fi
+        # The copy must be whole and unchanged (finding 36).
+        damaged=()
+        while IFS=$'\t' read -r base name _; do
+            grep -qxF "$base	$name" "$backup/ABSENT" && continue
+            [[ -e $backup/$base/$name ]] || damaged+=("$backup/$base/$name is missing")
+        done < "$backup/ENTRIES"
+        if [[ ! -f $backup/SUMS ]]; then
+            damaged+=("$backup/SUMS is missing")
+        else
+            while IFS= read -r line; do
+                damaged+=("$backup/${line%: *} ${line##*: }")
+            done < <(cd "$backup" && sha256sum --strict -c SUMS 2> /dev/null | grep -v ': OK$' | grep -v 'FAILED open or read$' || true)
+        fi
+        if ((${#damaged[@]})); then
+            printf '  %s\n' "${damaged[@]}" >&2
+            die "the copy of your config files is incomplete or was changed; nothing was changed. To remove the theme without putting back your config files, move $backup somewhere else and run uninstall.sh again"
+        fi
         shell_stop || die "couldn't stop Plasma's shell, which has to be stopped while your panel layout is put back; nothing was changed. Try again, or log out and run uninstall.sh from a text console (Ctrl+Alt+F3)"
-        # If anything below fails, Plasma's shell still comes back.
-        trap 'shell_start' EXIT
+        # If anything below fails, Plasma's shell still comes back (or the
+        # next run starts it).
+        trap 'shell_start || warn "$shell_failed_message"' EXIT
 
         plan "keep your current config files in $keep/current"
         while IFS=$'\t' read -r base name _; do
@@ -145,9 +170,8 @@ if [[ -d $backup ]]; then
         fi
         say "Put back your config files from before the switch (the copy is in $keep/original, your files from just now in $keep/current)"
         restored=1
-        shell_start
+        shell_start || shell_failed=1 # (said at the end)
         trap - EXIT
-        shell_how=""
         reconfigure_kwin
         notify_style
     else
@@ -169,26 +193,77 @@ fi
 
 entries=("${manifest_entries[@]}")
 had_plasma_style=0
+# Only files whose content is what install.sh put there are removed; what
+# you added or changed stays (finding 35). `gone` lets a dry run know what
+# the real run will have removed (finding 37).
+index_sums
+declare -A gone=()
 for ((i = ${#entries[@]} - 1; i >= 1; i--)); do
     entry=${entries[i]}
     IFS=$'\t' read -r kind path _ <<< "$entry"
-    case $kind in
-        file | dir)
-            if ! is_target "$kind" "$path"; then
-                warn "the record lists $path, which isn't a place install.sh installs to; left alone"
-                continue
-            fi
-            if is_kind "$kind" "$path"; then
-                [[ $path == */desktoptheme/* ]] && had_plasma_style=1
-                plan "remove $path"
-                ((dry_run)) || rm -rf "$path"
-            elif [[ -e $path || -L $path ]]; then
-                # Replaced since: not the installed one, so not removed.
-                warn "$path isn't the $kind install.sh put there any more; left alone as yours"
-            fi
-            manifest_drop "$entry"
-            ;;
-    esac
+    [[ $kind == file || $kind == dir ]] || continue
+    if ! is_target "$kind" "$path"; then
+        warn "the record lists $path, which isn't a place install.sh installs to; left alone"
+        continue
+    fi
+    if [[ ! -e $path && ! -L $path ]]; then
+        manifest_drop "$entry"
+        continue
+    fi
+    if ! is_kind "$kind" "$path"; then
+        warn "$path isn't the $kind install.sh put there any more; left alone as yours"
+        manifest_drop "$entry"
+        continue
+    fi
+    [[ $path == */desktoptheme/* ]] && had_plasma_style=1
+    if [[ $kind == file ]]; then
+        if installed_file "$path"; then
+            plan "remove $path"
+            ((dry_run)) || rm -f "$path"
+            gone[$path]=1
+        else
+            warn "$path was changed since it was installed; left alone as yours"
+        fi
+        manifest_drop "$entry"
+        continue
+    fi
+    # A folder: its installed files, then the folders that held them.
+    declare -A ours=()
+    for key in "${!sum_index[@]}"; do
+        item=${key%%	*}
+        [[ $item == "$path"/* ]] || continue
+        item=$(dirname "$item")
+        while [[ $item == "$path"/* ]]; do
+            ours[$item]=1
+            item=$(dirname "$item")
+        done
+    done
+    kept=()
+    while IFS= read -r -d '' item; do
+        if installed_file "$item"; then
+            ((dry_run)) || rm -f "$item"
+        else
+            kept+=("${item#"$path"/}")
+        fi
+    done < <(find "$path" -mindepth 1 ! -type d -print0)
+    while IFS= read -r -d '' item; do
+        [[ -n ${ours[$item]:-} ]] || kept+=("${item#"$path"/}/")
+    done < <(find "$path" -mindepth 1 -type d -print0)
+    if ((${#kept[@]} == 0)); then
+        plan "remove $path"
+        ((dry_run)) || rm -rf "$path"
+        gone[$path]=1
+    else
+        plan "remove the installed files in $path"
+        if ((!dry_run)); then
+            while IFS= read -r -d '' item; do
+                [[ -n ${ours[$item]:-} ]] && rmdir "$item" 2> /dev/null || true
+            done < <(find "$path" -mindepth 1 -depth -type d -print0)
+        fi
+        warn "kept what you added or changed in $path: ${kept[*]:0:5}$( ((${#kept[@]} > 5)) && printf ' ...')"
+    fi
+    unset ours
+    manifest_drop "$entry"
 done
 
 # What was in the way of an install target goes back.
@@ -200,7 +275,7 @@ for entry in "${entries[@]:1}"; do
     elif [[ $saved != "$displaced"/* || ! (-e $saved || -L $saved) ]]; then
         warn "the moved-aside copy of $path isn't in $displaced any more"
         manifest_drop "$entry"
-    elif [[ -e $path || -L $path ]]; then
+    elif [[ (-e $path || -L $path) && -z ${gone[$path]:-} ]]; then
         warn "$path is taken by something else, so the earlier one stays in $saved; move that away and run uninstall.sh again"
     else
         plan "put back the earlier $path"
@@ -255,6 +330,10 @@ else
     plan "remove the install record $manifest"
 fi
 say "Removed the Platinum style, decoration, color scheme, Plasma style, global theme and login script"
+if ((shell_failed)); then
+    warn "$shell_failed_message"
+    exit 1
+fi
 
 if ((restored)); then
     note "Log out and back in once to finish (the window decoration, the login script and GTK apps)."

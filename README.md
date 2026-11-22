@@ -59,14 +59,19 @@ they were just before uninstalling, and the copy that was put back, are
 kept in `~/.local/state/macos9-theme-uninstalled-*`. Log out and back in
 once afterwards.
 
-If something is in the way (say you put a file of your own where the theme
-had one), uninstall leaves it alone, keeps a list of what's left, and exits
-with an error. Sort it out and run `./uninstall.sh` again: it picks up
+Files you added to or changed in what the theme installed (an extra SVG in
+its Plasma style, an edited color scheme) are left where they are; only
+the theme's own files, unchanged, are removed. If something is in the way
+(say you put a file of your own where the theme had one moved aside),
+uninstall leaves it alone, keeps a list of what's left, and exits with an
+error. Sort it out and run `./uninstall.sh` again: it picks up
 where it stopped and never redoes a finished step. Run both scripts with
 the same `XDG_CONFIG_HOME` and `XDG_DATA_HOME` (they refuse otherwise),
 and if a folder link such as `~/.config` was pointed elsewhere since the
 install, point it back first: both scripts stop without changing anything
-rather than follow it.
+rather than follow it. If Plasma's shell can't be started again after
+uninstalling, it says how to start it, and running `./uninstall.sh` again
+starts it.
 
 Not affiliated with Apple. No Apple image files, fonts, or sounds are
 included. The application style's small parts (bevels, arrows, the check

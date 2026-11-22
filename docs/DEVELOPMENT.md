@@ -187,7 +187,11 @@ interrupted at 16 points and is run again, a failing theme switch,
 switching in System Settings instead of `--apply`, Platinum already
 selected before the install, `~/.config` or a GTK folder link pointed
 elsewhere between install and uninstall, files that only look like
-leftovers, a different data or config folder at uninstall time, a
+leftovers, a different data or config folder at uninstall time, and from
+findings 34-38: a link inside a copied folder, files the user added to or
+changed in what was installed (kept by uninstall, moved aside by a
+reinstall), an incomplete or changed config copy, a dry run that matches
+the real run, and a shell that won't start again (a stand-in systemd); a
 leftover half-made backup, a held lock, and a home path with spaces and
 quotes. The plugins are built once and
 handed to install.sh through `M9_PREBUILT` (tests only). It uses
@@ -209,7 +213,7 @@ is gone) and started a new one (the `kquitapp6` path; the systemd path
 can't be tested without your real user session), that both panels are
 back on their screens with their widgets and a widget setting of the
 user's (a clock with seconds), and that every config and GTK file is back
-byte for byte.
+byte for byte. It also runs `install.sh` again after the switch (an update).
 
 ## Measure and compare
 

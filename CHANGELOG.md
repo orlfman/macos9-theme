@@ -2,6 +2,27 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for findings #34–#38; plan for #3
+
+- **Links inside copied folders (#34):** install refuses them before any
+  change, as it already did for linked entries.
+- **Your additions and changes stay (#35):** the record keeps a checksum of
+  every installed file; uninstall removes only files that still match, and
+  a reinstall moves a changed one aside (put back on uninstall).
+- **Checked config copy (#36):** the copy has a checksum list; uninstall
+  refuses an incomplete or changed copy before changing anything.
+- **Dry run (#37):** reports the same put-backs as the real run.
+- **Shell left stopped (#38):** the next uninstall starts it again; the
+  failing run exits 1 and says how to start it.
+- **#3:** plan in PLAN.md (a small Qt Quick Controls style of our own that
+  falls back to KDE's and draws menus, tooltips and switches through the
+  QStyle). Nothing built yet.
+- **Decisions (user):** right-to-left isn't supported (#26 closed,
+  decision 11); #25 waits until going public and #23 is on hold
+  (decision 12).
+
+Checks: install 193/193, live 15/15. Not run on the real desktop.
+
 ## 2026-11-21, Codex (GPT-6) — audit rollback before the first desktop install
 
 Recorded open findings #34–38 in AUDIT.md against `05cd9bd`. An apply/uninstall cycle changed a linked dotfile permanently, and plain uninstall deleted a user-added theme file. A missing backup file and a failed shell restart also exposed gaps in recovery. The dry-run collision warning can be deferred.

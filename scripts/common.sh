@@ -18,6 +18,12 @@
 #     both scripts stop before changing anything.
 #   - Temporary copies are recorded before they're made; leftovers are found
 #     by the record, never by their names.
+#   - The record keeps a checksum of every file installed. uninstall.sh
+#     removes only files that still match; anything you added to or changed
+#     in an installed folder or file stays (finding 35). install.sh moves a
+#     changed one aside like any other thing in its way.
+#   - The config copy has a checksum list; uninstall.sh refuses to restore
+#     from a copy that's incomplete or changed (finding 36).
 #   - Config files are copied before the first switch, and the copy is never
 #     deleted: uninstall.sh moves it into its dated folder after restoring.
 #   - One run at a time (a lock in the state folder).
@@ -191,9 +197,12 @@ drop_plasma_caches() {
 #   dir PATH REAL             or folder
 #   displaced PATH SAVED REAL what was at PATH before, moved to SAVED
 #   temp PATH REAL            a temporary copy being written
+#   sum PATH SHA256           a file install.sh installed (also inside an
+#                             installed folder) and its content; written
+#                             before the copy, old ones dropped after it
 # REAL is where PATH led when it was recorded (real_path).
 manifest_entries=()
-record_version=3
+record_version=4
 
 # Where PATH leads: the folders above it with every link followed, then its
 # own name (PATH itself isn't followed). Recorded next to each path so a
@@ -220,7 +229,7 @@ manifest_load() {
             home) [[ $value == "$home" ]] || die "$manifest was made for the home $value, not $home; nothing was changed" ;;
             data) [[ $value == "$data" ]] || die "$manifest was made with the data folder $value (XDG_DATA_HOME), not $data; run this again with XDG_DATA_HOME=$value; nothing was changed" ;;
             config) [[ $value == "$config_home" ]] || die "$manifest was made with the config folder $value (XDG_CONFIG_HOME), not $config_home; run this again with XDG_CONFIG_HOME=$value; nothing was changed" ;;
-            madedir | file | dir | displaced | temp) ;;
+            madedir | file | dir | displaced | temp | sum) ;;
             *) die "$manifest has an entry this version doesn't know ($kind); nothing was changed" ;;
         esac
     done
@@ -320,6 +329,87 @@ done_temp() { # path
     manifest_drop "temp	$1	$(real_path "$1")"
 }
 
+# --- Checksums of what was installed --------------------------------------
+
+sha_of() { # file
+    local sum
+    sum=$(sha256sum < "$1")
+    printf '%s' "${sum%% *}"
+}
+
+# Records the checksum of every file SOURCE (a file or folder) will put at
+# TARGET, before it's copied. new_sums holds them for prune_sums.
+declare -gA new_sums=()
+record_sums() { # source target
+    local rel sum path
+    new_sums=()
+    if [[ -f $1 ]]; then
+        new_sums[$2]=$(sha_of "$1")
+    else
+        while IFS= read -r -d '' rel; do
+            new_sums[$2/${rel#./}]=$(sha_of "$1/$rel")
+        done < <(cd "$1" && find . -type f -print0)
+    fi
+    for path in "${!new_sums[@]}"; do
+        sum="sum	$path	${new_sums[$path]}"
+        manifest_has "$sum" || manifest_entries+=("$sum")
+    done
+    manifest_write
+}
+
+# After TARGET was replaced: drops the checksums of what was there before.
+prune_sums() { # target
+    local kept=() entry kind path sum
+    for entry in "${manifest_entries[@]}"; do
+        IFS=$'\t' read -r kind path sum <<< "$entry"
+        if [[ $kind == sum && ($path == "$1" || $path == "$1"/*) && ${new_sums[$path]:-} != "$sum" ]]; then
+            continue
+        fi
+        kept+=("$entry")
+    done
+    manifest_entries=("${kept[@]}")
+    manifest_write
+}
+
+# The recorded checksums, for installed_file.
+declare -gA sum_index=()
+index_sums() {
+    local entry kind path sum
+    sum_index=()
+    for entry in "${manifest_entries[@]}"; do
+        IFS=$'\t' read -r kind path sum <<< "$entry"
+        [[ $kind == sum ]] && sum_index[$path	$sum]=1
+    done
+    return 0
+}
+
+# Is PATH a regular file whose content install.sh put there? (index_sums
+# first.)
+installed_file() { # path
+    [[ -f $1 && ! -L $1 ]] || return 1
+    [[ -n ${sum_index[$1	$(sha_of "$1")]:-} ]]
+}
+
+# Is everything in the folder PATH as install.sh put it (nothing added or
+# changed; files it installed may be missing)?
+installed_tree() { # path
+    local item
+    while IFS= read -r -d '' item; do
+        installed_file "$item" || return 1
+    done < <(find "$1" -mindepth 1 ! -type d -print0)
+    return 0
+}
+
+# Is what's at PATH, of KIND, exactly what install.sh installed there?
+installed_unchanged() { # kind path
+    manifest_lists "$1" "$2" && is_kind "$1" "$2" || return 1
+    index_sums
+    case $1 in
+        file) installed_file "$2" ;;
+        dir) installed_tree "$2" ;;
+    esac
+}
+
 # Is TARGET (kind<TAB>path) one of the install targets, or a folder above
 # one inside the home?
 is_target() { # kind path
@@ -383,7 +473,8 @@ make_parents() { # path
 displace_foreign() { # kind path
     local kind=$1 path=$2 saved
     [[ -e $path || -L $path ]] || return 0
-    manifest_lists "$kind" "$path" && is_kind "$kind" "$path" && return 0
+    # Ours and unchanged: replaced in place. Changed since: moved aside.
+    installed_unchanged "$kind" "$path" && return 0
     if ((dry_run)); then
         plan "move the existing $path aside (uninstall.sh puts it back)"
         return 0
@@ -401,6 +492,7 @@ place_file() { # source target mode
     displace_foreign file "$target"
     make_parents "$(dirname "$target")"
     manifest_add file "$target"
+    record_sums "$1" "$target"
     plan "install $target"
     ((dry_run)) && return 0
     make_temp file "$(dirname "$target")"
@@ -412,6 +504,7 @@ place_file() { # source target mode
     fi
     mv -f "$staging" "$target"
     done_temp "$staging"
+    prune_sums "$target"
 }
 
 # Installs a folder: record, copy whole under a temporary name, then swap it
@@ -421,6 +514,7 @@ place_dir() { # source target
     displace_foreign dir "$target"
     make_parents "$(dirname "$target")"
     manifest_add dir "$target"
+    record_sums "$1" "$target"
     plan "install $target/"
     ((dry_run)) && return 0
     make_temp dir "$(dirname "$target")"
@@ -444,6 +538,7 @@ place_dir() { # source target
         done_temp "$old"
     fi
     done_temp "$staging"
+    prune_sums "$target"
 }
 
 # Leftover temporary copies of an interrupted run: the ones on the record
@@ -477,6 +572,7 @@ remove_temporaries() {
 #   ROOTS     "config<TAB>path" and "home<TAB>path" at the time
 #   TAKEN     "install" (copied by a plain install, before any switch) or
 #             "apply" (the switch happened, or happens now)
+#   SUMS      sha256sum list of every copied file (checked before restoring)
 
 backup_entries() {
     local name
@@ -493,12 +589,20 @@ root_of() { # config|home
 
 # A symbolic link in the backup list would make the copy and the live file
 # the same thing; refuse before changing anything.
+# The same for links inside a copied folder (finding 34): the switch would
+# write through them into the file they point to, which no copy covers.
 check_backup_links() {
-    local base name path
+    local base name path link
     while IFS=$'\t' read -r base name; do
         path=$(root_of "$base")/$name
         if [[ -L $path ]]; then
             die "$path is a symbolic link; install.sh can't keep a safe copy of it. Replace it with the file or folder it points to, then run this again; nothing was changed"
+        fi
+        if [[ -d $path ]]; then
+            link=$(find "$path" -type l -print -quit 2> /dev/null)
+            if [[ -n $link ]]; then
+                die "$link is a symbolic link; install.sh can't keep a safe copy of it. Replace it with the file or folder it points to, then run this again; nothing was changed"
+            fi
         fi
     done < <(backup_entries)
 }
@@ -527,6 +631,8 @@ take_backup() { # install|apply
             printf '%s\t%s\n' "$base" "$name" >> "$tmp/ABSENT"
         fi
     done < "$tmp/ENTRIES"
+    # (config/ or home/ may not exist: nothing of theirs was there)
+    (cd "$tmp" && { find config home -type f -print0 2> /dev/null || true; } | sort -z | xargs -0 -r sha256sum) > "$tmp/SUMS"
     if [[ -d $backup ]]; then
         old=$(mktemp -d "$state/backup.XXXXXX")
         mv -T "$backup" "$old/old"
@@ -553,6 +659,10 @@ mark_backup() { # install|apply
 # only be put back while it isn't running.
 
 shell_how=""
+shell_resumed=0
+# Written while uninstall.sh has the shell stopped; a later run starts it
+# again if this one couldn't (finding 38).
+shell_marker=$state/shell-stopped
 
 shell_running_on_bus() {
     have dbus-send || return 1
@@ -571,12 +681,16 @@ shell_stop() {
     shell_how=""
     if have systemctl && systemctl --user is-active --quiet plasma-plasmashell.service 2> /dev/null; then
         plan "stop Plasma's shell (systemctl --user stop plasma-plasmashell.service)"
-        ((dry_run)) || systemctl --user stop plasma-plasmashell.service || return 1
+        if ((!dry_run)); then
+            printf 'systemd\n' > "$shell_marker"
+            systemctl --user stop plasma-plasmashell.service || return 1
+        fi
         shell_how=systemd
     elif shell_running_on_bus; then
         have kquitapp6 || return 1
         plan "stop Plasma's shell (kquitapp6 plasmashell)"
         if ((!dry_run)); then
+            printf 'direct\n' > "$shell_marker"
             pid=$(shell_pid)
             kquitapp6 plasmashell > /dev/null 2>&1 || true
             for ((i = 0; i < 100; i++)); do
@@ -594,16 +708,49 @@ shell_stop() {
     return 0
 }
 
+# Starts the shell shell_stop stopped; fails if it doesn't come up.
 shell_start() {
+    local i
     case $shell_how in
         systemd)
             plan "start Plasma's shell again"
-            ((dry_run)) || systemctl --user start plasma-plasmashell.service
+            ((dry_run)) && return 0
+            systemctl --user start plasma-plasmashell.service || return 1
             ;;
         direct)
             plan "start Plasma's shell again"
-            ((dry_run)) || setsid -f plasmashell > /dev/null 2>&1 < /dev/null
+            ((dry_run)) && return 0
+            setsid -f plasmashell > /dev/null 2>&1 < /dev/null || return 1
+            for ((i = 0; i < 100; i++)); do
+                shell_running_on_bus && break
+                sleep 0.2
+            done
+            shell_running_on_bus || return 1
             ;;
         *) return 0 ;;
     esac
+    rm -f "$shell_marker"
+    shell_how=""
 }
+
+# Starts the shell if an earlier run stopped it and couldn't start it again.
+shell_resume() {
+    [[ -f $shell_marker && ! -L $shell_marker ]] || return 0
+    shell_how=$(< "$shell_marker")
+    case $shell_how in
+        systemd) systemctl --user is-active --quiet plasma-plasmashell.service 2> /dev/null && shell_how=done ;;
+        direct) shell_running_on_bus && shell_how=done ;;
+        *) shell_how=done ;;
+    esac
+    if [[ $shell_how == done ]]; then
+        shell_how=""
+        ((dry_run)) || rm -f "$shell_marker"
+        return 0
+    fi
+    plan "start Plasma's shell, which an earlier uninstall.sh stopped"
+    shell_start || return 1
+    shell_resumed=1
+    say "Started Plasma's shell again (an earlier uninstall.sh had stopped it)"
+}
+
+shell_failed_message="couldn't start Plasma's shell again. Run uninstall.sh again to retry, or start it yourself: systemctl --user start plasma-plasmashell.service (or: setsid -f plasmashell)"
