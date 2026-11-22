@@ -6,9 +6,8 @@
 //   system tray, clock
 //   Window List (the Application menu's place: active window icon + name)
 // with platinum.menubarpiece at both ends (the rounded corners) and before
-// the Window List (the divider); adds the dock at the bottom,
-// and gives every desktop a plain color close to the Mac OS 9 default
-// desktop pattern's average (the pattern itself is Apple artwork).
+// the Window List (the divider), and adds the dock at the bottom.
+// The global theme selects the wallpaper through its defaults.
 // Both panels go on the main screen only (screen 0, which Plasma 6 keeps as
 // the primary one), as on Mac OS 9; other screens get none (the user's
 // choice, PLAN.md decision 10).
@@ -64,9 +63,3 @@ var apps = dock.addWidget("org.kde.plasma.icontasks");
 apps.currentConfigGroup = ["General"];
 apps.writeConfig("launchers", "applications:org.kde.dolphin.desktop,applications:org.kde.kate.desktop,applications:systemsettings.desktop");
 apps.writeConfig("iconSpacing", 0);
-
-desktops().forEach(function (d) {
-    d.wallpaperPlugin = "org.kde.color";
-    d.currentConfigGroup = ["Wallpaper", "org.kde.color", "General"];
-    d.writeConfig("Color", "99,99,156");
-});

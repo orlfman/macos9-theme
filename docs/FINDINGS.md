@@ -151,6 +151,10 @@ check layout and shadow in the nested KWin (`dev/kwin-test.sh`,
   borders, so a panel background can't draw a white top row or rounded
   ends: the white row lives in the center piece (exact only at 20 px), and
   the ends are drawn by our own plasmoid (`platinum.menubarpiece`).
+  On taller bars the widget widens both corners, anchors their bottom two
+  rows to the bevel and repeats the divider grip. The desktop shell adds
+  end padding to thick panels even when theme margins are zero. The end
+  pieces offset their artwork into that padding (finding 23).
 - Plasma gives panel applets the panel's full height; the panel
   background's margin hints didn't move them off the bottom rows. An open
   global menu title therefore draws the bar's black line itself.

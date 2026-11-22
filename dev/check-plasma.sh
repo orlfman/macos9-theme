@@ -11,7 +11,7 @@ set -euo pipefail
 dev=$(dirname "$(readlink -f "$0")")
 project=$(dirname "$dev")
 cd "$project"
-dev/plasma-test.sh > /dev/null
+M9_CHECK_RESIZE=1 dev/plasma-test.sh > /dev/null
 python3 -I - << 'PYEND'
 import sys
 from PIL import Image
@@ -29,7 +29,8 @@ def report(name, a, b):
 report("menubar-column", col(desk, 700), col(ref_bar, 700))
 # The rounded ends (8 px each) and the divider before the Application menu
 # (6 px, found by its white column and grip), all 20 rows.
-block = lambda im, x0, w: [im.getpixel((x, y)) for x in range(x0, x0 + w) for y in range(20)]
+def block(im, x0, width, height=20):
+    return [im.getpixel((x, y)) for y in range(height) for x in range(x0, x0 + width)]
 report("menubar-left-end", block(desk, 0, 8), block(ref_bar, 0, 8))
 report("menubar-right-end", block(desk, desk.width - 8, 8), block(ref_bar, ref_bar.width - 8, 8))
 div = next((x for x in range(desk.width - 400, desk.width - 8)
@@ -61,5 +62,45 @@ def masked(name, rx, ox):
     report(name, [o for o, _ in a], [r for _, r in a])
 masked("dock-top-left", 632, x0)
 masked("dock-top-right", 811, x1 - 6)
+# The native bar supplies the colors. For taller bars, compare every pixel
+# in each piece at the expected width, including all the bevel and grip rows.
+def resized_rows(x, width, height, rows):
+    scaled_width = (width * height + 10) // 20
+    # Nearest pixel boundaries, with ties rounding up.
+    edges = [(i * scaled_width * 2 + width) // (2 * width) for i in range(width + 1)]
+    scaled_rows = []
+    for y in range(20):
+        row = []
+        for i in range(width):
+            row.extend([ref_bar.getpixel((x + i, y))] * (edges[i + 1] - edges[i]))
+        scaled_rows.append(row)
+    return [pixel for y in rows for pixel in scaled_rows[y]]
+
+for height in (32, 34, 38, 40):
+    large = Image.open(f"dev/shots/plasma-platinum-resized-{height}.png").convert("RGB")
+    corner_width = (8 * height + 10) // 20
+    corner_rows = [y * 18 // (height - 2) for y in range(height - 2)] + [18, 19]
+    report(f"resized-{height}-left-end", block(large, 0, corner_width, height),
+           resized_rows(0, 8, height, corner_rows))
+    report(f"resized-{height}-right-end", block(large, large.width - corner_width, corner_width, height),
+           resized_rows(ref_bar.width - 8, 8, height, corner_rows))
+
+    # Locate the divider by its tall white leading stripe. The grip itself
+    # is checked below, even if the dots are missing.
+    white = (255, 255, 255)
+    starts = [x for x in range(large.width - 400, large.width - 12)
+              if all(large.getpixel((x, y)) == white for y in (1, 2, height - 4))
+              and large.getpixel((x - 1, height - 4)) != white]
+    if len(starts) != 1:
+        print(f"DIFF    resized-{height}-divider             {len(starts)} locations found")
+        failed += 1
+        continue
+    div = starts[0]
+    divider_rows = [0, 1, 2, 3] + [15] * (height - 6) + [18, 19]
+    for y in range(4, height - 6, 3):
+        divider_rows[y:y + 2] = [4, 5]
+    divider_width = (6 * height + 10) // 20
+    report(f"resized-{height}-divider", block(large, div, divider_width, height),
+           resized_rows(1349, 6, height, divider_rows))
 sys.exit(1 if failed else 0)
 PYEND

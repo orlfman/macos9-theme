@@ -10,6 +10,9 @@ Theme=breeze
 [plasmarc][Theme]
 name=platinum
 
+[Wallpaper]
+Image=platinum-ribbon
+
 [kcminputrc][Mouse]
 cursorTheme=breeze_cursors
 

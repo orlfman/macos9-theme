@@ -222,6 +222,95 @@ if [[ -d $backup ]]; then
     fi
 fi
 
+# Read the selected image in each desktop's active wallpaper plugin. The
+# running shell may have a selection it has not written to disk yet.
+desktop_wallpaper_images() {
+    local file=$1 id ids plugin image
+    if ((!restored)) && shell_running_on_bus; then
+        qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript '
+            print(desktops().map(function (d) {
+                var plugin = d.wallpaperPlugin;
+                if (plugin !== "org.kde.image" && plugin !== "org.kde.slideshow") return "";
+                d.currentConfigGroup = ["Wallpaper", plugin, "General"];
+                return d.readConfig("Image", "");
+            }).filter(Boolean).join("\n"));'
+        return
+    fi
+    [[ -e $file || -L $file ]] || return 0
+    [[ -f $file && -r $file ]] && have kreadconfig6 || return 1
+    ids=$(sed -nE 's/^\[Containments\]\[([0-9]+)\]\[Wallpaper\].*/\1/p' "$file" | sort -u) || return 1
+    for id in $ids; do
+        plugin=$(kreadconfig6 --file "$file" --group Containments --group "$id" --key wallpaperplugin) || return 1
+        case $plugin in
+            org.kde.image | org.kde.slideshow)
+                image=$(kreadconfig6 --file "$file" --group Containments --group "$id" \
+                    --group Wallpaper --group "$plugin" --group General --key Image) || return 1
+                printf '%s\n' "$image"
+                ;;
+        esac
+    done
+}
+
+# The picker can store a package directory or an individual image. Convert
+# local file URLs (including percent escapes) before comparing paths.
+local_wallpaper_path() {
+    local value=$1 tail="" decoded="" escape char
+    case $value in
+        file:///*) tail=${value#file://} ;;
+        file://localhost/*) tail=${value#file://localhost} ;;
+        file://*) return 1 ;;
+        file:/*) tail=${value#file:} ;;
+        /*) realpath -m -- "$value"; return ;;
+        *) return 1 ;;
+    esac
+    tail=${tail%%[?#]*}
+    while [[ $tail =~ %[[:xdigit:]]{2} ]]; do
+        escape=${BASH_REMATCH[0]}
+        [[ $escape != %00 ]] || return 1
+        printf -v char '%b' "\\x${escape:1}"
+        decoded+=${tail%%"$escape"*}$char
+        tail=${tail#*"$escape"}
+    done
+    realpath -m -- "$decoded$tail"
+}
+
+declare -A kept_wallpapers=()
+wallpaper_config=$config_home/plasma-org.kde.plasma.desktop-appletsrc
+if ((restored && dry_run)) && [[ $config_root == "$config_home" && ! -L $wallpaper_config ]]; then
+    wallpaper_config=$backup/config/plasma-org.kde.plasma.desktop-appletsrc
+fi
+wallpaper_targets=()
+for wallpaper_id in "${wallpaper_ids[@]}"; do
+    path=$data/wallpapers/$wallpaper_id
+    if [[ -d $path && ! -L $path ]] && manifest_lists dir "$path"; then
+        wallpaper_targets+=("$path")
+    fi
+done
+if ((${#wallpaper_targets[@]})); then
+    if selections=$(desktop_wallpaper_images "$wallpaper_config"); then
+        while IFS= read -r selection; do
+            selected_path=$(local_wallpaper_path "$selection") || continue
+            for path in "${wallpaper_targets[@]}"; do
+                package_path=$(realpath -m -- "$path")
+                if [[ $selected_path == "$package_path" || $selected_path == "$package_path"/* ]]; then
+                    kept_wallpapers[$path]=selected
+                fi
+            done
+        done <<< "$selections"
+    else
+        for path in "${wallpaper_targets[@]}"; do
+            kept_wallpapers[$path]=unknown
+        done
+    fi
+fi
+for path in "${!kept_wallpapers[@]}"; do
+    if [[ ${kept_wallpapers[$path]} == selected ]]; then
+        warn "$path is still selected in Plasma. Change that wallpaper in Plasma and run uninstall.sh again."
+    else
+        warn "couldn't check Plasma's wallpaper selections. Keeping $path. Run uninstall.sh again when Plasma's selection can be read."
+    fi
+done
+
 # --- 2. Installed files, newest first ---------------------------------------
 #
 # Each entry leaves the record as soon as it's done, so a second run after
@@ -239,6 +328,7 @@ for ((i = ${#entries[@]} - 1; i >= 1; i--)); do
     entry=${entries[i]}
     IFS=$'\t' read -r kind path _ <<< "$entry"
     [[ $kind == file || $kind == dir || $kind == link ]] || continue
+    [[ -z ${kept_wallpapers[$path]:-} ]] || continue
     if ! is_target "$kind" "$path"; then
         warn "the record lists $path, which isn't a place install.sh installs to; left alone"
         continue
@@ -318,6 +408,7 @@ done
 for entry in "${entries[@]:1}"; do
     IFS=$'\t' read -r kind path saved _ <<< "$entry"
     [[ $kind == displaced && ${first_aside[$path]} != "$entry" ]] || continue
+    [[ -z ${kept_wallpapers[$path]:-} ]] || continue
     if [[ $saved != "$displaced"/* || ! (-e $saved || -L $saved) ]]; then
         manifest_drop "$entry"
         continue
@@ -334,6 +425,7 @@ done
 for entry in "${entries[@]:1}"; do
     IFS=$'\t' read -r kind path saved _ <<< "$entry"
     [[ $kind == displaced && ${first_aside[$path]} == "$entry" ]] || continue
+    [[ -z ${kept_wallpapers[$path]:-} ]] || continue
     if ! is_target file "$path" && ! is_target dir "$path" && ! is_target link "$path"; then
         warn "the record lists $path as moved aside, which isn't a place install.sh installs to; left alone"
     elif [[ $saved != "$displaced"/* || ! (-e $saved || -L $saved) ]]; then
@@ -405,7 +497,7 @@ if ((!dry_run)); then
 else
     plan "remove the install record $manifest"
 fi
-say "Removed the Platinum style (widgets and Qt Quick), decoration, color scheme, Plasma style, global theme and login script"
+say "Removed the Platinum style (widgets and Qt Quick), decoration, color scheme, Plasma style, global theme, wallpapers and login script"
 if ((shell_failed)); then
     warn "$shell_failed_message"
     exit 1

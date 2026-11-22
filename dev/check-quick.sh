@@ -123,6 +123,39 @@ for name, step in steps.items():
         failed += 1
         print(f"FAIL    {name:10} after switching to Fusion: {n} px differ from KDE's style (bbox {diff.getbbox()})")
         diff.point(lambda v: 255 if v else 0).save(f"{out}/diff-fallback-{name}.png")
+# Compare the icon and its states, and verify matching but customized
+# controls still render through KDE's ToolButton.
+tab_scene = Image.open(f"{out}/quick-10.png").convert("RGB")
+def tab_button(x, y):
+    return tab_scene.crop((x, y, x + 45, y + 45))
+
+active, idle, disabled, pressed = [tab_button(x, 24) for x in (20, 70, 120, 170)]
+empty = Image.new("RGB", active.size, tab_scene.getpixel((0, 0)))
+bounds = [ImageChops.difference(button, empty).getbbox()
+          for button in (active, idle, disabled, pressed)]
+fallback = Image.open(f"{out}/fallback-10.png").convert("RGB")
+kde = Image.open(f"{out}/kde-10.png").convert("RGB")
+custom_size = tab_button(20, 76)
+size_bounds = ImageChops.difference(custom_size, empty).getbbox() or (0, 0, 0, 0)
+custom_tint = tab_button(120, 76)
+has_blue_tint = any(b - r > 40 and g - r > 20 for r, g, b in custom_tint.get_flattened_data())
+tab_checks = {
+    "tab close is compact": all(box and 0 < box[2] - box[0] <= 16
+                               and 0 < box[3] - box[1] <= 16 for box in bounds),
+    "active tab close differs from inactive": active.tobytes() != idle.tobytes(),
+    "disabled tab close differs from enabled": disabled.tobytes() != idle.tobytes(),
+    "pressed tab close differs from idle": pressed.tobytes() != idle.tobytes(),
+    "custom close icon size is retained": (
+        size_bounds[2] - size_bounds[0] >= 32 and custom_size.tobytes() == tab_button(70, 76).tobytes()),
+    "custom close icon tint is retained": (
+        has_blue_tint and custom_tint.tobytes() == tab_button(170, 76).tobytes()),
+    "ordinary close tool button is retained": tab_button(220, 76).tobytes() == tab_button(270, 76).tobytes(),
+    "tab close falls back after switching to Fusion": fallback.tobytes() == kde.tobytes(),
+}
+for name, ok in tab_checks.items():
+    failed += not ok
+    print(f"{'ok' if ok else 'FAIL':<8}{name}")
+
 keys_p = open(f"{out}/keys-platinum.txt").read().split("\n")
 keys_k = open(f"{out}/keys-kde.txt").read().split("\n")
 keys_ok = keys_p == keys_k and len([l for l in keys_p if "space-toggles=1" in l]) == 2 \
@@ -130,7 +163,7 @@ keys_ok = keys_p == keys_k and len([l for l in keys_p if "space-toggles=1" in l]
 print(("ok      " if keys_ok else "FAIL    ") + "keyboard: Space toggles switches (role and state as with KDE's style); focus shows on sliders"
       + ("" if keys_ok else f" (Platinum {keys_p}, KDE {keys_k})"))
 failed += 0 if keys_ok else 1
-total = 2 * len(steps) + 1
+total = 2 * len(steps) + 1 + len(tab_checks)
 print(f"\n{total - failed} of {total} Qt Quick checks passed" + (f" (diffs in {out})" if failed else ""))
 sys.exit(1 if failed else 0)
 PY

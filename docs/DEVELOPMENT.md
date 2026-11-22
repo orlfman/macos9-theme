@@ -101,7 +101,9 @@ global menu title (`dev/build/fakeinput`), opens the launcher, and saves
 `dev/shots/plasma-THEME-{desktop,menu,launcher}.png`. The sandbox gets its
 own empty Desktop folder. With `M9_APPLY=lnf` it applies the
 look-and-feel package (`plasma-apply-lookandfeel --resetLayout`, sandbox
-only) instead of evaluating the layout, and prints what the package set.
+only) instead of evaluating the layout, and prints what the package set. That
+mode previews Pastel Ribbon Landscape. The panel artwork comparisons use
+a solid backdrop.
 `dev/check-plasma.sh` runs it and compares the bar, its rounded ends, the
 divider, an open title and the dock's top corners with the captures. Plasma needs
 `kactivitymanagerd` and, for the global menu, `kded6` started by hand in the
@@ -184,7 +186,7 @@ M9_QUICK=1 QSTYLE=Platinum dev/run.sh platinum breeze env QT_QUICK_BACKEND=softw
 the C++ item that paints with the QStyle) and links Kirigami's platform
 plugin for it (`style/build/plugins/kf6/kirigami/platform/Platinum.so`).
 `M9_QUICK=1` with `QSTYLE=Platinum` makes `dev/run.sh` use it.
-`dev/check-quick.sh` (21 checks) renders the Qt Quick menus (first and last row
+`dev/check-quick.sh` (29 checks) renders the Qt Quick menus (first and last row
 selected), combo box list, menu bar, switch indicator, tooltip, dialog
 frame, range slider (and where KDE's hidden handles sit), drawer edge and a
 combo box whose longest label changes while its item count stays the same
@@ -194,7 +196,9 @@ while running and compares the same pieces with KDE's own style under
 Fusion (the fallback); and it checks with `dev/quickkeys.cpp` that switches
 still toggle with Space and look the same to screen readers as with KDE's
 style, and that keyboard focus shows on Qt Quick sliders and range sliders
-and on a QSlider. `dev/quick-live.qml` is a visible window for `dev/app-test.sh` that
+and on a QSlider. The tab close checks cover compact geometry, selected,
+disabled and pressed states, custom icon size and tint, and fallback to KDE.
+`dev/quick-live.qml` is a visible window for `dev/app-test.sh` that
 opens its own pop-up (`-- popup=menu|combo|tooltip|menubar|windowmenu|
 windowclick`; `windowclick` needs a real click: chain
 `dev/build/fakeinput click X Y` in the app command, as Wayland gives a
@@ -249,7 +253,9 @@ name, and a dry run that shows the pass-through. The suite also checks
 saved copies and edits to the cleanup hook, edits to its QML module, backup
 filenames ending in a newline, a dry run with a displaced folder waiting
 for a vacant path, and retries after a failure creating either the temporary
-plugin link or the QML module. The plugins are built once and
+plugin link or the QML module. It also checks a selected wallpaper
+recorded in the desktop config and the warning from Qt without a JPEG XL
+decoder. The plugins are built once and
 handed to install.sh through `M9_PREBUILT` (tests only). It uses
 `dev/build/styleshot` (from `dev/check-style.sh`) to check the installed
 style plugin loads.
@@ -268,8 +274,13 @@ runs `uninstall.sh` and checks that it stopped the shell (the old process
 is gone) and started a new one (the `kquitapp6` path; the systemd path
 can't be tested without your real user session), that both panels are
 back on their screens with their widgets and a widget setting of the
-user's (a clock with seconds), and that every config and GTK file is back
-byte for byte. It also runs `install.sh` again after the switch (an update), and
+user's (a clock with seconds), both screens have their previous wallpapers,
+and every config and GTK file is back byte for byte. The same test checks
+that installing alone leaves both wallpapers in place and switching to
+the global theme renders Pastel Ribbon Landscape on both screens. The
+picker-only case verifies that uninstall keeps both selected wallpapers
+under Breeze and removes their packages after the selections change. The
+suite runs `install.sh` again after the switch (an update), and
 checks that a Qt Quick app started with the login script's environment
 gets the Platinum Qt Quick style, that a launcher holding the session's
 environment across the uninstall still starts Qt Quick apps, and that the

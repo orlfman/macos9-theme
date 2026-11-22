@@ -126,7 +126,7 @@ next_login() {
 }
 theme_files_gone() {
     next_login
-    ! ls -d "$home"/.local/lib/macos9-theme "$data"/plasma/*/platinum* "$data/color-schemes/Platinum.colors" \
+    ! ls -d "$home"/.local/lib/macos9-theme "$data"/plasma/*/platinum* "$data/color-schemes/Platinum.colors" "$data/wallpapers/"platinum-{ribbon,lavender} \
         "$config/plasma-workspace/env/macos9-theme.sh" "$config"/plasma-workspace/env/macos9-theme-cleanup*.sh > /dev/null 2>&1
 }
 kept_dir() { ls -d "$home"/.local/state/macos9-theme-uninstalled-* 2> /dev/null | tail -1; }
@@ -143,6 +143,9 @@ before=$(snapshot)
 run dry "$project/install.sh" --dry-run
 check "install --dry-run changes nothing" same "$before" "$(snapshot)"
 check "install --dry-run says what it would do" grep -q "would copy your config files" "$root/$n-dry.log"
+for id in platinum-ribbon platinum-lavender; do
+    check "install --dry-run lists $id" grep -Fq "would install $data/wallpapers/$id/" "$root/$n-dry.log"
+done
 check "  and prints no errors (finding 42)" bash -c "! grep -qiE 'no such file|error' '$root/$n-dry.log'"
 run dry-apply "$project/install.sh" --apply --dry-run
 check "install --apply --dry-run changes nothing" same "$before" "$(snapshot)"
@@ -156,7 +159,12 @@ for f in .local/lib/macos9-theme/style/styles/platinumstyle.so .local/lib/macos9
     .local/lib/macos9-theme/qml/Platinum/libplatinumquick.so; do
     check "installed $f" test -s "$home/$f"
 done
-check "the record lists the 9 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 9
+for id in platinum-ribbon platinum-lavender; do
+    check "$id is installed byte for byte" cmp \
+        "$project/wallpapers/$id/contents/images/3840x2160.jxl" \
+        "$data/wallpapers/$id/contents/images/3840x2160.jxl"
+done
+check "the record lists the 11 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 11
 check "Kirigami's plugin link for the Qt Quick style points at KDE's" \
     bash -c "[[ \$(readlink '$home/.local/lib/macos9-theme/style/kf6/kirigami/platform/Platinum.so') == */kf6/kirigami/platform/org.kde.desktop.so ]]"
 check "install alone leaves the config files alone" same "$seed" "$(config_state)"
@@ -182,8 +190,8 @@ else
     echo "skip    the installed style plugin loads (build dev/build/styleshot first: dev/check-style.sh)"
 fi
 check "a second plain install exits 0" run install-2 "$project/install.sh"
-check "the record still lists 9 targets, nothing moved aside" \
-    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 9 ]] && ! grep -q '^displaced' '$state/installed'"
+check "the record still lists 11 targets, nothing moved aside" \
+    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 11 ]] && ! grep -q '^displaced' '$state/installed'"
 
 check "--apply exits 0" run apply env QT_PLUGIN_PATH="$plugins/style:$plugins/decoration" "$project/install.sh" --apply
 check "--apply explains the next login for Qt Quick apps" grep -Fq 'Log out and back in for Qt Quick apps' "$root/$n-apply.log"
@@ -805,6 +813,115 @@ check "uninstall exits 0" bash -c "$(declare -f odd); weird=\$1; odd '$project/u
 check "  and removed everything it installed (after the next login)" bash -c "[[ -f \"\$1/.config/plasma-workspace/env/macos9-theme-cleanup.sh\" ]] && sh -c '. \"\$1\"' _ \"\$1/.config/plasma-workspace/env/macos9-theme-cleanup.sh\" &&
     [[ -z \$(find \"\$1\" -path '*/macos9-theme-uninstalled-*' -prune -o -type f -print) ]]" _ "$weird"
 rm -rf "$weird"
+
+fresh "wallpaper selected in a saved Plasma config (finding 75)"
+check "picker-only install exits 0" run install "$project/install.sh"
+cat >> "$config/plasma-org.kde.plasma.desktop-appletsrc" << EOF
+[Containments][9]
+wallpaperplugin=org.kde.image
+[Containments][9][Wallpaper][org.kde.image][General]
+Image=file://$data/wallpapers/platinum%2Dlavender/contents/images/3840x2160.jxl
+EOF
+before=$(config_state)
+if run undo "$project/uninstall.sh"; then
+    fail "uninstall defers the selected wallpaper"
+else
+    check "uninstall defers the selected wallpaper" grep -q 'is still selected in Plasma' "$root/$n-undo.log"
+fi
+check "the selected package stays in place" test -s "$data/wallpapers/platinum-lavender/contents/images/3840x2160.jxl"
+check "the unselected package is removed" test ! -e "$data/wallpapers/platinum-ribbon"
+check "the saved desktop config stays byte for byte" same "$before" "$(config_state)"
+sed -i 's/wallpaperplugin=org.kde.image/wallpaperplugin=org.kde.color/' "$config/plasma-org.kde.plasma.desktop-appletsrc"
+check "uninstall finishes after changing the wallpaper plugin" run retry "$project/uninstall.sh"
+check "neither wallpaper package remains" theme_files_gone
+
+fresh "Qt without a JPEG XL decoder (finding 76)"
+mkdir -p "$root/no-jxl/bin" "$root/no-jxl/plugins"
+cat > "$root/no-jxl/bin/g++" << 'SH'
+#!/bin/bash
+set -euo pipefail
+/usr/bin/g++ "$@"
+while (($# > 1)); do
+    if [[ $1 == -o && $2 == */check-wallpaper ]]; then
+        printf '[Paths]\nPlugins=%s\n' "$M9_TEST_INNER/no-jxl/plugins" > "${2%/*}/qt.conf"
+        break
+    fi
+    shift
+done
+SH
+chmod +x "$root/no-jxl/bin/g++"
+check "theme apply still exits 0" run apply env -u QT_PLUGIN_PATH PATH="$root/no-jxl/bin:$PATH" "$project/install.sh" --apply
+check "apply warns about the missing JPEG XL decoder before switching" awk '
+    /Qt can.t read the JPEG XL wallpapers/ { warning = NR }
+    /Switched to the Platinum global theme/ { switched = NR }
+    END { exit !(warning && warning < switched) }
+' "$root/$n-apply.log"
+check "uninstall exits 0" run undo "$project/uninstall.sh"
+
+fresh "the black cursor option requires the black theme"
+# (theme folders: index.theme and a cursors folder of real Xcursor files)
+cursor_theme() { # id title [cursors-dir]
+    mkdir -p "$home/.icons/$1"
+    printf '[Icon Theme]\nName=%s\n' "$2" > "$home/.icons/$1/index.theme"
+    ln -s "${3:-/usr/share/icons/breeze_cursors/cursors}" "$home/.icons/$1/cursors"
+}
+cursor_theme macOS-White "White cursor test fixture"
+before=$(snapshot)
+if run white-only "$project/install.sh" --apply --black-cursors; then
+    fail "white alone is rejected"
+else
+    check "white alone is rejected" grep -Fq 'the black cursor theme (macOS-cursors) is missing' "$root/$n-white-only.log"
+fi
+check "missing black pack changes nothing" same "$before" "$(snapshot)"
+if run flags "$project/install.sh" --black-cursors; then
+    fail "black cursor flag requires apply"
+else
+    check "black cursor flag requires apply" grep -Fq -- '--black-cursors requires --apply' "$root/$n-flags.log"
+fi
+# Finding 79: the ID in another theme's title isn't the theme.
+cursor_theme decoy "White [macOS-cursors]"
+if run decoy "$project/install.sh" --apply --black-cursors --dry-run; then
+    fail "a title naming the ID isn't taken for the theme (finding 79)"
+else
+    check "a title naming the ID isn't taken for the theme (finding 79)" grep -Fq 'is missing' "$root/$n-decoy.log"
+fi
+rm -rf "$home/.icons/decoy"
+# Finding 80: a listed pack with a broken pointer is refused.
+mkdir -p "$root/broken-cursors"
+cp -a /usr/share/icons/breeze_cursors/cursors/. "$root/broken-cursors/"
+rm -f "$root/broken-cursors/left_ptr"
+head -c 200 "$(readlink -f /usr/share/icons/breeze_cursors/cursors/left_ptr)" > "$root/broken-cursors/left_ptr"
+cursor_theme macOS-cursors "macOS" "$root/broken-cursors"
+before=$(snapshot)
+if run broken "$project/install.sh" --apply --black-cursors; then
+    fail "a black pack with a broken pointer is refused (finding 80)"
+else
+    check "a black pack with a broken pointer is refused (finding 80)" grep -Fq 'is damaged' "$root/$n-broken.log"
+fi
+check "  and nothing changed" same "$before" "$(snapshot)"
+rm -rf "$home/.icons/macOS-cursors" "$root/broken-cursors"
+mv "$home/.icons/macOS-White" "$home/.icons/macOS-cursors"
+before=$(snapshot)
+check "black cursor dry run exits 0" run dry "$project/install.sh" --apply --black-cursors --dry-run
+check "black cursor dry run shows the choice" grep -Fq 'would set the black macOS cursor theme (macOS-cursors)' "$root/$n-dry.log"
+check "black cursor dry run changes nothing" same "$before" "$(snapshot)"
+
+fresh "installing the black cursors never replaces a theme already there (finding 78)"
+mkdir -p "$root/pack/macOS/cursors"
+printf '[Icon Theme]\nName=macOS\n' > "$root/pack/macOS/index.theme"
+cp -L /usr/share/icons/breeze_cursors/cursors/left_ptr "$root/pack/macOS/cursors/left_ptr"
+tar -cJf "$root/macOS.tar.xz" -C "$root/pack" ./macOS
+check "the helper installs it as macOS-cursors" run cursors "$project/tools/install-black-cursors.sh" "$root/macOS.tar.xz"
+check "  with its files" cmp -s "$root/pack/macOS/index.theme" "$home/.icons/macOS-cursors/index.theme"
+printf '[Icon Theme]\nName=Mine\n' > "$home/.icons/macOS-cursors/index.theme"
+before=$(snapshot)
+if run cursors-again "$project/tools/install-black-cursors.sh" "$root/macOS.tar.xz"; then
+    fail "a second run refuses an existing macOS-cursors"
+else
+    check "a second run refuses an existing macOS-cursors" grep -Fq 'already exists' "$root/$n-cursors-again.log"
+fi
+check "  and keeps the user's file" same "$before" "$(snapshot)"
+rm -rf "$root/pack" "$root/macOS.tar.xz"
 
 echo
 if ((failed)); then

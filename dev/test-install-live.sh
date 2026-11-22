@@ -93,6 +93,12 @@ widgets() {
         return w.type + (s ? "(showSeconds=" + s + ")" : "");
     }).join(","); }).sort().join(" "))'
 }
+desktop_backgrounds() {
+    shell_js 'print(desktops().filter(function (d) { return d.screen >= 0; }).map(function (d) {
+        d.currentConfigGroup = ["Wallpaper", d.wallpaperPlugin, "General"];
+        return d.screen + ":" + d.wallpaperPlugin + ":" + d.readConfig("Color", "");
+    }).sort().join(" "))'
+}
 shell_pid() {
     dbus-send --session --print-reply --dest=org.freedesktop.DBus / org.freedesktop.DBus.GetConnectionUnixProcessID \
         string:org.kde.plasmashell 2> /dev/null | awk '/uint32/ { print $2 }'
@@ -139,15 +145,71 @@ before_widgets=$(widgets)
 echo "info    the user's panels: $before_panels"
 echo "info    their widgets: $before_widgets"
 check "the user's second panel has its clock with seconds" bash -c "[[ '$before_widgets' == *'1:left=org.kde.plasma.digitalclock(showSeconds=2)'* ]]"
+shell_js 'desktops().filter(function (d) { return d.screen >= 0; }).forEach(function (d) {
+    d.wallpaperPlugin = "org.kde.color";
+    d.currentConfigGroup = ["Wallpaper", "org.kde.color", "General"];
+    d.writeConfig("Color", d.screen === 0 ? "27,73,109" : "45,99,67");
+});' > "$root/seed-wallpaper.log"
+before_backgrounds=$(desktop_backgrounds)
+check "the two screens start with their own solid wallpapers" same \
+    "0:org.kde.color:27,73,109 1:org.kde.color:45,99,67" "$before_backgrounds"
+# Give Plasma a separate cursor theme under the upstream black theme ID.
+mkdir -p "$home/.icons/macOS-cursors"
+printf '[Icon Theme]\nName=Black cursor test fixture\n' > "$home/.icons/macOS-cursors/index.theme"
+ln -s /usr/share/icons/breeze_cursors/cursors "$home/.icons/macOS-cursors/cursors"
+kwriteconfig6 --file kcminputrc --group Mouse --key cursorTheme Breeze_Light
 before_files=$(files_state)
 
 check "install exits 0" bash -c "'$project/install.sh' > '$root/install.log' 2>&1"
-check "install --apply exits 0" bash -c "'$project/install.sh' --apply > '$root/apply.log' 2>&1"
+check "install alone keeps both wallpapers" same "$before_backgrounds" "$(desktop_backgrounds)"
+check "install --apply --black-cursors exits 0" bash -c "'$project/install.sh' --apply --black-cursors > '$root/apply.log' 2>&1"
+check "apply selects the black theme ID" same macOS-cursors "$(kreadconfig6 --file kcminputrc --group Mouse --key cursorTheme)"
 sleep 6
 after_panels=$(panels)
 echo "info    after --apply: $after_panels"
 check "--apply replaced the panels with the menu bar and the dock" \
     bash -c "[[ '$after_panels' == *':top:20'* && '$after_panels' == *':bottom:52'* && '$after_panels' != *'left'* ]]"
+check "--apply switches both screens to image wallpaper" same \
+    "0:org.kde.image: 1:org.kde.image:" "$(desktop_backgrounds)"
+# Compare the wallpaper that was actually rendered on both screens with
+# the installed image, cropped the same way Plasma's image plugin crops it.
+cat > "$root/wallpaper.qml" << 'QML'
+import QtQuick
+Window {
+    width: 1280
+    height: 800
+    Image {
+        anchors.fill: parent
+        source: "file://" + Qt.application.arguments[3]
+        fillMode: Image.PreserveAspectCrop
+    }
+}
+QML
+wallpaper_matches() {
+    QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software "$dev/build/quickshot" \
+        "$root/wallpaper.qml" "$root/wallpaper-expected.png" \
+        "$XDG_DATA_HOME/wallpapers/platinum-ribbon/contents/images/3840x2160.jxl" || return 1
+    spectacle -b -n -f -o "$root/wallpaper-desktop.png" || return 1
+    python3 -I - "$root" << 'PYEND'
+from pathlib import Path
+import sys
+from PIL import Image, ImageChops, ImageStat
+
+root = Path(sys.argv[1])
+expected = Image.open(root / "wallpaper-expected.png").convert("RGB")
+actual = Image.open(root / "wallpaper-desktop.png").convert("RGB")
+assert expected.size == (1280, 800) and actual.size == (2560, 800)
+assert max(ImageStat.Stat(expected).stddev) > 10, "reference wallpaper did not load"
+for screen in (0, 1):
+    for box in ((80, 230, 200, 350), (1090, 470, 1210, 590)):
+        x0, y0, x1, y1 = box
+        offset = screen * expected.width
+        sample = actual.crop((x0 + offset, y0, x1 + offset, y1))
+        error = ImageStat.Stat(ImageChops.difference(sample, expected.crop(box))).mean
+        assert max(error) < 4, (screen, box, error)
+PYEND
+}
+check "--apply renders Pastel Ribbon Landscape on both screens" wallpaper_matches
 after_files=$(files_state)
 check "install.sh again after the switch exits 0 (an update; no links in the copied folders)" \
     bash -c "'$project/install.sh' > '$root/install-2.log' 2>&1"
@@ -193,7 +255,13 @@ check "the user's panels are back" same "$before_panels" "$restored_panels"
 restored_widgets=$(widgets)
 echo "info    their widgets after uninstall: $restored_widgets"
 check "  with their widgets and the clock's setting" same "$before_widgets" "$restored_widgets"
+check "both original wallpapers are back" same "$before_backgrounds" "$(desktop_backgrounds)"
+for id in platinum-ribbon platinum-lavender; do
+    check "uninstall removed $id" test ! -e "$XDG_DATA_HOME/wallpapers/$id"
+done
 check "every config and GTK file is back byte for byte" same "$before_files" "$(files_state)"
+check "uninstall restored the previous cursor" same Breeze_Light "$(kreadconfig6 --file kcminputrc --group Mouse --key cursorTheme)"
+check "uninstall keeps the external black theme" test -r "$home/.icons/macOS-cursors/cursors/left_ptr"
 touch "$root/go"
 launcher_status=0
 wait "$launcher" || launcher_status=$?
@@ -206,6 +274,25 @@ fi
 check "after the next login, nothing of the theme is left" bash -c "[[ ! -e '$home/.local/lib/macos9-theme' && ! -e '$config/plasma-workspace/env/macos9-theme-cleanup.sh' ]]"
 check "after uninstall, Qt Quick apps get KDE's style again" bash -c "[[ ! -e '$config/plasma-workspace/env/macos9-theme.sh' ]] &&
     [[ \$(QT_FORCE_STDERR_LOGGING=1 '$dev/build/quickshot' '$root/quick-probe.qml' '$root/quick-probe.png' 2>&1 | sed -n 's/^QtQuick style: \"\\(.*\\)\"\$/\\1/p') == org.kde.desktop ]]"
+# Select both wallpapers from the picker without switching away from Breeze.
+check "picker-only install exits 0" bash -c "'$project/install.sh' > '$root/picker-install.log' 2>&1"
+shell_js "desktops().filter(function (d) { return d.screen >= 0; }).forEach(function (d) {
+    d.wallpaperPlugin = 'org.kde.image';
+    d.currentConfigGroup = ['Wallpaper', 'org.kde.image', 'General'];
+    d.writeConfig('Image', 'file://$XDG_DATA_HOME/wallpapers/' + (d.screen === 0
+        ? 'platinum-ribbon/' : 'platinum-lavender/contents/images/3840x2160.jxl'));
+});" > "$root/picker-selection.log"
+check "dry run keeps the selected packages" bash -c "'$project/uninstall.sh' --dry-run > '$root/picker-dry.log' 2>&1 &&
+    [[ \$(grep -c 'is still selected in Plasma' '$root/picker-dry.log') == 2 ]]"
+check "picker-only uninstall reports the deferred removal" bash -c "'$project/uninstall.sh' > '$root/picker-undo.log' 2>&1; [[ \$? == 1 ]]"
+check "both selected wallpaper files are kept" bash -c "[[ -s '$XDG_DATA_HOME/wallpapers/platinum-ribbon/contents/images/3840x2160.jxl' &&
+    -s '$XDG_DATA_HOME/wallpapers/platinum-lavender/contents/images/3840x2160.jxl' ]]"
+check "picker-only uninstall keeps the panel layout" same "$before_panels" "$(panels)"
+shell_js 'desktops().forEach(function (d) { d.wallpaperPlugin = "org.kde.color"; });' > "$root/picker-clear.log"
+check "picker-only uninstall can finish after changing the wallpapers" bash -c "'$project/uninstall.sh' > '$root/picker-undo-2.log' 2>&1"
+check "both no-longer-selected packages are removed" bash -c "[[ ! -e '$XDG_DATA_HOME/wallpapers/platinum-ribbon' &&
+    ! -e '$XDG_DATA_HOME/wallpapers/platinum-lavender' ]]"
+
 check "nothing touched a real systemd session" bash -c "! grep -qv 'is-active' '$root/systemctl.log' 2> /dev/null"
 
 echo

@@ -3,11 +3,14 @@
 // own pixels): 0/1 menu with the first/last row selected, 2 the combo
 // box's open list, 3 the menu bar, 4 a checked switch, 5 a tooltip, 6 a
 // dialog (its frame), 7 a range slider, 8 a drawer (its open edge), 9 a
-// combo box narrower than its items (its list widens as QComboBox's). With
-// --switch-to-fusion it switches the app to Fusion first (the fallback
+// combo box narrower than its items (its list widens as QComboBox's), and
+// 10 the tab close buttons. With --switch-to-fusion it switches the app
+// to Fusion first (the fallback
 // check: it must then look exactly like KDE's own style).
 import QtQuick
 import QtQuick.Controls as QQC2
+import org.kde.desktop 1.0 as KDE
+import org.kde.kirigami as Kirigami
 
 QQC2.ApplicationWindow {
     id: root
@@ -15,7 +18,7 @@ QQC2.ApplicationWindow {
     height: 360
     visible: false
     color: "#ff00ff"
-    property int steps: 10
+    property int steps: 11
     property int step: -1
     // dev/check-quick.sh's fallback run: switch the app's style to Fusion
     // first (only works with M9_QUICK_TEST set and this project's style).
@@ -86,6 +89,44 @@ QQC2.ApplicationWindow {
                 console.log("REGION combo-narrow", Math.round(p.x), Math.round(p.y))
             }
         }
+    }
+    Item {
+        visible: root.step === 10
+
+        component TabCloseProbe: QQC2.ToolButton {
+            property bool selected: false
+            flat: true
+            display: QQC2.AbstractButton.IconOnly
+            icon.name: "tab-close-other"
+            icon.width: Kirigami.Units.iconSizes.small
+            icon.height: Kirigami.Units.iconSizes.small
+        }
+        component KdeCloseProbe: KDE.ToolButton {
+            flat: true
+            display: KDE.ToolButton.IconOnly
+            icon.name: "tab-close-other"
+            icon.width: Kirigami.Units.iconSizes.small
+            icon.height: Kirigami.Units.iconSizes.small
+        }
+
+        TabCloseProbe { x: 20; y: 24; selected: true }
+        TabCloseProbe { x: 70; y: 24 }
+        TabCloseProbe { x: 120; y: 24; enabled: false }
+        TabCloseProbe { x: 170; y: 24; down: true }
+
+        TabCloseProbe { x: 20; y: 76; selected: true; icon.width: 32; icon.height: 32 }
+        KdeCloseProbe { x: 70; y: 76; icon.width: 32; icon.height: 32 }
+        TabCloseProbe { x: 120; y: 76; selected: true; icon.color: "#4089eb" }
+        KdeCloseProbe { x: 170; y: 76; icon.color: "#4089eb" }
+        QQC2.ToolButton {
+            x: 220; y: 76
+            flat: true
+            display: QQC2.AbstractButton.IconOnly
+            icon.name: "tab-close-other"
+            icon.width: Kirigami.Units.iconSizes.small
+            icon.height: Kirigami.Units.iconSizes.small
+        }
+        KdeCloseProbe { x: 270; y: 76 }
     }
     QQC2.Menu {
         id: menu

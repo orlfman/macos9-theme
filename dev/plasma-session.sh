@@ -18,7 +18,13 @@ if [[ ${M9_APPLY:-} == lnf ]]; then
     # A newly applied decoration and button order take a reconfigure.
     qdbus6 org.kde.KWin /KWin reconfigure >> "$M9_OUT.layout.log" 2>&1
 else
-    qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$(cat "$M9_LAYOUT")" > "$M9_OUT.layout.log" 2>&1
+    # The pixel comparisons use a solid backdrop to isolate panel artwork.
+    qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$(cat "$M9_LAYOUT")
+        desktops().forEach(function (d) {
+            d.wallpaperPlugin = 'org.kde.color';
+            d.currentConfigGroup = ['Wallpaper', 'org.kde.color', 'General'];
+            d.writeConfig('Color', '99,99,156');
+        });" > "$M9_OUT.layout.log" 2>&1
 fi
 sleep 3
 # A second window first, so the dock shows a running app that isn't the
@@ -38,6 +44,15 @@ sleep 1
 qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.activateLauncherMenu
 sleep 2
 spectacle -b -n -f -o "$M9_OUT-launcher.png"
+if [[ ${M9_CHECK_RESIZE:-0} == 1 ]]; then
+    "$dev/build/fakeinput" key 1 move 200 200
+    for height in 32 34 38 40; do
+        qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
+            "panels().filter(p => p.location == 'top').forEach(p => p.height = $height)"
+        sleep 2
+        spectacle -b -n -f -o "$M9_OUT-resized-$height.png"
+    done
+fi
 kill $(jobs -p) 2> /dev/null
 sleep 1
 kill -9 $(jobs -p) 2> /dev/null

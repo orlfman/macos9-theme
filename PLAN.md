@@ -2,7 +2,7 @@
 
 ## Status
 
-Updated 2026-11-21 by Codex (GPT-6). Audit fixes are in `ef8250a` and `fb4156f`.
+Updated 2026-11-21 by Codex (GPT-6.2). Earlier audit fixes are in `ef8250a` and `fb4156f`.
 
 **Where things stand.** Built and checked headless (sandbox, nested KWin,
 throwaway homes). The user has now installed Platinum on their desktop:
@@ -13,6 +13,24 @@ throwaway homes). The user has now installed Platinum on their desktop:
 - `install.sh` / `uninstall.sh` (user scope, full undo), including retryable
   Qt Quick cleanup. See AUDIT.md for findings #59–68.
 
+The user reviewed the resized top panel at 32 px and liked the result. Both P3 follow-ups (#69–70) are fixed in the working tree. The Plasma artwork suite passed 19/19 at 100% display scale, including complete comparisons at 32, 34, 38, and 40 px.
+
+The user tested the updated Kwi tab close fix and reported that it worked
+well on their desktop (#71–74). The Qt Quick suite passed 29/29.
+
+Pastel Ribbon Landscape is the default when applying the Platinum global
+theme. Installing also adds Lavender Desktop Pattern to Plasma’s picker.
+Verified both renders and the upgrade from a single wallpaper.
+Findings #75–77 are fixed. Uninstall keeps selected packages, apply
+warns if Qt can't open the JPEG XL images, and the live test checks
+the rendered default on both screens.
+
+The external black cursor theme (ID `macOS-cursors`, installed by `tools/install-black-cursors.sh`) is an optional stand-in.
+`install.sh --apply --black-cursors` selects it when Plasma lists that
+theme ID. The user can select it in Plasma's Cursors settings to keep
+their current layout. The cursor audit found three open issues (#78–80)
+covering archive extraction and cursor validation.
+
 **Waiting on the user (don't do these without them):**
 1. Completed by the user, first real desktop install: `./install.sh`, log out and
    in, `./install.sh --apply`, then a fresh login for Qt Quick controls, with
@@ -20,14 +38,16 @@ throwaway homes). The user has now installed Platinum on their desktop:
 2. Their on-screen review of everything (#3, the Qt Quick style, waits for
    it).
 3. Decisions already made stay: decisions 10-13 below (main screen only, no
-   right-to-left, #25 deferred to publication, #23 on hold, own Qt Quick
+   right-to-left, #25 deferred to publication, own Qt Quick
    drawing item).
+4. Try the wallpapers on the desktop after updating the install and
+   selecting them in the wallpaper settings.
 
 **Next work after that** (order of work below): icons (decision 7), cursors
 (decision 8), fonts, GTK theme, extras; publication questions (#25, name).
 
 **Before finishing any change, run the suites** (expected results are kept
-in `docs/AUDIT-REQUEST.md`; today 135/135, 7/7, 312/312, 19/19, 21/21):
+in `docs/AUDIT-REQUEST.md`; today 135/135, 19/19, 339/339, 36/36, 29/29):
 `dev/check-style.sh`, `dev/check-plasma.sh`, `dev/test-install.sh`,
 `dev/test-install-live.sh`, `dev/check-quick.sh` (DEVELOPMENT.md says what
 each covers). Audit rounds: Codex appends to AUDIT.md; verify each finding,
@@ -44,13 +64,13 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | reference  | reference/, docs/REFERENCE.md | nobody | 81 VM captures; first real Platinum desktop archived at 100%, 150% and 200% in reference/testing/; measurements partial |
 | colors     | colors/                   | nobody     | Platinum.colors done (sandbox-checked) |
 | decoration | decoration/               | nobody | plugin works in nested KWin; frame pixel exact; only the three Mac OS 9 boxes are created (AUDIT 20) |
-| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); Qt Quick style in style/quick: menus, menu bar, combo list, tooltips, switches (AUDIT 3, check-quick 21/21; installed by install.sh); also dialogs (measured modal frame), drawers, range sliders; combo lists track live model edits (#63); open: editable combo, size grip |
-| plasma     | plasma/                   | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); main screen only (decision 10); menu bar resizing on hold (AUDIT 23, user) |
+| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); Qt Quick style in style/quick: menus, menu bar, combo list, tooltips, switches (AUDIT 3, check-quick 29/29; installed by install.sh); also dialogs (measured modal frame), drawers, range sliders; combo lists track live model edits (#63); compact tab close indicator and selected state verified in Kwi (#71–74); open: editable combo, size grip |
+| plasma     | plasma/                   | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); main screen only (decision 10); resizable menu bar ends and divider (AUDIT 23), with complete divider dots and pixel comparisons across four panel heights (AUDIT 69–70) |
 | icons      | icons/                    | nobody     | not started |
-| cursors    | cursors/                  | nobody     | not started |
+| cursors    | cursors/                  | nobody | optional external black cursor theme (`macOS-cursors`) wired and verified in nested Plasma; audit #78–#80 fixed. Original cursor artwork remains pending. |
 | gtk        | gtk/                      | nobody     | not started |
-| extras     | extras/, wallpapers/      | nobody     | not started |
-| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's four audits (#4-#14, #27-#31, #34-#42 fixed: moved-aside targets, record written first and taken off step by step so a retry never redoes a step, GTK files in the backup, shell stopped while restoring, decoration version guard, paths checked against where they led, recorded temporaries, same XDG folders required, checksums so your own additions and changes stay, a checked config copy, a stopped shell started by the next run); also installs the Qt Quick style (with a link target kind for Kirigami's plugin); cleanup and backup fixes #59–65 verified; test-install 312/312, test-install-live 19/19 (running Plasma, two screens; after uninstall a pass-through keeps the session's Qt Quick apps working until the next login); first desktop install completed by user; desktop uninstall untested |
+| extras     | extras/, wallpapers/      | nobody | Pastel Ribbon Landscape and Lavender Desktop Pattern packaged with the global theme. Terminal colors, SDDM, splash, and lock screen remain. |
+| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's four audits (#4-#14, #27-#31, #34-#42 fixed: moved-aside targets, record written first and taken off step by step so a retry never redoes a step, GTK files in the backup, shell stopped while restoring, decoration version guard, paths checked against where they led, recorded temporaries, same XDG folders required, checksums so your own additions and changes stay, a checked config copy, a stopped shell started by the next run); also installs the Qt Quick style (with a link target kind for Kirigami's plugin); cleanup and backup fixes #59–65 verified; test-install 339/339, test-install-live 36/36 (running Plasma, two screens; after uninstall a pass-through keeps the session's Qt Quick apps working until the next login); first desktop install completed by user; desktop uninstall untested |
 
 ## Goal
 
@@ -101,7 +121,8 @@ Open decisions need the user. Record the answer here with the date.
    (NineIcons Redux, Platinum9, Chi-Nata and others).
 8. **Cursors.** **Decided 2026-11-21 (user):** our own, or one of the many
    Mac OS X cursor packs as a temporary stand-in ("not ideal but a temp
-   thing ... while focusing more on the meat").
+   thing ... while focusing more on the meat"). The black variant of
+   ful1e5/apple_cursor is the optional external stand-in.
 9. **Dock.** **Decided 2026-11-21 (user):** window management may stray
    from Mac OS 9: "even though the dock came in OS X, I would like to use
    it in 'os 9.' Bring the dock over, but make it designed around os 9
@@ -121,7 +142,7 @@ Open decisions need the user. Record the answer here with the date.
     drawing consistent), but nothing more is done for right-to-left.
 12. **Deferred by the user, 2026-11-21:** AUDIT.md finding 25 (measured
     pixel tables and git history) waits until the user is ready to go
-    public; finding 23 (menu bar drawn wrong when resized) is on hold.
+    public. On 2026-11-21 the user asked to resume #23 after trying a 38 px top panel.
 13. **Qt Quick drawing.** **Decided 2026-11-21 (user):** our own small C++
     Qt Quick item, public Qt API only, not KDE's private `StyleItem`
     bridge (see "Plan: Qt Quick menus, tooltips and switches").
@@ -150,8 +171,9 @@ measurements.
   drawing our own; fallback chain for missing names.
 - **cursors**: arrow, I-beam, watch (busy), crosshair, hand; redrawn.
 - **gtk**: GTK 3 and GTK 4/libadwaita colors and shapes as far as supported.
-- **extras**: Konsole/Alacritty/kitty colors, wallpaper (redrawn Platinum
-  pattern/default desktop look), SDDM, splash, lock screen.
+- **extras**: Konsole/Alacritty/kitty colors, Pastel Ribbon Landscape
+  and Lavender Desktop Pattern wallpapers (user-supplied images), SDDM,
+  splash, lock screen.
 
 ## Order of work
 

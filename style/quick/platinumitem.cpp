@@ -270,6 +270,17 @@ void PlatinumItem::paint(QPainter *painter)
         opt.rect = r;
         opt.styleObject = this;
         style->drawControl(QStyle::CE_MenuBarItem, &opt, painter, nullptr);
+    } else if (is(m_type, "tabclose")) {
+        QStyleOption opt;
+        opt.rect = r;
+        opt.palette = QApplication::palette();
+        opt.state = QStyle::State_AutoRaise;
+        const bool enabled = isEnabled();
+        opt.state.setFlag(QStyle::State_Enabled, enabled);
+        opt.state.setFlag(QStyle::State_Selected, enabled && m_selected);
+        opt.state.setFlag(QStyle::State_Sunken, enabled && m_pressed);
+        opt.state.setFlag(QStyle::State_Raised, enabled && !m_pressed && (m_hovered || m_keyboardFocus));
+        style->drawPrimitive(QStyle::PE_IndicatorTabClose, &opt, painter, nullptr);
     } else if (is(m_type, "tooltip")) {
         QStyleOption opt;
         opt.rect = r;

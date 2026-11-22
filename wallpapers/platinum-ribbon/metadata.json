@@ -1,0 +1,9 @@
+{
+    "KPackageStructure": "Wallpaper/Images",
+    "KPlugin": {
+        "Authors": [{ "Name": "orlfman" }],
+        "Description": "Original pastel ribbon landscape generated with ChatGPT Image Generator",
+        "Id": "platinum-ribbon",
+        "Name": "Pastel Ribbon Landscape"
+    }
+}

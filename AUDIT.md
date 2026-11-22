@@ -3,7 +3,165 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: #53–58 passed their original regression cases. #59–68 are fixed in this revision, including code commits `ef8250a` and `fb4156f`. The user has completed the first desktop install. #3 (P3) awaits the user's visual review. The decisions on #21, #23, #25 and #26 still apply.
+Status: #53–58 passed their original regression cases. #59–68 are fixed in this revision, including code commits `ef8250a` and `fb4156f`. The user has completed the first desktop install. #3 (P3) awaits the user's visual review. The panel-resize fix for #23 is verified at the user’s 32 px setting. The panel follow-ups #69 and #70 are fixed in the working tree and verified in nested Plasma. The user reported that the updated Kwi tab close button worked well on their desktop (#71–74). Wallpaper findings #75–77 are fixed and verified in disposable Plasma. Cursor findings #78–80 are fixed (the black theme is now `macOS-cursors`). The decisions on #21, #25 and #26 still apply.
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for Codex's cursor findings #78–#80
+
+At the user's request the black theme's ID is now `macOS-cursors`
+(`~/.icons/macOS-cursors`), so it can't collide with another `macOS` theme.
+
+- **#78** (verified: the README's `tar -C ~/.icons` wrote into an existing
+  folder): `tools/install-black-cursors.sh macOS.tar.xz` unpacks into a
+  temporary folder, checks the pointer file, and moves it to
+  `~/.icons/macOS-cursors` only if nothing is there; otherwise it stops
+  with nothing changed. The README uses it.
+- **#79** (verified: `grep -F '[macOS]'` matched a title): install.sh
+  matches the ID at the end of Plasma's "Title [ID]" line and finds the
+  theme's folder.
+- **#80** (verified: no check of the cursor data): `xcursor_ok` reads the
+  pack's `left_ptr` (Xcursor magic, table of contents, the image chunk's
+  header and pixels inside the file) before switching.
+
+Checks: `dev/test-install.sh` 339 of 339 (new: a title naming the ID, a
+truncated `left_ptr`, the helper installing a pack and refusing an existing
+`macOS-cursors`); `dev/test-install-live.sh` 36 of 36. Not seen on the
+user's screen.
+
+## 2026-11-21, Codex (GPT-6.2) — audit the optional black cursor integration
+
+Reviewed the working-tree installer and README. The actual upstream black
+pack decoded at 24 px with libXcursor. A fresh apply and uninstall in a
+disposable home selected the black theme, restored the previous theme and
+size byte for byte, and left the external pack in place. The unchanged
+installer and nested Plasma checks previously passed 332/332 and 36/36.
+
+- **#78 · P2 · fixed (next section up)** — `README.md:120`. The documented extraction overwrites a customized cursor theme at `~/.icons/macOS`. Seeded a custom `index.theme` in a throwaway home and ran the documented command against the upstream archive. The upstream file replaced the custom file without keeping a copy. Check for a pre-existing destination before extracting.
+- **#79 · P3 · fixed (next section up)** — `install.sh:70`. The text check can mistake a display name for the exact theme ID. Plasma listed a fixture with ID `macOS-White` and title `White [macOS]` as `White [macOS] [macOS-White]`. The black opt-in dry run exited 0 and planned to select the absent `macOS` theme. Match the ID field.
+- **#80 · P3 · fixed (next section up)** — `install.sh:68–71`. Plasma's list can include a broken cursor pack. Seeded the black ID with an invalid `left_ptr` in a throwaway home. The preflight accepted it, while libXcursor rejected the file. Validate the cursor data before switching.
+
+The fresh retest used an offscreen Qt session with a private D-Bus.
+The working-tree audit changed documentation only. The user's on-screen
+cursor review is pending.
+
+## 2026-11-21, Codex (GPT-6.2) — verify optional black cursors
+
+Verified the working-tree cursor option with the black `macOS` folder
+from upstream v2.0.1 in a disposable home. The Linux archive also contains
+a white folder and the README extraction selects the black folder alone.
+Plasma's list showed the exact black theme ID. Applying with the opt-in
+wrote that ID to `kcminputrc`. Uninstall restored the previous Breeze
+Light preference byte for byte and left the external package intact.
+The offline suite confirmed the white-only pack is rejected before any
+change and the black dry run is read-only. Install passed 332/332, live
+install 36/36, Plasma artwork 19/19, Qt Widgets 135/135, and Qt Quick
+29/29. No new findings. The desktop visual check remains pending.
+
+## 2026-11-21, Codex (GPT-6.2) — fix wallpaper findings #75–77
+
+- **#75 · P2 · fixed and verified** — Uninstall leaves selected wallpaper packages and their install records in place. It reads the running Plasma desktop when available and the saved config when logged out. A nested Breeze session selected a package and an individual image on different screens. Both survived the dry run and first uninstall. Switching both to solid colors let the next uninstall remove the packages. The panel layout remained intact. The offline test also covered a percent-encoded URL and confirmed that uninstall removes an unselected package immediately.
+- **#76 · P3 · fixed and verified** — `install.sh --apply` uses a temporary Qt image-reader probe and warns before switching when it cannot open the JPEG XL files. The no-decoder test verified the warning precedes the successful theme switch. On the normal Qt installation the same probe opened both images and ran under ASan/UBSan with leak detection disabled.
+- **#77 · P3 · fixed and verified** — The live test compares exposed areas on both virtual screens against a Qt render of the installed Pastel Ribbon Landscape. The normal suite passed 33/33. A disposable copy with a nonexistent default failed the wallpaper comparison while the other 32 checks passed.
+
+The install and undo suite passed 326/326, Plasma artwork 19/19, Qt Widgets
+135/135, and Qt Quick 29/29. These checks used disposable homes and nested
+Plasma. The user's desktop remains available for visual review.
+
+## 2026-11-21, Codex (GPT-6.2) — audit the wallpaper lifecycle
+
+Reviewed both wallpaper packages, the global-theme default, and install
+and uninstall in the working tree on `83b8bd8`.
+
+- **#75 · P2** — `uninstall.sh:215–221` and `uninstall.sh:279–295`. The documented picker-only workflow can leave both desktops pointing to deleted images. In a two-screen nested session, kept Breeze active, ran the plain installer, and selected Pastel Ribbon Landscape on one screen and Lavender Desktop Pattern on the other through Plasma's image configuration. Tested a package-directory URL and an image-file URL. Both displayed before uninstall. Uninstall exited 0 and removed both packages while leaving the desktop config byte for byte. After restarting the disposable shell, both stored URLs still pointed to the deleted assets and neither selected image displayed. Treat references to the installed wallpapers separately from the global theme's active state and preserve unrelated desktop changes.
+- **#76 · P3** — `install.sh:60–64`. The installer checks that the JPEG XL files are readable. It gives no warning if Plasma cannot decode them. Qt opened both files at 3840 × 2160 on this machine. With only the JPEG XL handler excluded from a disposable Qt plugin directory, Qt rejected both files as unsupported. Applying the global theme in a nested shell using that directory succeeded and rendered a white desktop. README.md documents the decoder dependency. Add a readable fallback format or warn before switching on systems without the handler.
+- **#77 · P3** — `dev/test-install-live.sh:166–167`. The live test checks the wallpaper plugin name alone. Replaced the default wallpaper ID with a nonexistent ID in a disposable copy. The separate global-theme screenshot showed a different wallpaper, yet the live installer suite passed 25/25. Check the resolved wallpaper or representative rendered pixels as well.
+
+The existing clean-build captures use the supplied artwork. All new
+checks ran in disposable homes. This audit changed documentation only.
+
+## 2026-11-21, Codex (GPT-6.2) — verify the second desktop wallpaper
+
+Reviewed Lavender Desktop Pattern and the wallpaper installer changes
+in the working tree on `83b8bd8`. No new findings. An upgrade from the
+one-wallpaper installer copied both JPEG XL files byte for byte. KDE's
+wallpaper picker model listed both titles. Uninstall removed both
+packages and preserved the previous desktop config and a separate user
+wallpaper.
+
+Nested Plasma rendered Pastel Ribbon Landscape when Platinum was applied
+and Lavender Desktop Pattern when selected. In three unobstructed areas
+of the 1600 × 900 screenshots, the mean difference from the rescaled
+source for each wallpaper was below one RGB level per channel. Installer
+checks passed 316/316 and live install and undo passed 25/25. Plasma
+artwork passed 19/19, Qt Widgets 135/135, and Qt Quick 29/29. The user's
+desktop review is pending.
+
+## 2026-11-21, Codex (GPT-6.2) — check the wallpaper integration
+
+Reviewed the working-tree wallpaper integration on `83b8bd8`. No new
+findings. The Plasma wallpaper picker listed Pastel Ribbon Landscape.
+Applying the global theme rendered the original artwork in nested Plasma.
+Three unobstructed areas of a 1600 × 900 screenshot matched a rescale of
+the decoded 3840 × 2160 JPEG XL source with a mean error under one RGB
+level per channel. The installer copied the image byte for byte and an
+upgrade from the previous installer kept the existing desktop config.
+
+In the two-screen suite a plain install kept each screen’s seeded
+wallpaper. Applying Platinum selected the image plugin on both screens.
+Uninstall restored both originals and removed the package. The installer
+suite passed 314/314, nested install and undo 24/24, Plasma artwork 19/19,
+Qt Widgets 135/135, and Qt Quick 29/29. The Qt Quick and decoration
+previews ran under ASan/UBSan with leak detection disabled. Verification
+used throwaway homes and nested Plasma. The user’s desktop test is pending.
+
+## 2026-11-21, Codex (GPT-6.2) — fix Kwi tab close findings #72–74
+
+Fixed all three findings in the working tree on `83b8bd8`.
+
+- **#72 · P3 · fixed and verified** — `style/quick/Platinum/ToolButton.qml` uses the tab indicator when the Qt Quick caller supplies the tab's selected state and the default small, untinted tab-close icon. The generic QStyle interception is gone. The 32 px icon, custom tint, and ordinary matching button each rendered pixel-identically to their KDE ToolButton counterparts.
+- **#73 · P3 · fixed and verified** — The Qt Quick control supplies selected, hover, press, focus, and enabled state to the Qt tab indicator. Disabled indicators are further dimmed so they differ from enabled inactive tabs. In a disposable two-tab Kwi session, the active tab was orange at rest, the inactive tab turned orange on hover, and clicking it closed that tab. Konsole's tab area was pixel-identical to the prior build. The native Kwi Qt Quick path is the reference for the selected color.
+- **#74 · P3 · fixed and verified** — `dev/check-quick.sh` gained eight checks covering size, selection, disabled and pressed states, size and tint overrides, ordinary buttons, and fallback after switching to Fusion. All 29 checks passed. The new tests rejected the original oversized bevel and the first fix's missing selected and disabled cues and overwritten custom icons when tested against those builds.
+
+The close indicator remained compact and its four states stayed distinct in offscreen renders at 150% and 200%. Qt Widgets passed 135/135, Plasma artwork 19/19, install and uninstall 312/312, and nested Plasma install and undo 19/19. Qt Quick and decoration previews rendered under ASan/UBSan with leak detection disabled and no sanitizer diagnostics. The user reviewed the follow-up fix on their desktop and reported that it worked well. The automated coverage and detailed state checks are recorded above.
+
+## 2026-11-21, Codex (GPT-6.2) — audit of the Kwi tab close fix
+
+Reviewed the #71 working-tree patch on `83b8bd8` using Kwi `395b1de` and a Qt Quick probe. The fix removes the oversized frame and retains hover and press feedback. A fresh two-tab Kwi session confirmed the close button highlights on hover and closes the clicked tab. The neighboring New Tab button matched the earlier build pixel for pixel. Konsole's tab area also matched the earlier build pixel for pixel.
+
+- **#72 · P3** — `style/platinum/platinumstyle.cpp:1168–1173`. The rule applies to any matching Qt Quick tool button with the icon name `tab-close-other`. Drawing the Qt indicator discards the caller's icon size and tint. An offscreen button requesting a 32 px magenta icon rendered with magenta pixels before the patch and a 14 × 14 gray indicator after it. Preserve explicit icon requests or narrow the rule to the intended control.
+- **#73 · P3** — `style/platinum/platinumstyle.cpp:1171–1173`. The active tab loses its colored close cue. In nested KWin, Kwi's native Qt Quick style showed an orange close indicator on the active tab and a gray one on the inactive tab. Both were gray at rest under Platinum. In the offscreen probe the enabled idle and disabled icons also matched pixel for pixel, while press and keyboard focus each changed the icon. Qt's tab primitive draws the idle option as disabled when the style does not supply a selected or raised state. The reference tabs in docs/REFERENCE.md have no close control, so the comparison uses Kwi's native indicator.
+- **#74 · P3** — `dev/check-quick.sh:46`. The automated checks miss the original regression. Removed the #71 patch in a disposable project copy and reproduced the 25 px bevel in the named Qt Quick close-button probe. The existing Qt Quick suite still passed 21/21 and Qt Widgets passed 135/135. Add a focused check for this button and its states.
+
+The audit ran in an isolated compositor and offscreen Qt. The other applications that might request the same icon name and the user's physical desktop were outside the verification. This audit changed documentation only.
+
+## 2026-11-21, Codex (GPT-6.2) — Kwi tab close indicator
+
+- **#71 · P3 · fixed and verified in nested KWin** — `style/platinum/platinumstyle.cpp:1166`. Kwi `395b1de` requests the `tab-close-other` icon on a flat, icon-only tool button under the Platinum Qt Quick style. The style drew its 25 px toolbar bevel over the tab. The corresponding Konsole control uses Qt's tab close indicator. Platinum now routes this semantic close control through the tab close primitive, keeping its existing button geometry. No reference tab in docs/REFERENCE.md has a close control, so this uses Qt's artwork.
+- Reproduced the user's raised button in nested KWin before the change. After the change, Kwi showed compact gray indicators that highlighted on hover, and clicking one closed the intended tab. The New Tab button was pixel-identical to the baseline, and Konsole showed its usual close indicator. The updated visual awaits the user's desktop test.
+- A Qt Quick probe rendered the indicator at 100%, 150% and 200% display scale. Qt Widgets passed 135/135, Qt Quick 21/21, Plasma artwork 19/19, install and uninstall 312/312, and nested Plasma install and undo 19/19. The close control and window decoration rendered under ASan/UBSan with leak detection disabled.
+
+## 2026-11-21, Codex (GPT-6.2) — verify panel fixes #69 and #70
+
+Fixed both findings in the working tree on `83b8bd8`.
+
+- **#69 · P3 · fixed and verified** — `dev/check-plasma.sh` now compares every pixel of both rounded ends and the divider after live resizes to 32, 34, 38, and 40 px. All 19 Plasma comparisons passed, including the seven native-height checks. Erasing rows 5–23 of all three pieces in a disposable 38 px capture failed each of the three corresponding comparisons.
+- **#70 · P3 · fixed and verified** — The divider skips a trailing dot if its highlight would land in the bottom margin. The repeat uses both rows of each dot as measured in `reference/desktop-first-check.png` (docs/REFERENCE.md, right end of the menu bar). The new checker rejected both previous captures at 34 and 40 px, and the corresponding fixed captures matched all divider pixels. The 32 and 38 px comparisons also passed.
+
+Nested Plasma artwork was checked at 100% display scale. The updated artwork has yet to be checked on the user's physical displays. Qt Widgets passed 135/135, Qt Quick 21/21, install and uninstall 312/312, and nested Plasma install and undo 19/19. Eleven SVGs, three Plasma metadata files and both color schemes parsed successfully. The Qt Quick and window decoration previews rendered with ASan/UBSan and leak detection disabled, with no sanitizer diagnostics.
+
+## 2026-11-21, Codex (GPT-6) — review of the panel-resize fix
+
+Reviewed the working tree on `83b8bd8`. In the user’s 32 px screenshot at 100% display scale, both ends reach the screen edges, the bottom border is on row 31, and the final divider dot has both its dark and light rows at 25–26. The Plasma artwork suite passed 8/8 in a fresh nested session, including the original 20 px reference checks.
+
+- **#69 · P3** — `dev/check-plasma.sh:69–74`. The 38 px check can pass with most of the resized artwork missing. In a disposable copy of the captured image, erased rows 5–23 of both ends and the divider. The checker still passed 8/8. Compare the complete end and divider regions so a missing curve or interrupted run of dots fails the check.
+- **#70 · P3** — `plasma/make-plasma.py:549`. At some heights the divider’s bottom margin cuts off the highlight of its last dot. In fresh 100% captures at 34 and 40 px, the last dark dot row (28 and 34 respectively) was followed by panel gray (`#DDDDDD`). Every complete dot has a light row (`#BBBBBB`) directly below the dark row. End the repeat on a complete dot before drawing the margin. The 32 px desktop capture and the 38 px test capture both have a complete final dot.
+
+Additional captures used a disposable Plasma session. Physical mixed-scale display moves and other live panel configurations were outside this check. The installer and unrelated theme components were outside the scope of this review.
+
+## 2026-11-21, Codex (GPT-6) — #23 top panel resizing
+
+#23 (P3), corner and divider geometry fixed in the working tree. The 38 px desktop screenshot showed the pieces ending at row 19. The generated menu-bar widget now sizes them from the allocated height. The round ends compensate for the extra end padding Plasma adds to thicker panels.
+
+The seven existing comparisons passed at 20 px. A new eighth check resizes the running panel to 38 px and samples the screen corners, lower border and extended dotted grip. Separately captured all combinations of panel heights 20, 32, 38 and 52 with virtual display scales 100%, 125%, 150% and 200%. All 16 panel heights matched the expected rounded physical size, with black corner pixels at both screen edges at the top and bottom of the bar. Fractional-scale bevel shading is not reference-measured. The updated widget has only run on a disposable desktop.
 
 ## 2026-11-21, Codex (GPT-6) — audit and repair Claude's latest changes
 

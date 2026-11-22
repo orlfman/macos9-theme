@@ -13,4 +13,5 @@ MenuSeparator 1.0 MenuSeparator.qml
 RangeSlider 1.0 RangeSlider.qml
 Switch 1.0 Switch.qml
 SwitchDelegate 1.0 SwitchDelegate.qml
+ToolButton 1.0 ToolButton.qml
 ToolTip 1.0 ToolTip.qml

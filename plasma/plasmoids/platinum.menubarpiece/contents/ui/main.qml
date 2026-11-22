@@ -2,29 +2,65 @@
 // SPDX-License-Identifier: BSD-2-Clause
 import QtQuick
 import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
 import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
 
 PlasmoidItem {
     id: root
-    readonly property var pieces: {"cornerLeft":{"w":8,"runs":[[0,0,5,"#000000"],[5,0,1,"#555555"],[6,0,1,"#aaaaaa"],[7,0,1,"#dddddd"],[0,1,3,"#000000"],[3,1,1,"#555555"],[4,1,1,"#aaaaaa"],[5,1,3,"#ffffff"],[0,2,2,"#000000"],[2,2,1,"#555555"],[3,2,1,"#dddddd"],[4,2,1,"#ffffff"],[5,2,3,"#dddddd"],[0,3,1,"#000000"],[1,3,1,"#555555"],[2,3,1,"#dddddd"],[3,3,1,"#ffffff"],[4,3,4,"#dddddd"],[0,4,1,"#000000"],[1,4,1,"#aaaaaa"],[2,4,1,"#ffffff"],[3,4,5,"#dddddd"],[0,5,1,"#555555"],[1,5,1,"#ffffff"],[2,5,6,"#dddddd"],[0,6,1,"#aaaaaa"],[1,6,1,"#ffffff"],[2,6,6,"#dddddd"],[0,7,1,"#dddddd"],[1,7,1,"#ffffff"],[2,7,6,"#dddddd"],[0,8,1,"#ffffff"],[1,8,7,"#dddddd"],[0,9,1,"#ffffff"],[1,9,7,"#dddddd"],[0,10,1,"#ffffff"],[1,10,7,"#dddddd"],[0,11,1,"#ffffff"],[1,11,7,"#dddddd"],[0,12,1,"#ffffff"],[1,12,7,"#dddddd"],[0,13,1,"#ffffff"],[1,13,7,"#dddddd"],[0,14,1,"#ffffff"],[1,14,7,"#dddddd"],[0,15,1,"#ffffff"],[1,15,7,"#dddddd"],[0,16,1,"#ffffff"],[1,16,7,"#dddddd"],[0,17,1,"#ffffff"],[1,17,7,"#dddddd"],[0,18,1,"#dddddd"],[1,18,7,"#999999"],[0,19,8,"#000000"]]},"cornerRight":{"w":8,"runs":[[0,0,1,"#dddddd"],[1,0,1,"#aaaaaa"],[2,0,1,"#555555"],[3,0,1,"#222222"],[4,0,4,"#000000"],[0,1,1,"#dddddd"],[1,1,1,"#cccccc"],[2,1,1,"#bbbbbb"],[3,1,1,"#888888"],[4,1,1,"#555555"],[5,1,3,"#000000"],[0,2,3,"#dddddd"],[3,2,1,"#bbbbbb"],[4,2,1,"#888888"],[5,2,1,"#555555"],[6,2,2,"#000000"],[0,3,4,"#dddddd"],[4,3,1,"#bbbbbb"],[5,3,1,"#888888"],[6,3,1,"#555555"],[7,3,1,"#000000"],[0,4,5,"#dddddd"],[5,4,1,"#bbbbbb"],[6,4,1,"#888888"],[7,4,1,"#222222"],[0,5,6,"#dddddd"],[6,5,1,"#aaaaaa"],[7,5,1,"#555555"],[0,6,6,"#dddddd"],[6,6,1,"#bbbbbb"],[7,6,1,"#777777"],[0,7,6,"#dddddd"],[6,7,1,"#cccccc"],[7,7,1,"#888888"],[0,8,7,"#dddddd"],[7,8,1,"#999999"],[0,9,7,"#dddddd"],[7,9,1,"#999999"],[0,10,7,"#dddddd"],[7,10,1,"#999999"],[0,11,7,"#dddddd"],[7,11,1,"#999999"],[0,12,7,"#dddddd"],[7,12,1,"#999999"],[0,13,7,"#dddddd"],[7,13,1,"#999999"],[0,14,7,"#dddddd"],[7,14,1,"#999999"],[0,15,7,"#dddddd"],[7,15,1,"#999999"],[0,16,7,"#dddddd"],[7,16,1,"#999999"],[0,17,7,"#dddddd"],[7,17,1,"#999999"],[0,18,8,"#999999"],[0,19,8,"#000000"]]},"divider":{"w":6,"runs":[[0,0,5,"#ffffff"],[5,0,1,"#dddddd"],[0,1,1,"#ffffff"],[1,1,4,"#dddddd"],[5,1,1,"#999999"],[0,2,1,"#ffffff"],[1,2,4,"#dddddd"],[5,2,1,"#999999"],[0,3,1,"#ffffff"],[1,3,4,"#dddddd"],[5,3,1,"#999999"],[0,4,1,"#ffffff"],[1,4,1,"#dddddd"],[2,4,1,"#888888"],[3,4,1,"#aaaaaa"],[4,4,1,"#dddddd"],[5,4,1,"#999999"],[0,5,1,"#ffffff"],[1,5,1,"#dddddd"],[2,5,1,"#bbbbbb"],[3,5,1,"#ffffff"],[4,5,1,"#dddddd"],[5,5,1,"#999999"],[0,6,1,"#ffffff"],[1,6,4,"#dddddd"],[5,6,1,"#999999"],[0,7,1,"#ffffff"],[1,7,1,"#dddddd"],[2,7,1,"#888888"],[3,7,1,"#aaaaaa"],[4,7,1,"#dddddd"],[5,7,1,"#999999"],[0,8,1,"#ffffff"],[1,8,1,"#dddddd"],[2,8,1,"#bbbbbb"],[3,8,1,"#ffffff"],[4,8,1,"#dddddd"],[5,8,1,"#999999"],[0,9,1,"#ffffff"],[1,9,4,"#dddddd"],[5,9,1,"#999999"],[0,10,1,"#ffffff"],[1,10,1,"#dddddd"],[2,10,1,"#888888"],[3,10,1,"#aaaaaa"],[4,10,1,"#dddddd"],[5,10,1,"#999999"],[0,11,1,"#ffffff"],[1,11,1,"#dddddd"],[2,11,1,"#bbbbbb"],[3,11,1,"#ffffff"],[4,11,1,"#dddddd"],[5,11,1,"#999999"],[0,12,1,"#ffffff"],[1,12,4,"#dddddd"],[5,12,1,"#999999"],[0,13,1,"#ffffff"],[1,13,1,"#dddddd"],[2,13,1,"#888888"],[3,13,1,"#aaaaaa"],[4,13,1,"#dddddd"],[5,13,1,"#999999"],[0,14,1,"#ffffff"],[1,14,1,"#dddddd"],[2,14,1,"#bbbbbb"],[3,14,1,"#ffffff"],[4,14,1,"#dddddd"],[5,14,1,"#999999"],[0,15,1,"#ffffff"],[1,15,4,"#dddddd"],[5,15,1,"#999999"],[0,16,1,"#ffffff"],[1,16,4,"#dddddd"],[5,16,1,"#999999"],[0,17,1,"#ffffff"],[1,17,4,"#dddddd"],[5,17,1,"#999999"],[0,18,6,"#999999"],[0,19,6,"#000000"]]}}
+    readonly property var pieces: {"cornerLeft":{"w":8,"rows":[[[0,5,"#000000"],[5,1,"#555555"],[6,1,"#aaaaaa"],[7,1,"#dddddd"]],[[0,3,"#000000"],[3,1,"#555555"],[4,1,"#aaaaaa"],[5,3,"#ffffff"]],[[0,2,"#000000"],[2,1,"#555555"],[3,1,"#dddddd"],[4,1,"#ffffff"],[5,3,"#dddddd"]],[[0,1,"#000000"],[1,1,"#555555"],[2,1,"#dddddd"],[3,1,"#ffffff"],[4,4,"#dddddd"]],[[0,1,"#000000"],[1,1,"#aaaaaa"],[2,1,"#ffffff"],[3,5,"#dddddd"]],[[0,1,"#555555"],[1,1,"#ffffff"],[2,6,"#dddddd"]],[[0,1,"#aaaaaa"],[1,1,"#ffffff"],[2,6,"#dddddd"]],[[0,1,"#dddddd"],[1,1,"#ffffff"],[2,6,"#dddddd"]],[[0,1,"#ffffff"],[1,7,"#dddddd"]],[[0,1,"#ffffff"],[1,7,"#dddddd"]],[[0,1,"#ffffff"],[1,7,"#dddddd"]],[[0,1,"#ffffff"],[1,7,"#dddddd"]],[[0,1,"#ffffff"],[1,7,"#dddddd"]],[[0,1,"#ffffff"],[1,7,"#dddddd"]],[[0,1,"#ffffff"],[1,7,"#dddddd"]],[[0,1,"#ffffff"],[1,7,"#dddddd"]],[[0,1,"#ffffff"],[1,7,"#dddddd"]],[[0,1,"#ffffff"],[1,7,"#dddddd"]],[[0,1,"#dddddd"],[1,7,"#999999"]],[[0,8,"#000000"]]]},"cornerRight":{"w":8,"rows":[[[0,1,"#dddddd"],[1,1,"#aaaaaa"],[2,1,"#555555"],[3,1,"#222222"],[4,4,"#000000"]],[[0,1,"#dddddd"],[1,1,"#cccccc"],[2,1,"#bbbbbb"],[3,1,"#888888"],[4,1,"#555555"],[5,3,"#000000"]],[[0,3,"#dddddd"],[3,1,"#bbbbbb"],[4,1,"#888888"],[5,1,"#555555"],[6,2,"#000000"]],[[0,4,"#dddddd"],[4,1,"#bbbbbb"],[5,1,"#888888"],[6,1,"#555555"],[7,1,"#000000"]],[[0,5,"#dddddd"],[5,1,"#bbbbbb"],[6,1,"#888888"],[7,1,"#222222"]],[[0,6,"#dddddd"],[6,1,"#aaaaaa"],[7,1,"#555555"]],[[0,6,"#dddddd"],[6,1,"#bbbbbb"],[7,1,"#777777"]],[[0,6,"#dddddd"],[6,1,"#cccccc"],[7,1,"#888888"]],[[0,7,"#dddddd"],[7,1,"#999999"]],[[0,7,"#dddddd"],[7,1,"#999999"]],[[0,7,"#dddddd"],[7,1,"#999999"]],[[0,7,"#dddddd"],[7,1,"#999999"]],[[0,7,"#dddddd"],[7,1,"#999999"]],[[0,7,"#dddddd"],[7,1,"#999999"]],[[0,7,"#dddddd"],[7,1,"#999999"]],[[0,7,"#dddddd"],[7,1,"#999999"]],[[0,7,"#dddddd"],[7,1,"#999999"]],[[0,7,"#dddddd"],[7,1,"#999999"]],[[0,8,"#999999"]],[[0,8,"#000000"]]]},"divider":{"w":6,"rows":[[[0,5,"#ffffff"],[5,1,"#dddddd"]],[[0,1,"#ffffff"],[1,4,"#dddddd"],[5,1,"#999999"]],[[0,1,"#ffffff"],[1,4,"#dddddd"],[5,1,"#999999"]],[[0,1,"#ffffff"],[1,4,"#dddddd"],[5,1,"#999999"]],[[0,1,"#ffffff"],[1,1,"#dddddd"],[2,1,"#888888"],[3,1,"#aaaaaa"],[4,1,"#dddddd"],[5,1,"#999999"]],[[0,1,"#ffffff"],[1,1,"#dddddd"],[2,1,"#bbbbbb"],[3,1,"#ffffff"],[4,1,"#dddddd"],[5,1,"#999999"]],[[0,1,"#ffffff"],[1,4,"#dddddd"],[5,1,"#999999"]],[[0,1,"#ffffff"],[1,1,"#dddddd"],[2,1,"#888888"],[3,1,"#aaaaaa"],[4,1,"#dddddd"],[5,1,"#999999"]],[[0,1,"#ffffff"],[1,1,"#dddddd"],[2,1,"#bbbbbb"],[3,1,"#ffffff"],[4,1,"#dddddd"],[5,1,"#999999"]],[[0,1,"#ffffff"],[1,4,"#dddddd"],[5,1,"#999999"]],[[0,1,"#ffffff"],[1,1,"#dddddd"],[2,1,"#888888"],[3,1,"#aaaaaa"],[4,1,"#dddddd"],[5,1,"#999999"]],[[0,1,"#ffffff"],[1,1,"#dddddd"],[2,1,"#bbbbbb"],[3,1,"#ffffff"],[4,1,"#dddddd"],[5,1,"#999999"]],[[0,1,"#ffffff"],[1,4,"#dddddd"],[5,1,"#999999"]],[[0,1,"#ffffff"],[1,1,"#dddddd"],[2,1,"#888888"],[3,1,"#aaaaaa"],[4,1,"#dddddd"],[5,1,"#999999"]],[[0,1,"#ffffff"],[1,1,"#dddddd"],[2,1,"#bbbbbb"],[3,1,"#ffffff"],[4,1,"#dddddd"],[5,1,"#999999"]],[[0,1,"#ffffff"],[1,4,"#dddddd"],[5,1,"#999999"]],[[0,1,"#ffffff"],[1,4,"#dddddd"],[5,1,"#999999"]],[[0,1,"#ffffff"],[1,4,"#dddddd"],[5,1,"#999999"]],[[0,6,"#999999"]],[[0,6,"#000000"]]]}}
     readonly property var piece: pieces[Plasmoid.configuration.piece] || pieces.divider
     Plasmoid.backgroundHints: PlasmaCore.Types.NoBackground
     preferredRepresentation: fullRepresentation
     fullRepresentation: Item {
-        Layout.minimumWidth: root.piece.w
-        Layout.preferredWidth: root.piece.w
-        Layout.maximumWidth: root.piece.w
+        id: artwork
+        readonly property bool divider: root.piece === root.pieces.divider
+        readonly property int rows: Math.round(height)
+        readonly property int pieceWidth: Math.max(1, Math.round(root.piece.w * rows / 20))
+        // Plasma 6.8 adds this end padding to a thick, non-floating panel
+        // even with zero theme margins (desktop shell views/Panel.qml).
+        readonly property int endPadding: Math.min(Kirigami.Units.smallSpacing,
+            Math.floor(Math.max(1, rows - Kirigami.Units.iconSizes.smallMedium) / 2))
+        readonly property int endOffset: divider ? 0 :
+            (root.piece === root.pieces.cornerLeft ? -endPadding : endPadding)
+        Layout.minimumWidth: pieceWidth
+        Layout.preferredWidth: pieceWidth
+        Layout.maximumWidth: pieceWidth
         Layout.fillHeight: true
+
+        function sourceRow(y) {
+            // The panel background keeps its two lower bevel lines at any height.
+            if (y >= rows - 2) return 20 - (rows - y)
+            if (divider) {
+                if (y < 4) return y
+                if (y >= rows - 5) return 20 - (rows - y)
+                const phase = (y - 4) % 3
+                // Leave the last slot blank if its highlight would land in the margin.
+                if (phase === 0 && y === rows - 6) return 15
+                return 4 + phase
+            }
+            return Math.min(17, Math.floor(y * 18 / Math.max(1, rows - 2)))
+        }
+        function edge(x) {
+            return Math.round(x * pieceWidth / root.piece.w)
+        }
         Repeater {
-            model: root.piece.runs
-            Rectangle {
-                x: modelData[0]
-                y: modelData[1]
-                width: modelData[2]
-                height: 1
-                color: modelData[3]
-                antialiasing: false
+            model: artwork.rows
+            Item {
+                required property int index
+                x: artwork.endOffset
+                y: index
+                Repeater {
+                    model: root.piece.rows[artwork.sourceRow(parent.index)]
+                    Rectangle {
+                        required property var modelData
+                        x: artwork.edge(modelData[0])
+                        width: artwork.edge(modelData[0] + modelData[1]) - x
+                        height: 1
+                        color: modelData[2]
+                        antialiasing: false
+                    }
+                }
             }
         }
     }

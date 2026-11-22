@@ -29,10 +29,18 @@ style and the window decoration), and switch:
 ```
 
 `--apply` applies the Platinum global theme. It replaces your panels with
-the menu bar and the dock, and puts the close box on the left. Only the
-main screen gets the menu bar and the dock (like Mac OS 9). `--dry-run`
-shows what either step would do. On a first switch from Breeze, log out and
-back in after applying so Qt Quick apps start with Platinum controls.
+the menu bar and the dock, sets the Pastel Ribbon Landscape wallpaper, and
+puts the close box on the left. Only the main screen gets the menu bar and
+the dock (like Mac OS 9). `--dry-run` shows what either step would do. On a
+first switch from Breeze, log out and back in after applying so Qt Quick
+apps start with Platinum controls.
+
+To try either wallpaper on an existing installation, rerun `./install.sh`
+and choose **Pastel Ribbon Landscape** or **Lavender Desktop Pattern** in
+Plasma's desktop wallpaper settings. Both 3840 × 2160 JPEG XL images use
+Qt's JPEG XL decoder, provided by `kimageformats` on Arch. The
+`--apply` option checks both images and warns before switching if Qt
+cannot open them.
 
 Your config files (panels, colors, style, decoration, and the GTK
 settings Plasma rewrites when the colors change) are copied when you
@@ -73,6 +81,10 @@ that forwards those apps to KDE's style and removes itself at the next
 login. If a personal file or folder occupies its location, uninstall keeps
 it and reports that those apps may need a fresh login to start.
 
+If either Platinum wallpaper is still selected when uninstall reaches
+it, that package stays in place. Choose a different wallpaper on the
+affected desktops and run `./uninstall.sh` again to finish.
+
 Files and folders you added to or changed in what the theme installed (an
 extra SVG in its Plasma style, an edited color scheme) are left where they
 are; only the theme's own files, unchanged, are removed. Running
@@ -97,3 +109,20 @@ mark and similar) are pixel tables measured from screenshots of Mac OS 9;
 they'll be redrawn before any public release (AUDIT.md finding 25).
 
 For contributors and AI agents: [AGENTS.md](AGENTS.md).
+
+### Optional black cursors
+
+Download `macOS.tar.xz` from the [Apple Cursor v2.0.1 release](https://github.com/ful1e5/apple_cursor/releases/tag/v2.0.1),
+then install its black `macOS` folder as the cursor theme `macOS-cursors`
+(it goes to `~/.icons/macOS-cursors`; if that already exists, nothing is
+changed):
+
+```bash
+./tools/install-black-cursors.sh ~/Downloads/macOS.tar.xz
+```
+
+Choose **macOS** (listed with `[macOS-cursors]`) in Plasma's Cursors
+settings to keep your current panel layout. When applying the entire global theme, the command
+`./install.sh --apply --black-cursors` selects the same pack. Log out
+and back in to load the cursor throughout the session. The pack is installed independently and
+Platinum's uninstall restores the cursor preference saved before applying.

@@ -2,6 +2,108 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — black cursor fixes (#78–#80), theme renamed macOS-cursors
+
+- The optional black cursor theme's ID is now `macOS-cursors`.
+- `tools/install-black-cursors.sh` installs it from the upstream archive
+  without replacing anything already there (#78); install.sh matches the
+  exact ID (#79) and refuses a pack whose pointer file is broken (#80).
+- Checks: install 339/339, live 36/36. Uncommitted, on top of the other
+  uncommitted working-tree changes (Qt Quick ToolButton, wallpapers, panel
+  fixes).
+
+## 2026-11-21, Codex (GPT-6.2) — audit the black cursor option
+
+Verified selection and byte-for-byte cursor config restoration in a
+disposable home. Recorded #78–80 for extraction over an existing theme,
+a false theme ID match, and accepting broken cursor data. Updated the
+plan and audit log. Documentation only.
+
+## 2026-11-21, Codex (GPT-6.2) — select the external black cursor theme
+
+Added the optional `--apply --black-cursors` switch. Plasma must list
+the separately installed black `macOS` theme before installation
+proceeds. The README shows how to extract that folder alone and select
+it from Plasma without reapplying the desktop layout. The live test
+verified selection and undo with the upstream pack in a disposable
+home. The integration is in the working tree and awaits desktop review.
+
+## 2026-11-21, Codex (GPT-6.2) — preserve selected wallpapers during uninstall
+
+Fixed wallpaper findings #75–77 in the working tree. Uninstall keeps a
+package while a desktop still selects it and finishes when run again
+after the selection changes. The installer checks JPEG XL support before
+applying. Live tests compare the actual wallpaper on both screens and
+reject an incorrect default. Installer checks passed 326/326, live
+installer 33/33, Plasma artwork 19/19, Qt Widgets 135/135, and Qt Quick
+29/29. The user can check the visuals on their desktop after updating
+and selecting a wallpaper in Plasma.
+
+## 2026-11-21, Codex (GPT-6.2) — audit wallpaper install, apply, and undo
+
+Recorded findings #75–77 in AUDIT.md. A picker-only install leaves stale
+wallpaper selections on uninstall, a shell without JPEG XL support
+renders a white desktop after apply, and a missing default still passes
+all 25 live installer checks. Verified these cases in disposable homes.
+Updated the plan with the open findings. Documentation only.
+
+## 2026-11-21, Codex (GPT-6.2) — add Lavender Desktop Pattern
+
+Packaged the second user-supplied 3840 × 2160 JPEG XL wallpaper byte for
+byte and registered both wallpaper packages with the installer. Both
+appear in Plasma’s picker, and applying the global theme selects Pastel
+Ribbon Landscape. Verified the new wallpaper in nested Plasma and tested
+an upgrade from the one-wallpaper installer. Install and undo passed
+316/316, live install and undo 25/25, Plasma artwork 19/19, Qt Widgets
+135/135, and Qt Quick 29/29. The second package is in the working tree and
+awaits the user’s desktop review.
+
+## 2026-11-21, Codex (GPT-6.2) — package the Pastel Ribbon Landscape wallpaper
+
+Moved the user’s original 3840 × 2160 JPEG XL image into a Plasma wallpaper
+package without changing its bytes. The installer adds it to the picker
+and Platinum’s global theme selects it on apply. Nested Plasma verified
+that the image renders and is listed in the picker. The two-screen test
+verified that a plain install keeps both backgrounds and that uninstall
+restores both originals after applying the theme. Tests passed 314/314
+installer, 24/24 live installer, 19/19 Plasma artwork, 135/135 Qt Widgets,
+and 29/29 Qt Quick. The wallpaper and integration are in the working
+tree and await desktop review.
+
+## 2026-11-21, Codex (GPT-6.2) — record the Kwi desktop review
+
+The user reported that the updated Kwi tab close button worked well on their desktop. Recorded the result for #71–74 in AUDIT.md and marked the desktop review complete in PLAN.md. Documentation only.
+
+## 2026-11-21, Codex (GPT-6.2) — keep custom tab icons and restore Kwi's selected close cue
+
+Fixed #72–74 in the working tree. The Qt Quick style takes the tab's selected state and keeps customized icons on their ordinary rendering path. Closed a tab after checking idle and hover in a disposable Kwi session and verified Konsole's tabs pixel for pixel. Added eight regression checks to the Qt Quick suite (29/29). Desktop review waits on a reinstall and a full restart of Kwi.
+
+## 2026-11-21, Codex (GPT-6.2) — audit the Kwi tab close fix
+
+Verified the compact close button, hover and press feedback, and pixel-identical Konsole tabs in a disposable Plasma session. Recorded open findings #72–74 in AUDIT.md. The fix discards custom icon settings and loses the active tab's colored close cue. Both style suites still passed with the fix removed. This audit changed only AUDIT.md, PLAN.md, and this log. The #71 patch remains in the working tree and awaits desktop review.
+
+## 2026-11-21, Codex (GPT-6.2) — use the standard tab close indicator in Kwi
+
+Fixed finding #71 in the working tree. Flat icon-only tab close controls now use Qt's compact close indicator. Confirmed the appearance and tested hover and closing a tab in Kwi under nested KWin. The Qt Widgets, Qt Quick, Plasma artwork, and both installer suites passed. Desktop review still waits on the user. Rerun the installer over the existing install and fully reopen Kwi to load the new application style.
+
+## 2026-11-21, Codex (GPT-6.2) — finish divider dots and check resized panel pieces
+
+Fixed #69 and #70. The menu-bar plasmoid skips a trailing dot when its highlight would reach the bottom margin. The artwork suite now checks every pixel of all three pieces at 32, 34, 38, and 40 px. It rejects the earlier clipped dots and a capture with artwork erased from all three pieces.
+
+Plasma artwork passed 19/19, Qt Widgets 135/135, Qt Quick 21/21, install 312/312, and nested install/undo 19/19. The generator, generated QML, resize test and audit notes are in the working tree. The panel fix was verified at 100% display scale in nested Plasma. Review on a physical display is pending.
+
+## 2026-11-21, Codex (GPT-6) — audit the resized top panel
+
+Verified the user’s 32 px desktop capture and reran the Plasma artwork suite (8/8). Recorded two P3 follow-ups in AUDIT.md for the next panel pass. At 34 and 40 px one dot loses its highlight, and the resized-artwork test accepts missing pixels in all three pieces. Updated the plan with the user’s on-screen result. This review adds documentation only. The panel changes and audit remain in the working tree.
+
+## 2026-11-21, Codex (GPT-6) — resize the top panel corners and dotted grip
+
+The Platinum menu-bar pieces follow panel height during resizing. The original
+20 px artwork still matches the reference. Tested 16 height and display-scale
+combinations in nested Plasma. Plasma checks passed 8/8, widgets 135/135,
+Qt Quick 21/21, install 312/312 and nested install/undo 19/19. Local update
+awaits the user's desktop review at their preferred 38 px height.
+
 ## 2026-11-21, Codex (GPT-6) — archive first desktop scaling comparison
 
 Saved the user's three 3840 × 2160 Plasma screenshots at 100%, 150% and

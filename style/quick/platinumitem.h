@@ -13,12 +13,13 @@ class PlatinumItem : public QQuickPaintedItem
 {
     Q_OBJECT
     // What to draw: menu, menuitem, separator, menubar, menubaritem,
-    // tooltip, checkbox, dialog, drawer, slidergroove, sliderthumb.
+    // tooltip, checkbox, dialog, drawer, slidergroove, sliderthumb, tabclose.
     Q_PROPERTY(QString elementType MEMBER m_type NOTIFY changed)
     Q_PROPERTY(QString text MEMBER m_text NOTIFY changed)
     Q_PROPERTY(QString shortcut MEMBER m_shortcut NOTIFY changed)
     Q_PROPERTY(bool selected MEMBER m_selected NOTIFY changed)
     Q_PROPERTY(bool pressed MEMBER m_pressed NOTIFY changed)
+    Q_PROPERTY(bool hovered MEMBER m_hovered NOTIFY changed)
     // Keyboard focus (shown only for focus moved by the keyboard).
     Q_PROPERTY(bool keyboardFocus MEMBER m_keyboardFocus NOTIFY changed)
     // A menu row's icon: a theme icon name, or a file or qrc: URL.
@@ -83,7 +84,7 @@ private:
     QString m_iconName;
     QUrl m_iconSource;
     QIcon icon() const;
-    bool m_keyboardFocus = false;
+    bool m_keyboardFocus = false, m_hovered = false;
     bool m_selected = false, m_pressed = false, m_checkable = false, m_checked = false, m_subMenu = false;
     bool m_first = false, m_last = false, m_combo = false, m_active = false;
     int m_shortcutColumn = 0;

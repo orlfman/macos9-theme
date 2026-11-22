@@ -134,6 +134,7 @@ scheme_name=Platinum
 plasma_theme=platinum
 piece_id=platinum.menubarpiece
 lnf_id=platinum.desktop
+wallpaper_ids=(platinum-ribbon platinum-lavender)
 
 # Everything install.sh installs: kind and path. uninstall.sh removes
 # nothing else.
@@ -148,6 +149,9 @@ targets=(
     "dir	$quick_module"
     "link	$kirigami_link"
 )
+for wallpaper_id in "${wallpaper_ids[@]}"; do
+    targets+=("dir	$data/wallpapers/$wallpaper_id")
+done
 
 # What applying the global theme (and --apply) changes, copied whole before
 # the switch. In ~/.config: the files the theme and the panel layout reset
@@ -210,6 +214,62 @@ drop_plasma_caches() {
         fi
     done
     return 0
+}
+
+# --- The optional black cursors ------------------------------------------
+#
+# An external pack (Apple Cursor v2.0.1's black "macOS" folder), installed
+# under this ID by tools/install-black-cursors.sh.
+black_cursor_id=macOS-cursors
+
+# The folder of the cursor theme ID, where Qt and Plasma look (the first
+# with an index.theme), or nothing.
+find_cursor_theme() { # id
+    local dir base
+    local -a bases=("$home/.icons" "$data/icons")
+    IFS=: read -r -a more <<< "${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+    for base in "${more[@]}"; do
+        [[ $base == /* ]] && bases+=("$base/icons")
+    done
+    bases+=(/usr/share/pixmaps)
+    for base in "${bases[@]}"; do
+        dir=$base/$1
+        if [[ -f $dir/index.theme && -d $dir/cursors ]]; then
+            printf '%s' "$dir"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Is FILE a whole Xcursor file: the magic, a table of contents with an
+# image, and that image's header and pixels inside the file?
+xcursor_ok() { # file
+    local file=$1 size magic ntoc i type pos hdr ctype w h xhot yhot
+    [[ -r $file && -f $file ]] || return 1
+    size=$(stat -L -c %s "$file") || return 1
+    ((size >= 16)) || return 1
+    magic=$(head -c 4 "$file")
+    [[ $magic == Xcur ]] || return 1
+    u32() { od -An -tu4 -j "$1" -N 4 "$file" | tr -d ' '; }
+    ntoc=$(u32 12)
+    ((ntoc >= 1 && ntoc < 4096 && 16 + 12 * ntoc <= size)) || return 1
+    for ((i = 0; i < ntoc; i++)); do
+        type=$(u32 $((16 + 12 * i)))
+        pos=$(u32 $((16 + 12 * i + 8)))
+        ((type == 0xfffd0002)) || continue
+        ((pos + 36 <= size)) || return 1
+        hdr=$(u32 "$pos")
+        ctype=$(u32 $((pos + 4)))
+        w=$(u32 $((pos + 16)))
+        h=$(u32 $((pos + 20)))
+        xhot=$(u32 $((pos + 24)))
+        yhot=$(u32 $((pos + 28)))
+        ((hdr == 36 && ctype == 0xfffd0002 && w > 0 && h > 0 && w <= 0x7fff && h <= 0x7fff && xhot <= w && yhot <= h)) || return 1
+        ((pos + 36 + w * h * 4 <= size)) || return 1
+        return 0
+    done
+    return 1
 }
 
 # --- The install record ---------------------------------------------------
