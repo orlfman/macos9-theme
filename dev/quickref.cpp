@@ -96,7 +96,7 @@ int main(int argc, char **argv)
     // The same, narrower than its items: its list widens to the combo
     // box's width hint.
     QComboBox narrow;
-    narrow.addItems({"Lavender", "Purple", "Platinum"});
+    narrow.addItems({"Mountain Lavender", "Purple", "Platinum"});
     narrow.setCurrentIndex(1);
     narrow.resize(60, narrow.sizeHint().height());
     narrow.move(300, 100);

@@ -30,7 +30,12 @@ QQC2.ApplicationWindow {
         if (i === 0 || i === 1) menu.currentIndex = i === 0 ? 0 : menu.count - 1
         else menu.close()
         if (i === 2) combo.popup.open()
-        if (i === 9) narrowCombo.popup.open(); else narrowCombo.popup.close()
+        if (i === 9) {
+            narrowChoices.setProperty(0, "label", "Mountain Lavender")
+            narrowCombo.popup.open()
+        } else {
+            narrowCombo.popup.close()
+        }
         // (no fade-in, so the shot holds the finished tooltip)
         tipAnchor.QQC2.ToolTip.toolTip.enter = null
         tipAnchor.QQC2.ToolTip.toolTip.exit = null
@@ -56,7 +61,7 @@ QQC2.ApplicationWindow {
                 const p = (combo.listPanel || combo.popup.background).mapToItem(root.contentItem, 0, 0)
                 console.log("REGION combo", Math.round(p.x), Math.round(p.y))
             }
-            if (i === 3) console.log("REGION menubar", 0, 0)
+            if (i === 3) console.log("REGION menubar", bar.x, bar.y)
             if (i === 4) {
                 const p = (toggle.box || toggle.indicator).mapToItem(root.contentItem, 0, 0)
                 console.log("REGION checkbox", Math.round(p.x), Math.round(p.y))
@@ -106,10 +111,20 @@ QQC2.ApplicationWindow {
         x: 300; y: 100
         width: 60  // narrower than any item; dev/quickref.cpp's gets the same width
         visible: root.step === 9
-        model: ["Lavender", "Purple", "Platinum"]
+        textRole: "label"
+        model: ListModel {
+            id: narrowChoices
+            ListElement { label: "A" }
+            ListElement { label: "Purple" }
+            ListElement { label: "Platinum" }
+        }
         currentIndex: 1
     }
     QQC2.MenuBar {
+        id: bar
+        // Keep the offscreen pointer away from the idle bar used in both
+        // renders. KDE animates a hovered title independently in each process.
+        x: 150; y: 220
         width: 200
         visible: root.step === 3
         QQC2.Menu { title: "File"; QQC2.MenuItem { text: "Open" } }

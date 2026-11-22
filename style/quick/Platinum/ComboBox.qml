@@ -48,8 +48,11 @@ KDE.ComboBox {
                 return 0;
             }
             const texts = [];
-            for (let i = 0; i < control.count; i++) {
-                texts.push(control.textAt(i));
+            // Read the delegate property so a label or textRole change at
+            // the same item count also updates the open list.
+            for (let i = 0; i < control.popup.count; i++) {
+                const item = control.popup.itemAt(i);
+                texts.push(item && item.text !== undefined ? item.text : control.textAt(i));
             }
             return Math.max(control.width, control.listPanel.comboWidthHint(texts));
         }
