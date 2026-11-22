@@ -2,21 +2,21 @@
 
 ## Status
 
-Updated: 2026-11-21 (Claude Code), at `e1fe656` on main (pushed).
+Updated 2026-11-21 by Codex (GPT-6). Audit fixes are in `ef8250a` and `fb4156f`.
 
 **Where things stand.** Built and checked headless (sandbox, nested KWin,
-throwaway homes), never installed on the user's real desktop:
+throwaway homes). The user has now installed Platinum on their desktop:
 - colors, window decoration, application style (C++ QStyle, `style/platinum`),
   Qt Quick Controls style (`style/quick`: menus, menu bar, combo lists,
   tooltips, switches, dialogs, drawers, range sliders), Plasma style, menu
   bar, dock, global theme;
-- `install.sh` / `uninstall.sh` (user scope, full undo), through eight
-  Codex audit rounds; AUDIT.md has no open blocker.
+- `install.sh` / `uninstall.sh` (user scope, full undo), including retryable
+  Qt Quick cleanup. See AUDIT.md for findings #59–68.
 
 **Waiting on the user (don't do these without them):**
-1. The first real install on their desktop: `./install.sh`, log out and
-   in, `./install.sh --apply`, with the user watching their screens (AGENTS.md
-   "General rules": nothing touches the live desktop without their OK).
+1. Completed by the user, first real desktop install: `./install.sh`, log out and
+   in, `./install.sh --apply`, then a fresh login for Qt Quick controls, with
+   the user watching their screens, as required by AGENTS.md.
 2. Their on-screen review of everything (#3, the Qt Quick style, waits for
    it).
 3. Decisions already made stay: decisions 10-13 below (main screen only, no
@@ -27,7 +27,7 @@ throwaway homes), never installed on the user's real desktop:
 (decision 8), fonts, GTK theme, extras; publication questions (#25, name).
 
 **Before finishing any change, run the suites** (expected results are kept
-in `docs/AUDIT-REQUEST.md`; today 135/135, 7/7, 272/272, 19/19, 21/21):
+in `docs/AUDIT-REQUEST.md`; today 135/135, 7/7, 312/312, 19/19, 21/21):
 `dev/check-style.sh`, `dev/check-plasma.sh`, `dev/test-install.sh`,
 `dev/test-install-live.sh`, `dev/check-quick.sh` (DEVELOPMENT.md says what
 each covers). Audit rounds: Codex appends to AUDIT.md; verify each finding,
@@ -41,16 +41,16 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | Component  | Folder(s)                 | Claimed by | Status      |
 |------------|---------------------------|------------|-------------|
 | shared     | docs, tools, dev, scripts | nobody | dev/ sandbox + tools/compare.py done; test-install-live.sh added; docs fixed (AUDIT 24) |
-| reference  | reference/, docs/REFERENCE.md | nobody | capture pass done (81 captures, CAPTURES.md); measurements partial |
+| reference  | reference/, docs/REFERENCE.md | nobody | 81 VM captures; first real Platinum desktop archived at 100%, 150% and 200% in reference/testing/; measurements partial |
 | colors     | colors/                   | nobody     | Platinum.colors done (sandbox-checked) |
 | decoration | decoration/               | nobody | plugin works in nested KWin; frame pixel exact; only the three Mac OS 9 boxes are created (AUDIT 20) |
-| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); Qt Quick style in style/quick: menus, menu bar, combo list, tooltips, switches (AUDIT 3, check-quick 21/21; installed by install.sh); also dialogs (measured modal frame), drawers, range sliders; open: editable combo, size grip |
+| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); Qt Quick style in style/quick: menus, menu bar, combo list, tooltips, switches (AUDIT 3, check-quick 21/21; installed by install.sh); also dialogs (measured modal frame), drawers, range sliders; combo lists track live model edits (#63); open: editable combo, size grip |
 | plasma     | plasma/                   | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); main screen only (decision 10); menu bar resizing on hold (AUDIT 23, user) |
 | icons      | icons/                    | nobody     | not started |
 | cursors    | cursors/                  | nobody     | not started |
 | gtk        | gtk/                      | nobody     | not started |
 | extras     | extras/, wallpapers/      | nobody     | not started |
-| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's four audits (#4-#14, #27-#31, #34-#42 fixed: moved-aside targets, record written first and taken off step by step so a retry never redoes a step, GTK files in the backup, shell stopped while restoring, decoration version guard, paths checked against where they led, recorded temporaries, same XDG folders required, checksums so your own additions and changes stay, a checked config copy, a stopped shell started by the next run); also installs the Qt Quick style (with a link target kind for Kirigami's plugin); test-install 272/272, test-install-live 19/19 (running Plasma, two screens; after uninstall a pass-through keeps the session's Qt Quick apps working until the next login); not run on the real desktop yet |
+| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's four audits (#4-#14, #27-#31, #34-#42 fixed: moved-aside targets, record written first and taken off step by step so a retry never redoes a step, GTK files in the backup, shell stopped while restoring, decoration version guard, paths checked against where they led, recorded temporaries, same XDG folders required, checksums so your own additions and changes stay, a checked config copy, a stopped shell started by the next run); also installs the Qt Quick style (with a link target kind for Kirigami's plugin); cleanup and backup fixes #59–65 verified; test-install 312/312, test-install-live 19/19 (running Plasma, two screens; after uninstall a pass-through keeps the session's Qt Quick apps working until the next login); first desktop install completed by user; desktop uninstall untested |
 
 ## Goal
 

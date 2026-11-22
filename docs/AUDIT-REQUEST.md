@@ -54,7 +54,7 @@ dev/test-install-live.sh
 ```
 
 Expected: 135 of 135 style regions pixel exact, 7 of 7 Plasma parts exact,
-272 of 272 install checks, 19 of 19 live checks, 21 of 21 Qt Quick checks (`dev/check-quick.sh`). Report any difference with its output. Then look
+312 of 312 install checks, 19 of 19 live checks, 21 of 21 Qt Quick checks (`dev/check-quick.sh`). Report any difference with its output. Then look
 at the renders yourself (`dev/shots/`), not only the numbers.
 
 ## What to audit

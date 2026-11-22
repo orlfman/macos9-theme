@@ -187,7 +187,7 @@ plugin for it (`style/build/plugins/kf6/kirigami/platform/Platinum.so`).
 `dev/check-quick.sh` (21 checks) renders the Qt Quick menus (first and last row
 selected), combo box list, menu bar, switch indicator, tooltip, dialog
 frame, range slider (and where KDE's hidden handles sit), drawer edge and a
-combo box narrower than its items
+combo box whose longest label changes while its item count stays the same
 (`dev/quick-regions.qml`) and compares each with its widget counterpart
 (`dev/quickref.cpp`) pixel for pixel; then it switches the app to Fusion
 while running and compares the same pieces with KDE's own style under
@@ -245,7 +245,11 @@ login, a profile with none of the copied files, a cut-short checksum list;
 from findings 54-58: a login script of the user's at the pass-through
 script's name, a Kirigami link of the user's, a file or folder of the
 user's at the Qt Quick module's place, a backslash in a copied file's
-name, and a dry run that shows the pass-through. The plugins are built once and
+name, and a dry run that shows the pass-through. The suite also checks
+saved copies and edits to the cleanup hook, edits to its QML module, backup
+filenames ending in a newline, a dry run with a displaced folder waiting
+for a vacant path, and retries after a failure creating either the temporary
+plugin link or the QML module. The plugins are built once and
 handed to install.sh through `M9_PREBUILT` (tests only). It uses
 `dev/build/styleshot` (from `dev/check-style.sh`) to check the installed
 style plugin loads.

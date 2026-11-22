@@ -15,7 +15,7 @@ look). Still to come: icons, cursors, fonts, GTK, extras. Details in
 
 Everything goes into your home; no root. It needs a C++ compiler and the
 Qt 6 and KDecoration 3 development files (on Arch: `base-devel`, `qt6-base`,
-`kdecoration`).
+`qt6-declarative`, `kcoreaddons` and `kdecoration`).
 
 ```bash
 ./install.sh
@@ -31,7 +31,8 @@ style and the window decoration), and switch:
 `--apply` applies the Platinum global theme. It replaces your panels with
 the menu bar and the dock, and puts the close box on the left. Only the
 main screen gets the menu bar and the dock (like Mac OS 9). `--dry-run`
-shows what either step would do.
+shows what either step would do. On a first switch from Breeze, log out and
+back in after applying so Qt Quick apps start with Platinum controls.
 
 Your config files (panels, colors, style, decoration, and the GTK
 settings Plasma rewrites when the colors change) are copied when you
@@ -66,11 +67,11 @@ It stops Plasma's shell while it puts your panel layout back (the shell
 saves its layout when it quits) and starts it again. Your config files as
 they were just before uninstalling, and the copy that was put back, are
 kept in `~/.local/state/macos9-theme-uninstalled-*`. Log out and back in
-once afterwards. Until then, apps you start keep working: your session
-still names the Platinum Qt Quick style, so uninstall leaves a small
-pass-through in its place (it just hands over to KDE's style) that removes
-itself at your next login. It only goes where nothing of yours is, and
-removes only what it made.
+once afterwards. Until you do, launchers from the old session still request
+the Platinum Qt Quick style. Uninstall normally leaves a temporary module
+that forwards those apps to KDE's style and removes itself at the next
+login. If a personal file or folder occupies its location, uninstall keeps
+it and reports that those apps may need a fresh login to start.
 
 Files and folders you added to or changed in what the theme installed (an
 extra SVG in its Plasma style, an edited color scheme) are left where they

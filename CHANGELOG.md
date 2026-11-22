@@ -2,6 +2,32 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Codex (GPT-6) — archive first desktop scaling comparison
+
+Saved the user's three 3840 × 2160 Plasma screenshots at 100%, 150% and
+200% under the private reference repository's testing folder. Each indexed
+PNG matched the source checksum. Private backup commit `34dfcad`.
+
+## 2026-11-21, Codex (GPT-6) — preserve personal cleanup files and repair Qt Quick model updates
+
+Audited Claude's changes through `49c340b` and fixed findings #59–68 in
+the working tree. Reinstall preserves copies and edits of the login hook.
+Cleanup preserves an edited QML module, and an interrupted uninstall can
+finish on retry. Backups restore GTK assets with a trailing newline in
+their name. The dry run accounts for originals waiting to be restored.
+
+Qt Quick combo lists now resize when a model renames an option. The idle
+menu-bar comparison runs clear of the offscreen pointer. The install
+instructions list the build dependencies and explain when Qt Quick apps
+need a new login, both after the first switch and after an uninstall that
+restores a personal file at the module path.
+
+Verified 312 installer checks, 19 nested Plasma install/undo checks,
+135 widget comparisons, 21 Qt Quick checks and seven Plasma artwork checks.
+Three additional pairs of Fusion renders produced identical idle menu bars.
+AUDIT.md records the reproductions, migration checks and test limits.
+The fixes are in `ef8250a` and `fb4156f`. The later desktop captures are indexed above.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for findings #53–#58
 
 - **Pass-through after uninstall (#54–#56, #58)**: never over anything of

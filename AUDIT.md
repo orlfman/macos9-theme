@@ -3,7 +3,30 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: Findings #53–#58 are fixed and tested; nothing blocks the first desktop install except the user's go-ahead. Open: #3 (P3) waits for the user's review of the Qt Quick style. User decisions still apply to #21 (main screen only), #26 (RTL unsupported), #23 (resizing on hold) and #25 (deferred until publication).
+Status: #53–58 passed their original regression cases. #59–68 are fixed in this revision, including code commits `ef8250a` and `fb4156f`. The user has completed the first desktop install. #3 (P3) awaits the user's visual review. The decisions on #21, #23, #25 and #26 still apply.
+
+## 2026-11-21, Codex (GPT-6) — audit and repair Claude's latest changes
+
+Reviewed commits `e1fe656` and `49c340b`. Locations below refer to the audited commit so they remain usable after the fixes. All findings were fixed locally and checked in disposable homes.
+
+| Finding | Location at `49c340b` | Reproduction and repair |
+|---|---|---|
+| #59 · P1 · fixed | `scripts/common.sh:835` | Saved copies of the generated login hook as `-saved.sh` and `-2.sh`. Reinstall deleted both. Reinstall now identifies the hook by its own path and contents and reads it as data. The copies survived, and an edited hook survived simulated login and reinstall byte for byte. |
+| #60 · P1 · fixed | `scripts/common.sh:811` | Appended a personal line to the temporary `qmldir`. The next login deleted the file because its first line still matched. Cleanup now checks the whole regular file. The edited contents survived login and a subsequent install/uninstall round trip. |
+| #61 · P2 · fixed | `uninstall.sh:148` | Applied over a GTK asset whose filename ended in a newline, changed its contents, and ran uninstall. It refused the intact backup because command substitution stripped the final newline. Decoding directly into a variable restored the original name and bytes. |
+| #62 · P2 · fixed | `scripts/common.sh:800` | Forced creation of the temporary Kirigami link to fail. Uninstall exited 1, then its retry exited 0 with a QML module and no cleanup hook. The hook now goes in first, the complete module is published last, and a retry retires the interrupted attempt. Forced both link and module publication failures. In each case a retry restored the session module and the next login removed its directories. |
+| #63 · P2 · fixed | `style/quick/Platinum/ComboBox.qml:51` | Renamed a model item without changing the item count. The list stayed 65 px wide for text needing 292 px. A widget comparison with “Mountain Lavender” differed in 3,406 of 7,803 pixels. The width now observes the delegates' text. The 153 × 51 popup matched the widget pixel for pixel after the rename. |
+| #64 · P3 · fixed | `scripts/common.sh:771`, `uninstall.sh:345` | Seeded a personal file at the module path, installed, then moved the installed module out of the way. The dry run promised a pass-through at that empty path. The real run restored the personal file there. The preview now accounts for both removals and restorations. |
+| #65 · P3 · fixed | `scripts/common.sh:772`, `README.md:69` | With that personal file restored, a launcher still requesting Platinum failed with “module Platinum is not installed”. Uninstall had exited silently on the occupied path despite the README's assurance. It now explains the need for a fresh login and preserves the personal file. |
+| #66 · P3 · fixed | `install.sh:213`, `PLAN.md:17` | Followed the documented first switch from Breeze. An app started after apply still reported `org.kde.desktop`. It reported `Platinum` after sourcing the login environment again. The installer and first-install instructions now call out the login after apply. |
+| #67 · P3 · fixed | `README.md:17` | The dependency list omitted the providers of Qt Quick/QML and KF6 CoreAddons development files. Checked the build commands and the installed packages owning the three pkg-config files, then updated the list. |
+| #68 · P3 · fixed | `dev/quick-regions.qml:113` | A repeat of the Fusion fallback check differed in 977 pixels of the File title by one blue level. Both renders placed the idle test bar under the offscreen pointer while KDE animated the highlight. After moving the bar clear of the pointer, three fresh pairs of fallback and KDE renders were byte-identical. |
+
+The installer suite passed 312/312, nested two-screen Plasma 19/19, Qt Widgets 135/135, Qt Quick 21/21 and Plasma artwork 7/7. Also tested migration from both `0cd95a2` and `e1fe656` with untouched files, an edited module and an edited hook. Built the three plugins with ASan/UBSan and rendered the Quick scenes and decoration preview without sanitizer diagnostics, with leak detection disabled. Rendered the widget gallery at 1, 1.25, 1.5 and 2 times scale and a maximized window in nested KWin.
+
+The private reference matched the desktop sample at (5,500), all 20 rows of the menu-bar column at x=700, and the selected and unselected file-dialog samples. Inspected the checkbox comparison, nested menu and renamed combo. All 11 SVGs, three Plasma metadata files and the color scheme parsed. A binary-diff and filename scan of 44 reachable Git commits found no tracked private capture or font file. The publication review of pixel tables remains deferred under #25.
+
+The tests used private sessions, software rendering for Qt Quick, simulated logins and a stand-in for user systemd. A real login, the user's systemd service, physical mixed-DPI moves, a live package upgrade and the user's visual judgment remain unverified.
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for Codex's findings #53–#58
 
