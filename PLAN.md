@@ -25,11 +25,10 @@ Findings #75–77 are fixed. Uninstall keeps selected packages, apply
 warns if Qt can't open the JPEG XL images, and the live test checks
 the rendered default on both screens.
 
-The external black cursor theme (ID `macOS-cursors`, installed by `tools/install-black-cursors.sh`) is an optional stand-in.
-`install.sh --apply --black-cursors` selects it when Plasma lists that
-theme ID. The user can select it in Plasma's Cursors settings to keep
-their current layout. The cursor audit found three open issues (#78–80)
-covering archive extraction and cursor validation.
+The cursors are part of the theme: Apple Cursor v2.0.1's black set
+(GPL-3.0, `cursors/README.md`), shipped as `cursors/macOS-cursors.tar.xz`,
+installed as the theme `macOS-cursors` and selected by the global theme
+(cursor findings #78–#80 fixed, then the external route replaced).
 
 **Waiting on the user (don't do these without them):**
 1. Completed by the user, first real desktop install: `./install.sh`, log out and
@@ -43,11 +42,11 @@ covering archive extraction and cursor validation.
 4. Try the wallpapers on the desktop after updating the install and
    selecting them in the wallpaper settings.
 
-**Next work after that** (order of work below): icons (decision 7), cursors
-(decision 8), fonts, GTK theme, extras; publication questions (#25, name).
+**Next work after that** (order of work below): icons (decision 7),
+fonts, GTK theme, extras; publication questions (#25, name).
 
 **Before finishing any change, run the suites** (expected results are kept
-in `docs/AUDIT-REQUEST.md`; today 135/135, 19/19, 339/339, 36/36, 29/29):
+in `docs/AUDIT-REQUEST.md`; today 135/135, 19/19, 335/335, 37/37, 29/29):
 `dev/check-style.sh`, `dev/check-plasma.sh`, `dev/test-install.sh`,
 `dev/test-install-live.sh`, `dev/check-quick.sh` (DEVELOPMENT.md says what
 each covers). Audit rounds: Codex appends to AUDIT.md; verify each finding,
@@ -67,7 +66,7 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); Qt Quick style in style/quick: menus, menu bar, combo list, tooltips, switches (AUDIT 3, check-quick 29/29; installed by install.sh); also dialogs (measured modal frame), drawers, range sliders; combo lists track live model edits (#63); compact tab close indicator and selected state verified in Kwi (#71–74); open: editable combo, size grip |
 | plasma     | plasma/                   | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); main screen only (decision 10); resizable menu bar ends and divider (AUDIT 23), with complete divider dots and pixel comparisons across four panel heights (AUDIT 69–70) |
 | icons      | icons/                    | nobody     | not started |
-| cursors    | cursors/                  | nobody | optional external black cursor theme (`macOS-cursors`) wired and verified in nested Plasma; audit #78–#80 fixed. Original cursor artwork remains pending. |
+| cursors    | cursors/                  | nobody | bundled black cursors (`macOS-cursors`) installed and selected by the global theme, verified in nested Plasma; audit #78–#80 fixed. No cursors of our own (decision 8, user). |
 | gtk        | gtk/                      | nobody     | not started |
 | extras     | extras/, wallpapers/      | nobody | Pastel Ribbon Landscape and Lavender Desktop Pattern packaged with the global theme. Terminal colors, SDDM, splash, and lock screen remain. |
 | packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's four audits (#4-#14, #27-#31, #34-#42 fixed: moved-aside targets, record written first and taken off step by step so a retry never redoes a step, GTK files in the backup, shell stopped while restoring, decoration version guard, paths checked against where they led, recorded temporaries, same XDG folders required, checksums so your own additions and changes stay, a checked config copy, a stopped shell started by the next run); also installs the Qt Quick style (with a link target kind for Kirigami's plugin); cleanup and backup fixes #59–65 verified; test-install 339/339, test-install-live 36/36 (running Plasma, two screens; after uninstall a pass-through keeps the session's Qt Quick apps working until the next login); first desktop install completed by user; desktop uninstall untested |
@@ -122,7 +121,12 @@ Open decisions need the user. Record the answer here with the date.
 8. **Cursors.** **Decided 2026-11-21 (user):** our own, or one of the many
    Mac OS X cursor packs as a temporary stand-in ("not ideal but a temp
    thing ... while focusing more on the meat"). The black variant of
-   ful1e5/apple_cursor is the optional external stand-in.
+   ful1e5/apple_cursor is the optional external stand-in. **Updated
+   2026-11-21 (user):** no cursors of our own; the Apple Cursor pack is the
+   cursor set to use ("those mac os icons are the perfect ones"), kept
+   bundled in `cursors/` (user, 2026-11-21: "option 1"), installed as
+   `macOS-cursors` and selected by the global theme. The ID breaks the
+   "no Mac OS in IDs" rule by the user's explicit choice.
 9. **Dock.** **Decided 2026-11-21 (user):** window management may stray
    from Mac OS 9: "even though the dock came in OS X, I would like to use
    it in 'os 9.' Bring the dock over, but make it designed around os 9

@@ -2,6 +2,19 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — bundle the cursors
+
+- `cursors/macOS-cursors.tar.xz`: Apple Cursor v2.0.1's black theme
+  (GPL-3.0, license inside; provenance and how it was repacked in
+  `cursors/README.md`), the folder renamed `macOS-cursors`.
+- install.sh unpacks it, checks the pointer file, installs it to
+  `~/.local/share/icons/macOS-cursors` (a recorded, checksummed target;
+  links inside installed folders are now recorded by where they point);
+  the global theme's defaults select it. Uninstall removes it.
+- Removed: `--black-cursors` and `tools/install-black-cursors.sh` (no
+  download step any more).
+- Checks: install 335/335, live 37/37, Plasma 19/19. Uncommitted.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — black cursor fixes (#78–#80), theme renamed macOS-cursors
 
 - The optional black cursor theme's ID is now `macOS-cursors`.

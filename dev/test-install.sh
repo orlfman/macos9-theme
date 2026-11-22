@@ -164,7 +164,7 @@ for id in platinum-ribbon platinum-lavender; do
         "$project/wallpapers/$id/contents/images/3840x2160.jxl" \
         "$data/wallpapers/$id/contents/images/3840x2160.jxl"
 done
-check "the record lists the 11 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 11
+check "the record lists the 12 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 12
 check "Kirigami's plugin link for the Qt Quick style points at KDE's" \
     bash -c "[[ \$(readlink '$home/.local/lib/macos9-theme/style/kf6/kirigami/platform/Platinum.so') == */kf6/kirigami/platform/org.kde.desktop.so ]]"
 check "install alone leaves the config files alone" same "$seed" "$(config_state)"
@@ -190,8 +190,8 @@ else
     echo "skip    the installed style plugin loads (build dev/build/styleshot first: dev/check-style.sh)"
 fi
 check "a second plain install exits 0" run install-2 "$project/install.sh"
-check "the record still lists 11 targets, nothing moved aside" \
-    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 11 ]] && ! grep -q '^displaced' '$state/installed'"
+check "the record still lists 12 targets, nothing moved aside" \
+    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 12 ]] && ! grep -q '^displaced' '$state/installed'"
 
 check "--apply exits 0" run apply env QT_PLUGIN_PATH="$plugins/style:$plugins/decoration" "$project/install.sh" --apply
 check "--apply explains the next login for Qt Quick apps" grep -Fq 'Log out and back in for Qt Quick apps' "$root/$n-apply.log"
@@ -858,70 +858,17 @@ check "apply warns about the missing JPEG XL decoder before switching" awk '
 ' "$root/$n-apply.log"
 check "uninstall exits 0" run undo "$project/uninstall.sh"
 
-fresh "the black cursor option requires the black theme"
-# (theme folders: index.theme and a cursors folder of real Xcursor files)
-cursor_theme() { # id title [cursors-dir]
-    mkdir -p "$home/.icons/$1"
-    printf '[Icon Theme]\nName=%s\n' "$2" > "$home/.icons/$1/index.theme"
-    ln -s "${3:-/usr/share/icons/breeze_cursors/cursors}" "$home/.icons/$1/cursors"
-}
-cursor_theme macOS-White "White cursor test fixture"
-before=$(snapshot)
-if run white-only "$project/install.sh" --apply --black-cursors; then
-    fail "white alone is rejected"
-else
-    check "white alone is rejected" grep -Fq 'the black cursor theme (macOS-cursors) is missing' "$root/$n-white-only.log"
-fi
-check "missing black pack changes nothing" same "$before" "$(snapshot)"
-if run flags "$project/install.sh" --black-cursors; then
-    fail "black cursor flag requires apply"
-else
-    check "black cursor flag requires apply" grep -Fq -- '--black-cursors requires --apply' "$root/$n-flags.log"
-fi
-# Finding 79: the ID in another theme's title isn't the theme.
-cursor_theme decoy "White [macOS-cursors]"
-if run decoy "$project/install.sh" --apply --black-cursors --dry-run; then
-    fail "a title naming the ID isn't taken for the theme (finding 79)"
-else
-    check "a title naming the ID isn't taken for the theme (finding 79)" grep -Fq 'is missing' "$root/$n-decoy.log"
-fi
-rm -rf "$home/.icons/decoy"
-# Finding 80: a listed pack with a broken pointer is refused.
-mkdir -p "$root/broken-cursors"
-cp -a /usr/share/icons/breeze_cursors/cursors/. "$root/broken-cursors/"
-rm -f "$root/broken-cursors/left_ptr"
-head -c 200 "$(readlink -f /usr/share/icons/breeze_cursors/cursors/left_ptr)" > "$root/broken-cursors/left_ptr"
-cursor_theme macOS-cursors "macOS" "$root/broken-cursors"
-before=$(snapshot)
-if run broken "$project/install.sh" --apply --black-cursors; then
-    fail "a black pack with a broken pointer is refused (finding 80)"
-else
-    check "a black pack with a broken pointer is refused (finding 80)" grep -Fq 'is damaged' "$root/$n-broken.log"
-fi
-check "  and nothing changed" same "$before" "$(snapshot)"
-rm -rf "$home/.icons/macOS-cursors" "$root/broken-cursors"
-mv "$home/.icons/macOS-White" "$home/.icons/macOS-cursors"
-before=$(snapshot)
-check "black cursor dry run exits 0" run dry "$project/install.sh" --apply --black-cursors --dry-run
-check "black cursor dry run shows the choice" grep -Fq 'would set the black macOS cursor theme (macOS-cursors)' "$root/$n-dry.log"
-check "black cursor dry run changes nothing" same "$before" "$(snapshot)"
-
-fresh "installing the black cursors never replaces a theme already there (finding 78)"
-mkdir -p "$root/pack/macOS/cursors"
-printf '[Icon Theme]\nName=macOS\n' > "$root/pack/macOS/index.theme"
-cp -L /usr/share/icons/breeze_cursors/cursors/left_ptr "$root/pack/macOS/cursors/left_ptr"
-tar -cJf "$root/macOS.tar.xz" -C "$root/pack" ./macOS
-check "the helper installs it as macOS-cursors" run cursors "$project/tools/install-black-cursors.sh" "$root/macOS.tar.xz"
-check "  with its files" cmp -s "$root/pack/macOS/index.theme" "$home/.icons/macOS-cursors/index.theme"
-printf '[Icon Theme]\nName=Mine\n' > "$home/.icons/macOS-cursors/index.theme"
-before=$(snapshot)
-if run cursors-again "$project/tools/install-black-cursors.sh" "$root/macOS.tar.xz"; then
-    fail "a second run refuses an existing macOS-cursors"
-else
-    check "a second run refuses an existing macOS-cursors" grep -Fq 'already exists' "$root/$n-cursors-again.log"
-fi
-check "  and keeps the user's file" same "$before" "$(snapshot)"
-rm -rf "$root/pack" "$root/macOS.tar.xz"
+fresh "the cursors: installed with the theme, selected by the switch, removed again"
+cursors=$data/icons/macOS-cursors
+check "install exits 0" run install "$project/install.sh"
+check "  the cursor theme is installed" test -f "$cursors/index.theme"
+check "  its pointer is a whole cursor file" bash -c "source <(sed -n '/^xcursor_ok() {/,/^}/p' '$project/scripts/common.sh'); xcursor_ok '$cursors/cursors/left_ptr'"
+check "  its links are kept as links" bash -c "[[ \$(find '$cursors' -type l | wc -l) -gt 100 && -L '$cursors/cursors/x-cursor' ]]"
+check "--apply exits 0" run apply "$project/install.sh" --apply
+check "  the global theme selects macOS-cursors" grep -qx 'cursorTheme=macOS-cursors' "$config/kdedefaults/kcminputrc"
+check "uninstall exits 0" run uninstall "$project/uninstall.sh"
+check "  the cursor theme is gone" test ! -e "$cursors"
+check "  and the config is as seeded" same "$seed" "$(config_state)"
 
 echo
 if ((failed)); then

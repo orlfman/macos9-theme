@@ -110,19 +110,11 @@ they'll be redrawn before any public release (AUDIT.md finding 25).
 
 For contributors and AI agents: [AGENTS.md](AGENTS.md).
 
-### Optional black cursors
+### Cursors
 
-Download `macOS.tar.xz` from the [Apple Cursor v2.0.1 release](https://github.com/ful1e5/apple_cursor/releases/tag/v2.0.1),
-then install its black `macOS` folder as the cursor theme `macOS-cursors`
-(it goes to `~/.icons/macOS-cursors`; if that already exists, nothing is
-changed):
-
-```bash
-./tools/install-black-cursors.sh ~/Downloads/macOS.tar.xz
-```
-
-Choose **macOS** (listed with `[macOS-cursors]`) in Plasma's Cursors
-settings to keep your current panel layout. When applying the entire global theme, the command
-`./install.sh --apply --black-cursors` selects the same pack. Log out
-and back in to load the cursor throughout the session. The pack is installed independently and
-Platinum's uninstall restores the cursor preference saved before applying.
+The theme comes with black Mac-style cursors: Apple Cursor v2.0.1 by
+ful1e5 (GPL-3.0, see `cursors/README.md`). `./install.sh` installs them as
+the cursor theme `macOS-cursors`, and `--apply` selects them along with the
+rest of the global theme; you can also pick **macOS** in Plasma's Cursors
+settings on its own. Log out and back in to load them everywhere.
+Uninstalling removes them and puts back the cursor you had.

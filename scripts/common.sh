@@ -109,6 +109,9 @@ deco_plugins=$libdir/decoration
 quick_qml=$libdir/qml
 quick_module=$quick_qml/Platinum
 kirigami_link=$plugins/kf6/kirigami/platform/Platinum.so
+# The cursor theme (cursors/macOS-cursors.tar.xz), where libXcursor and
+# Plasma look for themes in your data folder.
+cursor_theme_dir=$data/icons/macOS-cursors
 # Left by uninstall.sh for the rest of the session (finding 49), removed by
 # itself at the next login.
 cleanup_script=$config_home/plasma-workspace/env/macos9-theme-cleanup.sh
@@ -148,6 +151,7 @@ targets=(
     "dir	$data/plasma/look-and-feel/$lnf_id"
     "dir	$quick_module"
     "link	$kirigami_link"
+    "dir	$cursor_theme_dir"
 )
 for wallpaper_id in "${wallpaper_ids[@]}"; do
     targets+=("dir	$data/wallpapers/$wallpaper_id")
@@ -216,31 +220,11 @@ drop_plasma_caches() {
     return 0
 }
 
-# --- The optional black cursors ------------------------------------------
+# --- The cursors ------------------------------------------------------------
 #
-# An external pack (Apple Cursor v2.0.1's black "macOS" folder), installed
-# under this ID by tools/install-black-cursors.sh.
+# Apple Cursor v2.0.1's black theme (cursors/README.md), installed under
+# this ID; the global theme selects it (PLAN.md decision 8).
 black_cursor_id=macOS-cursors
-
-# The folder of the cursor theme ID, where Qt and Plasma look (the first
-# with an index.theme), or nothing.
-find_cursor_theme() { # id
-    local dir base
-    local -a bases=("$home/.icons" "$data/icons")
-    IFS=: read -r -a more <<< "${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
-    for base in "${more[@]}"; do
-        [[ $base == /* ]] && bases+=("$base/icons")
-    done
-    bases+=(/usr/share/pixmaps)
-    for base in "${bases[@]}"; do
-        dir=$base/$1
-        if [[ -f $dir/index.theme && -d $dir/cursors ]]; then
-            printf '%s' "$dir"
-            return 0
-        fi
-    done
-    return 1
-}
 
 # Is FILE a whole Xcursor file: the magic, a table of contents with an
 # image, and that image's header and pixels inside the file?
@@ -439,6 +423,10 @@ record_sums() { # source target
         while IFS= read -r -d '' rel; do
             new_sums[$2/${rel#./}]=$(sha_of "$1/$rel")
         done < <(cd "$1" && find . -type f -print0)
+        # Links inside (the cursor theme has many): where they point.
+        while IFS= read -r -d '' rel; do
+            new_sums[$2/${rel#./}]="->$(readlink "$1/$rel")"
+        done < <(cd "$1" && find . -type l -print0)
     fi
     for path in "${!new_sums[@]}"; do
         sum="sum	$path	${new_sums[$path]}"
@@ -476,7 +464,13 @@ index_sums() {
 # Is PATH a regular file whose content install.sh put there? (index_sums
 # first.)
 installed_file() { # path
-    [[ -f $1 && ! -L $1 ]] || return 1
+    if [[ -L $1 ]]; then
+        # (a link install.sh made inside an installed folder, pointing
+        # where it did)
+        [[ -n ${sum_index[$1	->$(readlink "$1")]:-} ]]
+        return
+    fi
+    [[ -f $1 ]] || return 1
     [[ -n ${sum_index[$1	$(sha_of "$1")]:-} ]]
 }
 

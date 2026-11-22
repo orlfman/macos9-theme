@@ -13,14 +13,13 @@
 # and uninstall.sh removes everything this installed and puts back anything
 # it moved aside.
 #
-# usage: install.sh [--apply [--black-cursors]] [--dry-run]
+# usage: install.sh [--apply] [--dry-run]
 #   --apply    also switch to the theme: applies the Platinum global theme
-#              (replaces your panels and selects the wallpaper) and
+#              (replaces your panels, selects the wallpaper and the
+#              cursors) and
 #              sets the title bar buttons to close-left, zoom and collapse
 #              right. Your config files are copied first, so uninstall.sh
 #              puts them back exactly.
-#   --black-cursors  with --apply, use the separately installed black macOS
-#                    cursors (theme macOS-cursors, tools/install-black-cursors.sh)
 #   --dry-run  only show what would be done
 #   -h, --help show this help
 #
@@ -39,12 +38,10 @@ usage() {
 }
 
 apply=0
-black_cursors=0
 dry=0
 for arg in "$@"; do
     case $arg in
         --apply) apply=1 ;;
-        --black-cursors) black_cursors=1 ;;
         --dry-run) dry=1 ;;
         -h | --help) usage; exit 0 ;;
         *) usage >&2; exit 2 ;;
@@ -56,26 +53,11 @@ source "$here/scripts/common.sh"
 dry_run=$dry
 
 refuse_root
-if ((black_cursors && !apply)); then
-    die "--black-cursors requires --apply. To change only the cursor, use Plasma's Cursors settings."
-fi
-need g++ pkg-config install ldd readlink mktemp
+need g++ pkg-config install ldd readlink mktemp tar od stat
 if ((apply)); then
     need plasma-apply-lookandfeel kwriteconfig6
 fi
 
-if ((black_cursors)); then
-    need plasma-apply-cursortheme od
-    cursor_themes=$(LC_ALL=C QT_QPA_PLATFORM=offscreen plasma-apply-cursortheme --list-themes 2>/dev/null) ||
-        die "couldn't list the installed Plasma cursor themes"
-    # Plasma lists "Title [ID]": match the ID at the end of a line, not text
-    # in another theme's title (finding 79).
-    grep -Eq "\[${black_cursor_id}\]\$" <<< "$cursor_themes" && black_cursor_dir=$(find_cursor_theme "$black_cursor_id") ||
-        die "the black cursor theme ($black_cursor_id) is missing. Install it with tools/install-black-cursors.sh first (see README.md)."
-    # Its pointer must be a whole cursor file before switching (finding 80).
-    xcursor_ok "$black_cursor_dir/cursors/left_ptr" ||
-        die "the black cursor theme in $black_cursor_dir is damaged (its left_ptr pointer isn't a valid cursor file). Install it again with tools/install-black-cursors.sh."
-fi
 
 for wallpaper_id in "${wallpaper_ids[@]}"; do
     wallpaper_source=$here/wallpapers/$wallpaper_id
@@ -184,6 +166,17 @@ if [[ -n $kde_quick_version ]]; then
     place_link "$kirigami_desktop" "$kirigami_link"
     say "Installed the Qt Quick style into $quick_qml"
 fi
+# The cursors (cursors/README.md): unpacked from the archive, checked,
+# installed as a theme folder; the global theme selects them.
+if ((!dry_run)); then
+    mkdir -p "$build/cursors"
+    tar -xJf "$here/cursors/macOS-cursors.tar.xz" -C "$build/cursors" macOS-cursors ||
+        die "couldn't unpack cursors/macOS-cursors.tar.xz; nothing more was installed"
+    xcursor_ok "$build/cursors/macOS-cursors/cursors/left_ptr" ||
+        die "cursors/macOS-cursors.tar.xz holds no usable cursor theme; nothing more was installed"
+fi
+place_dir "$build/cursors/macOS-cursors" "$cursor_theme_dir"
+say "Installed the cursors into $cursor_theme_dir"
 place_file "$here/colors/$scheme_name.colors" "$data/color-schemes/$scheme_name.colors" 644
 say "Installed the color scheme \"Platinum\""
 place_dir "$here/plasma/platinum" "$data/plasma/desktoptheme/$plasma_theme"
@@ -245,13 +238,6 @@ if ((apply)); then
             die "switching to the Platinum global theme failed (plasma-apply-lookandfeel). Your config files are copied: uninstall.sh puts them back, or try install.sh --apply again"
         fi
         say "Switched to the Platinum global theme"
-    fi
-    if ((black_cursors)); then
-        plan "set the black macOS cursor theme ($black_cursor_id) in kcminputrc"
-        if ((!dry_run)); then
-            kwriteconfig6 --file kcminputrc --group Mouse --key cursorTheme "$black_cursor_id"
-            say "Selected the black macOS cursor theme. Log out and back in to load it across the session."
-        fi
     fi
     # A global theme can't set the title bar button order (docs/FINDINGS.md).
     plan "set the title bar buttons in kwinrc: close on the left, zoom and collapse on the right"

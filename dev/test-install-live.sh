@@ -153,17 +153,22 @@ shell_js 'desktops().filter(function (d) { return d.screen >= 0; }).forEach(func
 before_backgrounds=$(desktop_backgrounds)
 check "the two screens start with their own solid wallpapers" same \
     "0:org.kde.color:27,73,109 1:org.kde.color:45,99,67" "$before_backgrounds"
-# Give Plasma a separate cursor theme under the upstream black theme ID.
-mkdir -p "$home/.icons/macOS-cursors"
-printf '[Icon Theme]\nName=Black cursor test fixture\n' > "$home/.icons/macOS-cursors/index.theme"
-ln -s /usr/share/icons/breeze_cursors/cursors "$home/.icons/macOS-cursors/cursors"
+# The cursor in effect: the user's own value, else the global theme's
+# default (kdedefaults).
+cursor_theme() {
+    local v
+    v=$(kreadconfig6 --file kcminputrc --group Mouse --key cursorTheme)
+    [[ -n $v ]] || v=$(kreadconfig6 --file "$config/kdedefaults/kcminputrc" --group Mouse --key cursorTheme)
+    printf '%s' "$v"
+}
 kwriteconfig6 --file kcminputrc --group Mouse --key cursorTheme Breeze_Light
 before_files=$(files_state)
 
 check "install exits 0" bash -c "'$project/install.sh' > '$root/install.log' 2>&1"
 check "install alone keeps both wallpapers" same "$before_backgrounds" "$(desktop_backgrounds)"
-check "install --apply --black-cursors exits 0" bash -c "'$project/install.sh' --apply --black-cursors > '$root/apply.log' 2>&1"
-check "apply selects the black theme ID" same macOS-cursors "$(kreadconfig6 --file kcminputrc --group Mouse --key cursorTheme)"
+check "install installed the cursor theme" test -r "$XDG_DATA_HOME/icons/macOS-cursors/cursors/left_ptr"
+check "install --apply exits 0" bash -c "'$project/install.sh' --apply > '$root/apply.log' 2>&1"
+check "apply selects the Platinum cursors (macOS-cursors)" same macOS-cursors "$(cursor_theme)"
 sleep 6
 after_panels=$(panels)
 echo "info    after --apply: $after_panels"
@@ -260,8 +265,8 @@ for id in platinum-ribbon platinum-lavender; do
     check "uninstall removed $id" test ! -e "$XDG_DATA_HOME/wallpapers/$id"
 done
 check "every config and GTK file is back byte for byte" same "$before_files" "$(files_state)"
-check "uninstall restored the previous cursor" same Breeze_Light "$(kreadconfig6 --file kcminputrc --group Mouse --key cursorTheme)"
-check "uninstall keeps the external black theme" test -r "$home/.icons/macOS-cursors/cursors/left_ptr"
+check "uninstall restored the previous cursor" same Breeze_Light "$(cursor_theme)"
+check "uninstall removed the cursor theme" test ! -e "$XDG_DATA_HOME/icons/macOS-cursors"
 touch "$root/go"
 launcher_status=0
 wait "$launcher" || launcher_status=$?

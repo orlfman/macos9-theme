@@ -14,7 +14,7 @@ name=platinum
 Image=platinum-ribbon
 
 [kcminputrc][Mouse]
-cursorTheme=breeze_cursors
+cursorTheme=macOS-cursors
 
 [kwinrc][org.kde.kdecoration2]
 library=platinum

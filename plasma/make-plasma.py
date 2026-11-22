@@ -612,7 +612,7 @@ def write_lookandfeel(base):
         "[kdeglobals][Icons]\nTheme=breeze\n\n"
         "[plasmarc][Theme]\nname=platinum\n\n"
         "[Wallpaper]\nImage=platinum-ribbon\n\n"
-        "[kcminputrc][Mouse]\ncursorTheme=breeze_cursors\n\n"
+        "[kcminputrc][Mouse]\ncursorTheme=macOS-cursors\n\n"
         "[kwinrc][org.kde.kdecoration2]\nlibrary=platinum\ntheme=\n")
     layout = (Path(__file__).resolve().parent / "layout.js").read_text()
     (root / "contents/layouts/org.kde.plasma.desktop-layout.js").write_text(
