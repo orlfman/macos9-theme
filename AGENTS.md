@@ -35,8 +35,10 @@ apply from the start.
 
 ## Read first
 
-1. `PLAN.md`: goal, fidelity rules, components, decisions, order of work, and
-   the **status block** (who is working on what).
+1. `PLAN.md`, its **status block** first: where things stand, what waits on
+   the user, the next work, and the suites to run (the handoff point; keep
+   it current when you finish). Then goal, fidelity rules, components,
+   decisions, order of work, and the Claims table (who is working on what).
 2. The newest entries in `CHANGELOG.md`: what the last session did and what's
    next.
 3. The status lines at the top of `AUDIT.md`: open findings.
@@ -130,8 +132,9 @@ row for the project-wide files.
 When finishing or stopping, even partway:
 
 1. Add a dated entry at the top of `CHANGELOG.md` (format below).
-2. Update the component status in `PLAN.md` and clear your Claims row
-   (`nobody`).
+2. Update `PLAN.md`'s status block (where things stand, what waits on the
+   user, next work, suite results) and the component status, and clear
+   your Claims row (`nobody`).
 3. If you audited or re-tested anything, update `AUDIT.md` (see Audits).
 4. Describe any uncommitted or half-done work in the CHANGELOG entry: which
    files, what state, what's next. The next agent must be able to continue

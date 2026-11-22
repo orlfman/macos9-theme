@@ -2,9 +2,37 @@
 
 ## Status
 
-Updated: 2026-11-21 (Claude Code). Phase: colors, decoration, style, Plasma
-(menu bar, dock, global theme) and install scripts built and checked headless;
-not yet installed on the real desktop. Next: icons, cursors, fonts, GTK.
+Updated: 2026-11-21 (Claude Code), at `e1fe656` on main (pushed).
+
+**Where things stand.** Built and checked headless (sandbox, nested KWin,
+throwaway homes), never installed on the user's real desktop:
+- colors, window decoration, application style (C++ QStyle, `style/platinum`),
+  Qt Quick Controls style (`style/quick`: menus, menu bar, combo lists,
+  tooltips, switches, dialogs, drawers, range sliders), Plasma style, menu
+  bar, dock, global theme;
+- `install.sh` / `uninstall.sh` (user scope, full undo), through eight
+  Codex audit rounds; AUDIT.md has no open blocker.
+
+**Waiting on the user (don't do these without them):**
+1. The first real install on their desktop: `./install.sh`, log out and
+   in, `./install.sh --apply`, with the user watching their screens (AGENTS.md
+   "General rules": nothing touches the live desktop without their OK).
+2. Their on-screen review of everything (#3, the Qt Quick style, waits for
+   it).
+3. Decisions already made stay: decisions 10-13 below (main screen only, no
+   right-to-left, #25 deferred to publication, #23 on hold, own Qt Quick
+   drawing item).
+
+**Next work after that** (order of work below): icons (decision 7), cursors
+(decision 8), fonts, GTK theme, extras; publication questions (#25, name).
+
+**Before finishing any change, run the suites** (expected results are kept
+in `docs/AUDIT-REQUEST.md`; today 135/135, 7/7, 272/272, 19/19, 21/21):
+`dev/check-style.sh`, `dev/check-plasma.sh`, `dev/test-install.sh`,
+`dev/test-install-live.sh`, `dev/check-quick.sh` (DEVELOPMENT.md says what
+each covers). Audit rounds: Codex appends to AUDIT.md; verify each finding,
+fix it with a test, record it there and in CHANGELOG.md; commit and push
+only when the user says so.
 
 ### Claims
 
