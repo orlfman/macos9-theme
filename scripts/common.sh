@@ -343,6 +343,8 @@ declare -gA new_sums=()
 record_sums() { # source target
     local rel sum path
     new_sums=()
+    # (a dry run has no build to read, and writes no record)
+    ((dry_run)) && return 0
     if [[ -f $1 ]]; then
         new_sums[$2]=$(sha_of "$1")
     else
@@ -390,13 +392,36 @@ installed_file() { # path
     [[ -n ${sum_index[$1	$(sha_of "$1")]:-} ]]
 }
 
-# Is everything in the folder PATH as install.sh put it (nothing added or
-# changed; files it installed may be missing)?
+# The folders inside the installed folder PATH that install.sh made: the
+# ones above a recorded file (index_sums first). Result in our_dir.
+declare -gA our_dir=()
+our_dirs() { # path
+    local key item
+    our_dir=()
+    for key in "${!sum_index[@]}"; do
+        item=${key%%	*}
+        [[ $item == "$1"/* ]] || continue
+        item=$(dirname "$item")
+        while [[ $item == "$1"/* ]]; do
+            our_dir[$item]=1
+            item=$(dirname "$item")
+        done
+    done
+    return 0
+}
+
+# Is everything in the folder PATH as install.sh put it (no file or folder
+# added, no file changed; files it installed may be missing)?
 installed_tree() { # path
     local item
+    our_dirs "$1"
     while IFS= read -r -d '' item; do
-        installed_file "$item" || return 1
-    done < <(find "$1" -mindepth 1 ! -type d -print0)
+        if [[ -d $item && ! -L $item ]]; then
+            [[ -n ${our_dir[$item]:-} ]] || return 1 # a folder of yours (finding 41)
+        else
+            installed_file "$item" || return 1
+        fi
+    done < <(find "$1" -mindepth 1 -print0)
     return 0
 }
 

@@ -191,7 +191,10 @@ leftovers, a different data or config folder at uninstall time, and from
 findings 34-38: a link inside a copied folder, files the user added to or
 changed in what was installed (kept by uninstall, moved aside by a
 reinstall), an incomplete or changed config copy, a dry run that matches
-the real run, and a shell that won't start again (a stand-in systemd); a
+the real run, and a shell that won't start again (a stand-in systemd);
+from findings 39-42: two versions of the same file moved aside, a file
+missing inside a copied folder, an empty folder the user added, and a dry
+run on a fresh home printing no errors; a
 leftover half-made backup, a held lock, and a home path with spaces and
 quotes. The plugins are built once and
 handed to install.sh through `M9_PREBUILT` (tests only). It uses

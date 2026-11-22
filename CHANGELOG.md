@@ -2,6 +2,25 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for findings #39–#42
+
+- **Two versions moved aside from one place (#39):** uninstall puts back
+  the one from before the first install and keeps the later ones in the
+  dated folder (`later-versions/`), naming them.
+- **Config copy check (#40):** a file missing or changed anywhere in the
+  copy, inside copied folders too, now stops uninstall before any change.
+- **Empty folders you add (#41):** count as a change, so a reinstall moves
+  the installed folder aside instead of replacing it.
+- **Dry run (#42):** no more "No such file" lines on a fresh home.
+
+Checks: install 214/214, live 15/15. Not run on the real desktop.
+
+## 2026-11-21, Codex (GPT-6) — review repeated installs and backup integrity
+
+Audited `cdbde37` and recorded #39–42 in AUDIT.md. Reinstall followed by uninstall can overwrite the original of two displaced color schemes. A missing child of a backed-up directory can also pass validation and disappear from the restored config. The packaging maintainer should address these two cases before the first real install. Empty user directories lost on reinstall and spurious dry-run diagnostics are lower priority.
+
+Passed 193/193 installer checks, 15/15 nested live checks, 131/131 style regions and 7/7 Plasma regions. Rendered four scale factors, a maximized window and sanitizer builds of both renderers. Physical screens, real systemd recovery and library upgrades remain unverified. Only the audit and changelog changed.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for findings #34–#38; plan for #3
 
 - **Links inside copied folders (#34):** install refuses them before any

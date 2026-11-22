@@ -22,7 +22,7 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | cursors    | cursors/                  | nobody     | not started |
 | gtk        | gtk/                      | nobody     | not started |
 | extras     | extras/, wallpapers/      | nobody     | not started |
-| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's three audits (#4-#14, #27-#31, #34-#38 fixed: moved-aside targets, record written first and taken off step by step so a retry never redoes a step, GTK files in the backup, shell stopped while restoring, decoration version guard, paths checked against where they led, recorded temporaries, same XDG folders required, checksums so your own additions and changes stay, a checked config copy, a stopped shell started by the next run); test-install 193/193, test-install-live 15/15 (running Plasma, two screens); not run on the real desktop yet |
+| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's four audits (#4-#14, #27-#31, #34-#42 fixed: moved-aside targets, record written first and taken off step by step so a retry never redoes a step, GTK files in the backup, shell stopped while restoring, decoration version guard, paths checked against where they led, recorded temporaries, same XDG folders required, checksums so your own additions and changes stay, a checked config copy, a stopped shell started by the next run); test-install 214/214, test-install-live 15/15 (running Plasma, two screens); not run on the real desktop yet |
 
 ## Goal
 

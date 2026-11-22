@@ -3,7 +3,56 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: Findings #34–#38 are fixed and tested in throwaway homes; nothing blocks the first desktop install except the user's go-ahead. Open: #3 (P3, plan in PLAN.md). Deferred by the user: #25 (P1, until going public), #23 (P3, on hold). Closed by the user: #26 (right-to-left not supported), #21 (main screen only).
+Status: Findings #39–#42 are fixed and tested in throwaway homes; nothing blocks the first desktop install except the user's go-ahead. Open: #3 (P3, plan in PLAN.md). User decisions still apply to #21 (main screen only), #26 (RTL unsupported), #23 (resizing on hold) and #25 (deferred until publication).
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for Codex's findings #39–#42
+
+Wrote a test for each first and ran it against `cdbde37`: #39, #40 and #42
+failed as described; the run stopped before #41's case (read instead).
+Then fixed all four. Uncommitted at the time of writing.
+
+### Verification and what was done
+
+| Finding | Verified | Fix |
+|---|---|---|
+| #39 | yes, reproduced (`first` lost, `second` in place) | When more than one thing was moved aside from the same place, uninstall first moves every later one into the dated folder (`later-versions/`, with a warning naming it), then puts back the one from before the first install. Later ones go first, so a second run after an interruption can't put a later one over the original. Tested: `first` back in place, `second` kept and named. |
+| #40 | yes, reproduced (a missing `kdedefaults/custom-settings` passed) | The `SUMS` check no longer drops "open or read" failures (only duplicates of a top-level entry already reported) and no longer ignores the check's exit status: a missing or changed file anywhere in the copy, or an unreadable `SUMS`, stops uninstall before any change. Tested, including the way out the message gives (move the copy away, run again). |
+| #41 | yes (read; tested after the fix) | `installed_tree` also counts folders: a folder that holds no installed file is the user's, so the installed folder counts as changed and a reinstall moves it aside (put back by uninstall). Uninstall already kept such folders (#35); tested both. The theme's own sources have no empty folders. |
+| #42 | yes, reproduced (three "No such file" lines) | `record_sums` does nothing in a dry run (no build to read, no record written). The main scenario checks a fresh-home dry run prints no errors. |
+
+### Checks
+
+- `dev/test-install.sh`: 214 of 214 (21 new).
+- `dev/test-install-live.sh`: 15 of 15.
+- Style and Plasma checks not rerun: no style or Plasma file changed.
+
+### Limits
+
+- Still no real desktop, real login or real systemd failure.
+- Which version goes back in place for #39 is a choice: the one from
+  before the first install (README says so); later ones are kept, not put
+  back.
+
+## 2026-11-21, Codex (GPT-6) — fourth pre-install audit
+
+Reviewed main at `cdbde37`, including the fixes for #34–38. Used a fresh archive, disposable homes and private runtime directories. The regression tests for all five fixes passed. The first two cases below exercise variants the regression tests miss.
+
+| Finding | Location | Verification and consequence |
+|---|---|---|
+| #39 · P1 · fixed (next section up) | `uninstall.sh:223`, `uninstall.sh:270`, `uninstall.sh:278`, `uninstall.sh:282` | Two displacements of the same regular file lose the oldest original. Seeded a custom `Platinum.colors`, installed, replaced the installed file with different custom contents, installed again, then uninstalled. All three commands returned 0. Only the second custom version remained anywhere in the test home. Uninstall marks the destination as gone when it removes the installed file, restores the first saved file, then uses the same stale marker to move the second saved file over it. This can happen with plain installs, before applying the theme. |
+| #40 · P2 · fixed (next section up) | `uninstall.sh:124`, `uninstall.sh:133`, `uninstall.sh:163` | A missing file inside a backed-up directory passes validation. Seeded `kdedefaults/custom-settings`, applied the theme, and removed only that file from the backup. Uninstall reported a successful restore and exited 0. The file disappeared from the active config. The top-level directory still passes the existence check, and the checksum pipeline filters out the missing-file diagnostic and ignores the exit status. The dated copy of the pre-uninstall state can aid manual recovery if it still contains the wanted version. |
+| #41 · P3 · fixed (next section up) | `scripts/common.sh:395`, `scripts/common.sh:399`, `scripts/common.sh:530` | Reinstall drops user-added empty folders. Created an empty `user-templates/` under the installed desktop theme and ran plain install again. The folder disappeared. The ownership check skips directories, so an empty addition does not trigger preservation before the tree is replaced. |
+| #42 · P3 · fixed (next section up) | `install.sh:69`, `scripts/common.sh:349`, `scripts/common.sh:495` | In a fresh disposable home, `install.sh --dry-run` returned 0 but emitted three “No such file or directory” diagnostics for the two plugins and the login script. The checksum step tries to inspect build outputs under `/nonexistent` before the dry-run return. This makes an otherwise successful preview look broken. |
+
+### Checks, in audit-request order
+
+1. **Packaging.** `dev/test-install.sh` passed 193/193, including repeat installs, interruption/retry fixtures, symlink checks and the new checksum cases. `dev/test-install-live.sh` passed 15/15 in nested Plasma, including shell replacement and restoration of both panels, their widgets, a clock setting and the fixture's config and GTK files. The four findings above came from additional runs independent of the stock assertions. No login on a physical desktop, real systemd service failure, or upgrade of the installed Qt/KWin libraries was exercised.
+2. **Application style.** All 131 native-scale region comparisons passed. Rendered the widget gallery, dialog, menu and focus sheets at 1, 1.25, 1.5 and 2. Inspected the fractional-scale renders and ran the instrumented style renderer with ASan/UBSan and leak checking disabled. No sanitizer diagnostic. The style source is unchanged since the prior audit. Runtime style changes, all keyboard paths, physical mixed-DPI transitions and painting performance were not exhaustively exercised. Qt Quick controls outside the QStyle remain tracked in #3.
+3. **Decoration.** Built both plugins and inspected the maximized nested KWin screenshot and the ASan/UBSan decoration preview, including the long title. No sanitizer diagnostic. Interactive tiling, physical scaling and behavior across a KWin upgrade remain unverified.
+4. **Plasma.** All seven menu-bar and dock comparisons passed. Parsed 11 theme SVGs, three package metadata JSON files and the color scheme. The generated layout matches the source apart from its generated-file comment. Inspected the nested menu and desktop render. The two-output fixture covers the chosen main-screen layout. This pass did not repeat edit-mode, vertical/auto-hide or crowded-dock interaction tests.
+5. **Fidelity.** Compared fresh check-box, radio and disclosure-triangle renders to the corresponding private captures side by side at 4×. Independently sampled the desktop base at (5,500), RGB (99,99,156), and the menu bar at x=700, rows 0, 17, 18 and 19 (white, #DDDDDD, #999999 and black). Those values match the reference notes.
+6. **Documentation.** All four expected suite counts in the request match the observed results. The README's put-back guarantee at line 62 does not cover the observed outcome in #39. The changelog accurately describes the single-displacement and top-level backup fixtures that passed.
+7. **Publication.** Scanned names and binary diff entries across all 35 locally reachable commits. No tracked reference paths or binary entries surfaced. This does not establish provenance of pixel values encoded as text. The existing measured-glyph and naming decisions remain for public release. No reference assets were added to the project.
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for Codex's findings #34–#38
 

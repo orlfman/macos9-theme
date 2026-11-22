@@ -120,17 +120,32 @@ if [[ -d $backup ]]; then
             die "these lead somewhere else now than when your config files were copied (a folder link above them was changed). Point the link back, then run this again; nothing was changed"
         fi
         # The copy must be whole and unchanged (finding 36).
+        # Every file in it, inside copied folders too (finding 40), and the
+        # checksum list itself must be readable.
         damaged=()
+        declare -A missing=()
         while IFS=$'\t' read -r base name _; do
             grep -qxF "$base	$name" "$backup/ABSENT" && continue
-            [[ -e $backup/$base/$name ]] || damaged+=("$backup/$base/$name is missing")
+            if [[ ! -e $backup/$base/$name ]]; then
+                damaged+=("$backup/$base/$name is missing")
+                missing[$base/$name]=1
+            fi
         done < "$backup/ENTRIES"
         if [[ ! -f $backup/SUMS ]]; then
             damaged+=("$backup/SUMS is missing")
         else
+            checked=0
+            sums_out=$(cd "$backup" && sha256sum --strict --quiet -c SUMS 2> /dev/null) && checked=1
             while IFS= read -r line; do
-                damaged+=("$backup/${line%: *} ${line##*: }")
-            done < <(cd "$backup" && sha256sum --strict -c SUMS 2> /dev/null | grep -v ': OK$' | grep -v 'FAILED open or read$' || true)
+                case $line in
+                    '') ;;
+                    *': FAILED open or read') [[ -n ${missing[${line%: FAILED open or read}]:-} ]] ||
+                        damaged+=("$backup/${line%: FAILED open or read} is missing") ;;
+                    *': FAILED') damaged+=("$backup/${line%: FAILED} was changed") ;;
+                    *) damaged+=("$backup/SUMS: $line") ;;
+                esac
+            done <<< "$sums_out"
+            ((checked || ${#damaged[@]})) || damaged+=("$backup/SUMS can't be read or is damaged")
         fi
         if ((${#damaged[@]})); then
             printf '  %s\n' "${damaged[@]}" >&2
@@ -228,16 +243,7 @@ for ((i = ${#entries[@]} - 1; i >= 1; i--)); do
         continue
     fi
     # A folder: its installed files, then the folders that held them.
-    declare -A ours=()
-    for key in "${!sum_index[@]}"; do
-        item=${key%%	*}
-        [[ $item == "$path"/* ]] || continue
-        item=$(dirname "$item")
-        while [[ $item == "$path"/* ]]; do
-            ours[$item]=1
-            item=$(dirname "$item")
-        done
-    done
+    our_dirs "$path"
     kept=()
     while IFS= read -r -d '' item; do
         if installed_file "$item"; then
@@ -247,7 +253,7 @@ for ((i = ${#entries[@]} - 1; i >= 1; i--)); do
         fi
     done < <(find "$path" -mindepth 1 ! -type d -print0)
     while IFS= read -r -d '' item; do
-        [[ -n ${ours[$item]:-} ]] || kept+=("${item#"$path"/}/")
+        [[ -n ${our_dir[$item]:-} ]] || kept+=("${item#"$path"/}/")
     done < <(find "$path" -mindepth 1 -type d -print0)
     if ((${#kept[@]} == 0)); then
         plan "remove $path"
@@ -257,19 +263,43 @@ for ((i = ${#entries[@]} - 1; i >= 1; i--)); do
         plan "remove the installed files in $path"
         if ((!dry_run)); then
             while IFS= read -r -d '' item; do
-                [[ -n ${ours[$item]:-} ]] && rmdir "$item" 2> /dev/null || true
+                [[ -n ${our_dir[$item]:-} ]] && rmdir "$item" 2> /dev/null || true
             done < <(find "$path" -mindepth 1 -depth -type d -print0)
         fi
         warn "kept what you added or changed in $path: ${kept[*]:0:5}$( ((${#kept[@]} > 5)) && printf ' ...')"
     fi
-    unset ours
     manifest_drop "$entry"
 done
 
-# What was in the way of an install target goes back.
+# What was in the way of an install target goes back. If more than one
+# thing was moved aside from the same place (you changed the installed file
+# and installed again), the one from before the first install goes back and
+# the later ones are kept in the dated folder; the later ones go first, so
+# a second run after an interruption can't mix them up (finding 39).
+declare -A first_aside=()
 for entry in "${entries[@]:1}"; do
     IFS=$'\t' read -r kind path saved _ <<< "$entry"
-    [[ $kind == displaced ]] || continue
+    [[ $kind == displaced && -z ${first_aside[$path]:-} ]] && first_aside[$path]=$entry
+done
+for entry in "${entries[@]:1}"; do
+    IFS=$'\t' read -r kind path saved _ <<< "$entry"
+    [[ $kind == displaced && ${first_aside[$path]} != "$entry" ]] || continue
+    if [[ $saved != "$displaced"/* || ! (-e $saved || -L $saved) ]]; then
+        manifest_drop "$entry"
+        continue
+    fi
+    later=$keep/later-versions/${saved#"$displaced"/}
+    plan "keep the later version of $path (moved aside by a reinstall) in $later"
+    if ((!dry_run)); then
+        mkdir -p "$(dirname "$later")"
+        mv -T "$saved" "$later"
+    fi
+    manifest_drop "$entry"
+    warn "a later version of $path (yours, moved aside when install.sh ran again) is kept in $later"
+done
+for entry in "${entries[@]:1}"; do
+    IFS=$'\t' read -r kind path saved _ <<< "$entry"
+    [[ $kind == displaced && ${first_aside[$path]} == "$entry" ]] || continue
     if ! is_target file "$path" && ! is_target dir "$path"; then
         warn "the record lists $path as moved aside, which isn't a place install.sh installs to; left alone"
     elif [[ $saved != "$displaced"/* || ! (-e $saved || -L $saved) ]]; then

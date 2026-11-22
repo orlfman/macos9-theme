@@ -59,9 +59,13 @@ they were just before uninstalling, and the copy that was put back, are
 kept in `~/.local/state/macos9-theme-uninstalled-*`. Log out and back in
 once afterwards.
 
-Files you added to or changed in what the theme installed (an extra SVG in
-its Plasma style, an edited color scheme) are left where they are; only
-the theme's own files, unchanged, are removed. If something is in the way
+Files and folders you added to or changed in what the theme installed (an
+extra SVG in its Plasma style, an edited color scheme) are left where they
+are; only the theme's own files, unchanged, are removed. Running
+`./install.sh` again moves such a changed file or folder aside first. If
+that happens more than once to the same place, uninstall puts back what
+was there before the first install and keeps your later versions in the
+dated folder. If something is in the way
 (say you put a file of your own where the theme had one moved aside),
 uninstall leaves it alone, keeps a list of what's left, and exits with an
 error. Sort it out and run `./uninstall.sh` again: it picks up

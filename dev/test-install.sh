@@ -130,6 +130,7 @@ before=$(snapshot)
 run dry "$project/install.sh" --dry-run
 check "install --dry-run changes nothing" same "$before" "$(snapshot)"
 check "install --dry-run says what it would do" grep -q "would copy your config files" "$root/$n-dry.log"
+check "  and prints no errors (finding 42)" bash -c "! grep -qiE 'no such file|error' '$root/$n-dry.log'"
 run dry-apply "$project/install.sh" --apply --dry-run
 check "install --apply --dry-run changes nothing" same "$before" "$(snapshot)"
 check "install --apply --dry-run shows the switch" grep -q "would run plasma-apply-lookandfeel" "$root/$n-dry-apply.log"
@@ -509,6 +510,48 @@ rm -f "$root/sd.fail"
 check "uninstall again exits 0" bash -c "PATH='$root/sdbin:$PATH' '$project/uninstall.sh' > '$root/38-2.log' 2>&1"
 check "  and started the shell" bash -c "grep -q 'start plasma-plasmashell' '$root/sd.log' && test -f '$root/sd.active'"
 check "  no record left" no_record_left
+
+# --------------------------------------------------------------------------
+fresh "finding 39: two earlier versions of the same file are both kept"
+mkdir -p "$data/color-schemes"
+printf 'first\n' > "$data/color-schemes/Platinum.colors"
+check "install exits 0" run install "$project/install.sh"
+printf 'second\n' > "$data/color-schemes/Platinum.colors"
+check "a second install exits 0" run install-2 "$project/install.sh"
+check "uninstall exits 0" run uninstall "$project/uninstall.sh"
+check "  the one from before the install is back in place" grep -qx first "$data/color-schemes/Platinum.colors"
+check "  the later one is kept in the dated folder" \
+    bash -c "grep -rlx second '$(dirname "$state")'/macos9-theme-uninstalled-*/ 2> /dev/null | grep -q Platinum.colors"
+check "  and uninstall says where" grep -q "later version" "$root/$n-uninstall.log"
+
+# --------------------------------------------------------------------------
+fresh "finding 40: a file missing inside a copied folder is found"
+mkdir -p "$config/kdedefaults"
+printf 'x=1\n' > "$config/kdedefaults/custom-settings"
+check "install --apply exits 0" run apply "$project/install.sh" --apply
+rm "$state/backup/config/kdedefaults/custom-settings"
+before=$(snapshot)
+check "uninstall refuses (exit 1)" bash -c "! '$project/uninstall.sh' > '$root/40.log' 2>&1"
+check "  and names the missing file" grep -q "kdedefaults/custom-settings is missing" "$root/40.log"
+check "  and changed nothing" same "$before" "$(snapshot)"
+mv "$state/backup" "$root/backup-moved-away"
+check "with the copy moved away (as the message says), uninstall exits 0" run uninstall "$project/uninstall.sh"
+check "  and removed the theme" theme_files_gone
+rm -rf "$root/backup-moved-away"
+
+# --------------------------------------------------------------------------
+fresh "finding 41: an empty folder the user added to an installed one stays"
+check "install exits 0" run install "$project/install.sh"
+mkdir "$data/plasma/desktoptheme/platinum/user-templates"
+check "uninstall exits 0" run uninstall "$project/uninstall.sh"
+check "  the folder is still there" test -d "$data/plasma/desktoptheme/platinum/user-templates"
+rm -rf "$data"
+check "install again exits 0" run install-2 "$project/install.sh"
+mkdir "$data/plasma/desktoptheme/platinum/user-templates"
+check "a reinstall exits 0" run install-3 "$project/install.sh"
+check "  it moved the changed folder aside" grep -q "^displaced	$data/plasma/desktoptheme/platinum	" "$state/installed"
+check "uninstall exits 0" run uninstall-2 "$project/uninstall.sh"
+check "  the folder is back" test -d "$data/plasma/desktoptheme/platinum/user-templates"
 
 fresh "a home with spaces and quotes in its path"
 weird="$root/my 'odd' \$home"
