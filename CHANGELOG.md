@@ -2,6 +2,18 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-22, Codex (GPT-6.2) — audit and repair bundled cursors
+
+- `install.sh` verifies the whole cursor archive before installing and
+  adds its icon directory to Plasma's cursor search path at login.
+- `uninstall.sh` keeps the selected cursor pack until the user switches
+  away, or restores the earlier pack under the same ID.
+- `scripts/common.sh` preserves edited cursor aliases. The offline suite
+  covers each fix. `cursors/README.md` links to the tagged upstream source.
+- Passed installer 367/367, live 37/37, Plasma 19/19,
+  Qt Widgets 135/135, Qt Quick 29/29. The changes are in the working tree.
+  Desktop review awaits the user.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — bundle the cursors
 
 - `cursors/macOS-cursors.tar.xz`: Apple Cursor v2.0.1's black theme

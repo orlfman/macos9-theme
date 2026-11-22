@@ -111,7 +111,8 @@ quick_module=$quick_qml/Platinum
 kirigami_link=$plugins/kf6/kirigami/platform/Platinum.so
 # The cursor theme (cursors/macOS-cursors.tar.xz), where libXcursor and
 # Plasma look for themes in your data folder.
-cursor_theme_dir=$data/icons/macOS-cursors
+black_cursor_id=macOS-cursors
+cursor_theme_dir=$data/icons/$black_cursor_id
 # Left by uninstall.sh for the rest of the session (finding 49), removed by
 # itself at the next login.
 cleanup_script=$config_home/plasma-workspace/env/macos9-theme-cleanup.sh
@@ -218,42 +219,6 @@ drop_plasma_caches() {
         fi
     done
     return 0
-}
-
-# --- The cursors ------------------------------------------------------------
-#
-# Apple Cursor v2.0.1's black theme (cursors/README.md), installed under
-# this ID; the global theme selects it (PLAN.md decision 8).
-black_cursor_id=macOS-cursors
-
-# Is FILE a whole Xcursor file: the magic, a table of contents with an
-# image, and that image's header and pixels inside the file?
-xcursor_ok() { # file
-    local file=$1 size magic ntoc i type pos hdr ctype w h xhot yhot
-    [[ -r $file && -f $file ]] || return 1
-    size=$(stat -L -c %s "$file") || return 1
-    ((size >= 16)) || return 1
-    magic=$(head -c 4 "$file")
-    [[ $magic == Xcur ]] || return 1
-    u32() { od -An -tu4 -j "$1" -N 4 "$file" | tr -d ' '; }
-    ntoc=$(u32 12)
-    ((ntoc >= 1 && ntoc < 4096 && 16 + 12 * ntoc <= size)) || return 1
-    for ((i = 0; i < ntoc; i++)); do
-        type=$(u32 $((16 + 12 * i)))
-        pos=$(u32 $((16 + 12 * i + 8)))
-        ((type == 0xfffd0002)) || continue
-        ((pos + 36 <= size)) || return 1
-        hdr=$(u32 "$pos")
-        ctype=$(u32 $((pos + 4)))
-        w=$(u32 $((pos + 16)))
-        h=$(u32 $((pos + 20)))
-        xhot=$(u32 $((pos + 24)))
-        yhot=$(u32 $((pos + 28)))
-        ((hdr == 36 && ctype == 0xfffd0002 && w > 0 && h > 0 && w <= 0x7fff && h <= 0x7fff && xhot <= w && yhot <= h)) || return 1
-        ((pos + 36 + w * h * 4 <= size)) || return 1
-        return 0
-    done
-    return 1
 }
 
 # --- The install record ---------------------------------------------------
@@ -461,13 +426,10 @@ index_sums() {
     return 0
 }
 
-# Is PATH a regular file whose content install.sh put there? (index_sums
-# first.)
+# Is PATH a file or a link install.sh put there? (index_sums first.)
 installed_file() { # path
     if [[ -L $1 ]]; then
-        # (a link install.sh made inside an installed folder, pointing
-        # where it did)
-        [[ -n ${sum_index[$1	->$(readlink "$1")]:-} ]]
+        installed_link "$1"
         return
     fi
     [[ -f $1 ]] || return 1
@@ -520,7 +482,12 @@ installed_unchanged() { # kind path
 
 # Is PATH a link pointing where install.sh made it point? (index_sums first.)
 installed_link() { # path
-    [[ -L $1 && -n ${sum_index[$1	->$(readlink "$1")]:-} ]]
+    local target
+    [[ -L $1 ]] || return 1
+    # The suffix keeps command substitution from dropping a line break
+    # in a changed target. The record still stores the original text.
+    target=$(readlink -n -- "$1" && printf '.') || return 1
+    [[ -n ${sum_index[$1	->${target%.}]:-} ]]
 }
 
 # Installs a symbolic link: record (with where it points), then make it

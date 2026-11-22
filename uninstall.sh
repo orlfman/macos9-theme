@@ -99,6 +99,10 @@ put_back() { # source path
 }
 
 restored=0
+declare -A planned_cursor_config=(
+    ["$config_home/kcminputrc"]="$config_home/kcminputrc"
+    ["$config_home/kdedefaults"]="$config_home/kdedefaults"
+)
 if [[ -d $backup ]]; then
     [[ -f $backup/ENTRIES && -f $backup/ABSENT && ! -L $backup ]] || die "$backup is damaged; nothing was changed"
     config_root=$(backup_root config)
@@ -195,9 +199,15 @@ if [[ -d $backup ]]; then
                     plan "remove $path (it wasn't there before)"
                     ((dry_run)) || rm -rf "$path"
                 fi
+                if ((dry_run)) && [[ -v 'planned_cursor_config[$path]' ]]; then
+                    planned_cursor_config[$path]=''
+                fi
             elif [[ -e $backup/$base/$name || -L $backup/$base/$name ]]; then
                 plan "put back $path"
                 ((dry_run)) || put_back "$backup/$base/$name" "$path"
+                if ((dry_run)) && [[ -v 'planned_cursor_config[$path]' ]]; then
+                    planned_cursor_config[$path]=$backup/$base/$name
+                fi
             fi
         done < "$backup/ENTRIES"
         plan "move the copy that was put back to $keep/original"
@@ -274,7 +284,7 @@ local_wallpaper_path() {
     realpath -m -- "$decoded$tail"
 }
 
-declare -A kept_wallpapers=()
+declare -A kept_packages=()
 wallpaper_config=$config_home/plasma-org.kde.plasma.desktop-appletsrc
 if ((restored && dry_run)) && [[ $config_root == "$config_home" && ! -L $wallpaper_config ]]; then
     wallpaper_config=$backup/config/plasma-org.kde.plasma.desktop-appletsrc
@@ -293,23 +303,67 @@ if ((${#wallpaper_targets[@]})); then
             for path in "${wallpaper_targets[@]}"; do
                 package_path=$(realpath -m -- "$path")
                 if [[ $selected_path == "$package_path" || $selected_path == "$package_path"/* ]]; then
-                    kept_wallpapers[$path]=selected
+                    kept_packages[$path]=selected
                 fi
             done
         done <<< "$selections"
     else
         for path in "${wallpaper_targets[@]}"; do
-            kept_wallpapers[$path]=unknown
+            kept_packages[$path]=unknown
         done
     fi
 fi
-for path in "${!kept_wallpapers[@]}"; do
-    if [[ ${kept_wallpapers[$path]} == selected ]]; then
+for path in "${!kept_packages[@]}"; do
+    if [[ ${kept_packages[$path]} == selected ]]; then
         warn "$path is still selected in Plasma. Change that wallpaper in Plasma and run uninstall.sh again."
     else
         warn "couldn't check Plasma's wallpaper selections. Keeping $path. Run uninstall.sh again when Plasma's selection can be read."
     fi
 done
+
+entries=("${manifest_entries[@]}")
+# Keep the original moved-aside copy distinct from any later versions.
+declare -A first_aside=()
+for entry in "${entries[@]:1}"; do
+    IFS=$'\t' read -r kind path saved _ <<< "$entry"
+    [[ $kind == displaced && -z ${first_aside[$path]:-} ]] && first_aside[$path]=$entry
+done
+
+# The cursor can be selected on its own, even with another global theme.
+# Use the settings that will remain after the config restore.
+selected_cursor() {
+    local file value defaults=${planned_cursor_config[$config_home/kdedefaults]}
+    for file in "${planned_cursor_config[$config_home/kcminputrc]}" "${defaults:+$defaults/kcminputrc}"; do
+        [[ -e $file || -L $file ]] || continue
+        [[ -f $file && -r $file ]] && have kreadconfig6 || return 1
+        value=$(kreadconfig6 --file "$file" --group Mouse --key cursorTheme) || return 1
+        if [[ -n $value ]]; then
+            printf '%s' "$value"
+            return 0
+        fi
+    done
+    return 0
+}
+
+cursor_can_restore_original() {
+    local path saved
+    [[ -n ${first_aside[$cursor_theme_dir]:-} ]] || return 1
+    IFS=$'\t' read -r _ path saved _ <<< "${first_aside[$cursor_theme_dir]}"
+    [[ $saved == "$displaced"/* && -r $saved/index.theme && -s $saved/cursors/left_ptr ]] &&
+        installed_unchanged dir "$path"
+}
+
+if [[ -d $cursor_theme_dir && ! -L $cursor_theme_dir ]] && manifest_lists dir "$cursor_theme_dir"; then
+    if cursor=$(selected_cursor); then
+        if [[ $cursor == "$black_cursor_id" ]] && ! cursor_can_restore_original; then
+            kept_packages[$cursor_theme_dir]=selected
+            warn "$black_cursor_id is still selected. Choose another theme in Plasma's Cursors settings, then run uninstall.sh again."
+        fi
+    else
+        kept_packages[$cursor_theme_dir]=unknown
+        warn "couldn't read Plasma's cursor settings. Keeping $cursor_theme_dir. Run uninstall.sh again when Plasma's selection can be read."
+    fi
+fi
 
 # --- 2. Installed files, newest first ---------------------------------------
 #
@@ -317,7 +371,6 @@ done
 # a failure never redoes a step: a file put back is never taken for the
 # installed one (finding 27). What's left alone stays on the record.
 
-entries=("${manifest_entries[@]}")
 had_plasma_style=0
 # Only files whose content is what install.sh put there are removed; what
 # you added or changed stays (finding 35). Track the simulated occupancy
@@ -328,7 +381,7 @@ for ((i = ${#entries[@]} - 1; i >= 1; i--)); do
     entry=${entries[i]}
     IFS=$'\t' read -r kind path _ <<< "$entry"
     [[ $kind == file || $kind == dir || $kind == link ]] || continue
-    [[ -z ${kept_wallpapers[$path]:-} ]] || continue
+    [[ -z ${kept_packages[$path]:-} ]] || continue
     if ! is_target "$kind" "$path"; then
         warn "the record lists $path, which isn't a place install.sh installs to; left alone"
         continue
@@ -400,15 +453,10 @@ done
 # and installed again), the one from before the first install goes back and
 # the later ones are kept in the dated folder; the later ones go first, so
 # a second run after an interruption can't mix them up (finding 39).
-declare -A first_aside=()
-for entry in "${entries[@]:1}"; do
-    IFS=$'\t' read -r kind path saved _ <<< "$entry"
-    [[ $kind == displaced && -z ${first_aside[$path]:-} ]] && first_aside[$path]=$entry
-done
 for entry in "${entries[@]:1}"; do
     IFS=$'\t' read -r kind path saved _ <<< "$entry"
     [[ $kind == displaced && ${first_aside[$path]} != "$entry" ]] || continue
-    [[ -z ${kept_wallpapers[$path]:-} ]] || continue
+    [[ -z ${kept_packages[$path]:-} ]] || continue
     if [[ $saved != "$displaced"/* || ! (-e $saved || -L $saved) ]]; then
         manifest_drop "$entry"
         continue
@@ -425,7 +473,7 @@ done
 for entry in "${entries[@]:1}"; do
     IFS=$'\t' read -r kind path saved _ <<< "$entry"
     [[ $kind == displaced && ${first_aside[$path]} == "$entry" ]] || continue
-    [[ -z ${kept_wallpapers[$path]:-} ]] || continue
+    [[ -z ${kept_packages[$path]:-} ]] || continue
     if ! is_target file "$path" && ! is_target dir "$path" && ! is_target link "$path"; then
         warn "the record lists $path as moved aside, which isn't a place install.sh installs to; left alone"
     elif [[ $saved != "$displaced"/* || ! (-e $saved || -L $saved) ]]; then
@@ -497,7 +545,7 @@ if ((!dry_run)); then
 else
     plan "remove the install record $manifest"
 fi
-say "Removed the Platinum style (widgets and Qt Quick), decoration, color scheme, Plasma style, global theme, wallpapers and login script"
+say "Removed the Platinum style (widgets and Qt Quick), decoration, color scheme, Plasma style, global theme, wallpapers, cursors and login script"
 if ((shell_failed)); then
     warn "$shell_failed_message"
     exit 1

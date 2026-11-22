@@ -587,8 +587,12 @@ check "uninstall refuses (exit 1)" bash -c "! '$project/uninstall.sh' > '$root/4
 check "  and names the missing file" grep -q "kdedefaults/custom-settings is missing" "$root/40.log"
 check "  and changed nothing" same "$before" "$(snapshot)"
 mv "$state/backup" "$root/backup-moved-away"
-check "with the copy moved away (as the message says), uninstall exits 0" run uninstall "$project/uninstall.sh"
-check "  and removed the theme" theme_files_gone
+check "with the copy moved away, uninstall stops with the active cursors kept" bash -c '! "$1" > "$2" 2>&1' _ "$project/uninstall.sh" "$root/40-without-backup.log"
+check "  it removed the other theme files" theme_files_gone
+check "  the active cursors remain" test -f "$data/icons/macOS-cursors/cursors/left_ptr"
+kwriteconfig6 --file kcminputrc --group Mouse --key cursorTheme Breeze
+check "  retry after changing the cursor exits 0" run retry "$project/uninstall.sh"
+check "  it removes the cursor package" test ! -e "$data/icons/macOS-cursors"
 rm -rf "$root/backup-moved-away"
 
 # --------------------------------------------------------------------------
@@ -862,13 +866,77 @@ fresh "the cursors: installed with the theme, selected by the switch, removed ag
 cursors=$data/icons/macOS-cursors
 check "install exits 0" run install "$project/install.sh"
 check "  the cursor theme is installed" test -f "$cursors/index.theme"
-check "  its pointer is a whole cursor file" bash -c "source <(sed -n '/^xcursor_ok() {/,/^}/p' '$project/scripts/common.sh'); xcursor_ok '$cursors/cursors/left_ptr'"
 check "  its links are kept as links" bash -c "[[ \$(find '$cursors' -type l | wc -l) -gt 100 && -L '$cursors/cursors/x-cursor' ]]"
+check "  Plasma lists the black theme after login" env -u XCURSOR_PATH sh -c '
+    . "$1"
+    plasma-apply-cursortheme --list-themes | grep -E "[[]macOS-cursors[]]$"
+' _ "$config/plasma-workspace/env/macos9-theme.sh"
+check "  the login script preserves a custom cursor path without duplicates" sh -c '
+    XCURSOR_PATH=/custom/cursors:/usr/share/icons
+    . "$1"
+    . "$1"
+    [ "$XCURSOR_PATH" = "$2/icons:/custom/cursors:/usr/share/icons" ]
+' _ "$config/plasma-workspace/env/macos9-theme.sh" "$data"
 check "--apply exits 0" run apply "$project/install.sh" --apply
 check "  the global theme selects macOS-cursors" grep -qx 'cursorTheme=macOS-cursors' "$config/kdedefaults/kcminputrc"
+check "uninstall dry run exits 0" run preview "$project/uninstall.sh" --dry-run
+check "  the preview removes the cursor pack after restoring the settings" grep -Fq "would remove $cursors" "$root/$n-preview.log"
 check "uninstall exits 0" run uninstall "$project/uninstall.sh"
 check "  the cursor theme is gone" test ! -e "$cursors"
 check "  and the config is as seeded" same "$seed" "$(config_state)"
+
+fresh "a standalone cursor selection survives uninstall"
+check "install exits 0" run install "$project/install.sh"
+kwriteconfig6 --file kcminputrc --group Mouse --key cursorTheme macOS-cursors
+before=$(snapshot)
+check "uninstall dry run exits 0" run preview "$project/uninstall.sh" --dry-run
+check "  the preview says the cursors are selected" grep -Fq 'macOS-cursors is still selected' "$root/$n-preview.log"
+check "  the preview changes nothing" same "$before" "$(snapshot)"
+check "uninstall reports the selected pack still needs removal" bash -c '! "$1" > "$2" 2>&1' _ "$project/uninstall.sh" "$root/cursor-selected.log"
+check "  the installed pointer and its aliases remain" test -e "$cursors/cursors/x-cursor"
+check "  the separate cursor preference remains" grep -qx 'cursorTheme=macOS-cursors' "$config/kcminputrc"
+check "  the other parts of Platinum were removed" test ! -d "$data/plasma/look-and-feel/platinum.desktop"
+kwriteconfig6 --file kcminputrc --group Mouse --key cursorTheme Breeze
+check "uninstall retry exits 0 after changing cursors" run retry "$project/uninstall.sh"
+check "  the cursor theme is now gone" test ! -e "$cursors"
+check "  the changed cursor preference remains" grep -qx 'cursorTheme=Breeze' "$config/kcminputrc"
+
+fresh "a previously installed cursor pack with the same ID is restored"
+mkdir -p "$data/icons"
+tar -xJf "$project/cursors/macOS-cursors.tar.xz" -C "$data/icons" macOS-cursors
+printf '\n# an earlier installation\n' >> "$cursors/index.theme"
+kwriteconfig6 --file kcminputrc --group Mouse --key cursorTheme macOS-cursors
+check "install exits 0" run install "$project/install.sh"
+check "  the bundled pack was installed" bash -c '! grep -Fq "an earlier installation" "$1"' _ "$cursors/index.theme"
+check "uninstall exits 0" run undo "$project/uninstall.sh"
+check "  the earlier pack is restored" grep -Fq 'an earlier installation' "$cursors/index.theme"
+check "  the earlier pack is still selected" grep -qx 'cursorTheme=macOS-cursors' "$config/kcminputrc"
+
+fresh "an edited symbolic link in the cursor pack belongs to the user"
+check "install exits 0" run install "$project/install.sh"
+alias_file=$cursors/cursors/x-cursor
+ln -sfn -- "$(readlink -- "$alias_file")"$'\n' "$alias_file"
+check "uninstall exits 0" run uninstall "$project/uninstall.sh"
+check "  the edited link stays, including the line break" bash -c '
+    target=$(readlink -n -- "$1" && printf .) &&
+    [[ $target == *$'"'"'\n'"'"'. ]]
+' _ "$alias_file"
+check "  the unchanged pointer is gone" test ! -e "$cursors/cursors/left_ptr"
+
+fresh "a corrupt cursor archive is rejected before any writes"
+fixture=$root/bad-cursor-project
+mkdir -p "$fixture/cursors"
+cp "$project/install.sh" "$fixture/install.sh"
+for component in scripts wallpapers colors plasma; do
+    ln -s "$project/$component" "$fixture/$component"
+done
+printf 'bad archive\n' > "$fixture/cursors/macOS-cursors.tar.xz"
+before=$(snapshot)
+for mode in --dry-run --apply; do
+    check "install $mode rejects the bad archive" bash -c '! "$1" "$2" > "$3" 2>&1' _ "$fixture/install.sh" "$mode" "$root/bad-cursor.log"
+    check "  the reason is the cursor archive" grep -Fq 'the bundled cursor archive is missing or has changed' "$root/bad-cursor.log"
+    check "  the home is unchanged" same "$before" "$(snapshot)"
+done
 
 echo
 if ((failed)); then

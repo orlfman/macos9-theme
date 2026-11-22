@@ -115,6 +115,9 @@ For contributors and AI agents: [AGENTS.md](AGENTS.md).
 The theme comes with black Mac-style cursors: Apple Cursor v2.0.1 by
 ful1e5 (GPL-3.0, see `cursors/README.md`). `./install.sh` installs them as
 the cursor theme `macOS-cursors`, and `--apply` selects them along with the
-rest of the global theme; you can also pick **macOS** in Plasma's Cursors
-settings on its own. Log out and back in to load them everywhere.
-Uninstalling removes them and puts back the cursor you had.
+rest of the global theme. Log out and back in after installing so Plasma
+can find the pack. You can also pick **macOS** in Plasma's Cursors
+settings on its own.
+Uninstalling after applying Platinum restores your previous cursor setting.
+If the pack is still selected after that, or you picked it separately in
+Plasma, choose another cursor theme and rerun the uninstaller to remove it.

@@ -53,11 +53,18 @@ source "$here/scripts/common.sh"
 dry_run=$dry
 
 refuse_root
-need g++ pkg-config install ldd readlink mktemp tar od stat
+need g++ pkg-config install ldd readlink mktemp tar sha256sum
 if ((apply)); then
     need plasma-apply-lookandfeel kwriteconfig6
 fi
 
+# Verify the exact reviewed archive before touching the installation, even
+# on a dry run. This covers every cursor image and alias.
+cursor_archive=$here/cursors/macOS-cursors.tar.xz
+if ! cursor_sum=$(sha256sum < "$cursor_archive") ||
+    [[ ${cursor_sum%% *} != 522ddd78562e4eadd0984cf743bd77f7efd8938c957227e780e2c48898c5ad3f ]]; then
+    die "the bundled cursor archive is missing or has changed. Restore $cursor_archive from the project and try again; nothing was changed"
+fi
 
 for wallpaper_id in "${wallpaper_ids[@]}"; do
     wallpaper_source=$here/wallpapers/$wallpaper_id
@@ -81,6 +88,9 @@ if ((dry_run)); then
 else
     build=$(mktemp -d)
     trap 'rm -rf "${build:-/nonexistent}"' EXIT
+    mkdir -p "$build/cursors"
+    tar -xJf "$cursor_archive" -C "$build/cursors" "$black_cursor_id" ||
+        die "couldn't unpack the bundled cursor theme; nothing was installed"
     if [[ -n ${M9_PREBUILT:-} ]]; then # tests only: dev/test-install.sh builds once
         cp -R "$M9_PREBUILT/style" "$M9_PREBUILT/decoration" "$M9_PREBUILT/quick" "$build/"
     else
@@ -125,6 +135,19 @@ case ":\${QT_PLUGIN_PATH:-}:" in
     *) export QT_PLUGIN_PATH="\$macos9_theme_path\${QT_PLUGIN_PATH:+:\$QT_PLUGIN_PATH}" ;;
 esac
 unset macos9_theme_path
+
+# Plasma's cursor picker uses XCURSOR_PATH and can skip the XDG data
+# directory when it is unset. Keep the other cursor themes searchable.
+macos9_cursor_path=$(sh_quote "$data/icons")
+if [ -z "\${XCURSOR_PATH:-}" ]; then
+    XCURSOR_PATH="\$HOME/.local/share/icons:\$HOME/.icons:/usr/share/icons:/usr/share/pixmaps:/usr/X11R6/lib/X11/icons"
+fi
+case ":\$XCURSOR_PATH:" in
+    *":\$macos9_cursor_path:"*) ;;
+    *) XCURSOR_PATH="\$macos9_cursor_path:\$XCURSOR_PATH" ;;
+esac
+export XCURSOR_PATH
+unset macos9_cursor_path
 EOF
     if [[ -n $kde_quick_version ]]; then
         cat >> "$build/env.sh" << EOF
@@ -166,16 +189,7 @@ if [[ -n $kde_quick_version ]]; then
     place_link "$kirigami_desktop" "$kirigami_link"
     say "Installed the Qt Quick style into $quick_qml"
 fi
-# The cursors (cursors/README.md): unpacked from the archive, checked,
-# installed as a theme folder; the global theme selects them.
-if ((!dry_run)); then
-    mkdir -p "$build/cursors"
-    tar -xJf "$here/cursors/macOS-cursors.tar.xz" -C "$build/cursors" macOS-cursors ||
-        die "couldn't unpack cursors/macOS-cursors.tar.xz; nothing more was installed"
-    xcursor_ok "$build/cursors/macOS-cursors/cursors/left_ptr" ||
-        die "cursors/macOS-cursors.tar.xz holds no usable cursor theme; nothing more was installed"
-fi
-place_dir "$build/cursors/macOS-cursors" "$cursor_theme_dir"
+place_dir "$build/cursors/$black_cursor_id" "$cursor_theme_dir"
 say "Installed the cursors into $cursor_theme_dir"
 place_file "$here/colors/$scheme_name.colors" "$data/color-schemes/$scheme_name.colors" 644
 say "Installed the color scheme \"Platinum\""

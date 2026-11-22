@@ -2,7 +2,7 @@
 
 ## Status
 
-Updated 2026-11-21 by Codex (GPT-6.2). Earlier audit fixes are in `ef8250a` and `fb4156f`.
+Updated 2026-11-22 by Codex (GPT-6.2). Earlier audit fixes are in `ef8250a` and `fb4156f`.
 
 **Where things stand.** Built and checked headless (sandbox, nested KWin,
 throwaway homes). The user has now installed Platinum on their desktop:
@@ -28,7 +28,9 @@ the rendered default on both screens.
 The cursors are part of the theme: Apple Cursor v2.0.1's black set
 (GPL-3.0, `cursors/README.md`), shipped as `cursors/macOS-cursors.tar.xz`,
 installed as the theme `macOS-cursors` and selected by the global theme
-(cursor findings #78–#80 fixed, then the external route replaced).
+(cursor findings #78–#84 fixed). The login script makes the installed pack
+available in Plasma's Cursors picker. Uninstall keeps the pack while it is
+selected or restores the previous pack with the same ID.
 
 **Waiting on the user (don't do these without them):**
 1. Completed by the user, first real desktop install: `./install.sh`, log out and
@@ -41,12 +43,14 @@ installed as the theme `macOS-cursors` and selected by the global theme
    drawing item).
 4. Try the wallpapers on the desktop after updating the install and
    selecting them in the wallpaper settings.
+5. Run the updated installer, log out and back in, then check macOS in
+   Plasma's Cursors settings.
 
 **Next work after that** (order of work below): icons (decision 7),
 fonts, GTK theme, extras; publication questions (#25, name).
 
 **Before finishing any change, run the suites** (expected results are kept
-in `docs/AUDIT-REQUEST.md`; today 135/135, 19/19, 335/335, 37/37, 29/29):
+in `docs/AUDIT-REQUEST.md`; today 135/135, 19/19, 367/367, 37/37, 29/29):
 `dev/check-style.sh`, `dev/check-plasma.sh`, `dev/test-install.sh`,
 `dev/test-install-live.sh`, `dev/check-quick.sh` (DEVELOPMENT.md says what
 each covers). Audit rounds: Codex appends to AUDIT.md; verify each finding,
@@ -66,10 +70,10 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); Qt Quick style in style/quick: menus, menu bar, combo list, tooltips, switches (AUDIT 3, check-quick 29/29; installed by install.sh); also dialogs (measured modal frame), drawers, range sliders; combo lists track live model edits (#63); compact tab close indicator and selected state verified in Kwi (#71–74); open: editable combo, size grip |
 | plasma     | plasma/                   | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); main screen only (decision 10); resizable menu bar ends and divider (AUDIT 23), with complete divider dots and pixel comparisons across four panel heights (AUDIT 69–70) |
 | icons      | icons/                    | nobody     | not started |
-| cursors    | cursors/                  | nobody | bundled black cursors (`macOS-cursors`) installed and selected by the global theme, verified in nested Plasma; audit #78–#80 fixed. No cursors of our own (decision 8, user). |
+| cursors    | cursors/                  | nobody | bundled black cursors (`macOS-cursors`) installed and selected by the global theme, verified in nested Plasma; discovery, selection and undo verified (#78–#84). No cursors of our own (decision 8, user). |
 | gtk        | gtk/                      | nobody     | not started |
 | extras     | extras/, wallpapers/      | nobody | Pastel Ribbon Landscape and Lavender Desktop Pattern packaged with the global theme. Terminal colors, SDDM, splash, and lock screen remain. |
-| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's four audits (#4-#14, #27-#31, #34-#42 fixed: moved-aside targets, record written first and taken off step by step so a retry never redoes a step, GTK files in the backup, shell stopped while restoring, decoration version guard, paths checked against where they led, recorded temporaries, same XDG folders required, checksums so your own additions and changes stay, a checked config copy, a stopped shell started by the next run); also installs the Qt Quick style (with a link target kind for Kirigami's plugin); cleanup and backup fixes #59–65 verified; test-install 339/339, test-install-live 36/36 (running Plasma, two screens; after uninstall a pass-through keeps the session's Qt Quick apps working until the next login); first desktop install completed by user; desktop uninstall untested |
+| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's four audits (#4-#14, #27-#31, #34-#42 fixed: moved-aside targets, record written first and taken off step by step so a retry never redoes a step, GTK files in the backup, shell stopped while restoring, decoration version guard, paths checked against where they led, recorded temporaries, same XDG folders required, checksums so your own additions and changes stay, a checked config copy, a stopped shell started by the next run); also installs the Qt Quick style (with a link target kind for Kirigami's plugin); cleanup and backup fixes #59–65 verified; test-install 367/367, test-install-live 37/37 (running Plasma, two screens; after uninstall a pass-through keeps the session's Qt Quick apps working until the next login); first desktop install completed by user; desktop uninstall untested |
 
 ## Goal
 

@@ -3,7 +3,47 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: #53–58 passed their original regression cases. #59–68 are fixed in this revision, including code commits `ef8250a` and `fb4156f`. The user has completed the first desktop install. #3 (P3) awaits the user's visual review. The panel-resize fix for #23 is verified at the user’s 32 px setting. The panel follow-ups #69 and #70 are fixed in the working tree and verified in nested Plasma. The user reported that the updated Kwi tab close button worked well on their desktop (#71–74). Wallpaper findings #75–77 are fixed and verified in disposable Plasma. Cursor findings #78–80 are fixed; the cursors are now bundled (`cursors/`), which removes the external download they concerned. The decisions on #21, #25 and #26 still apply.
+Status: #53–58 passed their original regression cases. #59–68 are fixed in this revision, including code commits `ef8250a` and `fb4156f`. The user has completed the first desktop install. #3 (P3) awaits the user's visual review. The panel-resize fix for #23 is verified at the user’s 32 px setting. The panel follow-ups #69 and #70 are fixed in the working tree and verified in nested Plasma. The user reported that the updated Kwi tab close button worked well on their desktop (#71–74). Wallpaper findings #75–77 are fixed and verified in disposable Plasma. Cursor findings #78–80 are fixed; the cursors are now bundled (`cursors/`), which removes the external download they concerned. The bundled cursor follow-ups #81–84 are fixed in the working tree. The decisions on #21, #25 and #26 still apply.
+
+## 2026-11-22, Codex (GPT-6.2) — bundled cursor audit and fixes
+
+Reviewed the cursor packaging and lifecycle introduced in `e74412a`.
+Finding locations refer to that revision.
+
+- **#81 · P2 · fixed and verified** — `uninstall.sh:328–332`.
+  Uninstall deleted the pack after it was picked separately under Breeze,
+  leaving `kcminputrc` pointing to an absent theme. Reproduced in a disposable
+  home. The uninstaller now keeps the selected pack and its record until the
+  user switches cursors. It can put back a previously installed pack with
+  the same ID. The tests cover both paths and compare the dry run against
+  the resulting config.
+- **#82 · P2 · fixed and verified** — `scripts/common.sh:466–471`.
+  The checksum comparison stripped trailing line breaks from edited
+  symbolic-link targets. Replaced `x-cursor` with a link to the same target
+  plus a line break. Uninstall deleted it before the fix and preserved it
+  afterward. Existing install records still work.
+- **#83 · P2 · fixed and verified** — `install.sh:169–177`.
+  A damaged archive passed the dry run and failed only after the real run
+  had placed both plugins, the login script and Qt Quick files. Reproduced
+  with a zero-length `left_ptr`. Both modes now check the SHA-256 of the
+  entire reviewed archive before changing the installation.
+- **#84 · P2 · fixed and verified** — `install.sh:169–179`.
+  In an offscreen Plasma 6.8 session with no `XCURSOR_PATH`, Plasma's cursor
+  picker omitted the XDG data directory and did not list the black pack.
+  After sourcing the updated login script, the picker listed
+  `macOS-cursors` and Breeze with a custom data directory containing spaces.
+  The login script retains custom cursor search paths.
+
+The black-only archive reproduces byte for byte from the tagged v2.0.1
+release. libXcursor loaded all 145 names, including 101 aliases, at 24,
+32 and 48 px. The archived license matches upstream's tagged source,
+linked from `cursors/README.md`.
+
+The installer passed 367/367 checks, live install and undo 37/37,
+Plasma artwork 19/19, Qt Widgets 135/135, and Qt Quick 29/29. The
+offscreen cursor selector applied macOS and Breeze Light in turn. An
+uninstall between the selections kept macOS and the retry removed it.
+The user's physical desktop and on-screen cursor appearance are pending.
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for Codex's cursor findings #78–#80
 
