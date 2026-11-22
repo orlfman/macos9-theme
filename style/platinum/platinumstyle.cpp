@@ -1035,6 +1035,15 @@ void Style::drawSlider(const QStyleOptionSlider *o, QPainter *p, const QWidget *
     const bool pressed = (o->activeSubControls & SC_SliderHandle) && (o->state & State_Sunken);
     if (o->subControls & SC_SliderHandle) {
         drawSprite(p, l.handle.x(), l.handle.y(), !enabled ? Sprites::SliderThumbDisabled : pressed ? Sprites::SliderThumbPressed : Sprites::SliderThumb);
+        // Not Mac OS 9: while the keyboard moves the focus, two 1 px #6666CC
+        // lines 1 px either side of the focused thumb (the text field's
+        // focus color, as the focus ring of AUDIT.md finding 16; a ring
+        // would be cut off, the thumb fills the slider's height). Finding 52.
+        if ((o->state & State_HasFocus) && (o->state & State_KeyboardFocusChange) && enabled) {
+            const QRect h = l.handle;
+            p->fillRect(QRect(h.left() - 2, h.top(), 1, h.height()), QColor(0x66, 0x66, 0xCC));
+            p->fillRect(QRect(h.right() + 2, h.top(), 1, h.height()), QColor(0x66, 0x66, 0xCC));
+        }
     }
     p->restore();
 }

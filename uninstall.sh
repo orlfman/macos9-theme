@@ -134,18 +134,33 @@ if [[ -d $backup ]]; then
         if [[ ! -f $backup/SUMS ]]; then
             damaged+=("$backup/SUMS is missing")
         else
-            checked=0
-            sums_out=$(cd "$backup" && sha256sum --strict --quiet -c SUMS 2> /dev/null) && checked=1
+            # Every file in the copy is on the list (a cut-short list is
+            # caught), every listed one is there and unchanged. An empty list
+            # is right when none of the files existed (finding 50).
+            declare -A listed=()
             while IFS= read -r line; do
-                case $line in
-                    '') ;;
-                    *': FAILED open or read') [[ -n ${missing[${line%: FAILED open or read}]:-} ]] ||
-                        damaged+=("$backup/${line%: FAILED open or read} is missing") ;;
-                    *': FAILED') damaged+=("$backup/${line%: FAILED} was changed") ;;
-                    *) damaged+=("$backup/SUMS: $line") ;;
-                esac
-            done <<< "$sums_out"
-            ((checked || ${#damaged[@]})) || damaged+=("$backup/SUMS can't be read or is damaged")
+                [[ -n $line ]] || continue
+                if [[ $line =~ ^[0-9a-f]{64}\ \ (.+)$ ]]; then
+                    listed[${BASH_REMATCH[1]}]=1
+                else
+                    damaged+=("$backup/SUMS has a damaged line")
+                fi
+            done < "$backup/SUMS"
+            while IFS= read -r -d '' file; do
+                [[ -n ${listed[$file]:-} ]] || damaged+=("$backup/$file isn't on the checksum list")
+            done < <(cd "$backup" && find config home -type f -print0 2> /dev/null)
+            if ((${#listed[@]})); then
+                sums_out=$(cd "$backup" && sha256sum --strict --quiet -c SUMS 2> /dev/null) || true
+                while IFS= read -r line; do
+                    case $line in
+                        '') ;;
+                        *': FAILED open or read') [[ -n ${missing[${line%: FAILED open or read}]:-} ]] ||
+                            damaged+=("$backup/${line%: FAILED open or read} is missing") ;;
+                        *': FAILED') damaged+=("$backup/${line%: FAILED} was changed") ;;
+                        *) damaged+=("$backup/SUMS: $line") ;;
+                    esac
+                done <<< "$sums_out"
+            fi
         fi
         if ((${#damaged[@]})); then
             printf '  %s\n' "${damaged[@]}" >&2
@@ -350,6 +365,11 @@ if ((!dry_run)); then
     done
     rmdir "$displaced" 2> /dev/null || true
 fi
+
+# Qt Quick apps started from the session's environment (it still names the
+# Platinum Qt Quick style until the next login) keep working (finding 49).
+find_kde_quick
+leave_passthrough
 
 # Anything still to do keeps the record for another run.
 left=0

@@ -80,6 +80,7 @@ QQC2.ApplicationWindow {
         id: menu
         QQC2.MenuItem { text: "First" }
         QQC2.MenuItem { text: "Second" }
+        QQC2.MenuItem { text: "Open"; icon.name: "document-open" }
         QQC2.MenuSeparator {}
         QQC2.MenuItem { text: "Checked"; checkable: true; checked: true }
         QQC2.Action { text: "Save"; shortcut: "Ctrl+S" }
@@ -89,7 +90,7 @@ QQC2.ApplicationWindow {
     QQC2.ComboBox {
         id: combo
         x: 100; y: 100
-        width: 102  // as wide as its list; dev/quickref.cpp's widget combo box gets the same width
+        width: 140  // wider than its rows need in any font; dev/quickref.cpp's widget combo box gets the same width
         visible: root.step === 2
         model: ["Lavender", "Purple", "Platinum"]
         currentIndex: 1

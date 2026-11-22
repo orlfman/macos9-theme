@@ -17,6 +17,8 @@ KDE.MenuItem {
         visible: active
         elementType: "menuitem"
         text: control.text
+        iconName: control.icon.name
+        iconSource: control.icon.source
         shortcut: control.action && control.action.shortcut ? control.action.shortcut.toString() : ""
         selected: control.highlighted
         enabled: control.enabled

@@ -192,7 +192,8 @@ frame, range slider (and where KDE's hidden handles sit) and drawer edge
 while running and compares the same pieces with KDE's own style under
 Fusion (the fallback); and it checks with `dev/quickkeys.cpp` that switches
 still toggle with Space and look the same to screen readers as with KDE's
-style. `dev/quick-live.qml` is a visible window for `dev/app-test.sh` that
+style, and that keyboard focus shows on Qt Quick sliders and range sliders
+and on a QSlider. `dev/quick-live.qml` is a visible window for `dev/app-test.sh` that
 opens its own pop-up (`-- popup=menu|combo|tooltip|menubar|windowmenu|
 windowclick`; `windowclick` needs a real click: chain
 `dev/build/fakeinput click X Y` in the app command, as Wayland gives a
@@ -236,7 +237,10 @@ aside and back, a re-pointed link left alone, and the login script turning
 it on only with Platinum selected, never over the user's own choice, and
 not after a KDE Frameworks upgrade); a
 leftover half-made backup, a held lock, and a home path with spaces and
-quotes. The plugins are built once and
+quotes. From findings 49 and 50: apps started from the session's old
+environment after uninstall (the pass-through it leaves until the next
+login; `next_login` runs the one-shot cleanup), a reinstall before that
+login, a profile with none of the copied files, a cut-short checksum list. The plugins are built once and
 handed to install.sh through `M9_PREBUILT` (tests only). It uses
 `dev/build/styleshot` (from `dev/check-style.sh`) to check the installed
 style plugin loads.
@@ -258,7 +262,9 @@ back on their screens with their widgets and a widget setting of the
 user's (a clock with seconds), and that every config and GTK file is back
 byte for byte. It also runs `install.sh` again after the switch (an update), and
 checks that a Qt Quick app started with the login script's environment
-gets the Platinum Qt Quick style, and KDE's again after uninstall.
+gets the Platinum Qt Quick style, that a launcher holding the session's
+environment across the uninstall still starts Qt Quick apps, and that the
+next login leaves nothing behind and Qt Quick apps get KDE's style again.
 
 ## Measure and compare
 

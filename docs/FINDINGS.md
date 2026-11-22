@@ -324,4 +324,24 @@ switches", steps 2-5 and 7):
   sit exactly on the drawn thumbs. Qt's `RangeSlider` has a FINAL
   `horizontal` property (a derived type can't declare one). A drawer with
   its `enter` transition removed stays at position 0; tests set `position`.
+- **The session keeps the login script's environment** (finding 49):
+  Plasma's shell, KRunner and terminals started at login still name the
+  Platinum Qt Quick style after uninstall, and a Qt Quick app started from
+  them fails ("module Platinum is not installed") until the next login.
+  uninstall.sh therefore leaves a pass-through module (just `import
+  org.kde.desktop 1.0`) and Kirigami's link, removed by a one-shot login
+  script at the next login.
+- **A Binding element's `value` is evaluated even while `when` is false**;
+  guard it, or it reads (and loops with) bindings of the look it isn't
+  driving. While an app's style changes, our items flip one by one, so a
+  value that reads rows also checks each row's own state. KDE's Menu still
+  logs one binding loop of its own then (its list width), harmlessly.
+- **sha256sum -c fails on an empty list**; a copy with no files has one
+  (finding 50). The check compares the copy's files with the list instead,
+  which also catches a list cut short.
+- **Keyboard focus on sliders**: the Platinum slider showed none (widgets
+  included), and a ring around the thumb would be cut off (the thumb fills
+  the slider's height). Two #6666CC lines beside the focused thumb show it,
+  also on Qt Quick sliders (KDE's bridge passes keyboard focus) and on each
+  range slider handle (finding 52).
 

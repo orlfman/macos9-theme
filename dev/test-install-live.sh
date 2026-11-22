@@ -172,6 +172,13 @@ if [[ $after_files != "$before_files" ]]; then
         grep '^>' | awk '{ print "          changed " $3 }' | head -20 || true
 fi
 
+# A launcher that lives across the uninstall with the session's
+# environment (like Plasma's shell or a terminal), starting a Qt Quick app
+# only afterwards (finding 49).
+rm -f "$root/go"
+sh -c ". '$config/plasma-workspace/env/macos9-theme.sh'; while [ ! -e '$root/go' ]; do sleep 0.2; done
+    QT_FORCE_STDERR_LOGGING=1 exec '$dev/build/quickshot' '$root/quick-probe.qml' '$root/quick-probe-late.png'" > "$root/launcher.log" 2>&1 &
+launcher=$!
 old_pid=$(shell_pid)
 check "uninstall exits 0" bash -c "'$project/uninstall.sh' > '$root/uninstall.log' 2>&1"
 check "uninstall put the config files back" grep -q "Put back your config files" "$root/uninstall.log"
@@ -187,6 +194,16 @@ restored_widgets=$(widgets)
 echo "info    their widgets after uninstall: $restored_widgets"
 check "  with their widgets and the clock's setting" same "$before_widgets" "$restored_widgets"
 check "every config and GTK file is back byte for byte" same "$before_files" "$(files_state)"
+touch "$root/go"
+launcher_status=0
+wait "$launcher" || launcher_status=$?
+check "a launcher from before the uninstall still starts Qt Quick apps (exit $launcher_status)" \
+    bash -c "[[ $launcher_status == 0 ]] && grep -q 'QtQuick style: \"Platinum\"' '$root/launcher.log'"
+# The next login: the one-shot script uninstall.sh left runs.
+if [[ -f $config/plasma-workspace/env/macos9-theme-cleanup.sh ]]; then
+    sh -c '. "$1"' _ "$config/plasma-workspace/env/macos9-theme-cleanup.sh"
+fi
+check "after the next login, nothing of the theme is left" bash -c "[[ ! -e '$home/.local/lib/macos9-theme' && ! -e '$config/plasma-workspace/env/macos9-theme-cleanup.sh' ]]"
 check "after uninstall, Qt Quick apps get KDE's style again" bash -c "[[ ! -e '$config/plasma-workspace/env/macos9-theme.sh' ]] &&
     [[ \$(QT_FORCE_STDERR_LOGGING=1 '$dev/build/quickshot' '$root/quick-probe.qml' '$root/quick-probe.png' 2>&1 | sed -n 's/^QtQuick style: \"\\(.*\\)\"\$/\\1/p') == org.kde.desktop ]]"
 check "nothing touched a real systemd session" bash -c "! grep -qv 'is-active' '$root/systemctl.log' 2> /dev/null"

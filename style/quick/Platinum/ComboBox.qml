@@ -39,10 +39,20 @@ KDE.ComboBox {
     // At least as wide as the button; as tall as its rows (KDE's list adds 1 px).
     Binding {
         target: control.popup; property: "implicitWidth"; when: control.platinum
+        // (A Binding's value is evaluated even while it's off: only read the
+        // rows while Platinum, or it loops with KDE's own width binding.)
         value: {
+            if (!control.platinum) {
+                return 0;
+            }
             let max = 0;
             for (let i = 0; i < control.popup.count; i++) {
-                max = Math.max(max, control.popup.itemAt(i).implicitWidth);
+                // (while the style changes, rows already back in KDE's look
+                // are skipped: their width follows the list's)
+                const row = control.popup.itemAt(i);
+                if (row && row.platinum === true) {
+                    max = Math.max(max, row.implicitWidth);
+                }
             }
             return Math.max(control.width, max + 3);
         }

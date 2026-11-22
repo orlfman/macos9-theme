@@ -5,7 +5,9 @@
 // API only, PLAN.md decision 13).
 // SPDX-License-Identifier: BSD-2-Clause
 #pragma once
+#include <QIcon>
 #include <QQuickPaintedItem>
+#include <QUrl>
 
 class PlatinumItem : public QQuickPaintedItem
 {
@@ -17,6 +19,11 @@ class PlatinumItem : public QQuickPaintedItem
     Q_PROPERTY(QString shortcut MEMBER m_shortcut NOTIFY changed)
     Q_PROPERTY(bool selected MEMBER m_selected NOTIFY changed)
     Q_PROPERTY(bool pressed MEMBER m_pressed NOTIFY changed)
+    // Keyboard focus (shown only for focus moved by the keyboard).
+    Q_PROPERTY(bool keyboardFocus MEMBER m_keyboardFocus NOTIFY changed)
+    // A menu row's icon: a theme icon name, or a file or qrc: URL.
+    Q_PROPERTY(QString iconName MEMBER m_iconName NOTIFY changed)
+    Q_PROPERTY(QUrl iconSource MEMBER m_iconSource NOTIFY changed)
     Q_PROPERTY(bool checkable MEMBER m_checkable NOTIFY changed)
     Q_PROPERTY(bool checked MEMBER m_checked NOTIFY changed)
     Q_PROPERTY(bool subMenu MEMBER m_subMenu NOTIFY changed)
@@ -69,6 +76,10 @@ private:
     void updateActive();
     void updateImplicitSize();
     QString m_type, m_text, m_shortcut;
+    QString m_iconName;
+    QUrl m_iconSource;
+    QIcon icon() const;
+    bool m_keyboardFocus = false;
     bool m_selected = false, m_pressed = false, m_checkable = false, m_checked = false, m_subMenu = false;
     bool m_first = false, m_last = false, m_combo = false, m_active = false;
     int m_shortcutColumn = 0;

@@ -84,14 +84,9 @@ fi
 
 # The Qt Quick style builds on KDE's (qqc2-desktop-style) and needs
 # Kirigami's plugin for it; it's left out if they aren't there.
-qtpaths=$(pkg-config --variable=bindir Qt6Core 2> /dev/null)/qtpaths6
-[[ -x $qtpaths ]] || qtpaths=$(command -v qtpaths6 || command -v qtpaths || true)
-kde_quick_version_file="" kde_quick_version="" kirigami_desktop=""
-if [[ -n $qtpaths ]]; then
-    kde_quick_version_file=$("$qtpaths" --query QT_INSTALL_QML 2> /dev/null)/org/kde/desktop/kde-qmlmodule.version
-    kirigami_desktop=$("$qtpaths" --query QT_INSTALL_PLUGINS 2> /dev/null)/kf6/kirigami/platform/org.kde.desktop.so
-fi
-if [[ -f $kde_quick_version_file && -e $kirigami_desktop ]]; then
+find_kde_quick
+kde_quick_version=""
+if [[ -n $kde_quick_version_file && -n $kirigami_desktop ]]; then
     kde_quick_version=$(< "$kde_quick_version_file")
 else
     note "KDE's Qt Quick style or Kirigami isn't installed: Qt Quick apps keep KDE's look."
@@ -151,6 +146,8 @@ EOF
     fi
 fi
 
+# What an uninstall in this session left for running apps makes way.
+remove_passthrough
 place_file "$build/style/plugins/styles/platinumstyle.so" "$plugins/styles/platinumstyle.so" 755
 place_file "$build/decoration/plugins/org.kde.kdecoration3/platinum.so" "$deco_plugins/org.kde.kdecoration3/platinum.so" 755
 say "Installed the application style and the window decoration into $libdir"

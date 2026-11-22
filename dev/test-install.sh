@@ -114,13 +114,24 @@ fake_gtk_sync() {
 }
 
 no_record_left() { [[ ! -e $state ]]; }
+# The next login: the one-shot script uninstall.sh leaves runs (it removes
+# the pass-through for the session's running apps, finding 49).
+next_login() {
+    local script=$config/plasma-workspace/env/macos9-theme-cleanup.sh
+    if [[ -f $script ]]; then
+        sh -c '. "$1"' _ "$script"
+    fi
+    return 0
+}
 theme_files_gone() {
+    next_login
     ! ls -d "$home"/.local/lib/macos9-theme "$data"/plasma/*/platinum* "$data/color-schemes/Platinum.colors" \
-        "$config/plasma-workspace/env/macos9-theme.sh" > /dev/null 2>&1
+        "$config/plasma-workspace/env/macos9-theme.sh" "$config/plasma-workspace/env/macos9-theme-cleanup.sh" > /dev/null 2>&1
 }
 kept_dir() { ls -d "$home"/.local/state/macos9-theme-uninstalled-* 2> /dev/null | tail -1; }
 # The home without what uninstall keeps on purpose (its dated folder).
 clean_snapshot() {
+    next_login
     rm -rf "$home"/.local/state/macos9-theme-uninstalled-*
     snapshot
 }
@@ -203,8 +214,11 @@ check "uninstall --dry-run keeps the record and the copy" test -f "$state/instal
 check "uninstall --dry-run shows the restore" grep -q "would put back" "$root/$n-uninstall-dry.log"
 check "uninstall exits 0" run uninstall "$project/uninstall.sh"
 check "uninstall put every config and GTK file back (incl. absent ones)" same "$seed" "$(config_state)"
+check "uninstall left only the pass-through for the session's running apps" \
+    bash -c "[[ \$(find '$home/.local/lib' '$config/plasma-workspace' ! -type d | sort | tr '\n' ' ') == '$config/plasma-workspace/env/macos9-theme-cleanup.sh $home/.local/lib/macos9-theme/qml/Platinum/qmldir $home/.local/lib/macos9-theme/style/kf6/kirigami/platform/Platinum.so ' ]]"
+next_login
 check "uninstall removed the theme's files" theme_files_gone
-check "uninstall removed the folders it made" bash -c "[[ ! -e '$home/.local/lib' && ! -e '$config/plasma-workspace' && ! -e '$data/plasma' ]]"
+check "after the next login, the folders it made are gone too" bash -c "[[ ! -e '$home/.local/lib' && ! -e '$config/plasma-workspace' && ! -e '$data/plasma' ]]"
 check "uninstall removed the record" no_record_left
 kept=$(kept_dir)
 check "uninstall kept the replaced files and the copy it put back" \
@@ -387,6 +401,7 @@ check "install refuses too (exit 1)" bash -c "! '$project/install.sh' > '$root/2
 check "  and the other profile is still untouched" same "$b_before" "$(tree "$root/profile-b")"
 ln -sfn "$root/profile-a" "$config"
 check "with the link pointed back, uninstall exits 0" run uninstall "$project/uninstall.sh"
+next_login
 check "  and the first profile is as seeded" same "$a_seed" "$(tree "$root/profile-a")"
 rm -rf "$root/profile-a" "$root/profile-b"
 
@@ -432,7 +447,7 @@ check "  and changed nothing" same "$before" "$(snapshot)"
 check "install with another XDG_CONFIG_HOME refuses too" \
     bash -c "! XDG_CONFIG_HOME='$root/other-config' '$project/install.sh' > '$root/31-install.log' 2>&1"
 check "with the same folders, uninstall exits 0" run uninstall "$project/uninstall.sh"
-check "  and removed everything" bash -c "$(declare -f theme_files_gone no_record_left); home='$home' data='$data' config='$config' state='$state'; theme_files_gone && no_record_left"
+check "  and removed everything" bash -c "$(declare -f next_login theme_files_gone no_record_left); home='$home' data='$data' config='$config' state='$state'; theme_files_gone && no_record_left"
 rm -rf "$root/other-data" "$root/other-config"
 
 # --------------------------------------------------------------------------
@@ -459,7 +474,7 @@ check "  the added file is still there" grep -qx mine "$data/plasma/desktoptheme
 check "  the changed file is still there, as changed" bash -c "[[ \$(sha256sum < '$data/plasma/look-and-feel/platinum.desktop/metadata.json') == '$edited' ]]"
 check "  the replaced color scheme is still the user's" grep -qx '# my own Platinum' "$data/color-schemes/Platinum.colors"
 check "  the installed files around them are gone" \
-    bash -c "[[ ! -e '$data/plasma/desktoptheme/platinum/metadata.json' && ! -e '$data/plasma/plasmoids' && ! -e '$home/.local/lib' && \$(ls '$data/plasma/desktoptheme/platinum') == my-variant.svg ]]"
+    bash -c "[[ ! -e '$data/plasma/desktoptheme/platinum/metadata.json' && ! -e '$data/plasma/plasmoids' && \$(ls '$data/plasma/desktoptheme/platinum') == my-variant.svg ]]"
 check "  and it said what it kept" grep -q "kept" "$root/$n-uninstall.log"
 check "  no record left" no_record_left
 
@@ -490,6 +505,13 @@ before=$(snapshot)
 check "uninstall with a changed file in the copy refuses (exit 1)" bash -c "! '$project/uninstall.sh' > '$root/36-2.log' 2>&1"
 check "  and changed nothing" same "$before" "$(snapshot)"
 mv -f "$root/kwinrc.saved" "$state/backup/config/kwinrc"
+cp "$state/backup/SUMS" "$root/SUMS.saved"
+grep -v 'config/kwinrc$' "$root/SUMS.saved" > "$state/backup/SUMS"
+before=$(snapshot)
+check "uninstall with a cut-short checksum list refuses (exit 1)" bash -c "! '$project/uninstall.sh' > '$root/36-3.log' 2>&1"
+check "  and names the unlisted file" grep -q "kwinrc isn't on the checksum list" "$root/36-3.log"
+check "  and changed nothing" same "$before" "$(snapshot)"
+cp "$root/SUMS.saved" "$state/backup/SUMS"
 check "with the copy whole again, uninstall exits 0" run uninstall "$project/uninstall.sh"
 check "  and puts the seed back" same "$seed" "$(config_state)"
 
@@ -591,6 +613,46 @@ check "uninstall exits 0" run uninstall-2 "$project/uninstall.sh"
 check "  a link pointed elsewhere since is left alone" bash -c "[[ \$(readlink '$link') == /nonexistent/other.so ]]"
 check "  and uninstall says so" grep -q "points somewhere else now" "$root/$n-uninstall-2.log"
 
+# --------------------------------------------------------------------------
+fresh "finding 50: a profile where none of the copied files existed"
+rm -rf "$config" "$home/.gtkrc-2.0"
+mkdir -p "$config"
+check "install --apply exits 0" run apply "$project/install.sh" --apply
+check "  the copy lists no files (all absent)" bash -c "[[ ! -s '$state/backup/SUMS' ]] && [[ -z \$(find '$state/backup/config' '$state/backup/home' -type f 2> /dev/null) ]]"
+check "uninstall exits 0" run uninstall "$project/uninstall.sh"
+check "  and removed what the switch wrote" bash -c "[[ ! -e '$config/kdeglobals' && ! -e '$config/kwinrc' && ! -e '$config/kdedefaults' ]]"
+
+# --------------------------------------------------------------------------
+fresh "finding 49: apps started from the old session still start after uninstall"
+check "install --apply exits 0" run apply "$project/install.sh" --apply
+# The session's environment, as the login script made it.
+session_env=$(env -u QT_QUICK_CONTROLS_STYLE -u QML_IMPORT_PATH sh -c ". '$config/plasma-workspace/env/macos9-theme.sh'; echo \"QT_QUICK_CONTROLS_STYLE=\$QT_QUICK_CONTROLS_STYLE QML_IMPORT_PATH=\$QML_IMPORT_PATH QT_PLUGIN_PATH=\$QT_PLUGIN_PATH\"")
+check "  the session names the Platinum Qt Quick style" bash -c "[[ '$session_env' == QT_QUICK_CONTROLS_STYLE=Platinum* ]]"
+cat > "$root/probe.qml" << 'QML'
+import QtQuick
+import QtQuick.Controls as QQC2
+QQC2.ApplicationWindow { width: 100; height: 60; visible: false; QQC2.Button { text: "x" } }
+QML
+probe() { # prints the Qt Quick style a new app gets with the session's environment, or "failed"
+    env $session_env QT_FORCE_STDERR_LOGGING=1 DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent timeout 20 "$M9_PROJECT_BUILD/quickshot" "$root/probe.qml" "$root/probe.png" > "$root/probe.log" 2>&1 || { echo failed; return; }
+    sed -n 's/^QtQuick style: "\(.*\)"$/\1/p' "$root/probe.log"
+}
+if [[ -x $M9_PROJECT_BUILD/quickshot ]]; then
+    check "  an app started from it gets Platinum" bash -c "[[ \$($(declare -f probe); session_env='$session_env' root='$root' M9_PROJECT_BUILD='$M9_PROJECT_BUILD'; probe) == Platinum ]]"
+fi
+check "uninstall exits 0" run uninstall "$project/uninstall.sh"
+check "  and says what it left for the session" grep -q "Left a pass-through" "$root/$n-uninstall.log"
+if [[ -x $M9_PROJECT_BUILD/quickshot ]]; then
+    check "  an app started from the old session's environment still starts" \
+        bash -c "[[ \$($(declare -f probe); session_env='$session_env' root='$root' M9_PROJECT_BUILD='$M9_PROJECT_BUILD'; probe) != failed ]]"
+fi
+check "install again before logging out exits 0" run install-2 "$project/install.sh"
+check "  it took the pass-through's place (nothing moved aside)" bash -c "! grep -q '^displaced' '$state/installed' && [[ ! -e '$config/plasma-workspace/env/macos9-theme-cleanup.sh' ]]"
+check "uninstall exits 0" run uninstall-2 "$project/uninstall.sh"
+next_login
+check "after the next login, nothing of the theme is left" bash -c "[[ ! -e '$home/.local/lib' && ! -e '$config/plasma-workspace' ]]"
+check "  and the config is as seeded" same "$seed" "$(config_state)"
+
 fresh "a home with spaces and quotes in its path"
 weird="$root/my 'odd' \$home"
 rm -rf "$weird"
@@ -599,7 +661,8 @@ odd() { env -u XDG_CONFIG_HOME -u XDG_DATA_HOME -u XDG_STATE_HOME -u XDG_CACHE_H
 check "install exits 0" bash -c "$(declare -f odd); weird=\$1; odd '$project/install.sh' > '$root/weird.log' 2>&1" _ "$weird"
 check "  the login script adds the odd path" bash -c "unset QT_PLUGIN_PATH; source \"\$1/.config/plasma-workspace/env/macos9-theme.sh\"; [[ \$QT_PLUGIN_PATH == \"\$1/.local/lib/macos9-theme/style:\$1/.local/lib/macos9-theme/decoration\" ]]" _ "$weird"
 check "uninstall exits 0" bash -c "$(declare -f odd); weird=\$1; odd '$project/uninstall.sh' > '$root/weird-un.log' 2>&1" _ "$weird"
-check "  and removed everything it installed" bash -c "[[ -z \$(find \"\$1\" -path '*/macos9-theme-uninstalled-*' -prune -o -type f -print) ]]" _ "$weird"
+check "  and removed everything it installed (after the next login)" bash -c "[[ -f \"\$1/.config/plasma-workspace/env/macos9-theme-cleanup.sh\" ]] && sh -c '. \"\$1\"' _ \"\$1/.config/plasma-workspace/env/macos9-theme-cleanup.sh\" &&
+    [[ -z \$(find \"\$1\" -path '*/macos9-theme-uninstalled-*' -prune -o -type f -print) ]]" _ "$weird"
 rm -rf "$weird"
 
 echo

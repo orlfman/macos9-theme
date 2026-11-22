@@ -30,6 +30,7 @@ KDE.RangeSlider {
         horizontal: control.alongX
         position: control.first.visualPosition
         pressed: control.first.pressed
+        keyboardFocus: control.visualFocus && control.first.handle !== null && control.first.handle.activeFocus
         enabled: control.enabled
     }
     property PlatinumItem secondThumb: PlatinumItem {
@@ -42,6 +43,7 @@ KDE.RangeSlider {
         horizontal: control.alongX
         position: control.second.visualPosition
         pressed: control.second.pressed
+        keyboardFocus: control.visualFocus && control.second.handle !== null && control.second.handle.activeFocus
         enabled: control.enabled
     }
     Binding { target: control.background; property: "opacity"; value: 0; when: control.platinum }

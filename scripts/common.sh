@@ -109,6 +109,25 @@ deco_plugins=$libdir/decoration
 quick_qml=$libdir/qml
 quick_module=$quick_qml/Platinum
 kirigami_link=$plugins/kf6/kirigami/platform/Platinum.so
+# Left by uninstall.sh for the rest of the session (finding 49), removed by
+# itself at the next login.
+cleanup_script=$config_home/plasma-workspace/env/macos9-theme-cleanup.sh
+passthrough_marker="# macos9-theme: pass-through left by uninstall.sh, removed at the next login"
+
+# KDE's Qt Quick style (its version file) and Kirigami's plugin for it,
+# where Qt keeps them; empty when not installed.
+kde_quick_version_file="" kirigami_desktop=""
+find_kde_quick() {
+    local qtpaths
+    qtpaths=$(pkg-config --variable=bindir Qt6Core 2> /dev/null)/qtpaths6
+    [[ -x $qtpaths ]] || qtpaths=$(command -v qtpaths6 || command -v qtpaths || true)
+    [[ -n $qtpaths ]] || return 0
+    kde_quick_version_file=$("$qtpaths" --query QT_INSTALL_QML 2> /dev/null)/org/kde/desktop/kde-qmlmodule.version
+    kirigami_desktop=$("$qtpaths" --query QT_INSTALL_PLUGINS 2> /dev/null)/kf6/kirigami/platform/org.kde.desktop.so
+    [[ -f $kde_quick_version_file ]] || kde_quick_version_file=""
+    [[ -e $kirigami_desktop ]] || kirigami_desktop=""
+    return 0
+}
 env_script=$config_home/plasma-workspace/env/macos9-theme.sh
 
 scheme_name=Platinum
@@ -719,6 +738,70 @@ backup_taken() {
 mark_backup() { # install|apply
     plan "mark the copy in $backup as taken before the switch"
     ((dry_run)) || printf '%s\n' "$1" > "$backup/TAKEN"
+}
+
+# --- The pass-through after uninstalling (finding 49) ----------------------
+#
+# The login script exports QT_QUICK_CONTROLS_STYLE=Platinum into the
+# session; whatever still has that environment (Plasma's shell, KRunner,
+# open terminals) would start Qt Quick apps that fail without the module.
+# So uninstall.sh leaves a module that only forwards to KDE's style, and
+# Kirigami's link, until the next login, when a one-shot login script
+# removes them (only what it recognizes) and itself.
+
+leave_passthrough() {
+    local made=() dir i
+    [[ -n $kirigami_desktop ]] || return 0
+    [[ -e $quick_module/qmldir || -L $quick_module/qmldir ]] && return 0
+    plan "leave a pass-through in $quick_module for Qt Quick apps started before you log out (removed at your next login)"
+    ((dry_run)) && return 0
+    for dir in "$quick_module" "$(dirname "$kirigami_link")" "$(dirname "$cleanup_script")"; do
+        while [[ ! -e $dir && ! -L $dir ]]; do
+            made=("$dir" "${made[@]}")
+            dir=$(dirname "$dir")
+        done
+    done
+    mkdir -p "$quick_module" "$(dirname "$kirigami_link")" "$(dirname "$cleanup_script")"
+    printf '%s\nmodule Platinum\nimport org.kde.desktop 1.0\n' "$passthrough_marker" > "$quick_module/qmldir"
+    if [[ ! -e $kirigami_link && ! -L $kirigami_link ]]; then
+        ln -s "$kirigami_desktop" "$kirigami_link"
+    fi
+    {
+        printf '%s\n' "$passthrough_marker"
+        printf '# Removes the pass-through macos9-theme'"'"'s uninstall.sh left for Qt Quick apps\n'
+        printf '# started before you logged out (only what it recognizes), then itself.\n'
+        printf 'macos9_theme_m=%s\n' "$(sh_quote "$quick_module")"
+        printf 'if [ -f "$macos9_theme_m/qmldir" ] && [ "$(head -n 1 "$macos9_theme_m/qmldir")" = %s ]; then\n' "$(sh_quote "$passthrough_marker")"
+        printf '    rm -f "$macos9_theme_m/qmldir"\n'
+        printf 'fi\n'
+        printf 'if [ -L %s ] && [ "$(readlink %s)" = %s ] && [ ! -e %s ]; then\n' "$(sh_quote "$kirigami_link")" "$(sh_quote "$kirigami_link")" \
+            "$(sh_quote "$kirigami_desktop")" "$(sh_quote "$plugins/styles/platinumstyle.so")"
+        printf '    rm -f %s\n' "$(sh_quote "$kirigami_link")"
+        printf 'fi\n'
+        # the folders it made, deepest first, if empty
+        for ((i = ${#made[@]} - 1; i >= 0; i--)); do
+            printf 'rmdir %s 2> /dev/null\n' "$(sh_quote "${made[i]}")"
+        done
+        printf 'unset macos9_theme_m\n'
+        printf 'rm -f %s\n' "$(sh_quote "$cleanup_script")"
+        for ((i = ${#made[@]} - 1; i >= 0; i--)); do
+            [[ ${made[i]} == "$(dirname "$cleanup_script")"* || "$(dirname "$cleanup_script")" == "${made[i]}"* ]] &&
+                printf 'rmdir %s 2> /dev/null\n' "$(sh_quote "${made[i]}")"
+        done
+        printf 'true\n'
+    } > "$cleanup_script"
+    say "Left a pass-through in $quick_module, so Qt Quick apps started before you log out keep working (with KDE's look); it's removed at your next login"
+}
+
+# A pass-through an earlier uninstall.sh left (a reinstall before the next
+# login): removed, so the install takes its place.
+remove_passthrough() {
+    [[ -f $cleanup_script && ! -L $cleanup_script && $(head -n 1 "$cleanup_script") == "$passthrough_marker" ]] || return 0
+    plan "remove the pass-through uninstall.sh left"
+    ((dry_run)) && return 0
+    # Its own script knows what it left and the folders it made.
+    sh "$cleanup_script" || true
+    rm -f "$cleanup_script"
 }
 
 # --- Plasma's shell ---------------------------------------------------------

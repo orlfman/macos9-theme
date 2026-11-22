@@ -27,8 +27,8 @@ g++ -std=c++17 -O1 -fPIC "$dev/quickkeys.cpp" -o "$dev/build/quickkeys" $(pkg-co
 QSTYLE=Platinum "$dev/run.sh" platinum breeze "$dev/build/quickref" "$out/widget" > "$out/widget.log" 2>&1
 # Switches stay switches: Space toggles them, screen readers see the same
 # role and state as with KDE's style.
-M9_QUICK=1 QSTYLE=Platinum "$dev/run.sh" platinum breeze env QT_QUICK_BACKEND=software "$dev/build/quickkeys" 2>&1 | grep 'space-toggles' > "$out/keys-platinum.txt" || true
-QSTYLE=Platinum "$dev/run.sh" platinum breeze env QT_QUICK_BACKEND=software "$dev/build/quickkeys" 2>&1 | grep 'space-toggles' > "$out/keys-kde.txt" || true
+M9_QUICK=1 QSTYLE=Platinum "$dev/run.sh" platinum breeze env QT_QUICK_BACKEND=software "$dev/build/quickkeys" 2>&1 | grep -E 'space-toggles|focus-shows' > "$out/keys-platinum.txt" || true
+QSTYLE=Platinum "$dev/run.sh" platinum breeze env QT_QUICK_BACKEND=software "$dev/build/quickkeys" 2>&1 | grep -E 'space-toggles|focus-shows' > "$out/keys-kde.txt" || true
 M9_QUICK=1 QSTYLE=Platinum "$dev/run.sh" platinum breeze env QT_QUICK_BACKEND=software \
     "$dev/build/quickshot" "$dev/quick-regions.qml" "$out/quick.png" > "$out/quick.log" 2>&1
 
@@ -125,8 +125,9 @@ for name, step in steps.items():
         diff.point(lambda v: 255 if v else 0).save(f"{out}/diff-fallback-{name}.png")
 keys_p = open(f"{out}/keys-platinum.txt").read().split("\n")
 keys_k = open(f"{out}/keys-kde.txt").read().split("\n")
-keys_ok = keys_p == keys_k and len([l for l in keys_p if "space-toggles=1" in l]) == 2
-print(("ok      " if keys_ok else "FAIL    ") + "switches: Space toggles them; role and state as with KDE's style"
+keys_ok = keys_p == keys_k and len([l for l in keys_p if "space-toggles=1" in l]) == 2 \
+    and len([l for l in keys_p if "focus-shows=1" in l]) == 3
+print(("ok      " if keys_ok else "FAIL    ") + "keyboard: Space toggles switches (role and state as with KDE's style); focus shows on sliders"
       + ("" if keys_ok else f" (Platinum {keys_p}, KDE {keys_k})"))
 failed += 0 if keys_ok else 1
 total = 2 * len(steps) + 1

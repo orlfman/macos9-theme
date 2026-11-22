@@ -2,6 +2,27 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for findings #49–#53
+
+- **Uninstall keeps the session's Qt Quick apps working (#49)**: a
+  pass-through to KDE's style stays until the next login, then removes
+  itself.
+- **Profiles with none of the copied files (#50)** uninstall cleanly; a
+  cut-short checksum list is now refused.
+- **Menu icons in Qt Quick menus (#51).**
+- **Keyboard focus shows on sliders (#52)**: widget and Qt Quick sliders
+  and range slider handles.
+- **Combo list check (#53)** no longer depends on the font; no binding
+  loop of ours when an app switches styles.
+- Checks: install 249/249, live 19/19, Qt Quick 19/19, style 135/135,
+  Plasma 7/7.
+
+## 2026-11-21, Codex (GPT-6) — audit Qt Quick packaging and desktop rollback
+
+Recorded findings #49–53 against `88a3732` in AUDIT.md. The packaging maintainer should address two rollback cases before the first desktop install: a successful uninstall leaves existing launchers selecting a deleted Qt Quick module, and a valid empty config backup prevents uninstall. Qt Quick menu icons and range-slider focus also disappear. The combo popup differed from the widget fixture by one pixel in width.
+
+Passed 230/230 installer, 17/17 nested live, 135/135 widget, 7/7 Plasma and 18/19 Qt Quick checks. Ran instrumented renderers, opened System Settings in nested KWin, and compared disposable-session screenshots. Real login, systemd, physical monitor transitions and upgrades remain unverified. Only the review logs changed.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — Qt Quick dialogs, drawers and range sliders (finding 3, step 6)
 
 - **Dialogs**: the Mac OS 9 plain modal frame, measured from the captures

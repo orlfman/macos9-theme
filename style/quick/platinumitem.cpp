@@ -38,8 +38,9 @@ bool is(const QString &type, const char *name)
 }
 
 void initMenuItem(QStyleOptionMenuItem *opt, const QString &type, const QString &text, const QString &shortcut, int shortcutColumn, bool selected,
-                  bool enabled, bool checkable, bool checked, bool subMenu)
+                  bool enabled, bool checkable, bool checked, bool subMenu, const QIcon &icon = QIcon())
 {
+    opt->icon = icon;
     opt->palette = QApplication::palette("QMenu");
     opt->font = QApplication::font("QMenu");
     opt->fontMetrics = QFontMetrics(opt->font);
@@ -57,7 +58,7 @@ void initMenuItem(QStyleOptionMenuItem *opt, const QString &type, const QString 
     opt->checked = checked;
     opt->text = shortcut.isEmpty() ? text : text + QLatin1Char('\t') + shortcut;
     opt->reservedShortcutWidth = shortcutColumn;
-    opt->maxIconWidth = 0;
+    opt->maxIconWidth = icon.isNull() ? 0 : 16;
 }
 
 void initMenuBarItem(QStyleOptionMenuItem *opt, const QString &text, bool selected, bool enabled)
@@ -122,6 +123,25 @@ bool PlatinumItem::eventFilter(QObject *watched, QEvent *event)
     return false;
 }
 
+// A theme icon by name, or a local file or qrc: URL (other URLs, like
+// image providers, can't be read here: no icon then).
+QIcon PlatinumItem::icon() const
+{
+    if (!m_iconName.isEmpty()) {
+        const QIcon themed = QIcon::fromTheme(m_iconName);
+        if (!themed.isNull()) {
+            return themed;
+        }
+    }
+    if (m_iconSource.isLocalFile()) {
+        return QIcon(m_iconSource.toLocalFile());
+    }
+    if (m_iconSource.scheme() == QLatin1String("qrc")) {
+        return QIcon(QLatin1Char(':') + m_iconSource.path());
+    }
+    return QIcon();
+}
+
 bool PlatinumItem::drawsText() const
 {
     return is(m_type, "tooltip") && !Qt::mightBeRichText(m_text);
@@ -148,12 +168,13 @@ void PlatinumItem::updateImplicitSize()
     setProperty("_platinum_shortcuts", m_shortcutColumn > 0);
     if (is(m_type, "menuitem") || is(m_type, "separator")) {
         QStyleOptionMenuItem opt;
-        initMenuItem(&opt, m_type, m_text, m_shortcut, m_shortcutColumn, m_selected, isEnabled(), m_checkable, m_checked, m_subMenu);
+        initMenuItem(&opt, m_type, m_text, m_shortcut, m_shortcutColumn, m_selected, isEnabled(), m_checkable, m_checked, m_subMenu, icon());
         opt.styleObject = this;
         // What QMenu passes: the label's width and the font height; then it
         // adds the shortcut column to every row.
         const int label = opt.fontMetrics.boundingRect(QRect(), Qt::TextSingleLine | Qt::TextShowMnemonic, m_text).width();
-        const QSize contents(is(m_type, "separator") ? 0 : label, opt.fontMetrics.height());
+        // (with an icon, at least its 16 px tall, as QMenu passes it)
+        const QSize contents(is(m_type, "separator") ? 0 : label, std::max(opt.fontMetrics.height(), opt.icon.isNull() ? 0 : 16));
         const QSize size = style->sizeFromContents(QStyle::CT_MenuItem, &opt, contents, nullptr);
         setImplicitSize(size.width() + m_shortcutColumn, size.height());
     } else if (is(m_type, "menubaritem")) {
@@ -214,7 +235,7 @@ void PlatinumItem::paint(QPainter *painter)
             style->drawPrimitive(QStyle::PE_PanelMenu, &panel, painter, nullptr);
         }
         QStyleOptionMenuItem opt;
-        initMenuItem(&opt, m_type, m_text, m_shortcut, m_shortcutColumn, m_selected, isEnabled(), m_checkable, m_checked, m_subMenu);
+        initMenuItem(&opt, m_type, m_text, m_shortcut, m_shortcutColumn, m_selected, isEnabled(), m_checkable, m_checked, m_subMenu, icon());
         opt.rect = r;
         opt.styleObject = this;
         style->drawControl(QStyle::CE_MenuItem, &opt, painter, nullptr);
@@ -300,6 +321,9 @@ void PlatinumItem::paint(QPainter *painter)
         }
         if (m_horizontal) {
             opt.state |= QStyle::State_Horizontal;
+        }
+        if (m_keyboardFocus) {
+            opt.state |= QStyle::State_HasFocus | QStyle::State_KeyboardFocusChange;
         }
         if (is(m_type, "slidergroove")) {
             opt.subControls = QStyle::SC_SliderGroove;

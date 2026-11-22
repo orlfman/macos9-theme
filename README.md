@@ -66,7 +66,10 @@ It stops Plasma's shell while it puts your panel layout back (the shell
 saves its layout when it quits) and starts it again. Your config files as
 they were just before uninstalling, and the copy that was put back, are
 kept in `~/.local/state/macos9-theme-uninstalled-*`. Log out and back in
-once afterwards.
+once afterwards. Until then, apps you start keep working: your session
+still names the Platinum Qt Quick style, so uninstall leaves a small
+pass-through in its place (it just hands over to KDE's style) that removes
+itself at your next login.
 
 Files and folders you added to or changed in what the theme installed (an
 extra SVG in its Plasma style, an edited color scheme) are left where they

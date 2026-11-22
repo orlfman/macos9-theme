@@ -51,7 +51,11 @@ int main(int argc, char **argv)
     // The menu (the same rows as dev/quick-regions.qml).
     QMenu menu;
     QList<QAction *> rows;
-    rows << menu.addAction("First") << menu.addAction("Second") << menu.addSeparator();
+    rows << menu.addAction("First") << menu.addAction("Second");
+    // A row with an icon (finding 51).
+    const QIcon openIcon = QIcon::fromTheme(QStringLiteral("document-open"));
+    printf("menu icon %s\n", openIcon.isNull() ? "missing" : "found");
+    rows << menu.addAction(openIcon, QStringLiteral("Open")) << menu.addSeparator();
     QAction *checked = menu.addAction("Checked");
     checked->setCheckable(true);
     checked->setChecked(true);
@@ -74,8 +78,9 @@ int main(int argc, char **argv)
     QComboBox combo;
     combo.addItems({"Lavender", "Purple", "Platinum"});
     combo.setCurrentIndex(1);
-    // As wide as the Qt Quick list's rows need (dev/quick-regions.qml).
-    combo.resize(102, combo.sizeHint().height());
+    // As wide as dev/quick-regions.qml's (wider than the rows need in any
+    // font, so both lists are the button's width).
+    combo.resize(140, combo.sizeHint().height());
     combo.move(100, 100);
     combo.show();
     settle(150);

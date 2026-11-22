@@ -3,7 +3,56 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: Nothing blocks the first desktop install except the user's go-ahead. Open: #3 (P3): the Qt Quick style is built and installed for menus, menu bar, combo lists, tooltips, switches, dialogs, drawers and range sliders (check-quick 19/19); waits for an audit and the user's review. User decisions still apply to #21 (main screen only), #26 (RTL unsupported), #23 (resizing on hold) and #25 (deferred until publication).
+Status: Findings #49–#53 are fixed and tested; nothing blocks the first desktop install except the user's go-ahead. Open: #3 (P3) waits for the user's review of the Qt Quick style. User decisions still apply to #21 (main screen only), #26 (RTL unsupported), #23 (resizing on hold) and #25 (deferred until publication).
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for Codex's findings #49–#53
+
+Verified each by reading the code (and Codex's reproductions), then fixed
+them with a test for each. Uncommitted at the time of writing.
+
+| Finding | Verified | Fix |
+|---|---|---|
+| #49 | yes (read: the session's processes keep `QT_QUICK_CONTROLS_STYLE=Platinum` from the login script; uninstall removed the module; a running environment can't be changed from outside) | uninstall.sh leaves a pass-through: the module only forwarding to KDE's style (`import org.kde.desktop 1.0`) and Kirigami's link, so apps started from the old environment still start, with KDE's look. A one-shot login script (`macos9-theme-cleanup.sh`) removes what it recognizes, the folders it made, and itself at the next login. A reinstall before that runs it first. Tests: an app started from the session's environment after uninstall starts (offline), a launcher held across the uninstall starts one (live test, real Plasma), a reinstall takes the pass-through's place, nothing is left after the next login. |
+| #50 | yes (read: `sha256sum -c` exits 1 on an empty list) | The copy's files are compared with the checksum list: each file must be listed, each listed file there and unchanged. An empty list with no files passes; a list cut short is now caught (it wasn't before). Tests for both. |
+| #51 | yes (read: the row item had no icon) | The row item takes the action's icon (theme name, file or qrc URL) and the style lays it out as in QMenu (18 px row, label at 41 px). The checked menu now has an icon row on both sides: still pixel exact. |
+| #52 | yes; also true for widget sliders (the style drew no focus) | While the keyboard moves the focus, two 1 px #6666CC lines either side of the focused thumb (a ring would be cut off: the thumb fills the slider's height). Drawn by the style, so QSlider, Qt Quick's Slider (through KDE's bridge) and each RangeSlider handle show it. Checked with real Tab focus in `dev/quickkeys.cpp`. |
+| #53 | yes (the fixture's combo box was only as wide as its rows, so another font made the list 1 px wider; read: a Binding's value runs even while off) | The fixture's combo box is 140 px on both sides. The combo's width binding reads rows only while Platinum, and only rows still in Platinum's look while the style changes. KDE's Menu still logs one binding loop of its own during a live switch (FINDINGS.md). |
+
+### Checks
+
+- `dev/test-install.sh`: 249 of 249. `dev/test-install-live.sh`: 19 of 19.
+- `dev/check-quick.sh`: 19 of 19 (menus with an icon row; focus on
+  three kinds of slider). `dev/check-style.sh`: 135 of 135.
+  `dev/check-plasma.sh`: 7 of 7.
+
+### Limits
+
+- The pass-through covers apps started before the next login; the
+  session's environment itself only changes with that login.
+- Icons from image providers (`image://`) aren't drawn in menu rows.
+- No screen reader session; not on the user's desktop.
+
+## 2026-11-21, Codex (GPT-6) — full audit after the Qt Quick implementation
+
+Reviewed main at `88a3732`. All installer and desktop runs used a fresh archive, throwaway homes and private runtime directories. The checks in the audit request passed 407/408. Additional cases uncovered two ways the normal rollback tests can give a user false confidence.
+
+| Finding | File and line | Impact and verification |
+|---|---|---|
+| #49 · P1 · fixed (next section up) | `install.sh:142`, `uninstall.sh:272`, `dev/test-install-live.sh:163` and `:190` | New Qt Quick apps can fail to start after a successful uninstall until the login environment is refreshed. In a seeded home, applied Platinum, sourced the generated login script, and successfully opened the gallery. Ran uninstall in that same shell (exit 0), then launched the same gallery again. It exited 2 with “module Platinum is not installed”. Clearing the two Qt Quick exports let it start with KDE's style (exit 0). Uninstall deletes the selected QML module while existing launchers retain its name. The live test sources the hook in a child for its first probe and runs its final probe from a parent that never inherited those exports. Verify the fix with one long-lived launcher across uninstall. |
+| #50 · P2 · fixed (next section up) | `scripts/common.sh:703`, `uninstall.sh:138`, `uninstall.sh:148` | Normal uninstall refuses a valid backup if no original settings files existed. Applied in a disposable fresh profile. The generated SUMS file was present and zero bytes because there were zero regular files to hash. Uninstall exited 1 and reported damage before restoring the original absence of the files. A separate profile seeded with a single kwinrc passed the same restore. Handle a verified empty inventory while continuing to reject a truncated checksum list for a nonempty backup. |
+| #51 · P2 · fixed (next section up) | `style/quick/Platinum/MenuItem.qml:34`, `style/quick/platinumitem.cpp:60` | Qt Quick menu items lose their action icons. Rendered an open menu twice, changing only the row's icon from empty to `document-open`. Platinum's two images were identical. KDE's control under the same widget style changed 348 pixels. The override hides the content containing KDE's icon and its replacement never sets the icon in the menu style option. The measured menu layout includes a 16 px icon row (`docs/REFERENCE.md`, “Menu items”). |
+| #52 · P2 · fixed (next section up) | `style/quick/Platinum/RangeSlider.qml:48`, `style/quick/platinumitem.cpp:297` | Keyboard focus is invisible on a range slider. Compared the slider crop before and after giving its first handle focus with Qt.TabFocusReason. The control and handle reported active focus. Platinum changed zero pixels; KDE's control visibly changed. Both original handles are hidden and the new painted thumb receives pressed and enabled state only. Include focus on each handle in the accessibility checks. |
+| #53 · P3 · fixed (next section up) | `style/quick/Platinum/ComboBox.qml:40`, `dev/quick-regions.qml:92`, `dev/quickref.cpp:78` | The 19/19 Qt Quick result did not reproduce with a clean home. The suite reported “FAIL combo 145 of 5202 px differ (bbox (99, 0, 102, 50))”. In a second run instrumented only to read geometry, the 102 px button opened a 103×51 Quick popup; the widget reference was 102×51. The right bevel falls outside the expected column. The fallback log also reports a width binding loop during the switch to Fusion, although its final image matched. The one-pixel difference was measured against the widget fixture; its width is not a fixed OS 9 reference measurement. |
+
+### Checks and limits
+
+1. **Installation and undo.** The stock installer suite passed 230/230, including the changed Kirigami link ownership checks and earlier rollback regressions. The nested two-output live suite passed 17/17 and restored both panels, their widgets, the clock setting and the seeded config files. The extra rollback cases above used the actual generated login hook, a private runtime and a stand-in systemctl. A real systemd session, upgrade in place and physical login were outside this test.
+2. **Application style and Qt Quick.** All 135 widget comparisons passed. Qt Quick passed 18/19, including menu-edge, dialog, drawer, range-slider geometry, switch keyboard/accessibility and Fusion fallback fixtures. Visually inspected gallery output and a nested System Settings Application Style page. Rendered widget galleries at 1, 1.25, 1.5 and 2. Built the widget, Quick and decoration plugins with ASan/UBSan; the Quick control scenes and decoration preview completed without sanitizer diagnostics (leak detection disabled). The System Settings window rendered, although portal and KDE helper services logged startup failures in its private bus. Physical mixed-DPI transitions, a screen reader session, exhaustive interactive control states and performance under load remain unverified.
+3. **Decoration.** Inspected the maximized window in nested KWin and the instrumented preview, including inactive and long-title windows. The decoration implementation itself has no change since the prior audit. Interactive tiling and library upgrades were not retested.
+4. **Plasma.** All seven menu-bar/dock crops matched. Inspected the menu and desktop image. Parsed 11 SVGs (also checked for duplicate IDs within each), three Plasma metadata JSON files and the color scheme. The installed layout and source match apart from the generated-file comment. This pass did not repeat edit-mode, auto-hide, crowded-dock or vertical-panel interaction checks.
+5. **Fidelity.** Compared checkbox, radio and disclosure-triangle reference/render pairs at 4×. Re-sampled the private desktop image: (5,500) was #63639C, and the column at x=700 was white at row 0, #DDDDDD at 17, #999999 at 18 and black at 19. The popup-window placement issue already recorded under #3 remains unverified against a KDE control on real hardware.
+6. **Documentation.** The audit request lists the correct five suites. Its 19/19 Quick expectation differs from the clean-home result. The live test's “after uninstall” result covers a fresh process environment; #49 describes the missing inherited-environment case.
+7. **Publication.** Scanned all 41 locally reachable commits for binary diff entries and reference, image, font and ROM filenames. No matching entries surfaced. Text-encoded pixel tables and naming remain subject to the existing publication decision under #25. The private checkout was used read-only.
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — Qt Quick dialogs, drawers and range sliders (finding 3, step 6)
 
