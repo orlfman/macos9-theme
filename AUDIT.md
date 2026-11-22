@@ -3,7 +3,57 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Status: Findings #39–#42 are fixed and tested in throwaway homes; nothing blocks the first desktop install except the user's go-ahead. Open: #3 (P3, plan in PLAN.md). User decisions still apply to #21 (main screen only), #26 (RTL unsupported), #23 (resizing on hold) and #25 (deferred until publication).
+Status: Nothing blocks the first desktop install except the user's go-ahead. Open: #3 (P3): the plan in PLAN.md now takes in #43–#48 (all addressed in the plan, to be proven in its spike) with the user's choice of drawing made (our own item, PLAN.md decision 13). User decisions still apply to #21 (main screen only), #26 (RTL unsupported), #23 (resizing on hold) and #25 (deferred until publication).
+
+## 2026-11-21, Claude Code (Claude Opus 5.5) — the Qt Quick plan revised for findings #43–#48
+
+All six are about the plan for #3 (PLAN.md), not shipped code; nothing was
+built. Checked each claim against the installed files, the style source
+and the captures, then rewrote the plan.
+
+| Finding | Verified | Change to the plan |
+|---|---|---|
+| #43 | yes (read): KDE's `qmldir` exports all 52 controls at 1.0 only | The fallback is pinned, `import org.kde.desktop 1.0`; the spike checks where each control actually comes from. |
+| #44 | yes (read: the planned conditions didn't include the selected style) | Two layers: the login script sets the variable only when `widgetStyle=Platinum` at login (plus the user-override and version checks), and every override applies only while the app's QStyle is Platinum (`Binding { when }` restores KDE's look), so switching away takes effect at once, in running apps and in apps started later in the same session. Activation cases added to the checks. |
+| #45 | yes (read): `platinumstyle.cpp` takes the first/last-row and combo branches from `QMenu`/`QComboBox` pointers; KDE's bridge passes no widget | Draw through our own small C++ Qt Quick item instead of KDE's bridge; it passes row context through `QStyleOption::styleObject` properties. Spike compares selected first/last rows, a separator and a combo row with the widget renders. |
+| #46 | yes: sampled `dialog-file-open.png` (780,341) = #CCCCFF and `popup-open.png` (700,306) = #333399; REFERENCE.md lines 95, 123, 158 agree | Menus and combo rows #333399 with white text; list rows #CCCCFF with black text; Finder's label inversion not used; selection, keyboard focus (the #16 ring) and hover kept apart; separate fixtures for views and menus. |
+| #47 | yes (read): `ComboBox.qml` declares its own `popup: Menu` and `delegate: MenuItem` | Our `ComboBox` keeps KDE's closed control and replaces only `popup` and `delegate`; its real pop-up is tested. |
+| #48 | yes (read): `dev/quickshot.cpp` grabs only the main window | Region tests set `popupType: Popup.Item` and assert the pop-up's pixels are present; real pop-up windows are checked in the nested KWin. |
+
+Also from Codex's notes: the Kirigami platform plugin link is now a spike
+question (needed or not); if it ships, install.sh gets a link target kind
+with its own tests. Using KDE's private `StyleItem` bridge is put to the
+user as a decision (the project rule allows only officially supported
+hooks); the plan recommends our own item, which needs no private module.
+Switches keep their role, checked state and Space toggling.
+
+### Checks
+
+- Plan text only. The claims above were checked by reading the installed
+  qqc2-desktop-style 6.32 files, `style/platinum/platinumstyle.cpp`,
+  `dev/quickshot.cpp`, and by sampling two private captures.
+
+### Limits
+
+- Nothing was built or run; Codex's probes (#43, #44, #47, #48) weren't
+  repeated here. The spike is where the plan gets proven.
+
+## 2026-11-21, Codex (GPT-6) — Qt Widgets and Qt Quick plan review
+
+Reviewed the proposal for #3 at `7b20bd8`. Keep the existing Platinum QStyle. A one-control Qt Quick style successfully reused KDE's widget-backed button after correcting the fallback import. All findings below concern the proposed work or its acceptance tests.
+
+| Finding | Location | Evidence and change needed in the plan |
+|---|---|---|
+| #43 · P2 · addressed in the plan (next section up) | `PLAN.md:184` | The proposed fallback can prevent a Qt Quick app from opening. Tested a minimal custom module exporting ToolTip 2.0. With `import org.kde.desktop auto`, the loader requested KDE's nonexistent module version 2.0 and quickshot exited 2, with and without the KDE platform theme. Using `import org.kde.desktop 1.0` loaded our marked tooltip and a fallback button whose background was a KDE KQuickStyleItem. The installed KDE qmldir exports its controls at 1.0. Pin the tested import and check actual control origins in the spike. |
+| #44 · P2 · addressed in the plan (next section up) | `PLAN.md:194`, `PLAN.md:234`, `README.md:24` | The login script as proposed selects custom controls even after a plain install or after switching back to Breeze. Its conditions check an existing environment override and a package version, but omit the selected application style. The custom tooltip loaded in a fresh home with no Platinum widget style configured. Define how activation follows the selected style and verify install-only, apply, switching away, and launching another app in the same session. A check performed only at login cannot update the environment of an already-running app launcher. |
+| #45 · P2 · addressed in the plan (next section up) | `PLAN.md:188`, `style/platinum/platinumstyle.cpp:1333` | Reusing the menu renderer loses edge information. KDE 6.32 calls CE_MenuItem without a QWidget; Platinum takes its first/last-row and combo-popup bevel branches from a QMenu or QComboBox pointer. A selected first row therefore cannot get the first-row treatment through that call alone. Include a selected first and last row, separator, and combo row in the spike. Pass row context explicitly to shared painting code if those comparisons fail. Verified by tracing both implementations and the measured top-edge rule in `docs/REFERENCE.md:129`. [KDE bridge source](https://github.com/KDE/qqc2-desktop-style/blob/v6.32.0/plugin/kquickstyleitem.cpp#L1699) |
+| #46 · P2 · addressed in the plan (next section up) | `PLAN.md:228`, `docs/REFERENCE.md:95`, `docs/REFERENCE.md:123` | Applying dark lavender and white to every selected delegate conflicts with the reference and the existing widget palette. Re-read the private captures: the file-dialog list at (780,341) was #CCCCFF; the popup menu at (700,306) was #333399. Finder label inversion is another distinct case documented at reference line 158. Give ordinary views and menus separate reference fixtures and distinguish keyboard focus, hover and selection. |
+| #47 · P2 · addressed in the plan (next section up) | `PLAN.md:228`, installed `org/kde/desktop/ComboBox.qml:37` and `:141` | A top-level menu override does not restyle the fallback combo's popup. Exported marked Menu and MenuItem overrides and instantiated both a standalone Menu and a fallback ComboBox. The standalone menu had our marker; the combo's popup retained KDE's Menu with no marker. KDE's ComboBox constructs its menu and delegate locally. Include an explicit combo override or adaptation and test its actual popup while preserving the existing widget-backed closed control. |
+| #48 · P3 · addressed in the plan (next section up) | `PLAN.md:231`, `dev/quickshot.cpp:45` | A valid screenshot can omit the popup being tested. Rendered the same 80×50 solid-color popup inside a 200×120 root. With Popup.Item the PNG contained all 4,000 popup pixels. With Popup.Window it contained zero. Both captures exited 0. Set Popup.Item for deterministic region tests, assert popup pixels, and use the nested compositor to verify separate popup windows. |
+
+**Kirigami and packaging.** With the custom import fixed, the sampled grid unit and text color were identical with and without a per-style plugin link (18 and #232629). Qt's loader trace showed the actual KDE platform plugin loading through the alias; those two values alone cannot verify plugin selection. If the link ships, give it an ownership and uninstall test: the present installer recognizes file and directory targets and explicitly excludes links in `scripts/common.sh:458`. The installed private bridge is also a dependency under the project's supported-hooks rule; decide whether using it is acceptable before building the overrides around it.
+
+**Scope.** Used Qt 6.12.0, qqc2-desktop-style/Kirigami 6.32.0 and the existing QApplication-based quickshot with temporary homes, private runtime paths and offscreen rendering. These probes establish module selection and capture behavior. They did not exercise System Settings, a QGuiApplication-only client, keyboard or assistive technology interaction, or a login/upgrade cycle. For switches, retain switch semantics and verify keyboard toggling and accessible checked state when changing their appearance. No shipping implementation, plan text or private assets were changed.
 
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for Codex's findings #39–#42
 

@@ -94,6 +94,9 @@ Open decisions need the user. Record the answer here with the date.
 12. **Deferred by the user, 2026-11-21:** AUDIT.md finding 25 (measured
     pixel tables and git history) waits until the user is ready to go
     public; finding 23 (menu bar drawn wrong when resized) is on hold.
+13. **Qt Quick drawing.** **Decided 2026-11-21 (user):** our own small C++
+    Qt Quick item, public Qt API only, not KDE's private `StyleItem`
+    bridge (see "Plan: Qt Quick menus, tooltips and switches").
 
 ## Components
 
@@ -153,95 +156,153 @@ measurements.
 
 ## Plan: Qt Quick menus, tooltips and switches (AUDIT.md finding 3)
 
-Asked for by the user 2026-11-21. Plan only; nothing built yet.
+Asked for by the user 2026-11-21. Plan only; nothing built yet. Revised
+the same day after Codex's review (AUDIT.md findings 43-48).
 
 **What's wrong.** Qt Quick apps (System Settings pages, Discover, other
 Kirigami apps) use KDE's Qt Quick Controls style, `org.kde.desktop`
 (qqc2-desktop-style 6.32). It draws buttons, check boxes, radios, sliders,
-progress bars, fields, spin boxes, combo boxes, tabs, scroll bars and
-tool buttons through the QStyle, so those are Platinum already. These are
-drawn in its own QML instead (read in
+progress bars, fields, spin boxes, closed combo boxes, tabs, scroll bars
+and tool buttons through the QStyle, so those are Platinum already. These
+are drawn in its own QML instead (read in
 `/usr/lib/qt6/qml/org/kde/desktop/`):
 - `Menu`: a `Kirigami.ShadowedRectangle` with rounded corners and a soft
   shadow; `MenuItem`: a highlight `Rectangle` in the focus color at 30%
-  opacity, Kirigami icons and labels; `MenuSeparator`, `MenuBar`,
-  `MenuBarItem` likewise.
-- `ToolTip`: a rounded `ShadowedRectangle` (its own source has a TODO to
-  use the QStyle).
-- `Switch` and `SwitchDelegate`: a Breeze-like sliding switch
-  (`private/SwitchIndicator.qml`). Mac OS 9 had no switches.
-- `ItemDelegate`, `CheckDelegate`, `RadioDelegate`, `SwipeDelegate`
-  (list rows), `Popup`, `Dialog`, `Drawer`, the combo box's pop-up list,
-  `RangeSlider`, `BusyIndicator`, `PageIndicator`, `RoundButton`.
+  opacity; `MenuSeparator`, `MenuBar`, `MenuBarItem` likewise.
+- The combo box's pop-up list: `ComboBox.qml` builds its own `Menu` and
+  `MenuItem` delegate inside the file, so a `Menu` override alone doesn't
+  reach it (finding 47).
+- `ToolTip`: a rounded `ShadowedRectangle`.
+- `Switch` and `SwitchDelegate`: a Breeze-like sliding switch. Mac OS 9
+  had no switches.
+- List rows (`ItemDelegate`, `CheckDelegate`, `RadioDelegate`,
+  `SwipeDelegate`), `Popup`, `Dialog`, `Drawer`, `RangeSlider`,
+  `BusyIndicator`, `PageIndicator`, `RoundButton`.
 - Kirigami's own components (cards, inline messages, page headers) are
   drawn by Kirigami, not by any Qt Quick Controls style: only their colors
   follow the theme.
 Plasma's own panels and pop-ups use Plasma Components and the Plasma
 style, so they're not part of this.
 
-**Approach.** A small Qt Quick Controls style of our own that overrides
-only those controls and falls back to `org.kde.desktop` for everything
-else (Qt 6 style modules can fall back through `import org.kde.desktop
-auto` in their `qmldir`). Where qqc2-desktop-style's `StyleItem` bridge
-has an element for it, the override draws through our QStyle (`menu`,
-`menuitem`, `menubaritem`, `checkbox`, `itemrow`, `focusrect` and others
-are in its plugin), so Qt Quick menus are the same pixels as the widget
-menus and nothing is drawn twice. The tooltip has no such element: it
-gets either a small C++ Qt Quick item of ours that paints with the
-QStyle's tooltip drawing (preferred, one source of truth) or QML drawing
-from the measured balloon values.
+**Approach.** Keep the Platinum QStyle as the one source of the look. Add
+a small Qt Quick Controls style of our own that overrides only the
+controls above and falls back to KDE's for everything else. The fallback
+import is pinned to the version KDE exports, `import org.kde.desktop 1.0`
+in our `qmldir`: with `auto` the loader asks for KDE's module at our own
+version and the app doesn't open (finding 43).
 
-How it's switched on: the login script sets `QT_QUICK_CONTROLS_STYLE` to
-our style (only if you haven't set it yourself) and adds our folder to
-`QML_IMPORT_PATH`. Kirigami finds its color and size plugin by the style's
-name (`kf6/kirigami/platform/<style>.so`; `org.kde.breeze` and
-`org.kde.union` ship one each), so ours needs one too: a link to
-`org.kde.desktop.so` (same colors and sizes, always the installed
-version) in our plugin folder.
+Drawing: the overrides paint through the QStyle with a small C++ Qt Quick
+item of our own (`QQuickPaintedItem` calling the application's QStyle;
+public Qt API only). It hands the style what a widget would: menu row
+position (first, last, separator), combo pop-up row, checked state, and so
+on, through `QStyleOption::styleObject` properties the Platinum style
+reads next to the `QMenu`/`QComboBox` pointers it uses today. That keeps
+the measured first-row and last-row bevels (REFERENCE.md "Menu
+highlight"), which KDE's own bridge can't pass on: it calls `CE_MenuItem`
+without a widget (finding 45). The tooltip uses the same item with the
+QStyle's tooltip drawing.
+
+**Decided by the user (decision 13): that item.** The other choice was
+KDE's private `StyleItem` bridge from `org.kde.qqc2desktopstyle.private` (less
+code, but a private module this project would depend on, against the
+"only officially supported theming hooks" rule; it can change with any KDE
+Frameworks update, and it loses the row context above).
+
+Colors, from the captures (finding 46):
+- Menus, menu bar titles and combo pop-up rows: #333399 with white text,
+  the measured bevel on first and last rows (`popup-open.png` (700,306),
+  `menu-view-checked.png`), as the widget menus already draw it.
+- List rows in ordinary views: #CCCCFF with black text, as in the file
+  dialog list (`dialog-file-open.png` (780,341)).
+- Finder's selected name (an inverted label, not a row) is a Finder
+  look, not used here.
+- Selection, keyboard focus and hover are kept apart: selection is the
+  color above; keyboard focus gets the 1 px #6666CC ring the widget style
+  draws (AUDIT.md finding 16); lists get no hover highlight (Mac OS 9
+  had none); menu rows highlight under the pointer as menus do.
+
+Switches keep everything that makes them switches (their role and checked
+state for screen readers, Space to toggle); only the indicator is drawn
+as a Platinum check box.
+
+**When it's on** (finding 44). Two layers:
+1. The login script sets `QT_QUICK_CONTROLS_STYLE` and adds our folder to
+   `QML_IMPORT_PATH` only when `kdeglobals` `[KDE] widgetStyle` is
+   `Platinum` at login, you haven't set the variable yourself, and KDE's
+   module is the version our overrides were checked with. After a plain
+   install (no switch) nothing changes.
+2. Each override only takes effect while the running app's QStyle is
+   Platinum (our C++ item reports it and follows style changes; the
+   overrides use `Binding { when: ... }`, which puts KDE's own look back
+   when it's false). So switching to Breeze in System Settings gives KDE's
+   look straight away, in apps already running and in apps the session's
+   launcher starts later with the old environment; the variable itself is
+   gone from the next login.
+
+Kirigami finds its color and size plugin by the style's name
+(`kf6/kirigami/platform/<style>.so`). Codex's probe saw the same grid unit
+and text color with and without a link to `org.kde.desktop.so`, but those
+two values don't prove which plugin loaded. The spike settles whether the
+link is needed. If it ships, install.sh gets a link kind of target (the
+record keeps where it points; uninstall removes only that link), with
+install tests; today the installer handles only files and folders.
 
 Not chosen: patching or copying `org.kde.desktop` (57 files plus a
 compiled plugin; breaks with every KDE Frameworks update), or the Union
 style engine (the whole style would have to be redone in its format).
 
 **Steps.**
-1. **Spike, sandbox only.** A minimal style with one override (`ToolTip`)
-   and the fallback. Check in `dev/kirigami.qml`, `dev/gallery.qml` and
-   System Settings in the nested KWin (`dev/app-test.sh`): the override is
-   used; every other control still comes from `org.kde.desktop`;
-   Kirigami's colors and sizes still load through the linked plugin (and
-   what happens without it); KDE's platform theme leaves an already-set
-   `QT_QUICK_CONTROLS_STYLE` alone (it chooses the style from
-   `widgetStyle` otherwise); a Qt Quick app without KDE's platform theme
-   still runs. Record the results in docs/FINDINGS.md. If the variable
-   route doesn't hold, stop and bring the options to the user.
+1. **Spike, sandbox only.** A minimal style: `ToolTip` and `Menu`/
+   `MenuItem` overrides drawn with our item, `import org.kde.desktop 1.0`.
+   Check in `dev/kirigami.qml`, `dev/gallery.qml` and System Settings in
+   the nested KWin (`dev/app-test.sh`), and in a Qt Quick app without
+   KDE's platform theme (`QGuiApplication` only):
+   - the app opens, and each control comes from where it should (ours
+     marked; the others KDE's, e.g. a button background that is KDE's
+     `KQuickStyleItem`);
+   - Kirigami's colors and sizes, and which platform plugin loaded (Qt's
+     plugin loader trace), with and without the link;
+   - KDE's platform theme leaves an already-set `QT_QUICK_CONTROLS_STYLE`
+     alone;
+   - a selected first row, a selected last row, a separator and a combo
+     pop-up row against the widget renders;
+   - the `Binding` fallback: switching the QStyle at run time brings back
+     KDE's look.
+   Record the results in docs/FINDINGS.md. If the variable route or the
+   fallback doesn't hold, stop and bring the options to the user.
 2. **Inventory.** Render the galleries and a few System Settings pages,
    list every control from the list above that's visible and wrong, and
-   pair each with its Mac OS 9 capture (menus `menu-view-checked.png`,
-   balloons `help-balloon.png`, list highlight from REFERENCE.md
-   "Highlighted item").
+   pair each with its Mac OS 9 capture, with separate fixtures for
+   ordinary views and for menus.
 3. **Menus** (most visible): `Menu`, `MenuItem`, `MenuSeparator`,
-   `MenuBar`, `MenuBarItem` through `StyleItem`. Compare against the
-   widget menu renders, which are already pixel exact.
+   `MenuBar`, `MenuBarItem`, and the combo box's pop-up: our `ComboBox`
+   keeps KDE's closed control and replaces only its `popup` and
+   `delegate` (finding 47). Compare against the widget menu renders,
+   which are already pixel exact.
 4. **Tooltips**: the help balloon, as the widget tooltip draws it.
-5. **Switches**: drawn as Platinum check boxes (`checkbox` element), as
-   Mac OS 9 would have used one.
-6. **List rows and pop-ups**: the Lavender highlight (#333399, white text)
-   for delegates; square pop-up, dialog, drawer and combo list frames
-   like the widget ones.
-7. **Checks**: Qt Quick regions added to `dev/check-style.sh` (rendered
-   with `dev/build/quickshot`), compared with the widget renders and the
-   captures; sanitizer run; app pass with System Settings.
-8. **Packaging**: the style folder and the Kirigami link become install
-   targets (record, checksums, uninstall); the login script sets the two
-   variables, guarded like the decoration: only while `org.kde.desktop` is
-   installed at the version it was checked with (our overrides use its
-   private `StyleItem` module). Install tests and the live test cover it.
+5. **Switches**: Platinum check boxes, switch behavior kept; check Space
+   toggling and the accessible checked state.
+6. **List rows and pop-ups**: #CCCCFF rows with black text, focus ring
+   for keyboard focus; square pop-up, dialog and drawer frames like the
+   widget ones.
+7. **Checks**: Qt Quick regions in `dev/check-style.sh` rendered with
+   `dev/build/quickshot`. A pop-up is a separate window by default and a
+   window grab silently leaves it out (finding 48), so region tests set
+   `popupType: Popup.Item` and assert the pop-up's own pixels are in the
+   image; real pop-up windows are checked in the nested KWin. Sanitizer
+   run; app pass with System Settings; activation cases: plain install,
+   `--apply`, switching away in a running session, an app launched after
+   that, next login.
+8. **Packaging**: the style folder, our plugin and (if needed) the
+   Kirigami link become install targets (record, checksums, uninstall);
+   the login script's conditions as above. Install tests and the live
+   test cover it.
 9. **Audit and the user's on-screen review.**
 
-**Risks.** `StyleItem` is qqc2-desktop-style's private module and can
-change with a KDE Frameworks update (hence the guard). The variable
-reaches every Qt Quick app in the session, KDE or not. Kirigami's own
-components keep Kirigami's shapes.
+**Risks.** The variable reaches every Qt Quick app in the session, KDE or
+not (the spike's `QGuiApplication` case). KDE's controls we fall back to
+can change with an update (the version guard turns our style off then).
+Kirigami's own components keep Kirigami's shapes.
 
 ## Open questions
 

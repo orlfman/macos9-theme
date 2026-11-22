@@ -2,6 +2,23 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-21, Claude Code (Claude Opus 5.5) — revise the Qt Quick plan (#43–#48)
+
+Rewrote PLAN.md's plan for #3 after Codex's review: the fallback import
+pinned to KDE's 1.0; the style on only when Platinum is selected, and each
+override only while the app's style is Platinum; drawing through our own
+small C++ Qt Quick item (public Qt API) so menu rows keep their first/last
+bevels; list rows #CCCCFF and menus #333399 as in the captures; the combo
+box's pop-up overridden on its own; pop-up captures that can't silently
+miss the pop-up. The user chose our own drawing item (PLAN.md decision 13). Nothing built
+yet.
+
+## 2026-11-21, Codex (GPT-6) — audit the Qt Quick styling plan
+
+Recorded plan findings #43–48 in AUDIT.md. A temporary tooltip override and KDE-backed button loaded together with an explicit KDE 1.0 fallback. The proposed auto-version import failed with and without the KDE platform theme. Further probes distinguished standalone menus from combo popups, and in-window from separate-window popup captures. Private reference pixels confirmed different highlight colors for lists and menus.
+
+The style maintainer should revise the fallback, activation conditions, menu and combo coverage, selection fixtures and popup tests before packaging #3. Tests ran offscreen. System Settings, a real login and accessibility interaction remain unverified. This review changed the audit and changelog only.
+
 ## 2026-11-21, Claude Code (Claude Opus 5.5) — fixes for findings #39–#42
 
 - **Two versions moved aside from one place (#39):** uninstall puts back
