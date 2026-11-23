@@ -222,3 +222,23 @@ window, x 426–841, y 410–655) and the pressed captures. All implemented in
 | Title | window icon (16 px) + 4 px + text, centered on the window, stripes stop 5 px before/after; text black | text `#777777`, icon dimmed |
 
 Each side is 6 px from the outer edge to the content line inclusive.
+
+## Finder folder icons
+
+Measured from `finder-rename.png` (1920×1080, 1x, white `#FFFFFF` Finder window
+backdrop), unselected folder crop x=696–730, y=370–404 (35×35 px; identical
+byte-for-byte across seven unselected folders in the same capture). Confidence:
+**measured**.
+
+| Part | Color | Pixel |
+|------|-------|-------|
+| Lit bevel / top highlight | `#DDDDFE` | (704,376) |
+| Front face (upper-left) | `#BFBFFA` | (709,381) |
+| Front face (middle) | `#B5B4F9` | (711,388) |
+| Front face (lower-right) | `#AEADF7` | (717,388) |
+| Dark edge / rim | `#7E7DD9` | (720,385) |
+| Window backdrop | `#FFFFFF` | (696,370) |
+
+Used for the WhiteSur Lavender folder recolor mapping (`icons/whitesur-lavender.py`):
+`#f299ff` → `#DDDDFE`, `#e791f3` → `#B5B4F9`, `#c75cd6` → `#7E7DD9` (AUDIT.md #107).
+

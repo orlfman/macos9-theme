@@ -1,0 +1,236 @@
+{
+  "schema_version": 1,
+  "upstream_url": "https://github.com/vinceliuice/WhiteSur-icon-theme",
+  "release": "2026-09-10",
+  "commit": "73d8040da51a9ed74e47c7366e7e9ff437601a5c",
+  "artwork_license": "GPL-3.0-only",
+  "installer_sha256": "295fdee31bead5e6b184b82a1b6341e6096ab3ea59ed5f30416f6c707cc945d1",
+  "copying_sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+  "authors_sha256": "8a61974657d8e56ab1480b6c13aae38124ebc3589f365126b646e2fbd9a83ffb",
+  "status32_start_here_sha256": "8e5fab8c1039ac808e976d6c0e156c4c63ab8c3ca1dbb1e8c199066852fa3dfa",
+  "plasma_launchers": {
+    "plasma/places/16/start-here.svg": "20fa724ca0a6da6a4990bf9f6f7c94fd80c891bdc605fc9eb5298609e49729be",
+    "plasma/places/22/start-here.svg": "5847e804ed68a7701e5c101c9405bde63863a2664125e1deaa57f13115e52e49",
+    "plasma/places/24/start-here.svg": "115f82dd29b2f0b143d74e764625ef2c3b7c3f5b8121df7066a14e7cdeacc18e"
+  },
+  "purple_manifest": {
+    "folder-bookmark.svg": {
+      "sha256": "e0f3721d55828581bda8e46a632588e04e73f500ec98108cd7d7d9379d6673ed",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-cloud.svg": {
+      "sha256": "1f2d126a134133ee675c0cef0d1db6c1a3e8b4c334c80d6ece606b75d9379d83",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-code.svg": {
+      "sha256": "088879dea374d3ccb315a323f12ca65f2bee9249d3d82991ea17228d7beec3ef",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-documents.svg": {
+      "sha256": "4b16dc0b94fbb7f136914c0a6dd166dd4bed462b32433b316cab50b63940f1db",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-download.svg": {
+      "sha256": "2952e58dfa1f244013dda410c9e2d663e2f13afee0843e4edd8aefb4ebaf8d55",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-games.svg": {
+      "sha256": "15f14e6c4068e11c4baa72ccd79111715aef08f7101cdd4f8e0cbb5fefd3ff6a",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-github.svg": {
+      "sha256": "34fa4d911751e10e14cc208cc2d2e4e9d63c037d176d1ea35bcd9b3420d769c1",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-html.svg": {
+      "sha256": "df4c2a623d4dbb1552da60f61ff4e483f531bd5104702ae0df04b82076e5f807",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-images.svg": {
+      "sha256": "c9d2413a37112ea0817d65d5fd914ae528eece22976a750b6bceeba6d507a0bf",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-music.svg": {
+      "sha256": "7d4d44f4dda5b1100e24fe46ae7292b0ab5d2512fdf54b172b81a218b7aac214",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-open.svg": {
+      "sha256": "a74123eb0b7bb049ed130b6a97c4b2f05b2c2b7b81c9ef0927a538e616e7481b",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-projects.svg": {
+      "sha256": "2bf2e70b89767812d79b841a8dc78c720ba974233854b07f29eb925544840319",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-public.svg": {
+      "sha256": "c75d1bc734461840864bdeceecc30d2cc347d3ddcf9702b6fbfd6bc9eaa35760",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-root.svg": {
+      "sha256": "dfbb6703d74e33cb1bc5dee05ecba1411dccc039c458d69abd34510ad8233c1a",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-steam.svg": {
+      "sha256": "055a5d5a88276f7e989b80cc4840337cb30f33e3c3121415d3e332feb3ffd431",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-temp.svg": {
+      "sha256": "cf25484e09e2495a80ac62dff6cdef3c088007d7438783bdc3b3e0fc70e14df1",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-templates.svg": {
+      "sha256": "99ff09905196f15ca2962082f4fa034c3a8c2c03ef50ed587204c2ece6298ac7",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-torrent.svg": {
+      "sha256": "37bd8d1ac6c24daf7ea8db4eb3e050a1a6fa4ff4573b6a2ca2d39b4decedb9db",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-vbox.svg": {
+      "sha256": "6ea6fbf7173c3864615fa77e70c1561b5dd6c370f1e1be8aaa7ff37f2b6a1e7d",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-videos.svg": {
+      "sha256": "745e09132b6f052aa29b87cc31eeeb0e2c212c47ba9c25aa9f22d066f6a985b5",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder-wine.svg": {
+      "sha256": "a7535be17f37318ba5e24c51fa9830ffa2fa99197e28e60d94ce925b016678da",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "folder.svg": {
+      "sha256": "5c8b3001e7c673458090a242daf3006c8ad9fab08974756828ae6c1b30bc171b",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "user-desktop.svg": {
+      "sha256": "f9cfa4965340d4a9248431ae24a207998d72160826de5ac75cf3dc8a83e44b52",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "user-home.svg": {
+      "sha256": "e6e5ee38a7a297df7dfe42f509d10893f75300e69bc9b9290ed6fc12a64fcd40",
+      "paints": [
+        "#e791f3"
+      ]
+    },
+    "user-identity.svg": {
+      "sha256": "82d1dbbb24f5ebf75e622f880b515202989a76991610d8e46f8a5effefb52f0e",
+      "paints": [
+        "#c75cd6",
+        "#f299ff"
+      ]
+    }
+  },
+  "missing_ns_svgs": [
+    "src/actions/16/boundingbox_bottom_left.svg",
+    "src/actions/16/boundingbox_bottom_right.svg",
+    "src/actions/24/fingerprint.svg",
+    "src/actions/24/frmt-text-direction-horizontal.svg",
+    "src/actions/24/frmt-text-direction-r2l.svg",
+    "src/actions/24/frmt-text-direction-vertical-lr.svg",
+    "src/actions/24/frmt-text-direction-vertical.svg",
+    "src/actions/symbolic/app-installed-symbolic.svg",
+    "src/actions/symbolic/chat-symbolic.svg",
+    "src/actions/symbolic/cigarette-none-symbolic.svg",
+    "src/actions/symbolic/cigarette-symbolic.svg",
+    "src/actions/symbolic/drag-handle-symbolic.svg",
+    "src/actions/symbolic/explore-symbolic.svg",
+    "src/actions/symbolic/external-link-symbolic.svg",
+    "src/actions/symbolic/go-bottom-symbolic.svg",
+    "src/actions/symbolic/go-down-symbolic.svg",
+    "src/actions/symbolic/go-first-symbolic.svg",
+    "src/actions/symbolic/go-next-symbolic.svg",
+    "src/actions/symbolic/go-previous-symbolic.svg",
+    "src/actions/symbolic/go-top-symbolic.svg",
+    "src/actions/symbolic/go-up-symbolic.svg",
+    "src/actions/symbolic/graveyard-symbolic.svg",
+    "src/actions/symbolic/money-none-symbolic.svg",
+    "src/actions/symbolic/money-symbolic.svg",
+    "src/actions/symbolic/pub-symbolic.svg",
+    "src/actions/symbolic/selection-duplicate-symbolic.svg",
+    "src/actions/symbolic/strong-language-none-symbolic.svg",
+    "src/actions/symbolic/strong-language-symbolic.svg",
+    "src/actions/symbolic/view-tasks-all-symbolic.svg",
+    "src/actions/symbolic/view-tasks-today-symbolic.svg",
+    "src/actions/symbolic/view-tasks-unscheduled-symbolic.svg",
+    "src/actions/symbolic/view-tasks-week-symbolic.svg",
+    "src/apps/symbolic/addon-symbolic.svg",
+    "src/apps/symbolic/org.gnome.Settings-multitasking-symbolic.svg",
+    "src/categories/symbolic/cs-desklets-symbolic.svg",
+    "src/categories/symbolic/xapp-prefs-plugins-symbolic.svg",
+    "src/categories/symbolic/xapp-prefs-preview-symbolic.svg",
+    "src/devices/16/camera-photo.svg",
+    "src/devices/16/camera-web.svg",
+    "src/devices/16/computer.svg",
+    "src/devices/16/drive-removable-media-usb.svg",
+    "src/devices/22/input-mouse-battery.svg",
+    "src/devices/22/media-optical-data.svg",
+    "src/devices/symbolic/network-server-symbolic.svg",
+    "src/devices/symbolic/phonelink-delete-symbolic.svg",
+    "src/devices/symbolic/phonelink-lock-symbolic.svg",
+    "src/emblems/16/rating-half-rtl.svg",
+    "src/mimes/symbolic/application-x-addon-symbolic.svg",
+    "src/places/16/folder-java.svg",
+    "src/places/16/folder-vbox.svg",
+    "src/places/symbolic/folder-java-symbolic.svg",
+    "src/places/symbolic/folder-vbox-symbolic.svg",
+    "src/status/16/audio-volume-high-panel.svg",
+    "src/status/16/audio-volume-low-panel.svg",
+    "src/status/16/audio-volume-medium-panel.svg",
+    "src/status/16/uget-tray-default.svg",
+    "src/status/16/uget-tray-downloading.svg",
+    "src/status/16/uget-tray-error.svg",
+    "src/status/22/apport.svg",
+    "src/status/22/notification-empty.svg",
+    "src/status/22/notification-progress-active.svg",
+    "src/status/22/notification-progress-inactive.svg",
+    "src/status/symbolic/call-outgoing-symbolic.svg",
+    "src/status/symbolic/mintupdate-type-3rd-party-symbolic.svg"
+  ],
+  "symlink_count": 15971
+}
