@@ -2,7 +2,25 @@
 
 ## Status
 
-Updated 2026-11-22 by Codex (GPT-6.2). Earlier audit fixes are in `ef8250a` and `fb4156f`.
+Updated 2026-11-22 by Codex (GPT-6). Earlier audit fixes are in `ef8250a` and `fb4156f`.
+
+**Checkpoint 4 passed.** Against `dc8b76f`, 12 C++ findings are fixed in
+the working tree (#85–94, #96–97). #95 stays open because the compact slider
+thumbs changed pixels at all five fractional scales. #98 is fixed and verified.
+The final 200 offscreen images matched across eight scales. All five suites
+passed (135/135 widget, 29/29 Quick, 19/19 Plasma, 367/367 install and 37/37
+live install). The user ran the three private-D-Bus suites and verified #85
+in threaded virtual KWin. See AUDIT.md for costs, coverage and limitations.
+Checkpoint patches, images and logs are in `dev/build/audit-baseline/`.
+
+**Checkpoint 5 passed.** #99 and #100 are fixed and verified in the working
+tree. The deferred-apply and unchanged-border layout probes passed, as did
+QGuiApplication-only PlatinumItem construction under UBSan. All five suites
+passed (135/135 widget, 29/29 Quick, 19/19 Plasma, 367/367 install, 37/37
+live install), and all 200 images matched across eight scales. Claude's
+corrected nested-KWin probe verified title width and right button position
+through resize and all maximize/restore transitions (23 paints). The saved
+probe now uses the same resize action. #95 remains open.
 
 **Where things stand.** Built and checked headless (sandbox, nested KWin,
 throwaway homes). The user has now installed Platinum on their desktop:
@@ -32,6 +50,12 @@ installed as the theme `macOS-cursors` and selected by the global theme
 available in Plasma's Cursors picker. Uninstall keeps the pack while it is
 selected or restores the previous pack with the same ID.
 
+**Sandbox handoff.** Open Codex on the project folder. Opening on the home
+folder previously failed on the `~/.codex` symlink. Keep sandbox network
+access off and use the isolated runtime directory with display and session-bus
+variables unset. For this audit the user ran the private-D-Bus suites outside
+the sandbox. Decoration pixel comparisons used the offscreen software preview.
+
 **Waiting on the user (don't do these without them):**
 1. Completed by the user, first real desktop install: `./install.sh`, log out and
    in, `./install.sh --apply`, then a fresh login for Qt Quick controls, with
@@ -46,8 +70,9 @@ selected or restores the previous pack with the same ID.
 5. Run the updated installer, log out and back in, then check macOS in
    Plasma's Cursors settings.
 
-**Next work after that** (order of work below): icons (decision 7),
-fonts, GTK theme, extras; publication questions (#25, name).
+**Next work after that** (order of work below): #95 remains a visual-fidelity
+follow-up. Other planned components include icons (decision 7), fonts, GTK
+and extras. Publication questions include #25 and the theme name.
 
 **Before finishing any change, run the suites** (expected results are kept
 in `docs/AUDIT-REQUEST.md`; today 135/135, 19/19, 367/367, 37/37, 29/29):
@@ -66,9 +91,9 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | shared     | docs, tools, dev, scripts | nobody | dev/ sandbox + tools/compare.py done; test-install-live.sh added; docs fixed (AUDIT 24) |
 | reference  | reference/, docs/REFERENCE.md | nobody | 81 VM captures; first real Platinum desktop archived at 100%, 150% and 200% in reference/testing/; measurements partial |
 | colors     | colors/                   | nobody     | Platinum.colors done (sandbox-checked) |
-| decoration | decoration/               | nobody | plugin works in nested KWin; frame pixel exact; only the three Mac OS 9 boxes are created (AUDIT 20) |
-| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); Qt Quick style in style/quick: menus, menu bar, combo list, tooltips, switches (AUDIT 3, check-quick 29/29; installed by install.sh); also dialogs (measured modal frame), drawers, range sliders; combo lists track live model edits (#63); compact tab close indicator and selected state verified in Kwi (#71–74); open: editable combo, size grip |
-| plasma     | plasma/                   | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); main screen only (decision 10); resizable menu bar ends and divider (AUDIT 23), with complete divider dots and pixel comparisons across four panel heights (AUDIT 69–70) |
+| decoration | decoration/               | nobody | plugin works in nested KWin; frame pixel exact; only the three Mac OS 9 boxes are created (AUDIT 20); audit #86, #90, #96 and #99 verified |
+| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); Qt Quick style in style/quick: menus, menu bar, combo list, tooltips, switches (AUDIT 3, check-quick 29/29; installed by install.sh); also dialogs (measured modal frame), drawers, range sliders; combo lists track live model edits (#63); compact tab close indicator and selected state verified in Kwi (#71–74); open: editable combo, size grip; audit #85, #87–89, #91–94, #97 and #100 verified; #95 open |
+| plasma     | plasma/                   | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); main screen only (decision 10); resizable menu bar ends and divider (AUDIT 23), with complete divider dots and pixel comparisons across four panel heights (AUDIT 69–70); #98 table reader verified |
 | icons      | icons/                    | nobody     | not started |
 | cursors    | cursors/                  | nobody | bundled black cursors (`macOS-cursors`) installed and selected by the global theme, verified in nested Plasma; discovery, selection and undo verified (#78–#84). No cursors of our own (decision 8, user). |
 | gtk        | gtk/                      | nobody     | not started |

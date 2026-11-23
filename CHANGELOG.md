@@ -2,6 +2,177 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-22, Codex (GPT-6) — close checkpoint 5
+
+The user's final private-D-Bus runs passed 19/19 Plasma, 367/367 install
+and 37/37 live install checks, all exit 0. The earlier sandbox runs passed
+135/135 widget and 29/29 Qt Quick checks, and 200/200 images matched the
+baseline at eight scales.
+
+The user's original nested-KWin #99 probe measured correct geometry through
+the second restore, then failed with `No matching paint for resize` because
+its action left the window at the old size. Claude's scratch copy assigned
+a fresh frame geometry object and passed all seven steps across 23 paints
+on the current decoration. The resized frame measured 708 × 438 px with
+a 708 px title and the rightmost button edge at 704 px. Applied the same
+one-line correction to `dev/build/audit-baseline/test-nested-99.py` and
+checked its Python syntax. Theme code did not change during closeout.
+
+#99 and #100 are verified in the working tree. #95 remains open. Claims
+are free. The final working-tree patch and separate one-line probe patch
+are `checkpoint-5-final.patch` and `checkpoint-5-probe.patch` under
+`dev/build/audit-baseline/`.
+
+## 2026-11-22, Codex (GPT-6) — fix #99 and #100, checkpoint 5 awaits terminal tests
+
+In `style/quick/platinumitem.cpp`, use the checked QApplication pointer
+throughout styleWatcher(). In `decoration/platinum.cpp`, restore the
+applied-border notification and remove the immediate before/after margin
+comparison. Unchanged-border font and reconfiguration events still lay out
+the title and buttons. UBSan passed the QGuiApplication-only construction
+test. A controlled deferred-apply probe distinguished the old and fixed
+callbacks. Widget and Quick suites passed 135/135 and 29/29. All 200 final
+images matched the existing eight-scale baseline. #95 remains open.
+
+Saved `dev/build/audit-baseline/checkpoint-5.patch`. The nested geometry
+probe is `dev/build/audit-baseline/test-nested-99.py`. Build-only check
+passed. The next step is the user's private-D-Bus suite rerun and nested
+geometry probe, followed by verification of their fresh logs. The working
+tree is uncommitted and the decoration and style claims are free.
+
+## 2026-11-22, Claude (Opus 5.5) — verify Gemini's review findings #99 and #100
+
+- Updated `AUDIT.md`, `CHANGELOG.md`, and the `PLAN.md` status only. No theme code changed, nothing installed, live desktop untouched, nothing committed.
+- #100 confirmed (P2): UBSan reports invalid `QApplication` downcasts at `platinumitem.cpp:25` in a `QGuiApplication` app, and none on `dc8b76f`.
+- #99 re-rated P3: the removed `bordersChanged` relayout is a real API-level risk, but nested KWin showed 0 wrong decoration paints across maximize, restore, horizontal and vertical maximize, and resize, on both `dc8b76f` and the working tree.
+- Not verified: Gemini's other clean verdicts, X11 clients, clients that ignore a maximize size, the user's GPU, and physical displays.
+- What's left: fix #99 and #100, rerun all five suites and the pixel comparison, then commit only when the user asks.
+
+## 2026-11-22, Antigravity (Gemini 4 Neon) — independent review of uncommitted C++ audit fixes (#85–98)
+
+- Reviewed the full uncommitted working-tree diff against `dc8b76f` (`decoration/`, `style/platinum/`, `style/quick/`, `tools/nineslice.py`, `plasma/make-plasma.py`). Updated `AUDIT.md` and `CHANGELOG.md` only (no code edits, no install, `dev/build/audit-baseline/` untouched).
+- Verified #85–93, #97, and #98 as clean (and #95 properly left open): 0 differing pixels across all 8 scales (`1` to `3×`) on widget controls including translucent palettes, 0 cross-thread dynamic-property writes under `QSG_RENDER_LOOP=threaded`, 0 binding loops even during an open-menu style switch, 69× faster closed 200-item `ComboBox` resize (`559.4 → 8.1 µs`), immediate `QProgressBar` timer stop on parent tab hide (0 fires in 350 ms), and full `QMenu` shortcut-cache invalidation.
+- Found and confirmed two P2 regressions recorded in `AUDIT.md`:
+  - **#99** (`decoration/platinum.cpp:240–252`): removing `bordersChanged` → `updateButtonsGeometry` and checking `previous != borders()` breaks double-buffered `KDecoration3::DecorationState` geometry (`borders()` reads `currentState()` at `0xc0` while `setBorders()` writes `nextState()` at `0xb0`). Confirmed via `KDecoration3::DecorationBridge` probe: `init()+apply()` leaves `titleBar` and right buttons 12 px too far left (`400/396` vs `412/408`), and `maxH+widthChanged(1000)+apply()` leaves them 12 px past the right edge (`1012/1008` vs `1000/996`).
+  - **#100** (`style/quick/platinumitem.cpp:25`): `styleWatcher()` evaluates `qApp` (`static_cast<QApplication *>`) before `qobject_cast<QApplication *>`. Confirmed under UBSan on a `QGuiApplication`-only app (`runtime error: downcast ... object is of type 'QGuiApplication'`).
+- Not verified: live nested `kwin_wayland` / Plasma session and physical displays.
+- Next: whoever claims `decoration` and `style` should fix #99 and #100 before committing, then re-verify with the full suites and a `QGuiApplication` UBSan run.
+
+## 2026-11-22, Codex (GPT-6) — checkpoint 4 passed
+
+Final working tree against `dc8b76f`: 12 of 13 verified C++ findings fixed
+(#85–94, #96–97). #95 stays open after reverting fractional-scale differences.
+The #98 generator fix passed the rerun. Sandbox suites were 135/135 and 29/29.
+The user's final private-D-Bus runs were 19/19, 367/367 and 37/37, all exit 0.
+All 200 final images matched across eight scales (228,376,750 pixels).
+Threaded #85 runtime results and before/after costs are in AUDIT.md.
+Median 400 px progress paint fell from 135.1 to 7.5 µs, slider paint from
+74.2 to 4.1 µs and 1,000 menu size requests from 19.324 to 0.082 ms.
+
+Final renders, cost logs, all checkpoint patches and the preserved failed
+D-Bus run are in `dev/build/audit-baseline/`. The working tree is uncommitted.
+Claims are free. Physical-display review and a pixel-equivalent #95 solution
+remain outstanding.
+
+## 2026-11-22, Codex (GPT-6) — fix #91 Plasma parser regression, checkpoint 4 pending
+
+Archived the failed final suite logs in `dbus-suites-final-failed-1/`.
+The user's Plasma run exited 1 in the generator before rendering. Both
+install suites passed (367/367 and 37/37). Fixed the single NineSlice regex
+in `plasma/make-plasma.py` (#98). Regeneration preserved all tracked output.
+All 13 tables parsed equivalently with either qualifier. No second text reader
+was found. Sandbox suites passed 135/135 and 29/29 after the change.
+
+The user's threaded #85 negative control detected 82 violations and 18
+property changes in 16 active off-GUI paints. The working tree passed with
+16 active off-GUI paints, zero paint-time changes, 18 GUI controls and zero
+violations. Next: user reruns all three private-D-Bus suites, then Codex
+verifies their exits and completes the final comparisons and measurements.
+
+## 2026-11-22, Codex (GPT-6) — C++ audit checkpoint 3 passed with #95 open
+
+Implemented #86, #87, #90, #91, #92, #94, #96 and #97, each with
+offscreen baseline comparisons at eight scales. The compact thumbs in #95
+changed 45 fractional-scale frames and were reverted. See AUDIT.md.
+Widget/Quick suites 135/135 and 29/29. ASan/UBSan exercised all three plugins
+with no reported errors (leak detection off). Both shadow references now
+expire, and a late item leaves zero watcher widgets. Five hover cycles emit
+10 damage signals instead of 20. A maximize emits 6 instead of 15. Ten width
+changes still emit 40. Relayout with unchanged borders and all 40 combinations
+of scrollbar hit target, orientation, direction and reversal passed.
+
+During validation we found the widget sheet's standalone translucent field
+used a generic option. A second harness sets a positive frame width on a
+QStyleOptionFrame and verifies a 50% white fill over the black underlay
+renders #808080. Two fresh runs using the archived dc8b76f style matched,
+as did the working style at all eight scales. Total baseline: 200 images.
+
+Checkpoint 4 awaits the user's final private-D-Bus suites. The separate
+threaded #85 probe and its negative control built; nested execution awaits
+the user. No commit, install or live desktop test by Codex.
+
+## 2026-11-22, Codex (GPT-6) — C++ audit checkpoint 2 passed
+
+Moved the four PlatinumItem property writes out of paint (#85, 152/152 images).
+Hidden and determinate progress bars stop their timers (#88, 8/8 widget sheets).
+Separated Quick notifications and combo width dependencies (#89/#93, 152/152
+images). The 200-row probe went from 69,800 to zero size recalculations in
+350 width assignments. Median time for 50 assignments fell from 56 to 20 ms.
+The menu probe went from 29 shortcut-column loop warnings to zero. Widget and
+Quick suites passed 135/135 and 29/29. Threaded GPU rendering was outside
+this run. Next is checkpoint 3 in the verified order.
+
+## 2026-11-22, Codex (GPT-6) — C++ audit checkpoint 1 passed
+
+At `dc8b76f` the suites matched 135/135, 29/29, 19/19, 367/367 and 37/37.
+The user ran the last three. Two independent offscreen software passes matched
+192/192 full RGBA images across 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5 and 3×.
+Each scale has a DPR-aware widget sheet (including translucent field and
+dialog colors), 19 Quick frames and four decoration frames, including held
+and drag-off. Barber phase 4. Raw images, harness sources and cost logs are
+in `dev/build/audit-baseline/`. This covers the software preview only.
+Checkpoint 1 patch includes the pre-existing documentation edits and GEMINI.md.
+
+## 2026-11-22, Claude (Opus 5.5) — diagnose Codex sandbox handoff
+
+- Cause of the launch failure: a Codex chat opened on `/home/pieman` makes the home folder writable, and `~/.codex` is a symlink there, so bubblewrap refuses to start. The same sandbox starts correctly from this project folder.
+- Tested the suites at `dc8b76f` under Codex's sandbox. With network off and display variables unset: `check-style` 135/135, `check-quick` 29/29. `test-install` stops because `dbus-run-session` can't bind its socket. `check-plasma`, `test-install-live`, and nested KWin need the same private D-Bus.
+- **Do not enable sandbox network access for this project.** With it on, the sandbox could connect to the live session bus, Wayland, and X11. During that test run, a blocked `kreadconfig6` write opened a KDialog on the user's real desktop. I stopped the run and the dialog closed.
+- Afterward the live widget style, global theme, color scheme, and decoration still read Platinum, and tracked theme code was unchanged. `~/.config/kdeglobals` has a 19:12:39 timestamp near the user's screenshot. The sandbox mounted home read-only, but no earlier copy exists to diff.
+- Not done: checkpoint 1, the baseline renders, and all fixes for #85–97. Next agent: follow the Codex sandbox note in the `PLAN.md` status.
+
+## 2026-11-22, Codex (GPT-6) — checkpoint 1 blocked at baseline destination
+
+Verified HEAD at `dc8b76f` and read the claims and Claude's verification of
+#85–97. The requested sibling directory
+`/home/pieman/Files/Archive/projects/macos9-theme-audit-baseline/`
+is absent and outside this sandbox's writable roots. Checkpoint 1 failed
+before the five suites or either render pass ran. All eight scales and
+both opaque and translucent palette cases are unverified. No costs were
+measured, no C++ or QML changed, and both component claims are free.
+Resume at checkpoint 1 with the baseline directory writable. Existing
+uncommitted work is preserved.
+
+## 2026-11-22, Claude (Opus 5.5) — verify Gemini's C++ audit (#85–97)
+
+- Verified all 13 findings against `dc8b76f` with code review and probes (offscreen and disposable nested KWin 6.8.3, threaded render loop). Updated `AUDIT.md`, `CHANGELOG.md`, and the `PLAN.md` status only. No theme code changed, nothing installed, live desktop untouched, nothing committed.
+- Re-rated to 0 P1, 4 P2 (#85, #88, #89, #93), 9 P3. #85 drops from P1: all 44 observed `paint()` calls ran during scene graph sync with the GUI thread blocked, and no crash appeared. Its `setProperty()` calls on the render thread still need to move.
+- Four suggested fixes must not be applied as written: #86 `weak_ptr` rebuilds shadows on focus changes (8 created versus 2 over 6 windows); #90's conditional button connections leave KDecoration's own damage (10 either way, so delete them); #93 alone leaves about 216 row recalculations per width step; #95 edge-only fills change pixels with translucent colors.
+- Disproved: null `viewport()` (#87), the progress range mismatch (#88), and the style name bug (#94). Gemini's "~91 wakeups/s" is timer events: ten bars wake the thread 10 times per second.
+- Not verified: the user's GPU and displays, debug Qt, a style switch with a menu open, and any of the proposed fixes (none were implemented).
+- What's left: whoever claims `style` and `decoration` should fix in the order #85, #88, #89 + #93, then the P3s, following the notes in the `AUDIT.md` verification section and running all suites.
+
+## 2026-11-22, Antigravity (Gemini 4 Neon) — C++ performance, resource, latency, and stability audit
+
+- Audited `decoration/`, `style/platinum/`, `style/quick/`, and relevant C++ in `tools/` and `dev/` at commit `dc8b76f`. Updated `AUDIT.md` and `CHANGELOG.md` only (no code changes, no install, no live desktop edits).
+- Recorded 13 new open findings (`#85`–`#97`: 1 P1, 8 P2, 4 P3) in `AUDIT.md`:
+  - P1: `#85` `PlatinumItem::paint()` calls `setProperty()` and GUI-thread-only Qt Widgets/`QPixmap` APIs from `QSGRenderThread` under Qt Quick's threaded render loop (12 cross-thread `QDynamicPropertyChangeEvent`s confirmed; hidden by `QT_QUICK_BACKEND=software` in `dev/check-quick.sh`).
+  - P2: `#86` static `std::shared_ptr<DecorationShadow>` outliving `~QCoreApplication()`; `#87` SIGSEGV in `sizeFromContents(CT_HeaderSection, nullptr)` and `polish/unpolish(nullptr)` (Fusion exits 0); `#88` always-on 100 ms `QTimer` per polished `QProgressBar` (10 hidden determinate bars fired 50 wakeups in 550 ms); `#89` shared `NOTIFY changed` causing `Menu.qml` / `MenuItem.qml` binding loops and hover recomputation; `#90` `Decoration::paint()` ignoring `repaintArea` (31.89 µs for a 13×13 button), unpressed/inactive hover duplicate damage (20 signals per 5 enter+leave), and 1×1 `drawBox` loops; `#91` 1×1 `fillRect` loops in `Platinum::Style` (3×–60× slower than coalesced spans; verified 0-diff at 1×/1.25×/1.5×/2× for RLE spans and 348/746 px drift at 1.25×/1.5× for unconditional `QImage` blitting); `#92` $O(N^2)$ `QMenu::sizeHint()` without shortcuts (19.9 ms vs Fusion 1.9 ms at 1,000 items); `#93` `ComboBox.qml` re-measuring all items on every `width` change while closed (559–590 µs/resize at 200 items).
+  - P3: `#94` `styleWatcher()` recreating a leaked `QWidget` during/after `aboutToQuit` and missing `QApplication::style()` null guards; `#95` full-width `RangeSlider` thumb textures (`400×16` each) and panel interior overdraw; `#96` redundant `Decoration` maximize/resize damage bursts (15 per maximize, 40 per 10 width steps), per-resize `Qt::UniqueConnection`, and unguarded `Button` factory constructor (SIGSEGV on empty args); `#97` 3× redundant `QFontMetrics::boundingRect` in `drawGroupBox()`.
+- Checks: compiled all three plugins (`-O2` and ASan/UBSan) into a separate scratch folder with 0 warnings; ran offscreen Qt / KDecoration3 preview / threaded-render-loop probes and scale-factor pixel-diff tests (1.0×, 1.25×, 1.5×, 2.0×).
+- Not verified: live GPU Wayland/OpenGL/Vulkan desktop, nested KWin session, and physical displays.
+- What's left: the next agent claiming `style` or `decoration` can fix `#85`–`#97` (starting with `#85`–`#89`) and verify pixel parity across 1×, 1.25×, 1.5×, and 2× with `dev/check-style.sh`, `dev/check-quick.sh`, and `tools/compare.py diff`.
+
 ## 2026-11-22, Codex (GPT-6.2) — audit and repair bundled cursors
 
 - `install.sh` verifies the whole cursor archive before installing and

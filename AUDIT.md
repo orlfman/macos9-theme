@@ -3,7 +3,395 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+Current C++ audit status, 2026-11-22. Checkpoint 5 passed. #99 (P3) and
+#100 (P2) are fixed and verified in the working tree. #95 remains open (P3).
+
 Status: #53–58 passed their original regression cases. #59–68 are fixed in this revision, including code commits `ef8250a` and `fb4156f`. The user has completed the first desktop install. #3 (P3) awaits the user's visual review. The panel-resize fix for #23 is verified at the user’s 32 px setting. The panel follow-ups #69 and #70 are fixed in the working tree and verified in nested Plasma. The user reported that the updated Kwi tab close button worked well on their desktop (#71–74). Wallpaper findings #75–77 are fixed and verified in disposable Plasma. Cursor findings #78–80 are fixed; the cursors are now bundled (`cursors/`), which removes the external download they concerned. The bundled cursor follow-ups #81–84 are fixed in the working tree. The decisions on #21, #25 and #26 still apply.
+
+## 2026-11-22, Codex (GPT-6) — #99 and #100 follow-up, checkpoint 5 passed
+
+Audited the uncommitted follow-up against the checkpoint 4 working tree on
+`dc8b76f`. No new findings in the exercised cases.
+
+- **#100, fixed in the working tree.** `styleWatcher()` now checks the result
+  of `qobject_cast<QApplication *>` and captures that pointer in the shutdown
+  callback. There are zero evaluations of `qApp` in the function. With
+  the Quick plugin and test executable built with nonrecovering UBSan, a
+  plain QGuiApplication constructed an actual inactive PlatinumItem through
+  the QML engine and exited 0 without diagnostics. The QApplication teardown
+  probe also exited 0 with zero top-level widgets after creating a late item.
+- **#99, fixed in the working tree.** The three maximize signals update
+  border state. Applied `bordersChanged` drives button and title-bar layout,
+  as does a width change. Initialization, font changes and reconfiguration
+  still run the explicit layout path even if the borders stay the same.
+  The preview probe held back auto-apply, resized, and explicitly applied
+  a cloned state with further client width notifications suppressed. A
+  function-entry counter in test copies showed checkpoint 4 missed the
+  applied-border relayout. The fixed build observed it on both maximize
+  and restore. Its (frame width, title width, right edge) results were
+  (415, 415, 411) on open, (434, 434, 430) after maximize and
+  (453, 453, 449) after restore. Both fontChanged and reconfigured caused
+  fresh layouts at the same 453 px width. The uninstrumented preview
+  test recorded 6 maximize damage signals and 1 unchanged-border relayout
+  damage signal, as at checkpoint 4. This isolates the missing callback;
+  the preview did not reproduce a visibly clipped button.
+- Sandbox suites passed 135/135 widget regions and 29/29 Qt Quick checks.
+  All **200/200** decoded RGBA images matched the validated source baseline
+  at 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5 and 3×, including translucent
+  fields/dialogs, fixed barber phase, and the decoration press/drag-off pairs.
+- Evidence is in `dev/build/audit-baseline/checkpoint5/` and
+  `checkpoint5-suites/` under the same baseline directory. Archived
+  checkpoint 4 D-Bus logs are in `checkpoint5/checkpoint4-dbus-evidence/`.
+  The new `test-nested-99.py` builds a test copy of the decoration and
+  checks title width and the rightmost visible button edge during real
+  virtual-KWin paints. The instrumented plugin compiled in build-only mode.
+  Physical displays, X11 clients, and constrained windows are outside this probe.
+- The user ran all three final private-D-Bus suites outside the sandbox.
+  The saved logs in `dev/build/audit-baseline/dbus-suites-final/` show
+  19/19 Plasma checks, 367/367 install checks, and 37/37 live install
+  checks. Each recorded exit code is 0.
+- The user's original #99 nested-KWin run reached open, maximize, restore,
+  horizontal maximize, vertical maximize, and a second restore with correct
+  geometry. The resize action left the frame at its previous size. The
+  probe failed with `No matching paint for resize`
+  (`dev/build/audit-baseline/nested-99-ksy7xuv4/kwin.log`).
+- Claude ran a scratch copy against the same decoration with only the resize
+  action changed to assign a fresh frame geometry object. The user reported
+  PASS across all seven steps and 23 paints. At resize the frame was
+  708 × 438 px, the title was 708 px wide, and the right edge of the
+  rightmost button was at 704 px. Codex applied that same one-line change
+  to the saved probe and checked it with `python3 -m py_compile`. The runtime
+  result comes from Claude's corrected copy.
+
+## 2026-11-22, Claude (Opus 5.5) — verification of Gemini's review findings #99 and #100
+
+Audited: #99 and #100 against the uncommitted working tree on top of `dc8b76f`, compared with `dc8b76f`. No theme code was changed, nothing was installed, and the live desktop was not touched. Gemini's "clean" verdicts for the other findings were not re-tested here.
+
+- **#100 · P2 · confirmed, open.** `styleWatcher()` evaluates `qApp`, a `static_cast<QApplication *>`, before checking the application type. A UBSan build reported invalid downcasts at `style/quick/platinumitem.cpp:25:45` and `:25:65` when a `QGuiApplication` created a `PlatinumItem`. The same probe on `dc8b76f` reported none. Use the `qobject_cast` result and never `qApp` in this function.
+- **#99 · P2 → P3 · partly confirmed, open.** The working tree did remove the `bordersChanged` relayout that `dc8b76f` had, and `previous != borders()` is not a safe test if borders are applied through a deferred next state. The reported wrong geometry **did not reproduce in real nested KWin 6.8.3**: across open, maximize, restore, horizontal maximize, vertical maximize, and resize, with a normal window and one with a maximum width, every decoration paint had the correct title bar width and right button position in both `dc8b76f` and the working tree (0 wrong paints). A deferred path outside these cases remains possible, and the connection is cheap, so restore it before committing. Gemini's suggested fix is reasonable, but it has not been implemented or tested.
+
+Limits: nested KWin used its virtual backend and Qt Wayland clients only. X11 clients, clients that ignore a maximize size, the user's GPU, and physical displays were not tested.
+
+## 2026-11-22, Antigravity (Gemini 4 Neon) — independent review of uncommitted C++ audit fixes (#85–98)
+
+Audited: full working tree diff against `dc8b76f` (`decoration/platinum.{h,cpp}`, `style/platinum/{nineslice.h,sprite.h,slices.h,platinumstyle.cpp}`, `style/quick/{platinumitem.h,platinumitem.cpp,Platinum/ComboBox.qml}`, `tools/nineslice.py`, and `plasma/make-plasma.py`). Review only (no code modified, nothing installed, `dev/build/audit-baseline/` untouched). Built both `dc8b76f` and the working tree (`-O2` and ASan/UBSan) into an isolated scratch directory with zero compiler warnings.
+
+### New regressions found (ranked by severity)
+
+- **#99 · P2 · open — Removing `bordersChanged` → `updateButtonsGeometry` and checking `previous != borders()` breaks double-buffered `KDecoration3::DecorationState` geometry**
+  - **Where:** `decoration/platinum.cpp:240–252` (regression from the `#96` change).
+  - **Concrete failure:** In `libkdecorations3.so.6`, `Decoration::borders()` reads `currentState()->borders()` (offset `0xc0`), whereas `Decoration::setBorders()` writes `nextState()->borders()` (offset `0xb0`). With double-buffered state updates (the `KDecoration3` contract used by KWin Wayland, where `apply(nextState)` runs after `init()` or after client configure):
+    1. After `init()`, `recalculate()` lays out buttons and `titleBar` against `currentState` borders `(0,0,0,0)` (`size().width() = 400`, `rightBtnR = 396`). When the compositor then calls `apply(nextState)` (growing `size().width()` to `412` and emitting `bordersChanged`), nothing is connected to `bordersChanged`, so `titleBar` stays `400` and the right buttons (`Zoom`/`Collapse`) stay **12 px too far left** (`396` instead of `408`).
+    2. When `currentState` and `nextState` are distinct cloned states and a horizontal maximize drops borders `6 → 0` with `widthChanged(1000)` arriving before `apply(nextState)`: `previous != borders()` inside `maximizeChanged` is **false** (comparing `currentState` to itself), `widthChanged(1000)` lays out buttons for `1000 + 12 = 1012` (`rightBtnR = 1008`), and then `apply()` shrinks `size().width()` to `1000` and emits `bordersChanged` with no listener — leaving `titleBarW = 1012` and `rightBtnR = 1008` (**12 px past the right edge of the 1000 px window, clipping the Collapse button off-screen**).
+    Offscreen `PreviewItem` hid this because it calls `apply(nextState)` synchronously inside `nextStateChanged`.
+  - **Confirmed vs suspected:** **Confirmed** via `objdump` of `libkdecorations3.so.6` (`borders()`/`currentState()` at `0xc0` vs `setBorders()`/`nextState()` at `0xb0`) and a standalone `KDecoration3::DecorationBridge` probe comparing `dc8b76f` vs working tree: `dc8b76f` produced `412 / 408` after `init()+apply()` and `1000 / 996` after `maxH+widthChanged(1000)+apply()`; the working tree produced `400 / 396` and `1012 / 1008`. **Suspected (not tested in live KWin):** exact frequency of `init()` / `widthChanged`-before-`apply()` ordering in real `kwin_wayland` (`libkwin.so` imports `bordersChanged`, `nextStateChanged`, and `apply(DecorationState)`).
+  - **Suggested fix:** Restore `connect(this, &KDecoration3::Decoration::bordersChanged, this, &Decoration::updateButtonsGeometry);`, connect `maximizedChanged`/`maximizedHorizontallyChanged`/`maximizedVerticallyChanged` directly to `&Decoration::updateBorders` (deleting `maximizeChanged`), and in `recalculate()` do `const auto previous = borders(); updateBorders(); if (previous == borders()) { updateButtonsGeometry(); }` so synchronous border changes lay out once via `bordersChanged`, non-border changes (`fontChanged`/`reconfigured`) still relayout, and deferred `apply()` updates geometry when `bordersChanged` fires. Zero pixel change at steady state; verify in nested KWin + offscreen preview.
+
+- **#100 · P2 · open — `styleWatcher()` invokes `qApp` before `qobject_cast<QApplication *>`, causing undefined behavior (invalid downcast) in `QGuiApplication`-only apps**
+  - **Where:** `style/quick/platinumitem.cpp:25` (regression from the `#94` change).
+  - **Concrete failure:** `<QApplication>` defines `qApp` as `static_cast<QApplication *>(QCoreApplication::instance())`. Line 25 evaluates `qApp && quitting == qApp` **before** line 28 checks `qobject_cast<QApplication *>(QCoreApplication::instance())`. Every `PlatinumItem` constructed in a `QGuiApplication`-only Qt Quick application performs an invalid static downcast from `QGuiApplication *` to `QApplication *` (C++ undefined behavior). `dc8b76f` did not have this UB because `qApp` was only reached inside the `qobject_cast<QApplication *>` guard.
+  - **Confirmed vs suspected:** **Confirmed** under UBSan (`-fsanitize=address,undefined` on working-tree `libplatinumquick.so` running a `QGuiApplication` QML `Switch` scene): `style/quick/platinumitem.cpp:25:45: runtime error: downcast of address ... which does not point to an object of type 'QApplication' (note: object is of type 'QGuiApplication')`.
+  - **Suggested fix:** Check `auto *app = qobject_cast<QApplication *>(QCoreApplication::instance()); if (!app || QCoreApplication::closingDown() || quitting == app) { return nullptr; }` and use `app` (never `qApp`) inside `styleWatcher()`. Zero pixel change.
+
+### Verification of #85–98
+
+- **#85 — Clean.** All four `_platinum_*` dynamic property writes moved to GUI-thread signal handlers (`platinumitem.cpp:97–100`). Confirmed `crossThreadDynProps = 0` under `QSG_RENDER_LOOP=threaded` (both `-O2` and ASan/UBSan) and verified `_platinum_first`/`_platinum_last`/`_platinum_shortcuts` stay in sync after dynamic `Menu.removeAction()`. Follows Claude's verification note.
+- **#86 — Clean.** `decorationCount` retains `activeShadow`/`inactiveShadow` across focus changes and resets both when the last `Decoration` is destroyed (`decoration/platinum.cpp:192–208, 334–341`). Follows Claude's verification note.
+- **#87 — Clean.** `CT_HeaderSection` checks `option`, and `polish`/`unpolish` return early on `!widget` (`platinumstyle.cpp:759, 1905, 1951`). Confirmed all three survive without SIGSEGV. Follows Claude's verification note.
+- **#88 — Clean.** `updateBusyTimer` (`platinumstyle.cpp:1794–1832, 1941–1944, 1966–1968`) lazily starts the timer only while `isVisible() && minimum() == maximum()`. Confirmed: 0 timers on visible determinate bars, stops immediately on parent tab switch (`QEvent::Hide`, 0 fires in 350 ms), restarts on `QEvent::Show`, stops on determinate range change, and cleans up in `unpolish()`. Follows Claude's verification note.
+- **#89 — Clean.** Split into 21 property-specific signals (`platinumitem.h:17–58`, `platinumitem.cpp:92–123`). Confirmed 0 binding-loop warnings on a 30-item menu with shortcuts AND 0 `panel`/`ListView` binding-loop warnings during Platinum → Fusion → Platinum style switch **with the menu open** (an edge case previously untested). Confirmed `ToolTip` plain↔rich text transitions (`drawsTextChanged`). Hover across 20 menu items improved from 5,207 µs to 1,657 µs (3.1× faster). Follows Claude's verification note.
+- **#90 — Clean.** Removed all three `Button` repaint connections (`decoration/platinum.cpp:493–497`) and skipped `paintTitle()` when `!repaintArea.isEmpty() && !repaintArea.intersects(titleBarRect())` (`:348–350`; all `paintTitle` drawing lies in `y ∈ [2, 17] ⊂ [0, 20)`). Follows Claude's verification note.
+- **#91 — Clean.** Horizontal RLE `drawRow` in `nineslice.h`/`sprite.h`, `constexpr` tables in `slices.h`/`tools/nineslice.py`, `static constexpr` `pressedSlice` in `drawBevel`, span coalescing in `drawProgress` (with non-negative `(c - r - phase + 32) % 16`), 7-rect `drawSlider` groove, and single-pass `drawSpinBox`. Independently verified **0 differing pixels** across all 8 scales (`1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 3×`) against `dc8b76f`, including translucent `QPalette::Base` and `QPalette::Window` fills. Follows Claude's verification note.
+- **#92 — Clean.** Cached on polished `QMenu`s via `_platinum_menuShortcutCache` invalidated on `ActionAdded`/`ActionRemoved`/`ActionChanged` and cleared in `unpolish()`. Confirmed pre-polish query, shortcut add/clear, visibility toggle, `\t` text edit, and `removeAction` all update menu width accurately. Follows Claude's verification note.
+- **#93 — Clean.** `ComboBox.qml:42–55` decouples `platinumListWidthHint` from `control.width` and guards `!popup`. Confirmed closed 200-item `ComboBox` resize (50 steps) dropped from 27,969 µs (559.4 µs/resize) to 407 µs (8.1 µs/resize, 69× faster) while live same-count model rename still widens the popup (`81 → 262`). Follows Claude's verification note.
+- **#94 — Shutdown leak fixed, regressed in #100.** Confirmed `After app.exec(): topLevelWidgets=0` (down from 1), and null `QApplication::style()` guards in `margin()`, `comboWidthHint()`, `updateImplicitSize()`, and `paint()` are clean, but `styleWatcher()` line 25 introduced #100.
+- **#95 — Properly remains open.** Verified `RangeSlider.qml` is unchanged against `dc8b76f` (`groove`/`firstThumb`/`secondThumb` all `400×16`) and the translucent-capable black underlays in `drawField`/`drawModalFrame`/`drawMenuPanel` are untouched (0 differing pixels on translucent 50% white fills at all 8 scales).
+- **#96 — Factory and signal cleanup clean, regressed in #99.** Confirmed the validating `K_PLUGIN_FACTORY` lambda (`decoration/platinum.cpp:43–50`) safely returns `nullptr` for empty args, null decoration, and `DecorationButtonType::Menu` while accepting valid `DecorationButtonType::Close` and `int(Close)`; `visibilityChanged` and `setSpacing(BoxGap)` moved out of `updateButtonsGeometry()` cleanly. Removing `bordersChanged` and checking `previous != borders()` introduced #99.
+- **#97 — Clean.** `SC_GroupBoxLabel` computes `fm.boundingRect` lazily (`platinumstyle.cpp:884`), and `hitTestComplexControl` computes `scrollLayout` once while preserving `rtlFallback` and `upsideDown` swap via `scrollPart` (`:845–863, 958–979`). Confirmed 0 mismatches across all orientations, directions, and reversal settings. Follows Claude's verification note.
+- **#98 — Clean.** `plasma/make-plasma.py:131` (`const(?:expr)? NineSlice<(\d+)>`) matches all 13 `constexpr NineSlice<K>` tables in `slices.h`, `tools/nineslice.py:117` matches `slices.h`, and a repo-wide grep found no other text parser for `slices.h`.
+
+### Checks and limits
+
+- Compiled `dc8b76f` and working-tree plugins (`-O2` and `-O1 -g -fsanitize=address,undefined`) into an isolated scratch folder: 0 compiler warnings.
+- Ran offscreen widget pixel-diff across 8 scales (`1` to `3×`, including translucent palettes: 0 differing pixels on all 8 sheets), `#87`/`#88`/`#92`/`#97` behavior probes, `style/quick` probes (open-menu style switch, threaded render loop + ASan/UBSan, `QGuiApplication` UBSan, `ToolTip` rich↔plain toggle, `ComboBox` rename/resize, `Menu.removeAction`), and a `KDecoration3::DecorationBridge` double-buffered state probe + `libkdecorations3.so.6` disassembly.
+- Limits: offscreen probes only; did not run nested `kwin_wayland`, live Plasma, or physical displays, and did not re-run the repo's `dev/check-*.sh` scripts to avoid writing to `dev/build/` or `dev/shots/`.
+
+## 2026-11-22, Codex (GPT-6) — checkpoint 4 passed
+
+Compared the uncommitted fixes to source baseline `dc8b76f`. Codex ran the
+Qt Widgets (135/135) and Qt Quick (29/29) suites inside the network-disabled
+sandbox. The user ran Plasma (19/19), install (367/367) and live install
+(37/37) outside the sandbox with private D-Bus. All five exited zero.
+`dbus-suites-final/` holds the successful rerun and
+`dbus-suites-final-failed-1/` preserves the original #98 failure.
+
+| Findings | Final working-tree result |
+|---|---|
+| #85 | Moved the four dynamic-property writes to GUI-side change notifications. The user's instrumented threaded virtual-KWin working-tree probe observed 16 active off-GUI paints, zero paint-time changes, 18 GUI positive controls and zero violations. With the original code, 16 such paints yielded 18 changes and 82 total violations. |
+| #86, #87, #94 | Both shadows expire after the last decoration (one retained reference each before, zero each after). Null header-size, polish and unpolish calls completed. Constructing a Quick item late in shutdown leaves zero watcher widgets, previously one. |
+| #88 | Only visible busy bars animate. Ten determinate bars delivered 210 timer events in a two-second baseline sample and zero after. Hidden busy bars went from 200 to zero, visible busy bars delivered 200 in both samples. These count timer deliveries. |
+| #89, #93 | Property-specific notifications and a width-independent content hint stopped repeated row sizing. A 200-row combo went from 69,800 to zero implicit-size calls in 350 width assignments. Uninstrumented median time for 50 assignments was 58 ms before and 21 ms after (seven batches). The 30-row menu produced 29 shortcut-column binding-loop warnings before and zero after. |
+| #90, #96 | Five hover cycles went from 20 to 10 damage signals, maximize from 15 to 6, and an unchanged-border relayout from 2 to 1. Ten width changes produced 40 signals in both builds. The press and drag-off frames matched, unchanged-border layout ran, and the factory accepted valid arguments and rejected empty arguments. |
+| #91, #92, #97 | Run-length drawing, cached menu shortcut presence, and less repeated group-box and scrollbar layout work. Action invalidation passed after add, remove, visibility and shortcut edits. All 40 scrollbar target checks passed across both orientations, layout directions and reversal settings. |
+| #95 | Open. The compact thumb candidate changed 45/152 Quick images at the five fractional scales. That change was reverted and the original thumb sizes and translucent underlays are present in the verified tree. |
+| #98 | Both header declaration spellings parsed all 13 tables identically. The generator produced byte-identical tracked artwork and the final Plasma run passed. |
+
+### Cost measurements
+
+Offscreen at 1× with optimized builds. Each entry is the median of three
+timed batches per build, alternating run order. Values are microseconds per
+operation except the menu row, which times a batch of 1,000 size requests.
+The decoration probe clips the painter to the damaged area. Full decoration
+paint stayed close to its baseline. These are local CPU timings.
+Raw logs and probe sources are in `dev/build/audit-baseline/final-costs/`.
+
+| Operation (µs) | Before | After |
+|---|---:|---:|
+| full decoration | 21.617 | 21.926 |
+| side decoration | 10.278 | 5.519 |
+| progress | 135.069 | 7.485 |
+| busy | 137.919 | 14.473 |
+| slider | 74.151 | 4.137 |
+| groupbox | 14.040 | 9.574 |
+| combo paint | 12.576 | 4.763 |
+| pressed spin | 14.681 | 3.513 |
+| default button bevel | 6.489 | 5.002 |
+| tree disclosure | 1.337 | 1.210 |
+| scrollbar hit | 0.037 | 0.016 |
+| 1000 menu sizes | 19,323.941 | 82.114 |
+
+### Pixel comparison and limits
+
+All 200 final PNGs matched the twice-rendered source baseline pixel for
+pixel after RGBA decoding (228,376,750 pixels). At each of 1, 1.25, 1.5,
+1.75, 2, 2.25, 2.5 and 3×, comparisons covered two widget sheets
+(including the dedicated opaque/translucent field probe), 19 Quick frames
+and four decoration frames. They cover normal, hover, pressed, disabled,
+keyboard-focus, active/inactive and drag-off examples as applicable. Busy
+progress used phase 4. Pressed and drag-off images visibly differed and each
+matched its own baseline. Every requested scale passed for the captured cases.
+
+Full-image comparisons used offscreen software rendering. The threaded #85
+probe exercises menu-item painting. Physical-display fidelity, other GPU
+rendering paths and user visual review of these fixes remain unverified.
+The sanitizer probes passed for all three plugins with leak detection disabled.
+Artifacts are under `dev/build/audit-baseline/`, including `final/`,
+`final-suites/` and the working-tree patch `checkpoint-4.patch`.
+
+## 2026-11-22, Codex (GPT-6) — #98 Plasma generator regression and #85 threaded verification
+
+**#98 (P2), fixed in the working tree.** The #91 change to `constexpr` tables
+broke the text reader in `plasma/make-plasma.py`. The user's final Plasma suite
+exited 1 before rendering, in `nineslice("BevelNormal")`. Both install suites
+exited 0 (367/367 and 37/37). Codex preserved and compared the complete
+`dev/build/audit-baseline/dbus-suites-final-failed-1/` log directory before
+editing. Changed only the reader regex under `plasma/`. Running the generator
+produced zero tracked output differences. All 13 tables yielded identical
+shapes at 81×43 from the original and current header spellings. A project
+source search found one text reader. The remaining consumers compile the header
+or emit it. Sandbox reruns passed 135/135 widget regions and 29/29 Quick checks.
+Checkpoint 4 awaits a fresh set of all three private-D-Bus suite exits.
+
+**#85, verified in the working tree.** The user ran both private, threaded
+virtual-KWin probes outside the sandbox. Codex checked their client logs.
+The negative control from `dc8b76f` recorded 16 active off-GUI paints, 18
+dynamic property changes during those paints, and 82 total violations.
+It detected all four original property writes. The working tree recorded
+16 active off-GUI paints, zero changes during those paints, 18 GUI positive
+controls and zero violations. The probe passed. Logs are under
+`dev/build/audit-baseline/threaded-85-negative-JBA4Qa/` and
+`dev/build/audit-baseline/threaded-85-normal-ksrc2w/`. This verifies the
+exercised menu-item scene on the threaded render loop.
+
+## 2026-11-22, Codex (GPT-6) — checkpoints 2 and 3, working tree
+
+Working-tree fixes pending checkpoint 4: #85–94, #96 and #97. #95 remains
+open. This updates the pre-fix summary above. For #85, inspection of
+`style/quick/platinumitem.cpp` confirms the four dynamic-property writes
+moved to GUI-side property notifications. The software-renderer pixel tests
+cannot verify a threaded paint. The private virtual-KWin probe at
+`dev/build/audit-baseline/test-threaded-85.sh` requires active off-GUI
+paints, GUI property delivery, and zero writes or changes from paint. Its
+negative control builds the original Quick plugin from `dc8b76f`.
+Both instrumented builds and the shell syntax check passed. No threaded
+runtime verdict yet.
+
+Compared complete offscreen images with the two matched baseline runs.
+#85 and #89/#93 each matched 152/152 Quick frames; #88, #87, #92 and #97
+each matched 8/8 widget sheets. #86 matched 8/8 decoration sheets. #90
+and #96 each matched 24/24 decoration sheets plus 8/8 pre-drag pressed
+frames. #91 matched 160/160 widget/Quick frames; its final spin-arrow
+change also matched 8/8 widget sheets. #94 matched 152/152 Quick frames.
+The additional explicit field probe matched 8/8 with correct alpha
+compositing. Widget and Quick suites passed 135/135 and 29/29 in both
+checkpoints. The user has not yet visually reviewed the changes.
+
+## 2026-11-22, Codex (GPT-6) — #95 remains open
+
+The compact range-slider thumb candidate changed 45 of 152 Quick frames
+against the validated `dc8b76f` baseline. All five fractional scales
+(1.25, 1.5, 1.75, 2.25 and 2.5×) changed. Integer scales matched.
+Moving the painted item's origin changes how its texture lands on physical
+pixels. See `dev/build/audit-baseline/fix95/comparison.txt` and the two
+image sets. Restored the pre-#95 sources. The translucent-capable black
+underlays were preserved throughout.
+
+## 2026-11-22, Codex (GPT-6) — checkpoint 1 suite baseline
+
+Source `dc8b76f`. The user ran the private-D-Bus suites outside the sandbox.
+The three logs in `dev/build/audit-baseline/dbus-suites-baseline/` contain
+19 Plasma, 367 install and 37 live-install passes. All three exit files contain
+zero. Codex's sandbox runs passed 135/135 widget regions and 29/29 Qt Quick
+checks. These runs precede the fixes for #85–97.
+
+## 2026-11-22, Claude (Opus 5.5) — verification of Gemini's C++ audit (#85–97)
+
+Audited: findings #85–97 against commit `dc8b76f`. No theme code was changed, nothing was installed, and the live desktop was not touched. The original Gemini entry below is left as written; **the severities and fix notes in this section supersede it**.
+
+Method: exported the commit to a scratch directory, built the plugins, and ran probes offscreen and in disposable nested KWin 6.8.3 (`--virtual`, threaded Qt Quick render loop, Qt 6.12.0). Instrumented copies were used for counts. Timings came from uninstrumented builds. The probes are not in the repo.
+
+| # | Verdict | Severity | What to do with it |
+|---|---|---|---|
+| 85 | Partly confirmed | P1 → **P2** | Move the four `setProperty()` calls out of `paint()`. The full `QQuickItem` rewrite is not justified by this evidence. |
+| 86 | Confirmed | P2 → **P3** | **Do not use the suggested `weak_ptr` fix.** Release both shadows when the last Platinum decoration is destroyed. |
+| 87 | Partly confirmed | P2 → **P3** | Optional null guards. The null `viewport()` part is disproved. |
+| 88 | Confirmed, cost overstated | **P2** | Run the timer only for visible busy bars. The range mismatch part is disproved. |
+| 89 | Confirmed | **P2** | Split the notify signals. The `panel` binding loop was not reproduced. |
+| 90 | Partly confirmed | P2 → **P3** | Delete all three `Button` repaint connections. Skipping `paintTitle()` helps only the side and bottom parts. |
+| 91 | Confirmed | P2 → **P3** | Use run-length fills. Do not use image blits at fractional scales. |
+| 92 | Confirmed | P2 → **P3** | Cache per menu. The cost is once per menu layout, not per frame. |
+| 93 | Confirmed, root cause incomplete | **P2** | Fix with #89: the suggested fix alone leaves the per-row recalculation. |
+| 94 | Partly confirmed | **P3** | Fix the watcher recreation. Parts 3 and 4 are not bugs. |
+| 95 | Confirmed, fix unsafe | **P3** | Shrink the thumbs. **Keep the black underlay** in translucent-capable fills. |
+| 96 | Confirmed, low impact | **P3** | Clean up. Check that a relayout still happens when borders do not change. |
+| 97 | Confirmed by reading | **P3** | Clean up, keeping the reversed-bar and RTL routing. |
+
+### Evidence
+
+- **#85:** 44 of 44 `paint()` calls ran on the render thread, and all 44 ran inside the scene graph sync, while the GUI thread is blocked. That rules out the concurrent GUI-thread race the P1 rating relied on. `QPixmapCache::insert` and `find` both returned false off the main thread, so the suspected cache race cannot happen (the cache is simply skipped there). No crash or Qt thread warning appeared. Setting properties from the render thread is still a thread-affinity violation. The claimed abort on debug Qt was not tested.
+- **#86:** The two shadows do outlive every decoration. In nested KWin, opening 6 windows created **2** shadows with the current code and **8** with the suggested `weak_ptr`, because the active shadow expires on each focus change and is rebuilt.
+- **#87:** The three null-argument crashes reproduce (SIGSEGV), but no project caller passes null and the audit shows no Qt path that does. `setViewport(nullptr)` still leaves a non-null viewport, so the suspected viewport crash is disproved.
+- **#88:** One idle bar fires its timer 10 times per second. Ten bars fire 100 timer events per second but still wake the thread only **10 times per second**, because Qt coalesces them, so the "~91 wakeups/s" figure counts timer events and not CPU wakeups. `QProgressBar::setRange(10, 5)` becomes 10..10, so the `<=` versus `==` mismatch cannot occur on a real bar.
+- **#89:** The `platinumShortcutColumn` binding loop reproduces (13 warnings per load of the test scene). The `panel` loop did not appear across a Platinum → Fusion → Platinum switch with the menu closed; a switch with a menu open was not tested.
+- **#90:** Hover produces 20 damage signals per 5 enter and leave cycles. Removing all three `Button` connections gives **10**, and Gemini's conditional version also gives 10, because KDecoration already emits its own. With them removed, press and drag-off still emit damage. In real KWin, a maximize's 15 damage signals became **1 to 4 `paint()` calls**. A full repaint is 4 calls (top, two sides, bottom), each repeating the title layout, so the `repaintArea` skip helps those 3 non-title parts. It cannot help button hover, because the buttons are inside the title bar.
+- **#91:** Reproduced: progress 132 µs (Fusion 52), busy 133 µs (Fusion 79), slider 74 µs (Fusion 21). 132 µs is about 1.6% of a 120 Hz frame. Run-length fills matched per-pixel drawing exactly for 24 sprites at 25 offsets and 8 scales (1 to 3×). Image blits matched only at 1×, 2× and 3×, and differed at every fractional scale tested.
+- **#92:** 1,000 items: 20.5 ms (Fusion 2.2 ms). The next `sizeHint()` took 1.7 µs, so the cost is paid when the menu is laid out.
+- **#93:** Each width step of a closed combo costs **1.33 ms at 200 items** and 0.12 ms at 20. Each step also re-ran `updateImplicitSize()` about 216 times in the 200-item scene, which the suggested measurement split alone would not stop.
+- **#94:** The recreated watcher widget is reproduced (one top-level widget left after `exec()`). A null `QApplication::style()` was not reproduced, and every cited use except the `updateActive()` check is behind `m_active`. The style name is `platinum` through the factory, so the comparison is correct. Qt removes destroyed event filters, so the missing `removeEventFilter` is not a leak (Qt behavior, not separately tested).
+- **#95:** The full-width thumbs are confirmed in `RangeSlider.qml`. The "zero pixel change" claim for edge-only fills is **false for translucent colors**: a field with a 50% base renders `#808080` over white because of the black underlay, and would render `#FFFFFF` without it. `drawField` and `drawModalFrame` take caller colors. Only opaque fills such as `drawMenuPanel`'s are safe to change.
+- **#96:** 15 damage signals per maximize and the factory crash on empty arguments both reproduce. The crash needs invalid arguments that the normal `Button::create` path never passes. Damage is coalesced as described in #90.
+- **#97:** Confirmed by reading. `hitTestComplexControl` must keep going through the reversed-bar swap (#32) and the RTL fallback if `scrollLayout()` is shared.
+
+### Limits
+
+Nested KWin used its virtual backend, not the user's GPU or displays. Debug Qt, multi-window GPU stress, and a style switch with a menu open were not tested. Gemini's other timings (#90 paint times, #97) were not re-measured. No fix was implemented, so the suggested alternatives above still need their own pixel checks and suite runs.
+
+## 2026-11-22, Antigravity (Gemini 4 Neon) — C++ performance, resource, latency, and stability audit
+
+Audited: `decoration/` (`platinum.h`, `platinum.cpp`, `build.sh`), `style/platinum/` (`platinumstyle.h`, `platinumstyle.cpp`, `plugin.cpp`, `nineslice.h`, `sprite.h`, `slices.h`, `sprites.h`, `progress.h`, `tabs.h`, `menu.h`, `build.sh`), `style/quick/` (`platinumitem.h`, `platinumitem.cpp`, `build.sh`, and interacting `Platinum/*.qml`), and relevant C++ in `tools/` and `dev/` (`check-wallpaper.cpp`, `decoshot.cpp`, `quickshot.cpp`, `quickkeys.cpp`, `quickref.cpp`, `styleshot.cpp`, `check-quick.sh`), at commit `dc8b76f`. Audit only (no theme code modified, nothing installed). All three plugins were compiled (`-O2` and `-O1 -g -fsanitize=address,undefined`) into a separate scratch directory with zero compiler warnings, and exercised with offscreen Qt / KDecoration3 preview probes and microbenchmarks.
+
+### Findings
+
+- **#85 · P1 · open — `PlatinumItem::paint()` mutates QObject dynamic properties and invokes GUI-thread-only Qt Widgets/QPixmap APIs on the Qt Quick render thread**
+  - **Where:** `style/quick/platinumitem.cpp:228–238`, `:255`, `:283` (also `style/platinum/platinumstyle.cpp:1416`, `dev/check-quick.sh:30–40`).
+  - **Concrete failure / cost:** Under Qt Quick's threaded render loop (`QSG_RENDER_LOOP=threaded`, the default on Wayland/OpenGL/Vulkan in Plasma 6.8), `QQuickPaintedItem::paint()` executes on `QSGRenderThread`, not the GUI thread. `PlatinumItem::paint()` calls `this->setProperty(...)` four times on a GUI-thread `QObject`, synchronously dispatching `QDynamicPropertyChangeEvent` on the wrong thread (violating Qt's thread-affinity contract and aborting in debug Qt). It also calls `QIcon::fromTheme()`, `QApplication::palette()`, `QApplication::font()`, `QToolTip::font()/palette()`, `CE_MenuItem` (`mi->icon.pixmap(...)` constructing a `QPixmap`), and `PE_IndicatorTabClose` (`QFusionStyle` `QPixmap`) off the GUI thread. Because `dev/check-quick.sh` forces `QT_QUICK_BACKEND=software` (single-threaded `basic` loop), existing suites never exercised this path.
+  - **Confirmed vs suspected:** **Confirmed** empirically that `QQuickPaintedItem::paint()` runs on `QSGRenderThread` under `QSG_RENDER_LOOP=threaded` (`thread != guiThread`) and that opening a Platinum Qt Quick `Menu` triggers 12 cross-thread `QDynamicPropertyChangeEvent` deliveries on `PlatinumItem` (`_platinum_first`, `_platinum_last`, `_platinum_combo`) in both `-O2` and ASan/UBSan builds. **Suspected:** data races or aborts in `QPixmapCache` / native `QPixmap` creation under real GPU multi-window or debug-Qt runs.
+  - **Suggested fix:** Remove `setProperty()` from `paint()` (update `_platinum_*` in property setters on the GUI thread, or pass context without mutating `QObject` properties). For full thread safety on real Plasma Wayland sessions, migrate `PlatinumItem` from `QQuickPaintedItem` to a `QQuickItem` that renders through `QStyle` into a DPR-scaled `QImage` on the GUI thread inside `updatePolish()` and uploads it as a `QSGSimpleTextureNode` in `updatePaintNode()`. Add a threaded-render-loop smoke test to `dev/check-quick.sh`. **Fidelity:** pixel-identical if rendered at the item's DPR with `Antialiasing = false`; verify with `dev/check-quick.sh` and `tools/compare.py diff` at 1×, 1.25×, 1.5×, and 2×.
+
+- **#86 · P2 · open — `Decoration::updateShadow()` leaks `KDecoration3::DecorationShadow` `QObject`s past `~QCoreApplication()`**
+  - **Where:** `decoration/platinum.cpp:306–311`.
+  - **Concrete failure / cost:** `KDecoration3::DecorationShadow` is a `QObject` (`kdecoration3/decorationshadow.h:74`). Storing `active` and `inactive` in function-local `static std::shared_ptr`s retains both `QObject`s permanently in KWin even after switching away from Platinum, and destroys them during `__cxa_finalize` after `QCoreApplication` teardown (unsafe for `QObject`s and a plugin-unload/shutdown hazard in KWin).
+  - **Confirmed vs suspected:** **Confirmed** via KDecoration3 preview probe: after destroying all `Decoration` instances and flushing `DeferredDelete` while `QApplication` was still alive, both `activeShadow` and `inactiveShadow` stayed alive (`expired=0, use_count=1`), and remained alive past `~QApplication()` (`org.kde.breeze` released its active shadow immediately: `expired=1, use_count=0`).
+  - **Suggested fix:** Replace the two `static std::shared_ptr`s with `static std::weak_ptr<KDecoration3::DecorationShadow>` and call `.lock()`, creating a shadow only when expired. All active/inactive windows still share the same two shadow objects via `setShadow()`, and both are destroyed cleanly when the last Platinum decoration closes. **Fidelity:** zero pixel change.
+
+- **#87 · P2 · open — `Platinum::Style` crashes with SIGSEGV on null `option` in `sizeFromContents(CT_HeaderSection)` and null `widget` in `polish()`/`unpolish()`**
+  - **Where:** `style/platinum/platinumstyle.cpp:734–737`, `:1828–1834`, `:1876–1878` (suspected additional null dereferences: `:1387`, `:1850`, `:1853`, `:1886`).
+  - **Concrete failure / cost:** `sizeFromContents(CT_HeaderSection, nullptr, ...)` dereferences `option->fontMetrics` directly, and `polish(nullptr)` / `unpolish(nullptr)` dereference `widget->inherits(...)` without null guards. `Fusion` handles all three calls cleanly without crashing.
+  - **Confirmed vs suspected:** **Confirmed** with standalone probes: `sizeFromContents(CT_HeaderSection, nullptr, QSize(50, 20), nullptr)`, `polish((QWidget *)nullptr)`, and `unpolish((QWidget *)nullptr)` all exited 0 under `Fusion` and segfaulted (exit 139) under `Platinum`. (By contrast, `drawControl(CE_HeaderEmptyArea/CE_MenuBarEmptyArea, nullptr, ...)` also segfaulted in `Fusion`, so those follow Qt's non-null `option` contract for `draw*`.) **Suspected (code inspection only):** unguarded `combo->view()->viewport()` (`:1387`) and `view->viewport()` (`:1850, :1853, :1886`) would crash if a custom `QAbstractItemView` has a null viewport.
+  - **Suggested fix:** Guard `if (option)` in `CT_HeaderSection` (else return `s`), add `if (!widget) return;` at the top of `polish(QWidget *)` and `unpolish(QWidget *)`, and guard `if (QWidget *vp = view->viewport())` before dereferencing. **Fidelity:** zero pixel change.
+
+- **#88 · P2 · open — Every polished `QProgressBar` runs an active 100 ms `QTimer` permanently, including hidden and determinate bars**
+  - **Where:** `style/platinum/platinumstyle.cpp:1862–1873` (and condition mismatch with `:281`).
+  - **Concrete failure / cost:** `Style::polish()` creates and starts a 100 ms `QTimer` on every `QProgressBar` regardless of whether it is busy or visible. Every polished progress bar across all open Qt apps wakes the app event loop 10 times per second forever, preventing CPU deep sleep on an idle desktop. (Noted in passing at AUDIT.md:844, never numbered or measured.) Additionally, `drawProgress()` (`:281`) draws the barber pole whenever `maximum <= minimum`, while the timer lambda (`:1868`) only calls `update()` when `minimum == maximum`.
+  - **Confirmed vs suspected:** **Confirmed** with probe: 10 polished, hidden, determinate (`0..100`) `QProgressBar`s created 10 active `"platinum-barber-pole"` timers and fired 50 wakeups in 550 ms (~91 wakeups/s; `Fusion`: 0 timers, 0 wakeups).
+  - **Suggested fix:** Replace per-widget always-on timers with a single shared `QTimer` owned by `Style` (or lazily started per-bar timer) that runs only while at least one visible `QProgressBar` has `maximum() <= minimum()`, tracking bars with `QPointer<QProgressBar>` and removing on `Hide`, `destroyed`, or determinate paint. **Fidelity:** zero pixel change (same 100 ms repaint cadence and `currentMSecsSinceEpoch() / 50` phase for visible busy bars).
+
+- **#89 · P2 · open — Single `NOTIFY changed` signal on all 22 `PlatinumItem` properties causes QML binding loops and redundant work on hover/drag**
+  - **Where:** `style/quick/platinumitem.h:17–57`, `style/quick/platinumitem.cpp:86–90`, `:128–143`, `:178–226`, `style/quick/Platinum/Menu.qml:23–32`, `style/quick/Platinum/MenuItem.qml:28–33`.
+  - **Concrete failure / cost:** Sharing one `changed()` signal across all 22 properties causes: (1) a direct binding loop in `Menu.qml:23` (`platinumShortcutColumn` reads `row.shortcutWidth` → `MenuItem.qml:30` sets `row.shortcutColumn` → emits `changed()` → re-notifies `shortcutWidth`), plus `MenuItem.qml:32` `panel` binding loops during style switches; (2) every hover (`selected`) or slider drag (`position`) calls `updateImplicitSize()` (re-running `QIcon::fromTheme()`, `QFontMetrics::boundingRect`, and `sizeFromContents`) and re-evaluates `Menu.platinumShortcutColumn` across all $N$ items; (3) `icon()` (`:128–143`) calls `QIcon::fromTheme(m_iconName)` fresh on every `updateImplicitSize()` and `paint()` with no caching.
+  - **Confirmed vs suspected:** **Confirmed** with `probe_quick`: opening a 30-item Qt Quick `Menu` with shortcuts emitted 10 `Binding loop detected for property "platinumShortcutColumn"` warnings (`Menu.qml:23`), and switching styles emitted repeated `Binding loop detected for property "panel"` warnings (`MenuItem.qml:32`).
+  - **Suggested fix:** Split `NOTIFY` signals by role: `shortcutChanged` for `shortcut`/`shortcutWidth`; `layoutChanged` for size-affecting properties (`elementType`, `text`, `iconName`, `iconSource`, `shortcutColumn`, `horizontal`); and visual-only properties (`selected`, `pressed`, `hovered`, `checked`, `keyboardFocus`, `position`, `panel`, `first`, `last`, `combo`, `edge`) calling only `update()`, never `updateImplicitSize()`. Cache the resolved `QIcon` when `iconName`/`iconSource` changes. **Fidelity:** zero pixel change; verify with `dev/check-quick.sh`.
+
+- **#90 · P2 · open — `Decoration::paint()` ignores `repaintArea`, recomputes title layout/icon/1×1 box pixels on every paint, and `Button` triggers duplicate compositor repaints on unpressed hover and inactive windows**
+  - **Where:** `decoration/platinum.cpp:88–142`, `:313–322`, `:390–455`, `:461–472`.
+  - **Concrete failure / cost:** (1) `Button::Button` connects `hoveredChanged` and `checkedChanged` to `d->update(geometry())`, even though Platinum boxes have no unpressed hover state (`isPressed() && isHovered()`), no checked state, and are not drawn at all on inactive windows; combined with `KDecoration3::DecorationButton`'s own updates, hovering unpressed buttons emits duplicate compositor damage on both active and inactive windows. (2) `Decoration::paint()` ignores `repaintArea`: a 13×13 button damage still executes `paintFrame()` and `paintTitle()` (up to 4 `QFontMetricsF` constructions in the `{100, 92, 85, 78}` stretch loop plus `window()->icon().pixmap(...)`). (3) `drawBox()` issues 64 (normal) to 95 (pressed) individual 1×1 `fillRect` calls per box (~192–223 calls per active title bar).
+  - **Confirmed vs suspected:** **Confirmed** with `probe_deco`, `probe_part3`, and `probe_part5`: 5 unpressed enter+leave cycles on Close emitted 20 `damaged` signals on an active window and 20 on an inactive window; `Maximize::setChecked` emitted 2 `damaged` signals; `Decoration::paint()` took 31.89 µs for a 13×13 button `repaintArea` vs 29.23 µs for a full 416×246 active frame (inactive: 7.22 µs). Pre-baked `QImage` blitting for 3 boxes ran in 0.11 µs vs 5.0–5.8 µs (45–52× faster), with **0 differing pixels at 1.0×, 1.5×, and 2.0×**, but **47 differing pixels at 1.25×**.
+  - **Suggested fix:** Disconnect `checkedChanged`; in `Button::Button` only schedule updates on `pressedChanged` when `d->isActiveLook()`, and on `hoveredChanged` only when `isPressed() && d->isActiveLook()`. In `Decoration::paint()`, skip `paintTitle()` when `!repaintArea.intersects(titleBarRect())`, and cache title layout (`caption`, `font`, `width`, `stripeL`, `stripeR`) and the icon `QPixmap` keyed on `(cacheKey, dpr, active)`. For `drawBox()`, use the 6 pre-baked 13×13 `QImage`s (`SmoothPixmapTransform=false`) only at integer scales/axis-aligned transforms, and fall back to horizontal RLE `fillRect`s at fractional scales. **Fidelity warning:** unconditional `QImage` blitting changes 47 px at 1.25×; keep the integer-scale gate and verify at 1×, 1.25×, 1.5×, and 2× with `tools/compare.py diff`.
+
+- **#91 · P2 · open — Per-pixel 1×1 `fillRect` loops in `Platinum::Style` make progress bars, slider grooves, combo/spin boxes, buttons, and tree disclosure triangles 3×–60× slower than necessary**
+  - **Where:** `style/platinum/nineslice.h:22–54`, `style/platinum/sprite.h:16–23`, `style/platinum/platinumstyle.cpp:258–321`, `:339–357`, `:539–565`, `:1004–1010`, `:1060–1101`.
+  - **Concrete failure / cost:** `drawProgress()` issues 14 individual 1×1 `fillRect` calls per column (~5,600 calls for a 400 px bar); `drawSlider()` calls `drawSprite(..., GrooveMid)` once per horizontal pixel (~2,730 1×1 calls for a 400 px groove to draw 7 solid lines); `drawSprite()` and `drawNineSlice()` emit 1×1 `fillRect`s per pixel (~430 for `PopupArrow`, ~430–650 for `SpinArrows`, ~256 corner calls for `PushDefault`, up to ~289 per tree row for `PE_IndicatorBranch`); `drawBevel()` rebuilds the pressed `NineSlice<2>` on every paint instead of a `constexpr` table.
+  - **Confirmed vs suspected:** **Confirmed** with `probe_style`, `probe_part2`, and `probe_part4` (Platinum vs Fusion and coalesced spans):
+    - Determinate `ProgressBar` 400 px: 138.10 µs (Fusion 48.82 µs); coalesced bands: 144.03 µs → **2.69 µs (53.5× faster)**, **0 differing pixels** at 1.0×, 1.25×, 1.5×, 2.0×.
+    - Busy `ProgressBar` 400 px: 132.41 µs (Fusion 62.67 µs); coalesced horizontal runs: 141.34 µs → **12.89 µs (11.0× faster)**, **0 differing pixels** at all 4 scales.
+    - `Slider` 400 px: 74.84 µs (Fusion 21.72 µs); 7-rect groove span: 68.72 µs → **1.10 µs (62.7× faster)**, **0 differing pixels** at all 4 scales.
+    - `SpinBox` pressed: 14.59 µs vs Fusion 0.31 µs (**47× slower**); `ComboBox`: 12.55 µs vs 0.44 µs (**28.5× slower**); `PushDefaultBevel`: 6.41 µs vs 0.58 µs (**11× slower**); `PE_IndicatorBranch`: 1.31 µs vs 0.24 µs (**5.5× slower**).
+    - `PopupArrow` (22×20): horizontal RLE `fillRect`: 11.89 µs → **3.40 µs (3.5× faster)** with **0 differing pixels** across all 6 tested sprites at 1.0×, 1.25×, 1.5×, and 2.0×. Cached `QImage` blitting (`SmoothPixmapTransform=false`): **0.06 µs (189× faster)** with **0 differing pixels** at 1.0× and 2.0×, **but 348 differing pixels at 1.25× and 746 differing pixels at 1.5×**.
+  - **Suggested fix:** Coalesce `drawProgress` (vertical color runs across `FillMid`/`TroughMid`, horizontal runs for barber pole), `drawSlider` groove (7 horizontal `fillRect`s for `GrooveMid`), `drawSprite` and `drawNineSlice` corners (horizontal RLE `fillRect`s, provably 0-diff at every scale), make `ToolPressed` `constexpr`, and avoid painting the pressed half of `SpinArrows` twice. Optionally gate cached `QImage` blitting strictly on integer DPR/axis-aligned transform (`1×`/`2×`), keeping RLE at fractional scales. **Fidelity warning:** unconditional `QImage` blitting alters pixels at 1.25×/1.5×; verify all scales (1×, 1.25×, 1.5×, 2×) with `dev/check-style.sh` and `tools/compare.py diff`.
+
+- **#92 · P2 · open — `QMenu` layout is $O(N^2)$ when a menu has no shortcuts**
+  - **Where:** `style/platinum/platinumstyle.cpp:462–473`, `:748`.
+  - **Concrete failure / cost:** `sizeFromContents(CT_MenuItem)` calls `menuHasShortcuts(widget)` for every item, which copies `menu->actions()` and linearly scans all $N$ actions. Large menus without shortcuts (bookmarks, recent files, font/syntax lists) stall the UI thread quadratically, exceeding a 120 Hz (8.3 ms) and 60 Hz (16.7 ms) frame budget. (Mentioned without measurement in prose at AUDIT.md:845.)
+  - **Confirmed vs suspected:** **Confirmed** with `probe_part2` (warm font cache, no shortcuts):
+    - 100 items: Platinum 373 µs vs Fusion 185 µs (2.0×)
+    - 200 items: Platinum 1,109 µs vs Fusion 374 µs (3.0×)
+    - 500 items: Platinum 5,466 µs vs Fusion 934 µs (5.9×)
+    - 1,000 items: Platinum **19,861 µs (19.9 ms)** vs Fusion 1,870 µs (1.9 ms) (**10.6× slower**).
+  - **Suggested fix:** Cache `menuHasShortcuts` per `QMenu` (e.g. a map on `Style` or cached property invalidated via an event filter on `ActionAdded`/`ActionRemoved`/`ActionChanged` and `destroyed`). **Fidelity:** zero pixel change; verify with `dev/check-style.sh` and `dev/check-quick.sh`.
+
+- **#93 · P2 · open — `ComboBox.qml` re-measures every model item through `comboWidthHint()` on every `control.width` change, even while closed**
+  - **Where:** `style/quick/Platinum/ComboBox.qml:42–59`, `style/quick/platinumitem.cpp:156–171`.
+  - **Concrete failure / cost:** The `popup.implicitWidth` `Binding` combines `control.width` with the JS loop over all `control.popup.count` items and C++ `comboWidthHint(texts)` (`QFontMetrics::horizontalAdvance` per item). Resizing a window re-measures every item of every closed `ComboBox` on every resize step.
+  - **Confirmed vs suspected:** **Confirmed** with `probe_quick`: resizing a single closed 200-item Qt Quick `ComboBox` 50 times took **27.97–29.49 ms (559–590 µs per resize)**.
+  - **Suggested fix:** Separate the item-width measurement into its own property (independent of `control.width`, and gated on `popup.visible` or item/text changes) and bind `popup.implicitWidth` to `Math.max(control.width, control.platinumMinListWidth)`. **Fidelity:** zero pixel change; verify with `dev/check-quick.sh` (including live model rename parity from #63).
+
+- **#94 · P3 · open — `styleWatcher()` leaks a recreated `QWidget` during/after `aboutToQuit`, and `PlatinumItem` lacks null guards on `QApplication::style()`**
+  - **Where:** `style/quick/platinumitem.cpp:20–33`, `:109`, `:153`, `:170`, `:183`, `:233`.
+  - **Concrete failure / cost:** (1) `aboutToQuit` deletes `watcher` and resets `watcher = nullptr`, so any `PlatinumItem` constructed or receiving an event during/after `aboutToQuit` recreates a top-level `QWidget` that is never deleted. (2) `margin()`, `comboWidthHint()`, `updateImplicitSize()`, and `paint()` dereference `QApplication::style()` without null checks. (3) `updateActive()` (`:109`) compares `style()->name() == QLatin1String("platinum")` case-sensitively, whereas `Platinum::Style::Style()` (`platinumstyle.cpp:623`) sets `objectName` to `"Platinum"` (only matching because `QStyleFactory::create()` lowercases it). (4) Every `PlatinumItem` calls `watcher->installEventFilter(this)` with no `removeEventFilter` in a destructor.
+  - **Confirmed vs suspected:** **Confirmed** `styleWatcher()` leak with `probe_quick watcher-teardown` (`TopLevelWidgets`: 1 → 0 in `aboutToQuit` → 1 after creating a `Switch` in `aboutToQuit` → 1 leaked after `app.exec()`). **Suspected (code inspection only):** null `QApplication::style()` dereference during teardown or re-entrant style change.
+  - **Suggested fix:** Return `nullptr` from `styleWatcher()` once `QCoreApplication::closingDown()` (or a `quitting` flag) is true; emit a `styleChanged()` signal from a single helper `QObject` instead of per-item `installEventFilter`; guard `QStyle *style = QApplication::style(); if (!style) return ...;` at all 4 call sites; compare style name case-insensitively. **Fidelity:** zero pixel change.
+
+- **#95 · P3 · open — `RangeSlider.qml` allocates two full-width `QQuickPaintedItem` textures for 15×16 thumbs (and `Dialog`/`Drawer` allocate full-window textures with interior overdraw)**
+  - **Where:** `style/quick/Platinum/RangeSlider.qml:23–48`, `style/quick/Platinum/Dialog.qml:13–22`, `style/quick/Platinum/Drawer.qml:11–21`, `style/platinum/platinumstyle.cpp:372–374`, `:397–398`, `:488–499`.
+  - **Concrete failure / cost:** `RangeSlider`'s `firstThumb` and `secondThumb` each bind `width: control.width; height: control.height`, allocating two extra full-width RGBA backing images/GPU textures and repainting/uploading the entire slider width on every drag frame instead of a 19×16 thumb+focus rect (~21× texture waste on a 400 px slider; 4× at 2× DPR). Similarly, `Dialog.qml`/`Drawer.qml` back the entire dialog/drawer area with a `QQuickPaintedItem` texture, and `drawModalFrame`/`drawMenuPanel`/`drawField` fill the full interior with black before overwriting it with the fill color (2×–3× pixel overdraw).
+  - **Confirmed vs suspected:** **Confirmed** `RangeSlider` dimensions with `probe_quick` (`groove=400x16, firstThumb=400x16, secondThumb=400x16` on a 400 px `RangeSlider`). `Dialog`/`Drawer` sizing and overdraw confirmed by code inspection.
+  - **Suggested fix:** Size and position `firstThumb`/`secondThumb` to the thumb rect + 2 px focus-line margin (`19×16` horizontal, `16×19` vertical), and replace full-rect black fills in `drawModalFrame`/`drawMenuPanel`/`drawField` with four 1 px edge rects. **Fidelity:** zero pixel change; verify with `dev/check-quick.sh` and `dev/check-style.sh`.
+
+- **#96 · P3 · open — Redundant `updateButtonsGeometry()` / `update()` bursts, per-resize `Qt::UniqueConnection` scans, and unguarded `Button` factory constructor in `Decoration`**
+  - **Where:** `decoration/platinum.cpp:218–226`, `:242–247`, `:269–304`, `:474–477`.
+  - **Concrete failure / cost:** (1) `recalculate()` calls `updateBorders()` (emitting `bordersChanged` → synchronously calling `updateButtonsGeometry()` → `update()`), then calls `updateButtonsGeometry()` and `update()` again; connecting all three maximized signals to `recalculate()` produces 15 `damaged` signals per maximize/unmaximize, and 10 width changes produce 40 `damaged` signals. (2) `updateButtonsGeometry()` runs `connect(b, &DecorationButton::visibilityChanged, ..., Qt::QueuedConnection | Qt::UniqueConnection)` for every button on every width resize step, repeatedly locking Qt's connection mutex and scanning connections. (3) `Button::Button(QObject *parent, const QVariantList &args)` passes `args.value(1).value<Decoration *>()` directly to `KDecoration3::DecorationButton` without validating `args`, segfaulting if invoked via `KPluginFactory` with missing/non-Platinum args (normal KWin/KCM calls pass valid `{type, deco}`).
+  - **Confirmed vs suspected:** **Confirmed** with `probe_deco` and `probe_part3`: maximize/unmaximize emitted 15 `damaged` signals each; 10 width changes emitted 40 `damaged` signals; `KPluginFactory::create<DecorationButton>(nullptr, {})` segfaulted (exit 139) whereas valid `{Close, KDecoration3::Decoration*}` succeeded.
+  - **Suggested fix:** Connect `visibilityChanged` once in `Button` construction and call `setSpacing(BoxGap)` once in `init()`; avoid double-calling `updateButtonsGeometry()`/`update()` inside `recalculate()` and deduplicate maximized signal handling; use a validating factory lambda for `Platinum::Button` in `K_PLUGIN_FACTORY_WITH_JSON`. **Fidelity:** zero pixel change; verify with `dev/shoot-deco.sh` and `dev/kwin-test.sh`.
+
+- **#97 · P3 · open — `Style::subControlRect(CC_GroupBox)` recomputes `QFontMetrics::boundingRect()` 3 times per `drawGroupBox()` paint**
+  - **Where:** `style/platinum/platinumstyle.cpp:825–852`, `:1114–1116` (and `hitTestComplexControl` `:934–941`).
+  - **Concrete failure / cost:** `subControlRect(CC_GroupBox)` calls `fm.boundingRect(QRect(), Qt::TextShowMnemonic, gb->text)` unconditionally before switching on `sub`, even for `SC_GroupBoxFrame`, `SC_GroupBoxCheckBox`, and `SC_GroupBoxContents`. `drawGroupBox()` invokes `subControlRect` three times per paint, running three identical text-layout calls. Similarly, `hitTestComplexControl(CC_ScrollBar)` recomputes `scrollLayout()` up to 5 times per pointer hit-test.
+  - **Confirmed vs suspected:** **Confirmed** by code inspection. Overall `drawGroupBox` still ran faster than Fusion (`9.84 µs` vs `22.95 µs`), so impact is low.
+  - **Suggested fix:** Compute `label` only inside `case SC_GroupBoxLabel:` and compute `scrollLayout()` once in `hitTestComplexControl()`. **Fidelity:** zero pixel change; verify with `dev/check-style.sh`.
+
+### Clean areas
+
+- `style/platinum/plugin.cpp` and `tools/check-wallpaper.cpp`: clean, minimal, no leaks or lifetime bugs.
+- `style/platinum/platinumstyle.cpp` 64-bit scroll/slider arithmetic (`scrollLayout`, `drawProgress` range math, `drawSlider` tick bounds) and `polish`/`unpolish` property save/restore symmetry: clean (AUDIT #15, #18).
+- `decoration/platinum.cpp` `paintFrame` / `drawStripes` boundary guards (survived `0×0` paint cleanly) and `QTimer::singleShot(0, this, ...)` context lifetime: clean.
+- `style/quick/platinumitem.cpp` `QGuiApplication`-only fallback (`probe_quick gui-app` ran cleanly with `m_active = false`), `M9_QUICK_TEST` gate on `setApplicationStyle`, and `ToolButton.qml` `Loader` gating: clean.
+- All three plugins build cleanly under `-Wall -Wextra` with zero warnings and produced no ASan/UBSan diagnostics on the exercised paths (leak detection disabled).
+
+### Checks and limits
+
+- Compiled `decoration/`, `style/platinum/`, and `style/quick/` into an isolated scratch directory (`-O2` and `-O1 -g -fsanitize=address,undefined`): 0 compiler warnings.
+- Executed standalone C++ probes (`QT_QPA_PLATFORM=offscreen`, plus `QSG_RENDER_LOOP=threaded` for Qt Quick) comparing `Platinum` against `Fusion` and `org.kde.breeze`, and verified pixel diffs at 1.0×, 1.25×, 1.5×, and 2.0× across 6 sprites, determinate/busy progress bars, slider grooves, and decoration title-bar boxes.
+- Limits: offscreen Qt and KDecoration3 preview only; did not run nested KWin / live Plasma / real GPU OpenGL or Vulkan compositor or touch the live desktop; `QPixmap` thread races under real Wayland/GPU drivers and null-`viewport()` / null-`QApplication::style()` teardown paths remain code-inspection suspicions rather than live crashes.
 
 ## 2026-11-22, Codex (GPT-6.2) — bundled cursor audit and fixes
 
