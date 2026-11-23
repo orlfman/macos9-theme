@@ -75,8 +75,9 @@ env -i PATH="$SAFE_PATH" LC_ALL=C python3 -I "$generator" --preflight "$custom_d
 pinned_commit=$(env -i PATH="$SAFE_PATH" LC_ALL=C python3 -I "$generator" --print-pin)
 [[ $pinned_commit =~ ^[0-9a-f]{40}$ ]] || die "invalid pinned commit from generator: $pinned_commit"
 
-# Verify upstream clone and exact reviewed full commit before any writes (#103).
+# Verify upstream clone and exact reviewed full commit before any writes (#103, #143).
 [[ -d $upstream ]] || die "upstream clone directory does not exist: $upstream"
+upstream=$(env -i PATH="$SAFE_PATH" LC_ALL=C python3 -I -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$upstream")
 upstream_ceiling=$(env -i PATH="$SAFE_PATH" LC_ALL=C dirname -- "$upstream")
 upstream_git_dir=$(env -i PATH="$SAFE_PATH" LC_ALL=C GIT_CEILING_DIRECTORIES="$upstream_ceiling" \
     git -C "$upstream" rev-parse --absolute-git-dir 2>/dev/null || true)

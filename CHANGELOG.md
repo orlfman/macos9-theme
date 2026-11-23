@@ -2,6 +2,31 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-23, Codex (GPT-6) — user completed plain live reinstall
+
+The user's terminal showed the working-tree installer reaching Done with no inline cache override and all three GTK icon caches created. Platinum was already active. The user previously removed the stale KDE marker manually. The user's live kreadconfig6 query returned WhiteSur-lavender. The user visually approved the desktop appearance after the reinstall. The Lavender reinstall checkpoint is complete.
+
+## 2026-11-23, Codex (GPT-6) — record completed nested Plasma checks
+
+- Recorded the user's 19/19 pixel comparisons with zero differences and 40/40 live-install checks in AUDIT.md and PLAN.md. The #142/#143 working tree is ready for commit and plain reinstall. Real-desktop post-login appearance still awaits the user's check.
+
+## 2026-11-23, Codex (GPT-6) — verify Lavender plain reinstall
+
+- Verified #142 using a genuine 4fe0894 install, including direct undo and preservation of a later icon choice. Checked the completed #143 linked-cache run, its reviewed commit and Git object integrity. See AUDIT.md for the sandbox ownership limit.
+- Plain reinstall on the stated setup cleared for commit and user execution. Nested Plasma and post-login visual checks remain pending. Review edits only to AUDIT.md, CHANGELOG.md and PLAN.md.
+
+## 2026-11-23, Antigravity (Gemini 4 Neon) — fix live-install WhiteSur findings #142 and #143
+
+- **#142 (prevent and repair KDE `Theme[$d]` marker):** Replaced `kwriteconfig6 --delete` in `scripts/icon_prefs.py` (`kde_delete_key`) with an atomic mode/ACL-preserving INI editor that removes both `Key=...` and KConfig `Key[$d]` delete markers without writing `Theme[$d]`, and isolated single-layer `kreadconfig6`/`kwriteconfig6` calls from `XDG_CONFIG_DIRS`. Added detection and automatic repair for existing installs carrying a stale `Theme[$d]` marker across plain `./install.sh` (including `--dry-run`), `./install.sh --apply`, and direct `./uninstall.sh`. Updated `dev/test-install.sh` and `dev/test-install-live.sh` to run under the real `XDG_CONFIG_DIRS=$config/kdedefaults:/etc/xdg` cascade and assert effective KDE icon themes via cascaded `kreadconfig6 --file kdeglobals`.
+- **#143 (user-owned symlinked `~/.cache`):** Updated `icons/fetch-whitesur.sh` to validate and canonicalize safe user-owned (or root-owned system) ancestor symlinks hop-by-hop (such as `~/.cache -> /mnt/storage0/local/cache`) while strictly refusing symlinked cache leaves, dangling/looping links, non-directory targets, world-writable directories, and foreign-owned links or targets. Updated `icons/build-whitesur-lavender.sh` to canonicalize `$upstream` with `realpath` before git directory verification.
+- **Sandbox isolation (`dev/run.sh`):** Exported `XDG_CONFIG_DIRS=/etc/xdg` after borrowing user fonts so a live desktop's `~/.config/kdedefaults` cannot leak into sandboxed `dev/check-quick.sh` / `dev/check-style.sh` runs.
+- **Checks:** `dev/test_icons_phase1.py` **80/80**, `dev/test-install.sh` **702/702**, `dev/check-style.sh` **135/135**, `dev/check-quick.sh` **29/29**. `../WhiteSur-icon-theme`, live desktop, and `~/.local/share/icons` untouched.
+- **Not verified / what's left:** Nested-KWin suites `dev/check-plasma.sh` and `dev/test-install-live.sh` need the user's terminal outside the sandbox; live desktop update/commit await the user. All claims (`shared`, `icons`, `packaging`) cleared.
+
+## 2026-11-23, Claude (Opus 5.5) — record first live Lavender install
+
+- The user installed `4fe0894` with `XDG_CACHE_HOME=/mnt/storage0/local/cache`. GTK selected Lavender, but KDE read an empty theme because of a `Theme[$d]` marker (#142). A symlinked `~/.cache` also blocks the default path (#143). No code changed here.
+
 ## 2026-11-23, Codex (GPT-6) — final WhiteSur Lavender verification
 
 - Verified #127, #131 and #139–141 with the original failure cases. All 50 focused installer assertions passed. Independent process kills confirmed recovery at initial capture, selection and all three unfinished-undo boundaries.

@@ -3,12 +3,63 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-WhiteSur Lavender status, 2026-11-23. **#127, #131 and #139–141 independently verified fixed in the uncommitted tree. Safe to run plain `install.sh` on the stated Platinum/Breeze setup.** Both full-size upgrade, update and undo runs passed. The user reports 19/19 Plasma checks with zero differing pixels and 40/40 live-install checks.
+WhiteSur Lavender status, 2026-11-23. **#142 and #143 from the first live install (`4fe0894`) are fixed, independently verified, live-reinstalled with the user's visual approval, and committed on `main`.** `dev/test_icons_phase1.py` 80/80, `dev/test-install.sh` 702/702 (with real `XDG_CONFIG_DIRS` cascade), `dev/check-style.sh` 135/135, `dev/check-quick.sh` 29/29, `dev/check-plasma.sh` 19/19 (zero differing pixels), and `dev/test-install-live.sh` 40/40. The Lavender reinstall checkpoint is complete; #95 remains open (P3).
 
 Current C++ audit status, 2026-11-22. Checkpoint 5 passed. #99 (P3) and
 #100 (P2) are fixed and verified in the working tree. #95 remains open (P3).
 
 Status: #53–58 passed their original regression cases. #59–68 are fixed in this revision, including code commits `ef8250a` and `fb4156f`. The user has completed the first desktop install. #3 (P3) awaits the user's visual review. The panel-resize fix for #23 is verified at the user’s 32 px setting. The panel follow-ups #69 and #70 are fixed in the working tree and verified in nested Plasma. The user reported that the updated Kwi tab close button worked well on their desktop (#71–74). Wallpaper findings #75–77 are fixed and verified in disposable Plasma. Cursor findings #78–80 are fixed; the cursors are now bundled (`cursors/`), which removes the external download they concerned. The bundled cursor follow-ups #81–84 are fixed in the working tree. The decisions on #21, #25 and #26 still apply.
+
+## 2026-11-23, Codex (GPT-6) — user completed plain live reinstall
+
+The user's terminal showed the working-tree installer reaching Done with no inline cache override and all three GTK icon caches created. Platinum was already active. The user previously removed the stale KDE marker manually. The user's live kreadconfig6 query returned WhiteSur-lavender. The user visually approved the desktop appearance after the reinstall. The Lavender reinstall checkpoint is complete.
+
+## 2026-11-23, Codex (GPT-6) — user terminal verification of the #142/#143 working tree
+
+Reviewed the user's terminal results for the working tree based on `4fe0894` and confirmed the 40-pass summary in `dev/build/test-home-live/result.log`. No new findings.
+
+- `dev/check-plasma.sh` passed 19/19 with zero differing pixels in the sampled menu bar and dock regions, including bar ends and dividers at 32, 34, 38 and 40 px.
+- `dev/test-install-live.sh` passed 40/40 in two-screen nested Plasma. Applying Platinum selected WhiteSur-lavender through KDE's effective configuration. Updating succeeded. Undo restored both panels, their widgets, both wallpapers and the checked configuration and GTK files byte for byte.
+- The user's post-login appearance check on the real desktop remains pending. These suites do not exercise the compact slider thumbs in #95, which remains open.
+
+## 2026-11-23, Codex (GPT-6) — independent review of #142 and #143
+
+Reviewed the finished working tree on `4fe0894`. No blocking findings for the user's plain reinstall.
+
+- **#142 verified.** In two disposable install cycles the archived `4fe0894` installer itself produced the stale marker. KDE's real cascade returned an empty selection. The new dry run previewed repair and preserved the file checksum. Plain update selected inherited Lavender, kept a sibling key and mode 0600, and preserved a later explicit Adwaita on repeat update. Undo restored explicit Breeze. Direct undo from the second stale installation also restored Breeze. Fresh installation and repeated update both resolved to Lavender. Used prebuilt test assets and no session bus.
+- **#143 verified from the completed end-to-end run.** Inspected the test environment and install, offline-update, undo and refusal logs (254–256 and err-143-*). With XDG_CACHE_HOME unset the linked cache supplied the build even on update with an unavailable remote. Independently verified the retained cache HEAD against the full reviewed pin and checked its objects with git fsck. The restored disposable configuration resolved to breeze. This sandbox maps system-owned ancestors to UID 65534, so its separate cache run stopped at the ownership check.
+- Nested Plasma suites on this revision and the user's post-login appearance remain pending. No visual equivalence claim. #95 stays open.
+
+## 2026-11-23, Antigravity (Gemini 4 Neon) — fixes for first-live-install findings #142 and #143
+
+Fixed both `#142` and `#143` (plus an `XDG_CONFIG_DIRS` sandbox leak in `dev/run.sh` exposed by the live `kdedefaults` install) in the working tree on top of `4fe0894` (uncommitted). Live desktop, `~/.local/share/icons`, and `../WhiteSur-icon-theme` (`73d8040da51a9ed74e47c7366e7e9ff437601a5c`) untouched.
+
+### Fixes verified
+
+- **#142 (P1) — Never leave `Theme[$d]` when deleting KDE icon overrides; repair existing installs; test with real `XDG_CONFIG_DIRS` cascade:**
+  - Replaced `kwriteconfig6 --delete` in `kde_delete_key` (`scripts/icon_prefs.py`) with an atomic mode/ACL-preserving INI editor that removes both `Key=...` and any KConfig `Key[$d]` delete markers (and drops emptied `[group]` headers), so selecting or restoring an inherited KDE icon theme never writes `Theme[$d]`.
+  - Isolated single-layer `kreadconfig6`/`kwriteconfig6` calls in `kde_key_state` and `kde_set_key` with `XDG_CONFIG_DIRS=/nonexistent` so single-layer reads never pull cascaded values and `kde_set_key` never elides an explicit key that happens to equal `kdedefaults/kdeglobals`.
+  - Updated `kde_key_state`, `read_all_current_prefs`, `cmd_effective_kde`, `cmd_apply_tx`, `cmd_prepare_restore`, and `install.sh --apply` (`clear-deleted-marker`) to detect and repair an existing install that already carries the stale `Theme[$d]` marker: plain `./install.sh` (`phase=="selected"`), `./install.sh --dry-run` preview, `./install.sh --apply`, and direct `./uninstall.sh` all cleanly remove the stale `Theme[$d]` marker while preserving other `[Icons]` keys (e.g. `ForceFontDPI=96`) and `0600` permissions.
+  - Switched `dev/test-install.sh` and `dev/test-install-live.sh` to run under the real Plasma `XDG_CONFIG_DIRS=$config/kdedefaults:/etc/xdg` cascade and read the effective KDE icon theme via a single cascaded `kreadconfig6 --file kdeglobals --group Icons --key Theme` call. Added exact regressions `#142a` (plain active-Platinum select), `#142b` (restoring inherited `breeze` over legacy explicit backup), and `#142c` (repairing an existing install with stale `Theme[$d]` via `--dry-run`, plain update, `--apply`, and direct undo).
+- **#143 (P2) — Allow normal user-owned symlinked `~/.cache` while refusing unsafe or foreign-owned paths:**
+  - Updated `icons/fetch-whitesur.sh` to walk and canonicalize `cache_dir` hop-by-hop: allows safe user-owned (or root-owned system) ancestor symlinks (such as `~/.cache -> /mnt/storage0/local/cache`) whose resolved target directory and deepest existing parent are owned by the current user and not world-writable, while still strictly refusing a symlinked cache leaf (`WhiteSur-icon-theme`), dangling or looping symlinks, non-directory targets, symlinks inside world-writable directories, world-writable (`0777` / `/tmp`) directories, and foreign-owned symlinks or targets (`/etc`).
+  - Updated `icons/build-whitesur-lavender.sh` to canonicalize `$upstream` via `os.path.realpath` before `git rev-parse --absolute-git-dir` verification so building directly from a cache path traversing a symlinked `~/.cache` succeeds.
+  - Added 6 unit/security checks in `dev/test_icons_phase1.py` and an end-to-end real-source `install.sh` test in `dev/test-install.sh` (with `XDG_CACHE_HOME` unset and `$home/.cache` symlinked to a user-owned storage directory, plus world-writable and `/etc` rejection checks).
+- **Sandbox isolation follow-up (`dev/run.sh`):** Exported `XDG_CONFIG_DIRS=/etc/xdg` in `dev/run.sh` after borrowing user fonts so the live desktop's `~/.config/kdedefaults` (now selecting `WhiteSur-lavender`) cannot leak into sandboxed `dev/check-quick.sh` / `dev/check-style.sh` runs.
+
+### Verification results and limits
+
+- `dev/test_icons_phase1.py`: **80/80 passed** (+6 `#143` symlinked-cache and unsafe/foreign-path checks).
+- `dev/test-install.sh`: **702/702 passed** (+25 `#142a`/`#142b`/`#142c`/`#143` checks, entire suite running with real `XDG_CONFIG_DIRS=$config/kdedefaults:/etc/xdg`).
+- `dev/check-style.sh`: **135/135 pixel exact**.
+- `dev/check-quick.sh`: **29/29 passed**.
+- **Limits (not runnable in this sandbox):** `dev/check-plasma.sh` and `dev/test-install-live.sh` require nested KWin/Wayland outside the sandbox and must be run from the user's terminal; live desktop re-install/repair awaits the user.
+
+## 2026-11-23, Claude (Opus 5.5) — first live Lavender install
+
+- **#142 · P1 · open.** `scripts/icon_prefs.py:220` uses `kwriteconfig6 --delete`, which leaves `Theme[$d]` in `~/.config/kdeglobals`. With `XDG_CONFIG_DIRS=~/.config/kdedefaults:/etc/xdg`, that marker hides `Theme=WhiteSur-lavender` in `kdedefaults/kdeglobals`, so KDE reads an empty icon theme. Confirmed on the live install and in a scratch config: reader result was empty with the marker and `WhiteSur-lavender` after removing that line. Layer-by-layer checks missed it. Tests must read the effective value with the real `XDG_CONFIG_DIRS` cascade.
+- **#143 · P2 · open.** `icons/fetch-whitesur.sh` refuses a normal user-owned symlinked `~/.cache`. The live install needed `XDG_CACHE_HOME=/mnt/storage0/local/cache`.
+- GTK 3, GTK 4, xsettingsd, all three theme caches, private GTK modes, and the `selected` transaction phase were correct on the live install.
 
 ## 2026-11-23, Codex (GPT-6) — final verification of WhiteSur #127, #131 and #139–141
 

@@ -461,6 +461,8 @@ if ((apply)); then
             plasma-apply-lookandfeel --apply "$lnf_id" --resetLayout > /dev/null 2>&1; then
             die "switching to the Platinum global theme failed (plasma-apply-lookandfeel). Your config files are copied: uninstall.sh puts them back, or try install.sh --apply again"
         fi
+        # Ensure a stale Theme[$d] marker in kdeglobals doesn't hide kdedefaults (#142).
+        python3 -I "$icon_prefs" clear-deleted-marker "$config_home/kdeglobals"
         say "Switched to the Platinum global theme"
     fi
     # A global theme can't set the title bar button order (docs/FINDINGS.md).

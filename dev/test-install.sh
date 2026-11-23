@@ -75,7 +75,7 @@ PYEND
     exec env -i HOME="$root/home" USER="$USER" PATH="$root/bin:/usr/local/bin:/usr/bin" \
         XDG_CONFIG_HOME="$root/home/.config" XDG_DATA_HOME="$root/home/.local/share" \
         XDG_CACHE_HOME="$root/home/.cache" XDG_STATE_HOME="$root/home/.local/state" \
-        XDG_DATA_DIRS=/usr/local/share:/usr/share XDG_CONFIG_DIRS=/etc/xdg \
+        XDG_DATA_DIRS=/usr/local/share:/usr/share XDG_CONFIG_DIRS="$root/home/.config/kdedefaults:/etc/xdg" \
         XDG_RUNTIME_DIR="$root/runtime" M9_TEST_INNER="$root" M9_PROJECT_BUILD="$dev/build" LANG=C.UTF-8 \
         M9_PREBUILT="$root/prebuilt" M9_PREBUILT_REAL="$root/prebuilt-real" \
         M9_TEST_REMOTE="file://$root/local-remote.git" M9_USTOPS="${M9_USTOPS:-}" QT_QPA_PLATFORM=offscreen \
@@ -1010,10 +1010,8 @@ done
 # #110: WhiteSur Lavender icons install, apply, adoption, update, and undo
 # --------------------------------------------------------------------------
 eff_icon() {
-    local v
-    v=$(kreadconfig6 --file "$config/kdeglobals" --group Icons --key Theme)
-    [[ -n $v ]] || v=$(kreadconfig6 --file "$config/kdedefaults/kdeglobals" --group Icons --key Theme 2> /dev/null || true)
-    printf '%s' "$v"
+    XDG_CONFIG_HOME="$config" XDG_CONFIG_DIRS="$config/kdedefaults:/etc/xdg" \
+        kreadconfig6 --file kdeglobals --group Icons --key Theme
 }
 
 fresh "#110 fresh install, apply, relative symlinks, and clean undo"
@@ -1091,7 +1089,8 @@ for icon_id in WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark;
     rm -f "$data/icons/$icon_id/.macos9-whitesur-lavender-build"
 done
 printf '# manual lavender base\n' >> "$data/icons/WhiteSur-lavender/index.theme"
-# Select manual WhiteSur-lavender explicitly in kdeglobals and GTK (old WhiteSur folders do not exist!)
+# Select manual WhiteSur-lavender explicitly in kdeglobals and GTK (old Platinum kdedefaults had WhiteSur; old WhiteSur folders do not exist!)
+kwriteconfig6 --file "$config/kdedefaults/kdeglobals" --group Icons --key Theme WhiteSur
 kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme WhiteSur-lavender
 printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=WhiteSur-lavender\n' > "$config/gtk-3.0/settings.ini"
 printf '[Settings]\ngtk-icon-theme-name=WhiteSur-lavender\n' > "$config/gtk-4.0/settings.ini"
@@ -1450,10 +1449,9 @@ assert d["captured"]["kde"]["kdeglobals"]["present"] is False
 PYEND
 check "uninstall after HEAD TAKEN=install+picker upgrade exits 0" run wt-picker-undo "$project/uninstall.sh"
 check "  original real-size manual Lavender base restored" grep -Fq "# real-head-picker-manual" "$data/icons/WhiteSur-lavender/index.theme"
-check "  inherited KDE WhiteSur-lavender preserved in kdedefaults without writing explicit kdeglobals override (#117)" bash -c '
-    [[ -z $(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme) ]] &&
-    ! grep -q "^Theme=" "$1/kdeglobals" &&
-    [[ $(kreadconfig6 --file "$1/kdedefaults/kdeglobals" --group Icons --key Theme) == WhiteSur-lavender ]]
+check "  inherited KDE WhiteSur-lavender preserved in kdedefaults without explicit override or Theme[\$d] (#117, #142)" bash -c '
+    ! grep -Eq "^Theme([[:space:]]*=|\[\$)" "$1/kdeglobals" &&
+    [[ $(XDG_CONFIG_HOME="$1" XDG_CONFIG_DIRS="$1/kdedefaults:/etc/xdg" kreadconfig6 --file kdeglobals --group Icons --key Theme) == WhiteSur-lavender ]]
 ' _ "$config"
 check "  GTK restored to WhiteSur-lavender (not Papirus-Dark)" bash -c '
     grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$1/gtk-3.0/settings.ini" &&
@@ -1664,8 +1662,7 @@ printf 'config\tkdeglobals\t%s/kdeglobals\nconfig\tgtk-3.0/settings.ini\t%s/gtk-
 check "plain install exits 0" run install-missing-fb "$project/install.sh"
 check "uninstall exits 0 and falls back away from missing theme" run undo-missing-fb "$project/uninstall.sh"
 check "  neither KDE nor GTK selects MissingTheme999, WhiteSur, or Papirus-Dark" bash -c '
-    kde_eff=$(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme)
-    [[ -n $kde_eff ]] || kde_eff=$(kreadconfig6 --file "$1/kdedefaults/kdeglobals" --group Icons --key Theme 2>/dev/null || true)
+    kde_eff=$(XDG_CONFIG_HOME="$1" XDG_CONFIG_DIRS="$1/kdedefaults:/etc/xdg" kreadconfig6 --file kdeglobals --group Icons --key Theme)
     [[ $kde_eff == breeze ]] &&
     grep -qx "gtk-icon-theme-name=breeze" "$1/gtk-3.0/settings.ini"
 ' _ "$config"
@@ -2369,6 +2366,126 @@ check "  all 5 files still 0600 + ACL after repeated uninstall" bash -c '
         [[ $(stat -c "%a" "$1/xsettingsd/xsettingsd.conf") == 600 ]]
     fi
 ' _ "$config" "$home" "$has_acl"
+
+fresh "#142a selecting inherited KDE icon theme under real XDG_CONFIG_DIRS leaves no Theme[\$d] marker"
+mkdir -p "$config/kdedefaults"
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n[Icons]\nTheme=breeze\nForceFontDPI=96\n' > "$config/kdeglobals"
+printf '[Icons]\nTheme=breeze\n' > "$config/kdedefaults/kdeglobals"
+chmod 600 "$config/kdeglobals" "$config/kdedefaults/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+check "#142a plain install exits 0 under real XDG_CONFIG_DIRS cascade" run inst-142a "$project/install.sh"
+check "  #142a kdeglobals has no Theme[\$d] marker, keeps ForceFontDPI=96 and mode 0600, and real cascade reads WhiteSur-lavender" bash -c '
+    ! grep -Eq "^Theme([[:space:]]*=|\[\$)" "$1/kdeglobals" &&
+    grep -qx "ForceFontDPI=96" "$1/kdeglobals" &&
+    [[ $(stat -c "%a" "$1/kdeglobals") == 600 ]] &&
+    [[ $(XDG_CONFIG_HOME="$1" XDG_CONFIG_DIRS="$1/kdedefaults:/etc/xdg" kreadconfig6 --file kdeglobals --group Icons --key Theme) == WhiteSur-lavender ]]
+' _ "$config"
+check "  #142a undo restores breeze cleanly under real XDG_CONFIG_DIRS cascade" run undo-142a "$project/uninstall.sh"
+check "  #142a real cascade reads breeze after undo and no Theme[\$d]" bash -c '
+    ! grep -q "Theme\[\$d\]" "$1/kdeglobals" &&
+    [[ $(XDG_CONFIG_HOME="$1" XDG_CONFIG_DIRS="$1/kdedefaults:/etc/xdg" kreadconfig6 --file kdeglobals --group Icons --key Theme) == breeze ]]
+' _ "$config"
+
+fresh "#142b restoring an inherited pre-adoption KDE icon theme over a legacy explicit backup leaves no Theme[\$d] marker"
+printf '[KDE]\nLookAndFeelPackage=org.kde.breeze.desktop\n[Icons]\nTheme=WhiteSur\n' > "$config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=Papirus-Dark\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=Papirus-Dark\n' > "$config/gtk-4.0/settings.ini"
+check "HEAD install --apply creates legacy explicit-Theme backup" run head-142b env M9_PREBUILT="$no_icon_prebuilt" "$head_project/install.sh" --apply
+# Before upgrading, user has Platinum active with INHERITED breeze (no Theme= in kdeglobals, Theme=breeze in kdedefaults).
+mkdir -p "$config/kdedefaults"
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n' > "$config/kdeglobals"
+printf '[Icons]\nTheme=breeze\n' > "$config/kdedefaults/kdeglobals"
+chmod 600 "$config/kdeglobals" "$config/kdedefaults/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+check "#142b plain upgrade exits 0" run upg-142b "$project/install.sh"
+check "  #142b real cascade reads WhiteSur-lavender with no Theme[\$d]" bash -c '
+    ! grep -Eq "^Theme([[:space:]]*=|\[\$)" "$1/kdeglobals" &&
+    [[ $(XDG_CONFIG_HOME="$1" XDG_CONFIG_DIRS="$1/kdedefaults:/etc/xdg" kreadconfig6 --file kdeglobals --group Icons --key Theme) == WhiteSur-lavender ]]
+' _ "$config"
+check "#142b uninstall exits 0" run undo-142b "$project/uninstall.sh"
+check "  #142b restored inherited breeze has NO Theme[\$d] marker and real cascade reads breeze" bash -c '
+    ! grep -Eq "^Theme([[:space:]]*=|\[\$)" "$1/kdeglobals" &&
+    [[ $(XDG_CONFIG_HOME="$1" XDG_CONFIG_DIRS="$1/kdedefaults:/etc/xdg" kreadconfig6 --file kdeglobals --group Icons --key Theme) == breeze ]] &&
+    [[ $(stat -c "%a" "$1/kdeglobals") == 600 ]]
+' _ "$config"
+
+fresh "#142c existing install with stale Theme[\$d] marker is repaired by plain update, --apply, and direct undo"
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n[Icons]\nTheme=breeze\nForceFontDPI=96\n' > "$config/kdeglobals"
+chmod 600 "$config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+check "#142c initial install exits 0 (phase=selected)" run inst-142c "$project/install.sh"
+# Inject the exact stale Theme[$d] marker left by older kwriteconfig6 --delete on live install.
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n\n[Icons]\nForceFontDPI=96\nTheme[$d]\n' > "$config/kdeglobals"
+chmod 600 "$config/kdeglobals"
+check "  #142c before repair, real XDG_CONFIG_DIRS cascade is hidden (empty)" bash -c '
+    [[ -z $(XDG_CONFIG_HOME="$1" XDG_CONFIG_DIRS="$1/kdedefaults:/etc/xdg" kreadconfig6 --file kdeglobals --group Icons --key Theme) ]]
+' _ "$config"
+before_142c=$(snapshot)
+check "  #142c --dry-run plans removing stale Theme[\$d] without changing home" bash -c '
+    "$1/install.sh" --dry-run > "$2" 2>&1 &&
+    grep -Fq "Theme[\$d]" "$2"
+' _ "$project" "$root/dry-142c.log"
+check "  #142c --dry-run changed nothing" same "$before_142c" "$(snapshot)"
+check "#142c plain update repairs stale Theme[\$d] marker" run upd-142c "$project/install.sh"
+check "  #142c after plain update, real cascade reads WhiteSur-lavender, ForceFontDPI=96 and mode 0600 preserved" bash -c '
+    ! grep -q "Theme\[\$d\]" "$1/kdeglobals" &&
+    grep -qx "ForceFontDPI=96" "$1/kdeglobals" &&
+    [[ $(stat -c "%a" "$1/kdeglobals") == 600 ]] &&
+    [[ $(XDG_CONFIG_HOME="$1" XDG_CONFIG_DIRS="$1/kdedefaults:/etc/xdg" kreadconfig6 --file kdeglobals --group Icons --key Theme) == WhiteSur-lavender ]]
+' _ "$config"
+# Also verify install.sh --apply heals a stale Theme[$d] marker.
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n\n[Icons]\nForceFontDPI=96\nTheme[$d]\n' > "$config/kdeglobals"
+chmod 600 "$config/kdeglobals"
+check "#142c --apply also heals stale Theme[\$d] marker" run app-142c "$project/install.sh" --apply
+check "  #142c after --apply, real cascade reads WhiteSur-lavender with no Theme[\$d]" bash -c '
+    ! grep -q "Theme\[\$d\]" "$1/kdeglobals" &&
+    [[ $(XDG_CONFIG_HOME="$1" XDG_CONFIG_DIRS="$1/kdedefaults:/etc/xdg" kreadconfig6 --file kdeglobals --group Icons --key Theme) == WhiteSur-lavender ]]
+' _ "$config"
+# Also verify direct uninstall from stale Theme[$d] state restores breeze cleanly.
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n\n[Icons]\nForceFontDPI=96\nTheme[$d]\n' > "$config/kdeglobals"
+chmod 600 "$config/kdeglobals"
+check "#142c direct uninstall from stale Theme[\$d] exits 0" run undo-142c "$project/uninstall.sh"
+check "  #142c after direct undo, real cascade reads breeze with no Theme[\$d]" bash -c '
+    ! grep -q "Theme\[\$d\]" "$1/kdeglobals" &&
+    [[ $(XDG_CONFIG_HOME="$1" XDG_CONFIG_DIRS="$1/kdedefaults:/etc/xdg" kreadconfig6 --file kdeglobals --group Icons --key Theme) == breeze ]]
+' _ "$config"
+
+fresh "#143 normal user-owned symlinked ~/.cache works end-to-end; unsafe/foreign ~/.cache symlink refused"
+storage_143=$root/storage-143/local/cache
+rm -rf "$root/storage-143"
+mkdir -p "$storage_143"
+chmod 700 "$storage_143"
+rm -rf "$home/.cache"
+ln -s "$storage_143" "$home/.cache"
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n[Icons]\nTheme=breeze\n' > "$config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+check "#143 real-source install with XDG_CACHE_HOME unset and symlinked ~/.cache exits 0" run inst-143 env -u XDG_CACHE_HOME M9_PREBUILT="$no_icon_prebuilt" M9_WHITESUR_REMOTE="$M9_TEST_REMOTE" "$project/install.sh"
+check "  #143 cache populated inside symlink target and WhiteSur-lavender installed + selected" bash -c '
+    test -d "$1/macos9-theme/WhiteSur-icon-theme/objects" &&
+    test -f "$2/icons/WhiteSur-lavender/places/scalable/folder.svg" &&
+    [[ $(XDG_CONFIG_HOME="$3" XDG_CONFIG_DIRS="$3/kdedefaults:/etc/xdg" kreadconfig6 --file kdeglobals --group Icons --key Theme) == WhiteSur-lavender ]]
+' _ "$storage_143" "$data" "$config"
+check "  #143 offline update reuses cache through symlinked ~/.cache" run upd-143 env -u XDG_CACHE_HOME M9_PREBUILT="$no_icon_prebuilt" M9_WHITESUR_REMOTE="file:///nonexistent-offline" "$project/install.sh"
+check "  #143 undo exits 0 and restores breeze" run undo-143 "$project/uninstall.sh"
+check "  #143 unsafe world-writable ~/.cache symlink refused without changing home" bash -c '
+    ww="$1/ww-cache-143"
+    rm -rf "$ww"
+    mkdir -p "$ww"
+    chmod 777 "$ww"
+    rm -f "$2/.cache"
+    ln -s "$ww" "$2/.cache"
+    ! env -u XDG_CACHE_HOME M9_PREBUILT="$3" M9_WHITESUR_REMOTE="$4" "$5/install.sh" > "$1/err-143-ww.log" 2>&1 &&
+    grep -Fq "world-writable" "$1/err-143-ww.log"
+' _ "$root" "$home" "$no_icon_prebuilt" "$M9_TEST_REMOTE" "$project"
+check "  #143 foreign-owned (/etc) ~/.cache symlink refused" bash -c '
+    rm -f "$2/.cache"
+    ln -s /etc "$2/.cache"
+    ! env -u XDG_CACHE_HOME M9_PREBUILT="$3" M9_WHITESUR_REMOTE="$4" "$5/install.sh" > "$1/err-143-etc.log" 2>&1
+' _ "$root" "$home" "$no_icon_prebuilt" "$M9_TEST_REMOTE" "$project"
 
 echo
 if ((failed)); then

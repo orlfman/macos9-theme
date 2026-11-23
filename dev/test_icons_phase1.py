@@ -1040,6 +1040,93 @@ def main() -> None:
             f"rc={r_137.returncode}, parent_exists={cache_137_parent.exists()}",
         )
 
+        # ------------------------------------------------------------------
+        # #143: User-owned symlinked ~/.cache works; unsafe/foreign paths refused
+        # ------------------------------------------------------------------
+        real_storage_143 = tmp_root / "storage-143/local/cache"
+        real_storage_143.mkdir(parents=True)
+        os.chmod(real_storage_143, 0o700)
+        home_143 = tmp_root / "home-143"
+        home_143.mkdir()
+        (home_143 / ".cache").symlink_to(real_storage_143)
+        sym_home_cache = home_143 / ".cache/macos9-theme/WhiteSur-icon-theme"
+
+        r_143_chk = run([str(FETCHER), "--check-only", pinned_commit, str(sym_home_cache), remote_url])
+        r_143_fetch = run([str(FETCHER), pinned_commit, str(sym_home_cache), remote_url])
+        r_143_reuse = run([str(FETCHER), pinned_commit, str(sym_home_cache), "file:///nonexistent-offline"])
+        out_143 = tmp_root / "out-143-sym-cache"
+        r_143_build = run([str(BUILDER), str(sym_home_cache), str(out_143)])
+        check(
+            "#143 user-owned symlinked ~/.cache fetches, reuses offline, and builds directly",
+            r_143_chk.returncode == 0
+            and r_143_chk.stdout.strip() == "NEEDS_FETCH"
+            and r_143_fetch.returncode == 0
+            and r_143_fetch.stdout.strip() == "FETCHED"
+            and r_143_reuse.returncode == 0
+            and r_143_reuse.stdout.strip() == "CACHED"
+            and (real_storage_143 / "macos9-theme/WhiteSur-icon-theme").is_dir()
+            and r_143_build.returncode == 0
+            and all((out_143 / tid / "index.theme").is_file() for tid in THEME_IDS),
+            f"chk={r_143_chk.returncode}, fetch={r_143_fetch.returncode}, reuse={r_143_reuse.returncode}, build={r_143_build.returncode}",
+        )
+
+        # Unsafe/foreign symlinked or non-symlinked cache paths must still be refused:
+        dangling_143 = tmp_root / "home-143-dangling"
+        dangling_143.mkdir()
+        (dangling_143 / ".cache").symlink_to(tmp_root / "does-not-exist-143")
+        r_143_dang = run([str(FETCHER), pinned_commit, str(dangling_143 / ".cache/macos9-theme/WhiteSur-icon-theme"), remote_url])
+        check(
+            "#143 fetch-whitesur refuses dangling symlinked ~/.cache",
+            r_143_dang.returncode != 0,
+            f"rc={r_143_dang.returncode}, err={r_143_dang.stderr.strip()}",
+        )
+
+        loop_143 = tmp_root / "home-143-loop"
+        loop_143.mkdir()
+        (loop_143 / "a").symlink_to(loop_143 / "b")
+        (loop_143 / "b").symlink_to(loop_143 / "a")
+        r_143_loop = run([str(FETCHER), pinned_commit, str(loop_143 / "a/macos9-theme/WhiteSur-icon-theme"), remote_url])
+        check(
+            "#143 fetch-whitesur refuses symlink loop in cache ancestor",
+            r_143_loop.returncode != 0,
+            f"rc={r_143_loop.returncode}",
+        )
+
+        file_link_143 = tmp_root / "home-143-file"
+        file_link_143.mkdir()
+        (file_link_143 / "regular-file").write_text("not a dir\n")
+        (file_link_143 / ".cache").symlink_to(file_link_143 / "regular-file")
+        r_143_file = run([str(FETCHER), pinned_commit, str(file_link_143 / ".cache/macos9-theme/WhiteSur-icon-theme"), remote_url])
+        check(
+            "#143 fetch-whitesur refuses symlinked ~/.cache pointing to non-directory",
+            r_143_file.returncode != 0,
+            f"rc={r_143_file.returncode}",
+        )
+
+        ww_target_143 = tmp_root / "ww-target-143"
+        ww_target_143.mkdir()
+        os.chmod(ww_target_143, 0o777)
+        ww_home_143 = tmp_root / "home-143-ww"
+        ww_home_143.mkdir()
+        (ww_home_143 / ".cache").symlink_to(ww_target_143)
+        r_143_ww = run([str(FETCHER), pinned_commit, str(ww_home_143 / ".cache/macos9-theme/WhiteSur-icon-theme"), remote_url])
+        check(
+            "#143 fetch-whitesur refuses symlinked ~/.cache pointing to world-writable directory",
+            r_143_ww.returncode != 0 and "world-writable" in r_143_ww.stderr,
+            f"rc={r_143_ww.returncode}, err={r_143_ww.stderr.strip()}",
+        )
+
+        foreign_home_143 = tmp_root / "home-143-foreign"
+        foreign_home_143.mkdir()
+        (foreign_home_143 / ".cache").symlink_to("/etc")
+        r_143_etc = run([str(FETCHER), pinned_commit, str(foreign_home_143 / ".cache/macos9-theme/WhiteSur-icon-theme"), remote_url])
+        r_143_tmp = run([str(FETCHER), "--check-only", pinned_commit, "/tmp/macos9-theme-143-test/WhiteSur-icon-theme", remote_url])
+        check(
+            "#143 fetch-whitesur refuses foreign-owned (/etc) and world-writable (/tmp) cache paths",
+            r_143_etc.returncode != 0 and r_143_tmp.returncode != 0,
+            f"etc_rc={r_143_etc.returncode}, tmp_rc={r_143_tmp.returncode}",
+        )
+
         # Verify upstream checkout & active pin remained untouched
         up_status = run(["git", "-C", str(UPSTREAM), "status", "--short"]).stdout.strip()
         up_head = run(["git", "-C", str(UPSTREAM), "rev-parse", "HEAD"]).stdout.strip()

@@ -4,35 +4,38 @@
 
 Updated 2026-11-23 by Antigravity (Gemini 4 Neon). Earlier audit fixes are in `ef8250a` and `fb4156f`.
 
-**WhiteSur Lavender (`#101–141`), durable icon-selection transaction, custom icon layer & auto-fetch cache complete in working tree (uncommitted).**
+Independent review on 2026-11-23 cleared the #142/#143 fixes for commit and plain reinstall on the user's existing Platinum setup (see AUDIT.md). Both nested Plasma suites passed in the user's terminal. The user completed the plain live reinstall without an inline cache override, live `kreadconfig6` returned `WhiteSur-lavender`, and the user visually approved the desktop appearance. The #142/#143 fixes are committed on `main` and the Lavender reinstall checkpoint is complete; #95 remains open.
+
+**WhiteSur Lavender (`#101–143`) complete, live-reinstalled with visual approval, and committed on `main`.**
 - Phase 1 (`#101–109`, `#111`), externalized pin (`icons/whitesur-pin.json`),
   read-only update review (`icons/review-whitesur-update.sh`), tracked
   `icons/custom/{all,light,dark}/` override layer (`#119` cross-dir variant
   aliases + GTK3 byte checks), automatic pinned-commit WhiteSur bare cache
   (`icons/fetch-whitesur.sh`, `#116`/`#135` mandatory `flock`, `#121` full
-  `git fsck --full`, `#137` early `TMPDIR` validation/trap), `#118` shared
-  Arch-package preflight, `#120`/`#132` recovery-safe journaled publish, and
-  `#123`/`#134` archive + linked-worktree protection passed **74/74** in
-  `dev/test_icons_phase1.py`.
+  `git fsck --full`, `#137` early `TMPDIR` validation/trap, `#143` safe
+  user-owned symlinked `~/.cache` canonicalization with unsafe/foreign-path
+  refusal), `#118` shared Arch-package preflight, `#120`/`#132` recovery-safe
+  journaled publish, and `#123`/`#134` archive + linked-worktree protection
+  passed **80/80** in `dev/test_icons_phase1.py`.
 - Small-overlay architecture remains rejected; full-copy + `icons/custom/`
   retained.
 - Phase 2 (`#110`, `#112–115`, `#117–118`, `#122`, `#124–131`, `#133`, `#135`,
-  `#136`, `#138`, `#139–141`) uses one durable v3 icon-selection transaction
+  `#136`, `#138`, `#139–142`) uses one durable v3 icon-selection transaction
   (`scripts/icon_prefs.py`) captured under lock before first target/manifest
   mutation (`#139`), refuses install during any unfinished undo via
   `$state/uninstall-in-progress` and transaction phase (`#140`), re-checks the
-  active global theme before resuming pending selection (`#141`), enforces
+  active global theme before resuming pending selection (`#141`), deletes KDE
+  icon overrides directly without `kwriteconfig6 --delete` / `Theme[$d]` and
+  repairs existing installs carrying stale `Theme[$d]` (`#142`), enforces
   `rmdir`-only `manifest_ops.py` removal (`#125`), requires complete outside
   advertised artwork + independent dependencies (`#126`/`#127`), captures and
   restores pre-adoption modes and POSIX ACLs across differing legacy backups
   (`#131`), and preflights plugin build prerequisites (`#136`). Passed
-  **677/677** in `dev/test-install.sh`.
+  **702/702** in `dev/test-install.sh` under real `XDG_CONFIG_DIRS` cascade.
 - Sandbox suites passed: **135/135** widget (`dev/check-style.sh`), **29/29**
-  Qt Quick (`dev/check-quick.sh`), **677/677** install/undo (`dev/test-install.sh`),
-  **74/74** icons (`dev/test_icons_phase1.py`).
-- **Needs user's terminal (nested KWin/Wayland blocked in sandbox):**
-  `dev/check-plasma.sh` and `dev/test-install-live.sh`. Nothing installed or
-  committed; `~/.local/share/icons` and `../WhiteSur-icon-theme` untouched.
+  Qt Quick (`dev/check-quick.sh`), **702/702** install/undo (`dev/test-install.sh`),
+  **80/80** icons (`dev/test_icons_phase1.py`).
+- User terminal suites passed **19/19** Plasma pixel comparisons with zero differences and **40/40** nested live-install checks.
 
 **Checkpoint 4 passed.** Against `dc8b76f`, 12 C++ findings are fixed in
 the working tree (#85–94, #96–97). #95 stays open because the compact slider
@@ -121,18 +124,18 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 
 | Component  | Folder(s)                 | Claimed by | Status      |
 |------------|---------------------------|------------|-------------|
-| shared     | docs, tools, dev, scripts | nobody | dev/ sandbox + tools/compare.py done; test-install-live.sh added (#122 per-ID icon check); docs fixed (AUDIT 24); Finder folder palette recorded in docs/REFERENCE.md (#107); `dev/test_icons_phase1.py` (74/74), `scripts/manifest_ops.py` (#125 `rmdir`-only), `scripts/icon_prefs.py` (v3 durable transaction, #124/#126–131/#133/#139–141), and hardened `dev/test-install.sh` (677/677) added |
-| reference  | reference/, docs/REFERENCE.md | nobody | 81 VM captures; first real Platinum desktop archived at 100%, 150% and 200% in reference/testing/; measurements partial |
+| shared     | docs, tools, dev, scripts | nobody | dev/ sandbox + tools/compare.py done (`dev/run.sh` isolates `XDG_CONFIG_DIRS=/etc/xdg`); test-install-live.sh uses real `XDG_CONFIG_DIRS` cascade (#142); docs fixed (AUDIT 24); Finder folder palette recorded in docs/REFERENCE.md (#107); `dev/test_icons_phase1.py` (80/80), `scripts/manifest_ops.py` (#125 `rmdir`-only), `scripts/icon_prefs.py` (v3 durable transaction, #124/#126–131/#133/#139–142), and hardened `dev/test-install.sh` (702/702) added |
+| reference  | reference/, docs/REFERENCE.md | nobody | 82 VM captures (incl. `ie5-window-blank.png` backed up in `macos9-theme-reference` `05292a6`); first real Platinum desktop archived at 100%, 150% and 200% in reference/testing/; measurements partial |
 | colors     | colors/                   | nobody     | Platinum.colors done (sandbox-checked) |
 | decoration | decoration/               | nobody | plugin works in nested KWin; frame pixel exact; only the three Mac OS 9 boxes are created (AUDIT 20); audit #86, #90, #96 and #99 verified |
 | style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); Qt Quick style in style/quick: menus, menu bar, combo list, tooltips, switches (AUDIT 3, check-quick 29/29; installed by install.sh); also dialogs (measured modal frame), drawers, range sliders; combo lists track live model edits (#63); compact tab close indicator and selected state verified in Kwi (#71–74); open: editable combo, size grip; audit #85, #87–89, #91–94, #97 and #100 verified; #95 open |
 | plasma     | plasma/                   | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); main screen only (decision 10); resizable menu bar ends and divider (AUDIT 23), with complete divider dots and pixel comparisons across four panel heights (AUDIT 69–70); #98 table reader verified; global theme defaults updated to `Theme=WhiteSur-lavender` (#110) |
-| icons      | icons/                    | nobody | #101–109, #111, #116, #118–121, #123, #132, #134, #135, #137 verified in working tree against pinned `2026-09-10` (`73d8040da51a9ed74e47c7366e7e9ff437601a5c`), uncommitted; external pin (`icons/whitesur-pin.json`), tracked custom layer (`icons/custom/{all,light,dark}/` + cross-dir variant aliases), read-only update review (`icons/review-whitesur-update.sh`), mandatory-`flock` full-`fsck` bare-git cache (`icons/fetch-whitesur.sh`), recovery-safe journaled publish, archive + linked-worktree safeguards, and disposable suite (`dev/test_icons_phase1.py`, 74/74); full-copy + custom layer retained |
+| icons      | icons/                    | nobody | #101–109, #111, #116, #118–121, #123, #132, #134, #135, #137, #143 committed on `main` against pinned `2026-09-10` (`73d8040da51a9ed74e47c7366e7e9ff437601a5c`); external pin (`icons/whitesur-pin.json`), tracked custom layer (`icons/custom/{all,light,dark}/` + cross-dir variant aliases), read-only update review (`icons/review-whitesur-update.sh`), mandatory-`flock` full-`fsck` bare-git cache (`icons/fetch-whitesur.sh` with safe user-owned symlinked `~/.cache`), recovery-safe journaled publish, archive + linked-worktree safeguards, and disposable suite (`dev/test_icons_phase1.py`, 80/80); full-copy + custom layer retained |
 | cursors    | cursors/                  | nobody | bundled black cursors (`macOS-cursors`) installed and selected by the global theme, verified in nested Plasma; discovery, selection and undo verified (#78–#84). No cursors of our own (decision 8, user). |
 | gtk        | gtk/                      | nobody     | not started |
 | firefox    | firefox/                  | nobody     | not started; scope in decision 14; one native IE5 capture taken |
 | extras     | extras/, wallpapers/      | nobody | Pastel Ribbon Landscape and Lavender Desktop Pattern packaged with the global theme. Konsole and Kwi colors, Plasma Login Manager, splash, and lock screen remain. |
-| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's four audits (#4-#14, #27-#31, #34-#42 fixed); Qt Quick style & pass-through (#59–65); wallpapers (#75–77); bundled cursors (#78–84); WhiteSur Lavender #110, #112–115, #117–118, #122, #124–131, #133, #135–136, #138–141 with durable v3 icon transaction and active-Platinum one-time plain-install KDE+GTK auto-select verified in working tree (`dev/test-install.sh` 677/677; `dev/test-install-live.sh` awaiting user's terminal run outside sandbox); first desktop install completed by user; desktop uninstall untested |
+| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's four audits (#4-#14, #27-#31, #34-#42 fixed); Qt Quick style & pass-through (#59–65); wallpapers (#75–77); bundled cursors (#78–84); WhiteSur Lavender #110, #112–115, #117–118, #122, #124–131, #133, #135–136, #138–143 committed on `main` (`dev/test-install.sh` 702/702 with real `XDG_CONFIG_DIRS` cascade; `dev/test-install-live.sh` 40/40 in user's terminal); live plain reinstall completed and visually approved by user; desktop uninstall untested |
 
 ## Goal
 

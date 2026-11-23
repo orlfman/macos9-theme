@@ -148,7 +148,7 @@ def atomic_write_text(
 
 def kde_key_state(path: Path | None, group: str, key: str) -> dict[str, Any]:
     if path is None or not os.path.lexists(path):
-        return {"file_exists": False, "present": False, "value": ""}
+        return {"file_exists": False, "present": False, "value": "", "deleted_marker": False}
     if path.is_symlink() or not path.is_file():
         die(f"cannot read non-regular KDE config file: {path}")
     try:
@@ -156,8 +156,10 @@ def kde_key_state(path: Path | None, group: str, key: str) -> dict[str, Any]:
     except OSError as exc:
         die(f"cannot read {path}: {exc}")
 
+    del_re = re.compile(rf"^{re.escape(key)}\[\$[^\]]*d[^\]]*\](?:\s*=.*)?$")
     in_group = False
     present = False
+    deleted_marker = False
     parsed_val = ""
     hdr = f"[{group}]"
     for raw in lines:
@@ -165,27 +167,39 @@ def kde_key_state(path: Path | None, group: str, key: str) -> dict[str, Any]:
         if s.startswith("[") and s.endswith("]"):
             in_group = s == hdr
             continue
-        if in_group and "=" in raw and not s.startswith("#") and not s.startswith(";"):
+        if not in_group or not s or s.startswith("#") or s.startswith(";"):
+            continue
+        if del_re.match(s):
+            present = False
+            parsed_val = ""
+            deleted_marker = True
+            continue
+        if "=" in raw:
             k, _, v = raw.partition("=")
             if k.strip() == key:
                 present = True
+                deleted_marker = False
                 parsed_val = v.strip()
 
     if not shutil.which("kreadconfig6"):
         die("kreadconfig6 is required to read KDE icon settings (Arch package: kconfig)")
-    r = subprocess.run(
-        ["kreadconfig6", "--file", str(path), "--group", group, "--key", key],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    if r.returncode != 0:
-        die(f"kreadconfig6 failed on {path}: {r.stderr.strip()}")
-    val = r.stdout.rstrip("\n")
     if present:
-        parsed_val = val
+        # Inspect only this single layer file (isolate from XDG_CONFIG_DIRS cascade)
+        # while still letting kreadconfig6 decode any KConfig value escaping.
+        layer_env = dict(os.environ)
+        layer_env["XDG_CONFIG_DIRS"] = "/nonexistent"
+        r = subprocess.run(
+            ["kreadconfig6", "--file", str(path), "--group", group, "--key", key],
+            text=True,
+            capture_output=True,
+            check=False,
+            env=layer_env,
+        )
+        if r.returncode != 0:
+            die(f"kreadconfig6 failed on {path}: {r.stderr.strip()}")
+        parsed_val = r.stdout.rstrip("\n")
 
-    return {"file_exists": True, "present": present, "value": parsed_val}
+    return {"file_exists": True, "present": present, "value": parsed_val, "deleted_marker": deleted_marker}
 
 
 def kde_set_key(path: Path, group: str, key: str, value: str, *, new_mode: int = 0o600) -> None:
@@ -196,11 +210,16 @@ def kde_set_key(path: Path, group: str, key: str, value: str, *, new_mode: int =
     existed = path.is_file()
     perms = capture_file_perms(path) if existed else (None, {})
     path.parent.mkdir(parents=True, exist_ok=True)
+    # Isolate single-layer writes from XDG_CONFIG_DIRS so kwriteconfig6 never
+    # elides an explicit key that happens to equal a lower cascade layer (#142).
+    layer_env = dict(os.environ)
+    layer_env["XDG_CONFIG_DIRS"] = "/nonexistent"
     r = subprocess.run(
         ["kwriteconfig6", "--file", str(path), "--group", group, "--key", key, value],
         text=True,
         capture_output=True,
         check=False,
+        env=layer_env,
     )
     if r.returncode != 0:
         die(f"kwriteconfig6 failed on {path}: {r.stderr.strip()}")
@@ -209,28 +228,80 @@ def kde_set_key(path: Path, group: str, key: str, value: str, *, new_mode: int =
 
 
 def kde_delete_key(path: Path, group: str, key: str, *, remove_if_empty_file: bool = False) -> None:
+    """Remove a key and any KConfig [$d] delete marker from a KDE INI file
+    without invoking `kwriteconfig6 --delete` (which writes `Key[$d]` when
+    XDG_CONFIG_DIRS includes kdedefaults, hiding inherited defaults — #142)."""
     if not os.path.lexists(path):
         return
     if path.is_symlink() or not path.is_file():
         return
-    if not shutil.which("kwriteconfig6"):
-        die("kwriteconfig6 is required to update KDE icon settings (Arch package: kconfig)")
     perms = capture_file_perms(path)
-    r = subprocess.run(
-        ["kwriteconfig6", "--file", str(path), "--group", group, "--key", key, "--delete"],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    if r.returncode != 0:
-        die(f"kwriteconfig6 --delete failed on {path}: {r.stderr.strip()}")
-    if path.is_file() and not path.is_symlink():
+    raw_text = path.read_text(encoding="utf-8", errors="replace")
+    lines = raw_text.splitlines()
+    hdr = f"[{group}]"
+    del_re = re.compile(rf"^{re.escape(key)}\[\$[^\]]*d[^\]]*\](?:\s*=.*)?$")
+
+    # Split into preamble + sections so an emptied target section can be dropped cleanly.
+    sections: list[tuple[str | None, list[str]]] = []
+    cur_hdr: str | None = None
+    cur_body: list[str] = []
+    for raw in lines:
+        s = raw.strip()
+        if s.startswith("[") and s.endswith("]"):
+            sections.append((cur_hdr, cur_body))
+            cur_hdr = raw
+            cur_body = []
+        else:
+            cur_body.append(raw)
+    sections.append((cur_hdr, cur_body))
+
+    changed = False
+    new_sections: list[tuple[str | None, list[str]]] = []
+    for sec_hdr, body in sections:
+        if sec_hdr is not None and sec_hdr.strip() == hdr:
+            kept: list[str] = []
+            for raw in body:
+                s = raw.strip()
+                if s and not s.startswith("#") and not s.startswith(";"):
+                    if del_re.match(s):
+                        changed = True
+                        continue
+                    if "=" in raw:
+                        k, _, _ = raw.partition("=")
+                        if k.strip() == key:
+                            changed = True
+                            continue
+                kept.append(raw)
+            if changed and not any(ln.strip() for ln in kept):
+                # Drop now-empty section header.
+                continue
+            new_sections.append((sec_hdr, kept))
+        else:
+            new_sections.append((sec_hdr, body))
+
+    if not changed:
+        return
+
+    out: list[str] = []
+    for sec_hdr, body in new_sections:
+        if sec_hdr is not None:
+            if out and out[-1] != "":
+                out.append("")
+            out.append(sec_hdr)
+        out.extend(body)
+    # Trim leading/trailing redundant blank lines.
+    while out and out[0] == "":
+        out.pop(0)
+    while len(out) >= 2 and out[-1] == "" and out[-2] == "":
+        out.pop()
+
+    if not any(ln.strip() for ln in out):
         if remove_if_empty_file:
-            nonempty = [ln.strip() for ln in path.read_text(encoding="utf-8", errors="replace").splitlines() if ln.strip()]
-            if not nonempty:
-                path.unlink(missing_ok=True)
-                return
-        apply_file_perms(path, perms[0], perms[1], default_mode=0o600)
+            path.unlink(missing_ok=True)
+            return
+        atomic_write_text(path, "", default_mode=0o600, source_perms=perms)
+        return
+    atomic_write_text(path, "\n".join(out) + "\n", default_mode=0o600, source_perms=perms)
 
 
 # ---------------------------------------------------------------------------
@@ -705,6 +776,8 @@ def read_all_current_prefs(config_home: Path, home: Path) -> dict[str, Any]:
     kd = {**kde_key_state(kd_path, "Icons", "Theme"), **serialize_perms(kd_path)}
     if kg["present"] and kg["value"]:
         eff_src, eff_theme = "kdeglobals", kg["value"]
+    elif kg.get("deleted_marker"):
+        eff_src, eff_theme = "none", ""
     elif kd["present"] and kd["value"]:
         eff_src, eff_theme = "kdedefaults", kd["value"]
     else:
@@ -741,6 +814,9 @@ def cmd_effective_kde(kg_arg: str, kd_arg: str) -> None:
     kg = kde_key_state(kg_path, "Icons", "Theme")
     if kg["present"] and kg["value"]:
         print(f"kdeglobals\t{kg['value']}")
+        return
+    if kg.get("deleted_marker"):
+        print("none\t")
         return
     kd = kde_key_state(kd_path, "Icons", "Theme")
     if kd["present"] and kd["value"]:
@@ -800,6 +876,36 @@ def cmd_apply_tx(args: list[str]) -> None:
     data = load_adoption(adoption_path)
     phase = data.get("phase")
     intended = data.get("intended")
+
+    # #142 repair for existing installs that already completed selection under the
+    # older `kwriteconfig6 --delete` code and still have a stale `Theme[$d]` marker
+    # in kdeglobals hiding the intended inherited kdedefaults/kdeglobals theme.
+    if phase == "selected" and isinstance(intended, dict):
+        theme = str(intended.get("theme", ""))
+        int_kde = intended.get("kde")
+        if (
+            theme
+            and isinstance(int_kde, dict)
+            and not int_kde.get("kdeglobals", {}).get("present")
+            and int_kde.get("kdedefaults", {}).get("present")
+        ):
+            kg_file = config_home / "kdeglobals"
+            kd_file = config_home / "kdedefaults/kdeglobals"
+            if not kg_file.is_symlink() and not kd_file.is_symlink():
+                cur_kg = kde_key_state(kg_file, "Icons", "Theme")
+                cur_kd = kde_key_state(kd_file, "Icons", "Theme")
+                if (
+                    cur_kg.get("deleted_marker")
+                    and not cur_kg.get("present")
+                    and state_matches(cur_kd, int_kde["kdedefaults"])
+                ):
+                    if dry_run:
+                        print(f"PLAN\tremove stale Theme[$d] marker in {kg_file} so inherited {theme} icons take effect")
+                        return
+                    kde_delete_key(kg_file, "Icons", "Theme")
+                    print(f"SAY\tRemoved stale Theme[$d] marker from {kg_file} so {theme} icons take effect in KDE")
+        return
+
     if phase not in ("captured", "selecting") or not isinstance(intended, dict):
         return
     theme = str(intended.get("theme", ""))
@@ -835,11 +941,15 @@ def cmd_apply_tx(args: list[str]) -> None:
                 kg_cap = cap_kde.get("kdeglobals", {"file_exists": False, "present": False, "value": ""})
                 kd_cap = cap_kde.get("kdedefaults", {"file_exists": False, "present": False, "value": ""})
                 if state_matches(cur_kd, int_kde["kdedefaults"]) and (
-                    state_matches(cur_kg, int_kde["kdeglobals"]) or state_matches(cur_kg, kg_cap)
+                    state_matches(cur_kg, int_kde["kdeglobals"])
+                    or state_matches(cur_kg, kg_cap)
+                    or cur_kg.get("deleted_marker")
                 ):
                     if kg_cap.get("present"):
                         kde_set_key(kg_file, "Icons", "Theme", str(kg_cap.get("value", "")), new_mode=0o600)
                         apply_file_perms(kg_file, *deserialize_perms(kg_cap))
+                    elif cur_kg.get("deleted_marker"):
+                        kde_delete_key(kg_file, "Icons", "Theme")
                     if kd_cap.get("present"):
                         kde_set_key(kd_file, "Icons", "Theme", str(kd_cap.get("value", "")), new_mode=0o600)
                         apply_file_perms(kd_file, *deserialize_perms(kd_cap))
@@ -914,12 +1024,12 @@ def cmd_apply_tx(args: list[str]) -> None:
     kg_int = int_kde["kdeglobals"]
     kd_int = int_kde["kdedefaults"]
 
-    kg_ok_to_finish = state_matches(cur_kg, kg_cap) or state_matches(cur_kg, kg_int)
+    kg_ok_to_finish = state_matches(cur_kg, kg_cap) or state_matches(cur_kg, kg_int) or cur_kg.get("deleted_marker")
     kd_ok_to_finish = state_matches(cur_kd, kd_cap) or state_matches(cur_kd, kd_int)
     if kg_ok_to_finish and kd_ok_to_finish:
         if not state_matches(cur_kd, kd_int):
             kde_set_key(kd_file, "Icons", "Theme", kd_int["value"], new_mode=0o600)
-        if not state_matches(cur_kg, kg_int):
+        if not state_matches(cur_kg, kg_int) or cur_kg.get("deleted_marker"):
             kde_delete_key(kg_file, "Icons", "Theme")
 
     # 2. GTK 3 & GTK 4 (per-key comparison against captured & intended, preserving existing modes/ACLs #131).
@@ -1224,7 +1334,7 @@ def cmd_prepare_restore(args: list[str]) -> None:
                         overlay[("config", "kdeglobals")] = "file"
                         print(f"SAY\tRestored your earlier KDE icon theme ({want_kg_val})")
             else:
-                if cur_kg["present"]:
+                if cur_kg["present"] or cur_kg.get("deleted_marker"):
                     print(f"PLAN\tremove explicit KDE icon theme override in {kg_live} (was inherited)")
                     if not dry_run:
                         skg = ensure_staged("config", "kdeglobals", src_kg)
@@ -1247,7 +1357,7 @@ def cmd_prepare_restore(args: list[str]) -> None:
                         if not want_kg_present:
                             print(f"SAY\tRestored your earlier inherited KDE icon theme ({want_kd_val})")
             else:
-                if cur_kd["present"]:
+                if cur_kd["present"] or cur_kd.get("deleted_marker"):
                     print(f"PLAN\tremove stale inherited KDE icon theme ({cur_kd['value']}) in {kd_live_file}")
                     if not dry_run:
                         skd_dir = ensure_staged("config", "kdedefaults", src_kd_dir)
@@ -1488,6 +1598,15 @@ def cmd_check_surviving(args: list[str]) -> None:
             print(f"KEEP\t{req_id}\t{', '.join(srcs)}\t{', '.join(sels)}")
 
 
+def cmd_clear_deleted_marker(kg_path: Path) -> None:
+    """Remove a stale [Icons] Theme[$d] marker from kdeglobals if no explicit Theme= is set (#142)."""
+    if not os.path.lexists(kg_path) or kg_path.is_symlink() or not kg_path.is_file():
+        return
+    st = kde_key_state(kg_path, "Icons", "Theme")
+    if st.get("deleted_marker") and not st.get("present"):
+        kde_delete_key(kg_path, "Icons", "Theme")
+
+
 def main() -> None:
     args = sys.argv[1:]
     if not args:
@@ -1499,6 +1618,8 @@ def main() -> None:
         cmd_capture(args[1:])
     elif cmd == "apply-tx" and len(args) >= 4:
         cmd_apply_tx(args[1:])
+    elif cmd == "clear-deleted-marker" and len(args) == 2:
+        cmd_clear_deleted_marker(Path(args[1]))
     elif cmd == "read-restore-decision" and len(args) == 2:
         cmd_read_restore_decision(Path(args[1]))
     elif cmd == "read-tx-status" and len(args) == 2:

@@ -37,7 +37,7 @@ EOF
     env -i HOME="$root/home" USER="$USER" PATH="$root/bin:/usr/local/bin:/usr/bin" \
         XDG_CONFIG_HOME="$root/home/.config" XDG_DATA_HOME="$root/home/.local/share" \
         XDG_CACHE_HOME="$root/home/.cache" XDG_STATE_HOME="$root/home/.local/state" \
-        XDG_DATA_DIRS=/usr/local/share:/usr/share XDG_CONFIG_DIRS=/etc/xdg \
+        XDG_DATA_DIRS=/usr/local/share:/usr/share XDG_CONFIG_DIRS="$root/home/.config/kdedefaults:/etc/xdg" \
         XDG_RUNTIME_DIR="$root/runtime" M9_TEST_INNER="$root" LANG=C.UTF-8 \
         M9_PREBUILT="$root/prebuilt" XDG_SESSION_TYPE=wayland KDE_FULL_SESSION=true XDG_CURRENT_DESKTOP=KDE \
         KDE_SESSION_VERSION=6 \
@@ -164,10 +164,8 @@ cursor_theme() {
     printf '%s' "$v"
 }
 icon_theme() {
-    local v
-    v=$(kreadconfig6 --file kdeglobals --group Icons --key Theme)
-    [[ -n $v ]] || v=$(kreadconfig6 --file "$config/kdedefaults/kdeglobals" --group Icons --key Theme)
-    printf '%s' "$v"
+    XDG_CONFIG_HOME="$config" XDG_CONFIG_DIRS="$config/kdedefaults:/etc/xdg" \
+        kreadconfig6 --file kdeglobals --group Icons --key Theme
 }
 kwriteconfig6 --file kcminputrc --group Mouse --key cursorTheme Breeze_Light
 before_files=$(files_state)

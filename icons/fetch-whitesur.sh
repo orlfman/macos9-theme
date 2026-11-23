@@ -56,23 +56,119 @@ PATH="$SAFE_PATH" command -v git >/dev/null 2>&1 ||
 PATH="$SAFE_PATH" command -v flock >/dev/null 2>&1 ||
     die "missing required dependency: flock (Arch package: util-linux); nothing was changed"
 
-cache_dir=$(env -i PATH="$SAFE_PATH" LC_ALL=C python3 -I -c 'import os, sys; print(os.path.abspath(sys.argv[1]))' "$cache_arg")
-
-# Reject any symlink in the existing ancestor chain or at cache_dir itself.
-env -i PATH="$SAFE_PATH" LC_ALL=C python3 -I - "$cache_dir" <<'PY'
-import os, sys
+# Validate and canonicalize cache_dir (#143):
+# - Allow normal user-owned (or root-owned system) ancestor symlinks such as a
+#   user-owned ~/.cache -> /mnt/storage0/local/cache, resolving every hop safely.
+# - Refuse symlinked cache leaf (cache_dir itself), dangling/looping symlinks,
+#   foreign-owned symlinks or targets, symlinks inside world-writable dirs, and
+#   foreign-owned or world-writable cache parents/directories.
+cache_dir=$(env -i PATH="$SAFE_PATH" LC_ALL=C python3 -I - "$cache_arg" <<'PY'
+import os, stat, sys
+from collections import deque
 from pathlib import Path
-p = Path(sys.argv[1])
+
+uid = os.getuid()
+raw = Path(os.path.abspath(sys.argv[1]))
+
+def die(msg: str) -> None:
+    print(f"fetch-whitesur: {msg}; nothing was changed", file=sys.stderr)
+    raise SystemExit(1)
+
+if raw == Path("/"):
+    die("cache path cannot be /")
+
+queue: deque[str] = deque(raw.parent.parts[1:])
 cur = Path("/")
-for part in p.parts[1:]:
-    cur = cur / part
-    if os.path.lexists(cur):
-        if cur.is_symlink():
-            print(f"fetch-whitesur: cache path traverses symbolic link {cur}; nothing was changed", file=sys.stderr)
-            raise SystemExit(1)
-    else:
+remaining: list[str] = []
+hops = 0
+
+while queue:
+    part = queue.popleft()
+    if part in ("", "."):
+        continue
+    if part == "..":
+        cur = cur.parent
+        continue
+    nxt = cur / part
+    if not os.path.lexists(nxt):
+        remaining = [part, *queue]
         break
+    lst = os.lstat(nxt)
+    if stat.S_ISLNK(lst.st_mode):
+        hops += 1
+        if hops > 40:
+            die(f"cache path traverses too many symbolic links at {nxt}")
+        parent_st = os.lstat(cur)
+        if parent_st.st_mode & stat.S_IWOTH:
+            die(f"cache path traverses symbolic link {nxt} inside world-writable directory {cur}")
+        if lst.st_uid == uid:
+            pass
+        elif lst.st_uid == 0 and parent_st.st_uid == 0:
+            pass
+        else:
+            die(f"cache path traverses foreign-owned symbolic link {nxt} (uid {lst.st_uid})")
+        try:
+            resolved = nxt.resolve(strict=True)
+        except (OSError, RuntimeError) as exc:
+            die(f"cache path traverses broken or looping symbolic link {nxt} ({exc})")
+        tst = os.lstat(resolved)
+        if not stat.S_ISDIR(tst.st_mode):
+            die(f"cache ancestor symbolic link {nxt} does not point to a directory ({resolved})")
+        if tst.st_mode & stat.S_IWOTH:
+            die(f"cache ancestor symbolic link {nxt} points to world-writable directory {resolved}")
+        if lst.st_uid == uid and tst.st_uid != uid:
+            die(f"cache ancestor symbolic link {nxt} points to foreign-owned directory {resolved} (uid {tst.st_uid})")
+        if lst.st_uid == 0 and tst.st_uid not in (0, uid):
+            die(f"cache ancestor symbolic link {nxt} points to foreign-owned directory {resolved} (uid {tst.st_uid})")
+        link_target = os.readlink(nxt)
+        tpath = Path(link_target)
+        if tpath.is_absolute():
+            cur = Path("/")
+            tparts = list(tpath.parts[1:])
+        else:
+            tparts = list(tpath.parts)
+        for tp in reversed(tparts):
+            queue.appendleft(tp)
+        continue
+    if not stat.S_ISDIR(lst.st_mode):
+        die(f"cache ancestor {nxt} is not a directory")
+    if lst.st_uid not in (uid, 0):
+        die(f"cache ancestor {nxt} is owned by another user (uid {lst.st_uid})")
+    if (lst.st_mode & stat.S_IWOTH) and not (lst.st_mode & stat.S_ISVTX):
+        die(f"cache ancestor {nxt} is world-writable without sticky bit")
+    cur = nxt
+
+# Deepest existing parent directory must be owned by the current user and not world-writable.
+deep_st = os.lstat(cur)
+if not stat.S_ISDIR(deep_st.st_mode):
+    die(f"cache parent {cur} is not a directory")
+if deep_st.st_uid != uid:
+    die(f"cache parent directory {cur} is not owned by current user (uid {deep_st.st_uid})")
+if deep_st.st_mode & stat.S_IWOTH:
+    die(f"cache parent directory {cur} is world-writable")
+
+canonical_parent = cur
+for part in remaining:
+    if part in ("", "."):
+        continue
+    if part == "..":
+        die(f"invalid cache path component '..' after non-existent directory")
+    canonical_parent = canonical_parent / part
+canonical_cache = canonical_parent / raw.name
+
+if os.path.lexists(canonical_cache):
+    cst = os.lstat(canonical_cache)
+    if stat.S_ISLNK(cst.st_mode):
+        die(f"cache path traverses symbolic link {canonical_cache}")
+    if stat.S_ISDIR(cst.st_mode):
+        if cst.st_uid != uid:
+            die(f"cache directory {canonical_cache} is not owned by current user (uid {cst.st_uid})")
+        if cst.st_mode & stat.S_IWOTH:
+            die(f"cache directory {canonical_cache} is world-writable")
+
+print(canonical_cache)
 PY
+)
 
 verify_existing_cache() {
     local target=$1

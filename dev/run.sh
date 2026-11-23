@@ -109,6 +109,7 @@ mkdir -p "$sandbox/fontconfig"
 export XDG_CONFIG_HOME=$home/config XDG_DATA_HOME=$home/data
 export XDG_CACHE_HOME=$home/cache XDG_STATE_HOME=$home/state
 export XDG_DATA_DIRS=$sandbox/data:/usr/local/share:/usr/share
+export XDG_CONFIG_DIRS=/etc/xdg
 export FONTCONFIG_FILE=$sandbox/fontconfig/fonts.conf
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent
 export QT_FORCE_STDERR_LOGGING=1
