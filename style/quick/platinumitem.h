@@ -14,46 +14,46 @@ class PlatinumItem : public QQuickPaintedItem
     Q_OBJECT
     // What to draw: menu, menuitem, separator, menubar, menubaritem,
     // tooltip, checkbox, dialog, drawer, slidergroove, sliderthumb, tabclose.
-    Q_PROPERTY(QString elementType MEMBER m_type NOTIFY changed)
-    Q_PROPERTY(QString text MEMBER m_text NOTIFY changed)
-    Q_PROPERTY(QString shortcut MEMBER m_shortcut NOTIFY changed)
-    Q_PROPERTY(bool selected MEMBER m_selected NOTIFY changed)
-    Q_PROPERTY(bool pressed MEMBER m_pressed NOTIFY changed)
-    Q_PROPERTY(bool hovered MEMBER m_hovered NOTIFY changed)
+    Q_PROPERTY(QString elementType MEMBER m_type NOTIFY elementTypeChanged)
+    Q_PROPERTY(QString text MEMBER m_text NOTIFY textChanged)
+    Q_PROPERTY(QString shortcut MEMBER m_shortcut NOTIFY shortcutChanged)
+    Q_PROPERTY(bool selected MEMBER m_selected NOTIFY selectedChanged)
+    Q_PROPERTY(bool pressed MEMBER m_pressed NOTIFY pressedChanged)
+    Q_PROPERTY(bool hovered MEMBER m_hovered NOTIFY hoveredChanged)
     // Keyboard focus (shown only for focus moved by the keyboard).
-    Q_PROPERTY(bool keyboardFocus MEMBER m_keyboardFocus NOTIFY changed)
+    Q_PROPERTY(bool keyboardFocus MEMBER m_keyboardFocus NOTIFY keyboardFocusChanged)
     // A menu row's icon: a theme icon name, or a file or qrc: URL.
-    Q_PROPERTY(QString iconName MEMBER m_iconName NOTIFY changed)
-    Q_PROPERTY(QUrl iconSource MEMBER m_iconSource NOTIFY changed)
-    Q_PROPERTY(bool checkable MEMBER m_checkable NOTIFY changed)
-    Q_PROPERTY(bool checked MEMBER m_checked NOTIFY changed)
-    Q_PROPERTY(bool subMenu MEMBER m_subMenu NOTIFY changed)
+    Q_PROPERTY(QString iconName MEMBER m_iconName NOTIFY iconNameChanged)
+    Q_PROPERTY(QUrl iconSource MEMBER m_iconSource NOTIFY iconSourceChanged)
+    Q_PROPERTY(bool checkable MEMBER m_checkable NOTIFY checkableChanged)
+    Q_PROPERTY(bool checked MEMBER m_checked NOTIFY checkedChanged)
+    Q_PROPERTY(bool subMenu MEMBER m_subMenu NOTIFY subMenuChanged)
     // Where a menu row is, passed to the style (it can't see a QMenu here).
-    Q_PROPERTY(bool first MEMBER m_first NOTIFY changed)
-    Q_PROPERTY(bool last MEMBER m_last NOTIFY changed)
-    Q_PROPERTY(bool combo MEMBER m_combo NOTIFY changed)
+    Q_PROPERTY(bool first MEMBER m_first NOTIFY firstChanged)
+    Q_PROPERTY(bool last MEMBER m_last NOTIFY lastChanged)
+    Q_PROPERTY(bool combo MEMBER m_combo NOTIFY comboChanged)
     // The menu's shortcut column (its widest shortcut), as QMenu adds it to
     // every row; and this row's own shortcut width, to find it.
-    Q_PROPERTY(int shortcutColumn MEMBER m_shortcutColumn NOTIFY changed)
-    Q_PROPERTY(int shortcutWidth READ shortcutWidth NOTIFY changed)
+    Q_PROPERTY(int shortcutColumn MEMBER m_shortcutColumn NOTIFY shortcutColumnChanged)
+    Q_PROPERTY(int shortcutWidth READ shortcutWidth NOTIFY shortcutChanged)
     // The whole menu panel in this row's coordinates: the row paints its
     // slice of the panel first, as QMenu paints rows over its panel (the
     // text then blends with the same pixels).
-    Q_PROPERTY(QRectF panel MEMBER m_panel NOTIFY changed)
+    Q_PROPERTY(QRectF panel MEMBER m_panel NOTIFY panelChanged)
     // Sliders: the orientation, and a thumb's visual position (0..1 along
     // the groove, as Qt Quick's visualPosition).
-    Q_PROPERTY(bool horizontal MEMBER m_horizontal NOTIFY changed)
-    Q_PROPERTY(qreal position MEMBER m_position NOTIFY changed)
+    Q_PROPERTY(bool horizontal MEMBER m_horizontal NOTIFY horizontalChanged)
+    Q_PROPERTY(qreal position MEMBER m_position NOTIFY positionChanged)
     // Drawers: the window edge it slides from (Qt::Edge); its other sides
     // lie outside the window, so only the open side's frame is drawn.
-    Q_PROPERTY(int edge MEMBER m_edge NOTIFY changed)
+    Q_PROPERTY(int edge MEMBER m_edge NOTIFY edgeChanged)
     // True while the application's QStyle is Platinum: the controls fall
     // back to KDE's own look otherwise (another style, or a Qt Quick app
     // without widgets).
     Q_PROPERTY(bool active READ active NOTIFY activeChanged)
     // Tooltips: true when the text is plain, so the item draws it as
     // QTipLabel does (rich text is left to KDE's label, inside `margin`).
-    Q_PROPERTY(bool drawsText READ drawsText NOTIFY changed)
+    Q_PROPERTY(bool drawsText READ drawsText NOTIFY drawsTextChanged)
     Q_PROPERTY(int margin READ margin NOTIFY activeChanged)
 public:
     explicit PlatinumItem(QQuickItem *parent = nullptr);
@@ -71,7 +71,27 @@ public:
     Q_INVOKABLE int comboWidthHint(const QStringList &texts) const;
 
 Q_SIGNALS:
-    void changed();
+    void elementTypeChanged();
+    void textChanged();
+    void shortcutChanged();
+    void selectedChanged();
+    void pressedChanged();
+    void hoveredChanged();
+    void keyboardFocusChanged();
+    void iconNameChanged();
+    void iconSourceChanged();
+    void checkableChanged();
+    void checkedChanged();
+    void subMenuChanged();
+    void firstChanged();
+    void lastChanged();
+    void comboChanged();
+    void shortcutColumnChanged();
+    void panelChanged();
+    void horizontalChanged();
+    void positionChanged();
+    void edgeChanged();
+    void drawsTextChanged();
     void activeChanged();
 
 protected:

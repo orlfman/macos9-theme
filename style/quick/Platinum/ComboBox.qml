@@ -39,23 +39,19 @@ KDE.ComboBox {
     // As wide as the widget combo box's list: the button, or its width hint
     // for the longest item if that's more (QComboBox::showPopup; finding
     // 53). The rows stretch to it. As tall as its rows (KDE's list adds 1 px).
+    readonly property int platinumListWidthHint: {
+        if (!platinum || !popup) return 0;
+        const texts = [];
+        // Observe delegate text so same-count model edits also invalidate the hint.
+        for (let i = 0; i < popup.count; ++i) {
+            const item = popup.itemAt(i);
+            texts.push(item && item.text !== undefined ? item.text : textAt(i));
+        }
+        return listPanel.comboWidthHint(texts);
+    }
     Binding {
         target: control.popup; property: "implicitWidth"; when: control.platinum
-        // (A Binding's value is evaluated even while it's off: only work it
-        // out while Platinum.)
-        value: {
-            if (!control.platinum) {
-                return 0;
-            }
-            const texts = [];
-            // Read the delegate property so a label or textRole change at
-            // the same item count also updates the open list.
-            for (let i = 0; i < control.popup.count; i++) {
-                const item = control.popup.itemAt(i);
-                texts.push(item && item.text !== undefined ? item.text : control.textAt(i));
-            }
-            return Math.max(control.width, control.listPanel.comboWidthHint(texts));
-        }
+        value: Math.max(control.width, control.platinumListWidthHint)
     }
     Binding {
         target: control.popup; property: "implicitHeight"; when: control.platinum

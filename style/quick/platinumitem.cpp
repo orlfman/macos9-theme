@@ -4,6 +4,7 @@
 #include <QApplication>
 #include <algorithm>
 #include <QPainter>
+#include <QPointer>
 #include <QQmlEngine>
 #include <QQmlExtensionPlugin>
 #include <QStyle>
@@ -20,11 +21,17 @@ namespace
 QWidget *styleWatcher()
 {
     static QWidget *watcher = nullptr;
-    if (!watcher && qobject_cast<QApplication *>(QCoreApplication::instance())) {
+    static QPointer<QApplication> quitting;
+    auto *app = qobject_cast<QApplication *>(QCoreApplication::instance());
+    if (!app || QCoreApplication::closingDown() || quitting == app) {
+        return nullptr;
+    }
+    if (!watcher) {
         watcher = new QWidget;
         watcher->setAttribute(Qt::WA_DontShowOnScreen);
         watcher->ensurePolished();
-        QObject::connect(qApp, &QCoreApplication::aboutToQuit, [] {
+        QObject::connect(app, &QCoreApplication::aboutToQuit, [app] {
+            quitting = app;
             delete watcher;
             watcher = nullptr;
         });
@@ -83,10 +90,37 @@ PlatinumItem::PlatinumItem(QQuickItem *parent)
     : QQuickPaintedItem(parent)
 {
     setAntialiasing(false);
-    connect(this, &PlatinumItem::changed, this, [this] {
+    auto resizeAndUpdate = [this] {
         updateImplicitSize();
         update();
-    });
+    };
+    auto repaint = [this] { update(); };
+    connect(this, &PlatinumItem::firstChanged, this, [this] { setProperty("_platinum_first", m_first); });
+    connect(this, &PlatinumItem::lastChanged, this, [this] { setProperty("_platinum_last", m_last); });
+    connect(this, &PlatinumItem::comboChanged, this, [this] { setProperty("_platinum_combo", m_combo); });
+    connect(this, &PlatinumItem::shortcutColumnChanged, this, [this] { setProperty("_platinum_shortcuts", m_shortcutColumn > 0); });
+    connect(this, &PlatinumItem::elementTypeChanged, this, resizeAndUpdate);
+    connect(this, &PlatinumItem::textChanged, this, resizeAndUpdate);
+    connect(this, &PlatinumItem::shortcutChanged, this, resizeAndUpdate);
+    connect(this, &PlatinumItem::selectedChanged, this, repaint);
+    connect(this, &PlatinumItem::pressedChanged, this, repaint);
+    connect(this, &PlatinumItem::hoveredChanged, this, repaint);
+    connect(this, &PlatinumItem::keyboardFocusChanged, this, repaint);
+    connect(this, &PlatinumItem::iconNameChanged, this, resizeAndUpdate);
+    connect(this, &PlatinumItem::iconSourceChanged, this, resizeAndUpdate);
+    connect(this, &PlatinumItem::checkableChanged, this, repaint);
+    connect(this, &PlatinumItem::checkedChanged, this, repaint);
+    connect(this, &PlatinumItem::subMenuChanged, this, repaint);
+    connect(this, &PlatinumItem::firstChanged, this, repaint);
+    connect(this, &PlatinumItem::lastChanged, this, repaint);
+    connect(this, &PlatinumItem::comboChanged, this, repaint);
+    connect(this, &PlatinumItem::shortcutColumnChanged, this, resizeAndUpdate);
+    connect(this, &PlatinumItem::panelChanged, this, repaint);
+    connect(this, &PlatinumItem::horizontalChanged, this, resizeAndUpdate);
+    connect(this, &PlatinumItem::positionChanged, this, repaint);
+    connect(this, &PlatinumItem::edgeChanged, this, repaint);
+    connect(this, &PlatinumItem::textChanged, this, &PlatinumItem::drawsTextChanged);
+    connect(this, &PlatinumItem::elementTypeChanged, this, &PlatinumItem::drawsTextChanged);
     connect(this, &QQuickItem::enabledChanged, this, [this] { update(); });
     if (QWidget *watcher = styleWatcher()) {
         watcher->installEventFilter(this);
@@ -150,12 +184,12 @@ bool PlatinumItem::drawsText() const
 // QTipLabel's margin: 1 + the style's tooltip frame width.
 int PlatinumItem::margin() const
 {
-    return m_active ? 1 + QApplication::style()->pixelMetric(QStyle::PM_ToolTipLabelFrameWidth) : 0;
+    return m_active && QApplication::style() ? 1 + QApplication::style()->pixelMetric(QStyle::PM_ToolTipLabelFrameWidth) : 0;
 }
 
 int PlatinumItem::comboWidthHint(const QStringList &texts) const
 {
-    if (!m_active) {
+    if (!m_active || !QApplication::style()) {
         return 0;
     }
     const QFontMetrics fm(QApplication::font("QComboBox"));
@@ -177,12 +211,10 @@ int PlatinumItem::shortcutWidth() const
 
 void PlatinumItem::updateImplicitSize()
 {
-    if (!m_active) {
+    if (!m_active || !QApplication::style()) {
         return;
     }
     QStyle *style = QApplication::style();
-    // The row's place, read by the style when there's no widget.
-    setProperty("_platinum_shortcuts", m_shortcutColumn > 0);
     if (is(m_type, "menuitem") || is(m_type, "separator")) {
         QStyleOptionMenuItem opt;
         initMenuItem(&opt, m_type, m_text, m_shortcut, m_shortcutColumn, m_selected, isEnabled(), m_checkable, m_checked, m_subMenu, icon());
@@ -227,15 +259,12 @@ void PlatinumItem::updateImplicitSize()
 
 void PlatinumItem::paint(QPainter *painter)
 {
-    if (!m_active) {
+    if (!m_active || !QApplication::style()) {
         return;
     }
     QStyle *style = QApplication::style();
     const QRect r(0, 0, int(width()), int(height()));
-    setProperty("_platinum_first", m_first);
-    setProperty("_platinum_last", m_last);
-    setProperty("_platinum_combo", m_combo);
-    setProperty("_platinum_shortcuts", m_shortcutColumn > 0);
+
     if (is(m_type, "menu")) {
         QStyleOption opt;
         opt.rect = r;
