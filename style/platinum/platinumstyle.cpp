@@ -46,6 +46,8 @@
 #include <QTimer>
 #include <QStyleFactory>
 #include <QStyleOption>
+#include <algorithm>
+#include <optional>
 
 namespace Platinum
 {
@@ -255,10 +257,12 @@ SliderLayout sliderLayout(const QRect &r, const QStyleOptionSlider *o, bool hori
  * Progress bars, column by column from the measured profiles (progress.h);
  * the barber pole from its measured stripe ramps.
  */
-void progressColumn(QPainter *p, int x, int y, const int (&col)[14])
+void progressColumn(QPainter *p, int x, int y, const int (&col)[14], int width = 1)
 {
     for (int i = 0; i < 14; ++i) {
-        putPixel(p, x, y + i, col[i]);
+        if (col[i] >= 0 && width > 0) {
+            p->fillRect(QRect(x, y + i, width, 1), QColor::fromRgb(QRgb(col[i])));
+        }
     }
 }
 
@@ -286,13 +290,15 @@ void drawProgress(QPainter *p, const QRect &rect, qint64 value, qint64 minimum, 
         // 20 px/s; PLATINUM_BARBER_PHASE pins it for the render checks.
         static const int pinned = qEnvironmentVariableIsSet("PLATINUM_BARBER_PHASE") ? qEnvironmentVariableIntValue("PLATINUM_BARBER_PHASE") : -1;
         const int phase = pinned >= 0 ? pinned % 16 : int((QDateTime::currentMSecsSinceEpoch() / 50) % 16);
-        for (int c = 0; c < inner; ++c) {
-            for (int i : {0, 1, 12, 13}) {
-                putPixel(p, left + c, y + i, TroughMid[i]);
-            }
-            for (int r = 0; r < 10; ++r) {
-                const bool isGrey = (((c - r - phase) % 16) + 16) % 16 < 8;
-                putPixel(p, left + c, y + 2 + r, isGrey ? grey[r] : lav[r]);
+        for (int i : {0, 1, 12, 13}) {
+            p->fillRect(QRect(left, y + i, inner, 1), QColor::fromRgb(QRgb(TroughMid[i])));
+        }
+        for (int r = 0; r < 10; ++r) {
+            for (int c = 0; c < inner;) {
+                const int stripe = (c - r - phase + 32) % 16;
+                const int run = std::min(inner - c, 8 - stripe % 8);
+                p->fillRect(QRect(left + c, y + 2 + r, run, 1), QColor::fromRgb(QRgb(stripe < 8 ? grey[r] : lav[r])));
+                c += run;
             }
         }
         return;
@@ -301,22 +307,26 @@ void drawProgress(QPainter *p, const QRect &rect, qint64 value, qint64 minimum, 
     const qint64 range = maximum - minimum;
     const int fill = int(std::clamp<qint64>((value - minimum) * inner / range, 0, inner));
     // Fill columns: start, start, middle..., end, end, end.
-    const int *ends[] = {FillStart0, FillStart1, FillEnd0, FillEnd1, FillEnd2};
-    for (int c = 0; c < fill; ++c) {
-        const int *col;
+    const int (*ends[])[14] = {&FillStart0, &FillStart1, &FillEnd0, &FillEnd1, &FillEnd2};
+    for (int c = 0; c < fill;) {
+        const int (*col)[14];
         if (fill >= 5) {
-            col = c == 0 ? FillStart0 : c == 1 ? FillStart1 : c == fill - 3 ? FillEnd0 : c == fill - 2 ? FillEnd1 : c == fill - 1 ? FillEnd2 : FillMid;
+            col = c == 0 ? &FillStart0 : c == 1 ? &FillStart1 : c == fill - 3 ? &FillEnd0 : c == fill - 2 ? &FillEnd1 : c == fill - 1 ? &FillEnd2 : &FillMid;
         } else {
             col = ends[5 - fill + c];
         }
-        progressColumn(p, left + c, y, *reinterpret_cast<const int(*)[14]>(col));
+        const int run = col == &FillMid ? fill - 3 - c : 1;
+        progressColumn(p, left + c, y, *col, run);
+        c += run;
     }
     // Then the divider, the trough's 2-column shadow, the trough, and its
     // last column.
-    for (int c = fill; c < inner; ++c) {
+    for (int c = fill; c < inner;) {
         const int k = c - fill;
         const int(&col)[14] = c == inner - 1 && k > 2 ? TroughRight : k == 0 ? Divider : k == 1 ? TroughShadow0 : k == 2 ? TroughShadow1 : TroughMid;
-        progressColumn(p, left + c, y, col);
+        const int run = k >= 3 && c < inner - 1 ? inner - 1 - c : 1;
+        progressColumn(p, left + c, y, col, run);
+        c += run;
     }
 }
 
@@ -459,17 +469,29 @@ void drawMenuBarBackground(QPainter *p, const QRect &r, bool highlighted)
     p->fillRect(QRect(r.x(), r.bottom(), r.width(), 1), Black);
 }
 
+// Only polished menus have our action-event filter. Other callers always
+// scan, including queries made before QWidget has been polished.
+constexpr auto ShortcutCache = "_platinum_menuShortcutCache";
+constexpr int UnknownShortcuts = -1;
+
 bool menuHasShortcuts(const QWidget *widget)
 {
-    if (const auto *menu = qobject_cast<const QMenu *>(widget)) {
-        const auto actions = menu->actions();
-        for (const QAction *a : actions) {
-            if (a->isVisible() && (a->text().contains(QLatin1Char('\t')) || !a->shortcut().isEmpty())) {
-                return true;
-            }
-        }
+    const auto *menu = qobject_cast<const QMenu *>(widget);
+    if (!menu) {
+        return false;
     }
-    return false;
+    const QVariant cached = menu->property(ShortcutCache);
+    if (cached.isValid() && cached.toInt() != UnknownShortcuts) {
+        return cached.toBool();
+    }
+    const auto actions = menu->actions();
+    const bool found = std::any_of(actions.cbegin(), actions.cend(), [](const QAction *action) {
+        return action->isVisible() && (action->text().contains(QLatin1Char('\t')) || !action->shortcut().isEmpty());
+    });
+    if (cached.isValid()) {
+        const_cast<QMenu *>(menu)->setProperty(ShortcutCache, found);
+    }
+    return found;
 }
 
 // A text field (docs/REFERENCE.md "Text field"): in a rect with a 1 px
@@ -536,33 +558,36 @@ void drawBevel(QPainter *p, const QRect &r, bool small, bool pressed)
         drawNineSlice(p, r, Slices::ToolNormal);
         return;
     }
-    NineSlice<2> s = Slices::ToolNormal;
-    auto map = [](int v) {
-        switch (v) {
-        case 0xFFFFFF:
-            return 0x555555;
-        case 0xCCCCCC:
-            return 0x666666;
-        case 0x888888:
-            return 0x777777;
-        default:
-            return v;
+    static constexpr auto pressedSlice = [] {
+        NineSlice<2> s = Slices::ToolNormal;
+        auto map = [](int v) {
+            switch (v) {
+            case 0xFFFFFF:
+                return 0x555555;
+            case 0xCCCCCC:
+                return 0x666666;
+            case 0x888888:
+                return 0x777777;
+            default:
+                return v;
+            }
+        };
+        for (auto *corner : {&s.tl, &s.tr, &s.bl, &s.br}) {
+            for (auto &row : *corner) {
+                for (int &v : row) {
+                    v = map(v);
+                }
+            }
         }
-    };
-    for (auto *corner : {&s.tl, &s.tr, &s.bl, &s.br}) {
-        for (auto &row : *corner) {
-            for (int &v : row) {
+        for (auto *edge : {&s.top, &s.bottom, &s.left, &s.right}) {
+            for (int &v : *edge) {
                 v = map(v);
             }
         }
-    }
-    for (auto *edge : {&s.top, &s.bottom, &s.left, &s.right}) {
-        for (int &v : *edge) {
-            v = map(v);
-        }
-    }
-    s.fill = map(s.fill);
-    drawNineSlice(p, r, s);
+        s.fill = map(s.fill);
+        return s;
+    }();
+    drawNineSlice(p, r, pressedSlice);
 }
 
 // Tooltips as Mac OS 9 help balloons (help-balloon.png), without the tail
@@ -731,7 +756,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption *option, con
     if (type == CT_ToolButton) {
         return QSize(size.width() + ToolButtonPadding, size.height() + ToolButtonPadding);
     }
-    if (type == CT_HeaderSection) {
+    if (type == CT_HeaderSection && option) {
         const QSize s = QProxyStyle::sizeFromContents(type, option, size, widget);
         return QSize(s.width(), std::max(HeaderHeight, option->fontMetrics.height() + 5));
     }
@@ -817,6 +842,26 @@ QRect Style::subElementRect(SubElement element, const QStyleOption *option, cons
     return QProxyStyle::subElementRect(element, option, widget);
 }
 
+static std::optional<QRect> scrollPart(const ScrollLayout &l, QStyle::SubControl sub, bool reversed)
+{
+    switch (sub) {
+    case QStyle::SC_ScrollBarSubLine:
+        return reversed ? l.addLine : l.subLine;
+    case QStyle::SC_ScrollBarAddLine:
+        return reversed ? l.subLine : l.addLine;
+    case QStyle::SC_ScrollBarGroove:
+        return l.groove;
+    case QStyle::SC_ScrollBarSlider:
+        return l.slider;
+    case QStyle::SC_ScrollBarSubPage:
+        return reversed ? l.addPage : l.subPage;
+    case QStyle::SC_ScrollBarAddPage:
+        return reversed ? l.subPage : l.addPage;
+    default:
+        return {};
+    }
+}
+
 QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex *option, SubControl sub, const QWidget *widget) const
 {
     if (rtlFallback(control, option)) {
@@ -833,12 +878,12 @@ QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex *o
             const int frameTop = title ? r.y() + fm.ascent() - 1 : r.y();
             const QRect box(r.x() + GroupTitleLeft, r.y() + (fm.height() - CheckHeight) / 2, CheckWidth, CheckHeight);
             const int labelX = r.x() + GroupTitleLeft + (check ? CheckWidth + GroupTitleGap : 0);
-            const QRect label(labelX, r.y(), gb->text.isEmpty() ? 0 : fm.boundingRect(QRect(), Qt::TextShowMnemonic, gb->text).width(), fm.height());
+
             switch (sub) {
             case SC_GroupBoxCheckBox:
                 return check ? box : QRect();
             case SC_GroupBoxLabel:
-                return label;
+                return QRect(labelX, r.y(), gb->text.isEmpty() ? 0 : fm.boundingRect(QRect(), Qt::TextShowMnemonic, gb->text).width(), fm.height());
             case SC_GroupBoxFrame:
                 return QRect(r.x(), frameTop, r.width(), r.bottom() - frameTop + 1);
             case SC_GroupBoxContents: {
@@ -910,30 +955,19 @@ QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex *o
     // before the thumb and the first arrow move it towards larger values:
     // clicks then always page and step towards where you click (AUDIT.md
     // finding 32; Qt's own styles move the thumb away there).
-    const bool reversed = sb->upsideDown;
-    switch (sub) {
-    case SC_ScrollBarSubLine:
-        return reversed ? l.addLine : l.subLine;
-    case SC_ScrollBarAddLine:
-        return reversed ? l.subLine : l.addLine;
-    case SC_ScrollBarGroove:
-        return l.groove;
-    case SC_ScrollBarSlider:
-        return l.slider;
-    case SC_ScrollBarSubPage:
-        return reversed ? l.addPage : l.subPage;
-    case SC_ScrollBarAddPage:
-        return reversed ? l.subPage : l.addPage;
-    default:
-        return QProxyStyle::subControlRect(control, option, sub, widget);
+    if (const auto part = scrollPart(l, sub, sb->upsideDown)) {
+        return *part;
     }
+    return QProxyStyle::subControlRect(control, option, sub, widget);
 }
 
 QStyle::SubControl Style::hitTestComplexControl(ComplexControl control, const QStyleOptionComplex *option, const QPoint &pos, const QWidget *widget) const
 {
-    if (control == CC_ScrollBar) {
+    const auto *sb = qstyleoption_cast<const QStyleOptionSlider *>(option);
+    if (control == CC_ScrollBar && sb && !rtlFallback(control, option)) {
+        const ScrollLayout layout = scrollLayout(sb->rect, sb, sb->orientation == Qt::Horizontal);
         for (SubControl sc : {SC_ScrollBarSlider, SC_ScrollBarSubLine, SC_ScrollBarAddLine, SC_ScrollBarSubPage, SC_ScrollBarAddPage}) {
-            if (subControlRect(control, option, sc, widget).contains(pos)) {
+            if (scrollPart(layout, sc, sb->upsideDown)->contains(pos)) {
                 return sc;
             }
         }
@@ -1003,8 +1037,11 @@ void Style::drawSlider(const QStyleOptionSlider *o, QPainter *p, const QWidget *
     const Sprite &gr = enabled ? Sprites::GrooveRight : Sprites::GrooveRightDisabled;
     if (o->subControls & SC_SliderGroove) {
         drawSprite(p, g.x(), g.y(), gl);
-        for (int x = g.x() + gl.w; x < g.right() - gr.w + 1; ++x) {
-            drawSprite(p, x, g.y(), gm);
+        const int span = g.width() - gl.w - gr.w;
+        for (int row = 0; span > 0 && row < gm.h; ++row) {
+            if (gm.data[row] >= 0) {
+                p->fillRect(QRect(g.x() + gl.w, g.y() + row, span, 1), QColor::fromRgb(QRgb(gm.data[row])));
+            }
         }
         drawSprite(p, g.right() - gr.w + 1, g.y(), gr);
     }
@@ -1058,46 +1095,45 @@ void Style::drawSpinBox(const QStyleOptionSpinBox *sb, QPainter *painter, const 
     const QRect field(r.x(), r.y(), r.width() - SpinArrowsGap - SpinArrowsWidth, r.height());
     drawField(painter, field, focused, sb->palette.color(enabled ? QPalette::Active : QPalette::Disabled, QPalette::Base));
     const QRect up = subControlRect(CC_SpinBox, sb, SC_SpinBoxUp, widget);
-    drawSprite(painter, up.x(), up.y(), Sprites::SpinArrows);
     // Not captured: the pressed half. Drawn like a pressed push button
     // (#555555 highlight, #666666 fill, #777777 / #888888 shadow, white
     // arrow) inside that half, keeping the outline.
     const bool upPressed = (sb->activeSubControls & SC_SpinBoxUp) && (sb->state & State_Sunken);
     const bool downPressed = (sb->activeSubControls & SC_SpinBoxDown) && (sb->state & State_Sunken);
-    for (int half = 0; half < 2; ++half) {
-        if (!(half == 0 ? upPressed : downPressed)) {
+    for (int row = 0; row < SpinArrowsHeight; ++row) {
+        const int *source = Sprites::SpinArrows.data.data() + row * SpinArrowsWidth;
+        if (!(row < SpinArrowsHeight / 2 ? upPressed : downPressed)) {
+            drawRow(painter, up.x(), up.y() + row, source, SpinArrowsWidth);
             continue;
         }
-        const int row0 = half == 0 ? 0 : SpinArrowsHeight / 2;
-        const int row1 = half == 0 ? SpinArrowsHeight / 2 : SpinArrowsHeight;
-        for (int row = row0; row < row1; ++row) {
-            for (int col = 0; col < SpinArrowsWidth; ++col) {
-                const int v = Sprites::SpinArrows.data[row * SpinArrowsWidth + col];
-                const bool inside = col >= 3 && col <= SpinArrowsWidth - 4 && row >= 2 && row <= SpinArrowsHeight - 3;
-                int out = v;
-                switch (v) {
-                case 0xFFFFFF:
-                    out = 0x555555;
-                    break;
-                case 0xDDDDDD:
-                    out = 0x666666;
-                    break;
-                case 0xBBBBBB:
-                case 0xAAAAAA:
-                    out = 0x777777;
-                    break;
-                case 0x777777:
-                    out = 0x888888;
-                    break;
-                case 0x000000:
-                    out = inside ? 0xFFFFFF : 0x000000;
-                    break;
-                default:
-                    break;
-                }
-                putPixel(painter, up.x() + col, up.y() + row, out);
+        int pressedRow[SpinArrowsWidth];
+        for (int col = 0; col < SpinArrowsWidth; ++col) {
+            const int v = source[col];
+            const bool inside = col >= 3 && col <= SpinArrowsWidth - 4 && row >= 2 && row <= SpinArrowsHeight - 3;
+            int out = v;
+            switch (v) {
+            case 0xFFFFFF:
+                out = 0x555555;
+                break;
+            case 0xDDDDDD:
+                out = 0x666666;
+                break;
+            case 0xBBBBBB:
+            case 0xAAAAAA:
+                out = 0x777777;
+                break;
+            case 0x777777:
+                out = 0x888888;
+                break;
+            case 0x000000:
+                out = inside ? 0xFFFFFF : 0x000000;
+                break;
+            default:
+                break;
             }
+            pressedRow[col] = out;
         }
+        drawRow(painter, up.x(), up.y() + row, pressedRow, SpinArrowsWidth);
     }
     if (!enabled) {
         // Not captured: disabled arrows, washed out (#DDDDDD at half
@@ -1753,8 +1789,47 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption *option, 
     QProxyStyle::drawPrimitive(element, option, painter, widget);
 }
 
+// A range change requests a paint. Show and hide handle visibility changes
+// even when no subsequent paint occurs.
+static void updateBusyTimer(QProgressBar *bar)
+{
+    const bool busy = bar->isVisible() && bar->minimum() == bar->maximum();
+    auto *timer = bar->findChild<QTimer *>(QStringLiteral("platinum-barber-pole"), Qt::FindDirectChildrenOnly);
+    if (!busy) {
+        if (timer) {
+            timer->stop();
+        }
+        return;
+    }
+    if (!timer) {
+        timer = new QTimer(bar);
+        timer->setObjectName(QStringLiteral("platinum-barber-pole"));
+        timer->setInterval(100);
+        QObject::connect(timer, &QTimer::timeout, bar, [bar, timer] {
+            if (bar->isVisible() && bar->minimum() == bar->maximum()) {
+                bar->update();
+            } else {
+                timer->stop();
+            }
+        });
+    }
+    if (!timer->isActive()) {
+        timer->start();
+    }
+}
+
 bool Style::eventFilter(QObject *object, QEvent *event)
 {
+    if (event->type() == QEvent::ActionAdded || event->type() == QEvent::ActionRemoved || event->type() == QEvent::ActionChanged) {
+        if (auto *menu = qobject_cast<QMenu *>(object)) {
+            menu->setProperty(ShortcutCache, UnknownShortcuts);
+        }
+    }
+    if (event->type() == QEvent::Show || event->type() == QEvent::Hide || event->type() == QEvent::Paint) {
+        if (auto *bar = qobject_cast<QProgressBar *>(object)) {
+            updateBusyTimer(bar);
+        }
+    }
     // Document-mode tab widgets (KDE settings pages use them) get no pane
     // from Qt, which leaves the tabs' pane rows and the current tab's
     // #EEEEEE opening loose over the window. Mac OS 9 tabs always sit on a
@@ -1827,6 +1902,9 @@ void setMargins(QWidget *w, const QMargins &m)
 
 void Style::polish(QWidget *widget)
 {
+    if (!widget) {
+        return;
+    }
     QProxyStyle::polish(widget);
     if (qobject_cast<QTabWidget *>(widget)) {
         widget->installEventFilter(this);
@@ -1855,28 +1933,28 @@ void Style::polish(QWidget *widget)
     if (auto *menu = qobject_cast<QMenu *>(widget)) {
         // The drop shadow's outer corners stay see-through, and the shadow
         // takes one more column and row on the right and bottom.
+        menu->installEventFilter(this);
+        menu->setProperty(ShortcutCache, UnknownShortcuts);
         makeTranslucent(menu);
         setMargins(menu, QMargins(0, 0, 1, 1));
     }
-    // Busy progress bars need repaints to move the barber pole.
-    if (auto *bar = qobject_cast<QProgressBar *>(widget);
-        bar && !bar->findChild<QTimer *>(QStringLiteral("platinum-barber-pole"), Qt::FindDirectChildrenOnly)) {
-        auto *timer = new QTimer(bar);
-        timer->setObjectName(QStringLiteral("platinum-barber-pole"));
-        timer->setInterval(100);
-        QObject::connect(timer, &QTimer::timeout, bar, [bar] {
-            if (bar->minimum() == bar->maximum() && bar->isVisible()) {
-                bar->update();
-            }
-        });
-        timer->start();
+    if (auto *bar = qobject_cast<QProgressBar *>(widget)) {
+        bar->installEventFilter(this);
+        updateBusyTimer(bar);
     }
 }
 
 void Style::unpolish(QWidget *widget)
 {
+    if (!widget) {
+        return;
+    }
     if (qobject_cast<QTabWidget *>(widget) || widget->inherits("QComboBoxPrivateContainer")) {
         widget->removeEventFilter(this);
+    }
+    if (auto *menu = qobject_cast<QMenu *>(widget)) {
+        menu->removeEventFilter(this);
+        menu->setProperty(ShortcutCache, QVariant());
     }
     giveBack<bool>(widget, KeptTranslucent, [widget](bool on) { widget->setAttribute(Qt::WA_TranslucentBackground, on); });
     giveBack<QMargins>(widget, KeptMargins, [widget](const QMargins &m) { widget->setContentsMargins(m); });
@@ -1886,6 +1964,7 @@ void Style::unpolish(QWidget *widget)
         giveBack<bool>(view, KeptViewportFill, [view](bool on) { view->viewport()->setAutoFillBackground(on); });
     }
     if (auto *bar = qobject_cast<QProgressBar *>(widget)) {
+        bar->removeEventFilter(this);
         delete bar->findChild<QTimer *>(QStringLiteral("platinum-barber-pole"), Qt::FindDirectChildrenOnly);
     }
     QProxyStyle::unpolish(widget);

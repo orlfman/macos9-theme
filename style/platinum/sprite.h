@@ -16,9 +16,7 @@ struct Sprite {
 inline void drawSprite(QPainter *p, int x, int y, const Sprite &s)
 {
     for (int r = 0; r < s.h; ++r) {
-        for (int c = 0; c < s.w; ++c) {
-            putPixel(p, x + c, y + r, s.data[r * s.w + c]);
-        }
+        drawRow(p, x, y + r, s.data.data() + r * s.w, s.w);
     }
 }
 

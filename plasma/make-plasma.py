@@ -128,7 +128,7 @@ def nineslice(name):
     """A measured 9-slice from style/platinum/slices.h as a shapes function
     (corners pixel by pixel, edges stretched, center filled)."""
     text = (ROOT / "style/platinum/slices.h").read_text()
-    m = re.search(r"const NineSlice<(\d+)> %s = \{(.*?)\n\};" % name, text, re.S)
+    m = re.search(r"const(?:expr)? NineSlice<(\d+)> %s = \{(.*?)\n\};" % name, text, re.S)
     k = int(m[1])
     vals = [None if v == "-1" else "#" + v[2:].lower() for v in re.findall(r"-1|0x[0-9A-Fa-f]{6}", m[2])]
     corners = [vals[i * k * k:(i + 1) * k * k] for i in range(4)]  # tl, tr, bl, br

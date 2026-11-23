@@ -114,7 +114,7 @@ def main():
         return "{" + ", ".join(fmt(val(p, False)) for p in ps) + "}"
 
     print(f"// {a.name}: measured from {a.image.split('/')[-1]} at {x0},{y0} ({W}x{H}), K={K}")
-    print(f"const NineSlice<{K}> {a.name} = {{")
+    print(f"constexpr NineSlice<{K}> {a.name} = {{")
     print(f"    {table(tl)},\n    {table(tr)},\n    {table(bl)},\n    {table(br)},")
     print(f"    {prof(top)}, {prof(bottom)}, {prof(left)}, {prof(right)},")
     print(f"    {fmt(val(fill, False))},")

@@ -26,6 +26,21 @@ inline void putPixel(QPainter *p, int x, int y, int v)
     }
 }
 
+// Paint contiguous equal samples with the same raster primitive as a pixel.
+inline void drawRow(QPainter *p, int x, int y, const int *pixels, int width)
+{
+    for (int start = 0; start < width;) {
+        int end = start + 1;
+        while (end < width && pixels[end] == pixels[start]) {
+            ++end;
+        }
+        if (pixels[start] >= 0) {
+            p->fillRect(QRect(x + start, y, end - start, 1), QColor::fromRgb(QRgb(pixels[start])));
+        }
+        start = end;
+    }
+}
+
 // Draws s over r: corners as measured, edges stretched, center filled.
 template<int K>
 void drawNineSlice(QPainter *p, const QRect &r, const NineSlice<K> &s, bool fillCenter = true)
@@ -44,12 +59,10 @@ void drawNineSlice(QPainter *p, const QRect &r, const NineSlice<K> &s, bool fill
         p->fillRect(QRect(x + w - K + i, y + K, 1, h - 2 * K), QColor::fromRgb(QRgb(s.right[i])));
     }
     for (int row = 0; row < K; ++row) {
-        for (int col = 0; col < K; ++col) {
-            putPixel(p, x + col, y + row, s.tl[row][col]);
-            putPixel(p, x + w - K + col, y + row, s.tr[row][col]);
-            putPixel(p, x + col, y + h - K + row, s.bl[row][col]);
-            putPixel(p, x + w - K + col, y + h - K + row, s.br[row][col]);
-        }
+        drawRow(p, x, y + row, s.tl[row], K);
+        drawRow(p, x + w - K, y + row, s.tr[row], K);
+        drawRow(p, x, y + h - K + row, s.bl[row], K);
+        drawRow(p, x + w - K, y + h - K + row, s.br[row], K);
     }
 }
 
