@@ -249,6 +249,8 @@ auditing doesn't give you the right to edit a component you haven't claimed.
 - Commands handed to the user use absolute paths (their terminal opens in `~`).
 - Only officially supported theming hooks. No patched Plasma/KWin, no
   injecting into apps (Discord/Steam client mods are out of scope).
+  Exception approved by the user: the optional Firefox `userChrome.css` theme
+  (PLAN.md decision 14).
 - Keep the user's other work alone: `/mnt/storage1/local/projects/*`
   (windows2000-union, vaulttec-union) and `~/Files/Archive/themes/*` are
   read-only references for this project.

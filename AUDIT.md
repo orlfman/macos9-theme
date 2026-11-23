@@ -3,10 +3,889 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+WhiteSur Lavender status, 2026-11-23. **#127, #131 and #139–141 independently verified fixed in the uncommitted tree. Safe to run plain `install.sh` on the stated Platinum/Breeze setup.** Both full-size upgrade, update and undo runs passed. The user reports 19/19 Plasma checks with zero differing pixels and 40/40 live-install checks.
+
 Current C++ audit status, 2026-11-22. Checkpoint 5 passed. #99 (P3) and
 #100 (P2) are fixed and verified in the working tree. #95 remains open (P3).
 
 Status: #53–58 passed their original regression cases. #59–68 are fixed in this revision, including code commits `ef8250a` and `fb4156f`. The user has completed the first desktop install. #3 (P3) awaits the user's visual review. The panel-resize fix for #23 is verified at the user’s 32 px setting. The panel follow-ups #69 and #70 are fixed in the working tree and verified in nested Plasma. The user reported that the updated Kwi tab close button worked well on their desktop (#71–74). Wallpaper findings #75–77 are fixed and verified in disposable Plasma. Cursor findings #78–80 are fixed; the cursors are now bundled (`cursors/`), which removes the external download they concerned. The bundled cursor follow-ups #81–84 are fixed in the working tree. The decisions on #21, #25 and #26 still apply.
+
+## 2026-11-23, Codex (GPT-6) — final verification of WhiteSur #127, #131 and #139–141
+
+**No blockers in the five original reproductions or the requested upgrade path.** Tested the working tree based on `8b5c251` in disposable homes. The 50 assertions added for these five findings also passed. The full-source runs and process-kill checks below were independent of those assertions.
+
+| Finding | Working-tree location | Result of the original reproduction |
+|---|---|---|
+| #127 · verified | `scripts/icon_prefs.py:506`, `scripts/icon_prefs.py:544` | With full-size themes installed and Lavender selected, an outside copy containing only the genuine index made undo exit 1. GTK 3 still resolved both `folder` and `folder-documents` to the same managed Lavender SVGs. Also repeated the earlier case with an outside copy whose `apps/` linked back into the base. Its Firefox artwork survived. Switching to Breeze allowed removal in both cases. |
+| #131 · verified | `scripts/icon_prefs.py:1170` | The committed backup held GTK 3 and GTK 4 settings at 0644. Both were 0600 at adoption and stayed 0600 after full install, update, undo and repeated undo. Both KDE key arrangements passed. The focused suite also covered a backed-up GTK key already equal to Breeze. |
+| #139 · verified | `install.sh:352`, `install.sh:359` | Killed the upgrade immediately before the first journal save using prebuilt assets. The throwaway home matched its snapshot, including the installed global theme and manifest. Retrying install selected Lavender and undo restored Breeze. Killed another run at the first target publication. Capture was already durable and direct undo restored Breeze across KDE and GTK. |
+| #140 · verified | `install.sh:161`, `uninstall.sh:223`, `uninstall.sh:698` | Killed undo after GTK 3 publication, after saving `restored`, and after archiving the journal with the manifest still present. At all three stops, plain install exited 1 and the throwaway home's contents, paths, link targets and modes matched their pre-retry snapshot. Resuming uninstall restored Breeze and retired the record and marker. The focused suite also confirmed a subsequent fresh install had a new restore decision. |
+| #141 · verified | `install.sh:429`, `scripts/icon_prefs.py:813` | Killed install just after saving `captured` and just after saving `selecting`. Switched the global theme and icons to Breeze before retry. Both retries kept Breeze and recorded `skipped`. In the partial-write regression, retry kept a later explicit KDE Adwaita choice and rolled the transaction's GTK 3 change back to Breeze. |
+
+**Normal path.** The committed installer created genuine format-4 records and backups with Papirus-Dark. Tested both the picker-activated install-only backup and a previously promoted backup. Each home started the upgrade on Platinum with Breeze icons, no WhiteSur directories and both GTK settings files at 0600. Plain install from a source tree without `.git` fetched `73d8040da51a9ed74e47c7366e7e9ff437601a5c` into an empty cache from the read-only local Git remote. It built and installed the base, light and dark themes with their caches and folder artwork, then selected Lavender in KDE and all four GTK settings. Panel layout, wallpaper, cursor, KWin, plasmashell, and the seeded non-icon KDE and GTK values matched their starting values. A full update with the remote unavailable kept the later Adwaita choice and the original journal. Undo and repeated undo restored Breeze in GTK 2, 3, 4 and xsettingsd, restored the original explicit or inherited KDE key with the other key absent, preserved both 0600 modes, and removed the trio and manifest.
+
+**Non-blocking recovery detail.** If the process dies before the very first capture, direct uninstall still undoes the *committed* installation. It restored its historical GTK Papirus-Dark and inherited KDE Adwaita in both the interrupted home and an untouched control. At that point the upgrade had made no installed-file or selection change. Retrying plain install first, then undoing it, restored the pre-upgrade Breeze settings.
+
+**Limits.** Git fetch used local transport with network access off. Live HTTPS and running-desktop notification delivery were outside this run. The sandbox rejected the suite's named-user ACL setup, so only permission bits were independently verified here. The user reports `check-plasma` 19/19 with zero differing pixels and `test-install-live` 40/40 on this tree.
+
+**Verdict — SAFE TO RUN install.sh**
+
+## 2026-11-23, Antigravity (Gemini 4 Neon) — fixes for WhiteSur #127, #131, #139, #140, and #141
+
+Fixed only the five open findings from Codex's targeted verification (`#127`, `#131`, `#139`, `#140`, `#141`) in the existing single durable icon-selection transaction (`$state/icon-adoption` in `scripts/icon_prefs.py`, `scripts/common.sh`, `install.sh`, `uninstall.sh`) with no unrelated refactoring or scope expansion. Working tree remains uncommitted; `~/.local/share/icons`, the live desktop, and `../WhiteSur-icon-theme` (`73d8040da51a9ed74e47c7366e7e9ff437601a5c`) are untouched.
+
+### Fixes verified
+
+- **#139 (P1) — Capture under install lock before first target or manifest mutation:** Moved `icons_already_tracked` and `icon_prefs.py capture` in `install.sh` to execute under `take_lock` immediately before `remove_passthrough` and the first `place_file` (`platinumstyle.so`). Added exact reproduction in `dev/test-install.sh`: a failed capture from a committed `HEAD 8b5c251` picker-activated `TAKEN=install` state leaves `look-and-feel` and `$manifest` untouched, and a failure on the very first target (`platinumstyle.so`) already has `$state/icon-adoption` durably captured so direct undo restores KDE `breeze` (with no stale `Adwaita`) and GTK `breeze` (with no `Papirus-Dark`).
+- **#140 (P1) — Refuse install during any unfinished undo:** Added `$state/uninstall-in-progress` (`scripts/common.sh`, `uninstall.sh`) written before Section 1 config restoration and Section 2 package removal and retained through backup archival, `$icon_adoption` archival, package removal, and manifest retirement until final zero-remainder cleanup. Added `read-tx-status` in `scripts/icon_prefs.py` and `check_unfinished_uninstall` in `install.sh` (checked before fetch and again under `take_lock`) to refuse cleanly without changing anything whenever `$uninstall_marker`, `$restore_decision_file`, `phase in ("restoring", "restored")`, or `restore_decision == "restore_backup"` is present. Added exact reproductions in `dev/test-install.sh` across all three crash boundaries (`#140a` mid-restore `phase=restoring`, `#140b` after `phase=restored` before archival, `#140c` real mid-Section-2 `rm` abort after backup and journal archival while manifest + marker remain), confirming install refuses at every boundary, resuming uninstall completes cleanly, and a subsequent fresh install starts a new transaction (`restore_decision=none`) and selects `WhiteSur-lavender`.
+- **#141 (P2) — Re-check active global theme before resuming pending selection:** `install.sh` re-reads `active=$(active_lnf)` before `icon_prefs.py apply-tx` and passes `--active-lnf "$active" --lnf-id "$lnf_id"`. When `phase in ("captured", "selecting")` and `active_lnf != lnf_id`, `apply-tx` cancels stale intent, persists `phase="skipped"` with `intended=None`, and (when `phase == "selecting"`) rolls back only keys still holding this transaction's partial `intended` value while preserving any later user choice. Added exact reproductions in `dev/test-install.sh` for both `phase=captured` (`#141a`, switched to Breeze + `breeze`) and `phase=selecting` (`#141b`, partial KDE/GTK 3 Lavender switched to Breeze + KDE `Adwaita`: KDE keeps `Adwaita`, partial GTK 3 rolls back to `breeze`, GTK 4 stays `breeze`, `phase=skipped`).
+- **#127 (P1) — Require complete advertised artwork for outside copies:** Updated `cand_is_independent_and_complete` in `scripts/icon_prefs.py` so when `outside_only=True` (authorizing deletion of managed packages), every directory listed in `Directories` of both the outside candidate's `index.theme` and the managed package's reference `index.theme` must actually exist on disk, resolve outside `forbidden_roots`, and contain at least one readable `.svg`/`.png` artwork file resolving outside `forbidden_roots` (while still rejecting any symlink inside `Directories`/`ScaledDirectories` pointing into `forbidden_roots`). Verified empirically that built `WhiteSur-lavender*` themes have 43/43 populated `Directories`, and added an exact real-size reproduction in `dev/test-install.sh` where `~/.icons/WhiteSur-lavender/index.theme` alone (zero artwork dirs) is rejected by `uninstall.sh` with the managed base and its Lavender `folder.svg` kept intact.
+- **#131 (P2) — Capture and restore pre-adoption modes and POSIX ACLs regardless of legacy backup permissions:** `read_all_current_prefs` in `scripts/icon_prefs.py` now captures mode bits and serialized POSIX ACL xattrs (`system.posix_acl_access` / `system.posix_acl_default`) for all six config files into `$state/icon-adoption`. `apply_file_perms` also strips stale ACLs when the captured file had none, and `prepare-restore` (`apply_captured_perms_if_needed`) stages and restores captured pre-adoption modes/ACLs onto restored legacy backup files even when the backed-up icon key already matches the intended value. Added exact reproduction in `dev/test-install.sh` from a genuine `HEAD 8b5c251` `0644` backup (with a legacy ACL on `gtk-4.0/settings.ini` and `gtk-4.0` already matching `breeze`) upgraded from pre-adoption `0600` files (with a custom pre-adoption ACL on `xsettingsd.conf`), confirming upgrade, update, undo, and repeated undo preserve `0600`, retain the pre-adoption ACL, and strip the stale legacy ACL.
+
+### Verification results and limits
+
+- `dev/test_icons_phase1.py`: **74/74 passed** (disposable `/tmp` only).
+- `dev/test-install.sh`: **677/677 passed** (+50 new assertions covering exact reproductions of `#127`, `#131`, `#139`, `#140` at all 3 boundaries, and `#141` in both `captured` and `selecting` phases).
+- `dev/check-style.sh`: **135/135 pixel exact**.
+- `dev/check-quick.sh`: **29/29 passed**.
+- **Limits (not runnable in this sandbox):** `dev/check-plasma.sh` and `dev/test-install-live.sh` require nested KWin/Wayland outside the sandbox and must be run from the user's terminal; live HTTPS fetch, running-desktop GTK/KDE sync notifications, and live desktop install/review await the user.
+
+## 2026-11-23, Codex (GPT-6) — targeted verification of WhiteSur #124–138
+
+**Hold the live install.** The full-size upgrade and update passed. Ordinary undo restored both KDE layers and the GTK icon choices, but widened private GTK files when their legacy backup had broader permissions. Two recovery paths can also discard a later choice or restore the older Papirus-Dark. This section covers the uncommitted tree based on `8b5c251`.
+
+### Confirmed blockers
+
+| Finding | File and line | Reproduction and result | Suggested fix |
+|---|---|---|---|
+| **#139 · P1 · Legacy upgrade changes installed files before saving the icon preferences** | `install.sh:293`, `install.sh:315`, `install.sh:364`, `scripts/icon_prefs.py:666` | Killed the upgrade immediately before the first journal save. The installed global theme already contained the new Lavender default. The committed install-only backup still contained Papirus-Dark, the active desktop still selected Breeze, and no adoption journal existed. Direct undo exited 0 and put Papirus-Dark into GTK 2, 3, 4 and xsettingsd. It also left the backup's inherited Adwaita beneath explicit KDE Breeze. | Capture the selection and legacy-backup decision under the install lock before the first change to installed targets or their record. Exercise a failed capture and direct undo from the committed picker-activated state. |
+| **#140 · P1 · A new install can proceed inside an unfinished undo** | `install.sh:325`, `install.sh:393`, `scripts/icon_prefs.py:680`, `uninstall.sh:148`, `uninstall.sh:333`, `uninstall.sh:337` | Killed undo after the merged GTK 3 file was published. KDE and GTK 3 selected Breeze, while GTK 4, GTK 2 and xsettingsd still selected Lavender. Plain install exited 0 with that split and phase `restoring`. In a second run, killed undo after phase `restored` was saved and before the journal was archived. Plain install created a new `TAKEN=install` backup carrying the old restore decision. After choosing Adwaita and changing the panel setting from 42 to 77 on the inactive Platinum installation, undo exited 0 and reverted both edits to Breeze and 42. Immediately after journal archival there is another gap: with the old manifest still present and Platinum reactivated, plain install exited 0 with Breeze and no adoption record. | Retain an uninstall-in-progress marker through package and manifest retirement. At install entry, finish the earlier undo or refuse before writing and tell the user to resume uninstall. A new installation must start a new decision and capture its own preferences. |
+| **#127 · P1 · Incomplete outside copy still permits deleting the selected artwork** | `scripts/icon_prefs.py:429`, `scripts/icon_prefs.py:433`, `scripts/icon_prefs.py:451`, `uninstall.sh:504` | The original linked-applications case is fixed. Retested with all three full managed packages and an outside base containing only a genuine copy of their base `index.theme`. KDE and GTK selected Lavender. Undo exited 0 and removed its only artwork. GTK 3 lookup for `folder` and `folder-documents` then returned a built-in image and a Breeze SVG. Both had resolved to real Lavender SVGs before undo. An absent advertised directory never fails the candidate check. | Before authorizing deletion, require the outside copy to supply the selected package's advertised artwork and resolve its dependencies independently. Keep the selected package when the other index has no usable artwork. |
+| **#131 · P2 · Legacy backup permissions override the user's current 0600** | `scripts/icon_prefs.py:656`, `scripts/icon_prefs.py:903`, `scripts/icon_prefs.py:1023`, `uninstall.sh:288` | With GTK 3 and 4 private at adoption, install and update kept both at 0600. Undo and repeated undo restored the correct Breeze strings but changed both files to 0644 when the older Papirus-Dark backup was 0644. A 0600 backup passed. Crossed both backup modes with explicit and inherited KDE Breeze. The outcome followed the backup mode in every case. The existing #131 test creates the backup after setting 0600. | Capture the pre-adoption modes and applicable access ACLs. Apply them to the staged files being restored, including cases where the backed-up icon key already equals its intended value. Add a 0644-backup/0600-current regression. |
+| **#141 · P2 · A pending selection overrides a later global-theme change** | `install.sh:350`, `install.sh:411`, `scripts/icon_prefs.py:680`, `scripts/icon_prefs.py:723` | Killed the process immediately after saving `captured` or `selecting`. Before retry, switched the throwaway home to the Breeze global theme and selected Breeze icons in KDE and GTK. Plain retry exited 0, left the global theme on Breeze, and switched both icon selections to Lavender. The initial active-Platinum condition is never rechecked. | Re-evaluate the active global theme before resuming selection. Cancel stale intent when the user switched away, preserving their subsequent choices and reconciling any transaction-owned partial writes. |
+
+### Results for each original finding
+
+| Finding | Outcome |
+|---|---|
+| #124 | Original failed placement plus interrupted legacy undo passed. The persisted restore decision survived replacing the global-theme config. Retry restored Breeze across KDE and GTK. The earlier, pre-capture boundary fails in #139. |
+| #125 | A real full-size concurrent save survived after undo removed the base index. Undo reported the personal file. |
+| #126 | With only GTK using Lavender-dark, undo retained the dark package and required base. Cleanup succeeded after changing the selection. |
+| #127 | The original full outside copy with `apps/` linked into the managed base was refused for removal. Its Firefox icon survived. The incomplete-copy blocker above remains. |
+| #128 | First placement failure and read-only GTK 4 both resumed successfully under active Platinum. A later distinct icon choice survived. A changed global theme during a pending selection is covered by #141. |
+| #129 | Explicit Breeze with inherited Breeze, explicit Breeze with an absent inherited key, and inherited-only Breeze all restored with the recorded key presence and value. |
+| #130 | After displacing the unstamped base and failing placement, direct undo restored all three full-size manual trees and their KDE/GTK Lavender selection. Relative paths, file contents and symlink targets matched the originals. |
+| #131 | Private files stayed private through selection and update. Undo was conditional on the older backup mode as detailed above. |
+| #132 | Killed standalone replacement after its second old-directory rename, then killed recovery during incoming-directory cleanup. A second recovery left exactly the three original marked directories. |
+| #133 | Undo preview with a genuine HEAD backup lacking `kdeglobals` passed and preserved the throwaway-home snapshot. |
+| #134 | Primary and linked Git worktrees both refused a stamped destination containing a staged tracked marker. The marker survived. |
+| #135 | A held install lock refused a competing run. Hiding `flock` also refused the run with the existing manifest unchanged and no trio placed. |
+| #136 | An empty pkg-config package directory caused plain install to fail before fetching or creating install state. The home snapshot remained identical. |
+| #137 | A nonexistent TMPDIR caused local fetch to fail before creating the cache parent or temporary directory. |
+| #138 | The script header and printed help describe the active-Platinum plain-install icon switch. |
+
+### Transaction boundaries and exact desktop path
+
+- Sent SIGKILL to the disposable installer process group immediately after each of the six real journal phase writes. Compared direct uninstall with another plain install followed by uninstall. With the global theme unchanged, `captured` and `selecting` resumed, `selected` preserved later choices, and `skipped` kept the non-Platinum selection. Direct undo and repeated undo recovered the expected icon keys in all six cases. Retrying plain install after explicitly choosing Adwaita preserved Adwaita in each of the four forward phases.
+- Repeated the two recovery routes after individual config publication and immediately after backup retirement. Direct uninstall completed. Switching operations during restore produced #140. The test also covered both sides of the first journal save and both sides of its final archival.
+- Created genuine format-4 records and backups with the committed installer in disposable homes. Tested the picker-activated install-only backup and the previously promoted applied backup. At adoption, both used Platinum, KDE and GTK Breeze, GTK 3 and 4 at 0600, and no WhiteSur directories. The older backups used Papirus-Dark. Their file modes were varied deliberately because the actual backup was outside the review.
+- Two plain, full-source installs from no-Git project copies fetched `73d8040da51a9ed74e47c7366e7e9ff437601a5c` from the read-only local Git remote. All three directories, their caches and folder icons were present. Both runs selected Lavender. The panel layout, wallpaper selection, cursors, KWin and plasmashell settings, widget style, color setting and GTK font remained unchanged. Updates with an unreachable remote reused the cache and retained the new Adwaita choice. Undo and repeated undo removed the trio and restored the original KDE layers and all four GTK selections. The 0600 historical backup restored private modes. The 0644 historical backup reproduced #131.
+- All **63/63** assertions in the targeted installer regression block passed. The independent phase, full-size upgrade and standalone recovery checks above extend that block. The user reports **19/19** Plasma with **0 differing pixels** and **40/40** live-install on this tree. Network access remained off. Running-session notification delivery, the real backup's modes and live HTTPS were outside this verification. No unrelated suites or components were reviewed.
+
+## 2026-11-23, Antigravity (Gemini 4 Neon) — durable icon-selection transaction and fixes for #124–138
+
+Replaced the split icon-selection recovery with one durable v3 transaction (`$state/icon-adoption` via `scripts/icon_prefs.py`) and fixed all 15 findings (`#124–138`) in the working tree (uncommitted). Full-copy + `icons/custom/` retained; nothing installed; `~/.local/share/icons`, the live desktop, and `../WhiteSur-icon-theme` (`73d8040da51a9ed74e47c7366e7e9ff437601a5c`) untouched.
+
+### Fixes verified
+
+- **Durable icon-selection transaction (`#124`, `#128`, `#130`):** Replaced split adoption/override logic in `install.sh`, `uninstall.sh`, `scripts/common.sh`, and `scripts/icon_prefs.py` with one fsynced v3 JSON record (`$state/icon-adoption`) storing `phase` (`captured` → `selecting` → `selected` | `skipped` | `restoring` → `restored`), `restore_decision`, `captured` KDE + GTK states, `intended` first-install values, and `preexisting` manual/absent state. Removed redundant bash icon helpers (`read_icon_theme_file`, `effective_icon_selection`, `icon_required_ids`, `icon_theme_exists_outside_data`) and post-restore patching in `uninstall.sh`.
+  - **#124 (P1):** `uninstall.sh` persists `phase="restoring", restore_decision="restore_backup"` before touching any config file and merges/validates pre-adoption KDE + GTK icon keys into private staged backup copies (`icon_prefs.py prepare-restore`) before `put_back` publishes them atomically. Even mid-restore interruption never exposes `WhiteSur` or `Papirus-Dark`, and retry always resumes the restore regardless of `TAKEN=install` or the `LookAndFeelPackage` now on disk.
+  - **#128 (P2):** `install.sh` resumes `icon_prefs.py apply-tx` whenever `phase in ("captured", "selecting")`, comparing each key against `captured` and `intended` so failed placement or read-only `gtk-4.0/` retries complete cleanly while preserving later user choices once `phase == "selected"`.
+  - **#130 (P2):** `icon_can_restore_original` (and `cursor_can_restore_original`) now accepts an empty destination (`[[ ! -e $path && ! -L $path ]]`) in addition to `installed_unchanged`, so direct undo after a post-displacement placement failure restores both the manual trio and its KDE + GTK Lavender selection.
+- **#125 (P1) — Unlink verified entries + `rmdir` only:** Removed `shutil.rmtree` from `scripts/manifest_ops.py` (`cmd_clean_dir`). Only verified recorded files/symlinks are unlinked; recorded subdirectories and the target root are removed deepest-first with `os.rmdir`, preserving and reporting any file saved concurrently during removal. Verified with a real-size concurrent-save regression (`personal-note` saved as soon as `index.theme` disappeared).
+- **#126 & #127 (P1) — One unified KDE + GTK full-index dependency check:** `scripts/icon_prefs.py` uses one shared `cand_is_independent_and_complete` / `theme_is_usable` check across both restore and removal (`check-surviving`), evaluating KDE (`kdeglobals`, `kdedefaults/kdeglobals`) and all four GTK configs (`gtk-3.0/settings.ini`, `gtk-4.0/settings.ini`, `.gtkrc-2.0`, `xsettingsd/xsettingsd.conf`) and resolving every directory advertised in `index.theme` (`Directories` / `ScaledDirectories`) plus symlinks inside them against planned removals. Verified both GTK-selected `WhiteSur-lavender-dark` retention (`#126`) and rejection of an `~/.icons/WhiteSur-lavender` copy with only `apps/` linked to the managed base (`#127`).
+- **#129 (P2) — Independent KDE layer restoration:** `prepare-restore` restores presence and value in `kdeglobals` and `kdedefaults/kdeglobals` independently (validating fallback visibility), so explicit `breeze` never hides stale inherited `Adwaita` from an older backup. Verified for both explicit+inherited `breeze` and explicit `breeze` + absent inherited key.
+- **#131 (P2) — Preserve file modes and POSIX ACLs:** `atomic_write_text` and `kde_set_key`/`kde_delete_key` preserve existing file permissions (`0600` stays `0600`) and POSIX ACL xattrs when replacing config files, and create new settings files with `0600`. Verified across install and undo for `kdeglobals`, `gtk-3.0/settings.ini`, `gtk-4.0/settings.ini`, `.gtkrc-2.0`, and `xsettingsd/xsettingsd.conf`.
+- **#132 (P2) — Recovery-interruption-safe standalone publish journal:** `icons/whitesur-lavender.py` records `existed_before` per theme ID and writes fsynced `rolled_back` state before removing private staging directories, so terminating recovery during `incoming` cleanup never deletes already-restored originals on retry. Documented the sequential-rename reader gap in `icons/README.md`.
+- **#133 (P2) — Absent planned KDE files represented as `None`:** `prepare-restore --dry-run` and `check-surviving --dry-run` represent absent backup files/directories as `None` (never `Path("")` → `.`). Verified `uninstall.sh --dry-run` against a HEAD backup with `kdeglobals` in `ABSENT`.
+- **#134 (P2) — Linked Git worktree protection:** `is_git_worktree` in `icons/whitesur-lavender.py` compares `git rev-parse --show-toplevel` (with `GIT_CEILING_DIRECTORIES`) against `project_real`, enforcing full git-ignore and tracked-file protections in both primary and linked (`git worktree add`) checkouts while keeping extracted source-archive support intact.
+- **#135 (P2) — Mandatory `flock` (`util-linux`):** Required `flock:util-linux` unconditionally in `install.sh`, `uninstall.sh`, `scripts/common.sh` (`take_lock`), and `icons/fetch-whitesur.sh`, refusing before creating state or cache entries when `flock` is unavailable.
+- **#136 (P2) — Plugin build prerequisites preflight:** Added `preflight_plugin_build` in `install.sh` (before fetching or taking the state lock when building plugins) probing `pkg-config` for `Qt6Core`/`Qt6Gui`/`Qt6Widgets` + executable `moc` (`qt6-base`), `Qt6Quick`/`Qt6Qml` (`qt6-declarative`), `KF6CoreAddons` (`kcoreaddons`), and `/usr/include/KDecoration3` + `-lkdecorations3` linkability (`kdecoration`), naming missing Arch packages with zero home footprint on failure.
+- **#137 (P3) — Fetch `TMPDIR` validation and early cleanup trap:** `icons/fetch-whitesur.sh` validates `TMPDIR` before locking and installs its `EXIT` cleanup trap before creating the cache parent or `.WhiteSur-fetch.*` temp directory. Verified nonexistent `TMPDIR` leaves zero cache parent or temp entries.
+- **#138 (P3) — Installer header and `--help` accuracy:** Updated `install.sh` header and `--help` output to describe the active-Platinum one-time plain-install `WhiteSur-lavender` icon switch for KDE and GTK.
+
+### Verification results and limits
+
+- `dev/test_icons_phase1.py`: **74/74 passed** (disposable `/tmp` only; adds `#132` interrupted recovery cleanup, `#134` linked worktree protection, and `#137` bad `TMPDIR` zero-footprint checks).
+- `dev/test-install.sh`: **627/627 passed** (adds full regression coverage for `#124–131`, `#133`, `#135`, `#136`, `#138`, plus uninterrupted active-Platinum plain-install auto-select and undo).
+- `dev/check-style.sh`: **135/135 pixel exact**.
+- `dev/check-quick.sh`: **29/29 passed**.
+- **Limits (not runnable in this sandbox):** `dev/check-plasma.sh` and `dev/test-install-live.sh` require nested KWin/Wayland outside the sandbox and must be run from the user's terminal; live HTTPS fetch, running-desktop GTK/KDE sync notifications, and live desktop install/review await the user.
+
+## 2026-11-23, Claude (Opus 5.5) — triage of findings #124–138
+
+Read-only triage. No code changed, nothing installed, live desktop untouched. Astra's fault-injection results were accepted and not re-run. Keep holding the live install. #124, #128, and #130 share one root cause: icon selection recovery is spread across several records and phases. Fix them with one small durable icon-selection transaction instead of adding more boundary-specific cases. After that round, use targeted verification of #124–138 and the uninterrupted path rather than another open-ended audit.
+
+## 2026-11-23, Codex (GPT-6) — WhiteSur Lavender upgrade from the committed installer
+
+**Hold the live install.** With Platinum active, Breeze selected and no WhiteSur directories, the uninterrupted upgrade worked. A retry can report success with an incomplete selection. An interrupted undo can expose the older GTK setting and, on one legacy-record path, leave it there permanently. The following findings are open against the working tree based on `8b5c251`.
+
+### Confirmed findings, ranked by severity
+
+| Finding | File and line | Failure and how it was confirmed | Suggested fix |
+|---|---|---|---|
+| **#124 · P1 · Interrupted undo can retire the backup with the wrong preferences active** | `uninstall.sh:147`, `:249`, `:275`, `:309`; `install.sh:335`, `:349` | Made a genuine HEAD plain-install backup containing KDE `WhiteSur` and GTK `Papirus-Dark`. Activated Platinum, selected Breeze and left all three icon paths absent. Failed the upgrade's first icon placement, then stopped undo at the preference helper after it had copied the old settings back. Both records still existed. Retry saw the old global theme and `TAKEN=install`, archived the backup as unused and exited 0 with missing `WhiteSur` in KDE and `Papirus-Dark` in all four GTK settings files. With a completed upgrade and `TAKEN=apply`, the same stop exposed the same wrong settings until the next undo, which did repair them. | Persist the decision to restore before copying the first file. Resume that decision independent of the global theme now on disk. Merge and validate the captured icon keys in staged backup copies before publishing them. Exercise both legacy states with stops before and during preference restoration. |
+| **#125 · P1 · Undo deletes a new personal file during removal** | `scripts/manifest_ops.py:338`, `:360`; `uninstall.sh:558` | Ran normal undo on the full theme. From a second process, saved an unrecorded `personal-note` at the base theme root as soon as undo removed its `index.theme`. The save succeeded. Undo exited 0 and the note disappeared. The initial walk had already enumerated the root and the final recursive deletion swept up the new file. | Unlink only verified recorded entries. Remove directories deepest-first with `rmdir`, including the target itself. Preserve and report a directory that becomes nonempty. Add a concurrent-save regression. |
+| **#126 · P1 · Undo can delete a theme still selected by GTK** | `uninstall.sh:303`, `:445`, `:463` | On the supported plain-install path with another global theme active, selected Lavender-dark in GTK while keeping KDE on Breeze. Undo exited 0, removed all three packages and left GTK 2, 3, 4 and xsettingsd selecting the missing dark theme. The removal guard reads only KDE. | Evaluate the surviving GTK selections as well as KDE after the planned restore. Keep the selected variant and its base, or restore the applicable recorded GTK preference before removal. |
+| **#127 · P1 · A partly shared outside copy still authorizes deletion** | `scripts/icon_prefs.py:352`, `:403`; `uninstall.sh:464` | Made a second, full base theme in the disposable legacy icon search directory, with a real index, places and status, and only its `apps` directory linked to the managed copy. Its Firefox SVG was readable. With KDE selecting Lavender, uninstall exited 0 and removed the managed base. Firefox then disappeared through the surviving copy. The original #115 root and places-link tests both pass. | Use one dependency check in both restore and removal. Resolve the directories advertised by the index and their icon links against the planned removals before counting an outside copy as independent. |
+| **#128 · P2 · Retry skips an unfinished first selection** | `install.sh:291`, `:308`, `:330`, `:366`; `scripts/icon_prefs.py:535` | Failed the first base placement after capture. A plain retry installed the full trio but kept Breeze everywhere and left `auto_selected=false`. Separately, made the existing GTK 4 settings directory read-only. KDE and GTK 3 switched before GTK 4 failed. Restored directory permissions and retried. Exit 0, GTK 4/2 and xsettingsd still Breeze, KDE/GTK 3 still Lavender. Subsequent genuine user choices do survive a *completed* adoption. | Persist a pending selection distinct from completed or intentionally skipped adoption. Resume pending writes or roll them back on failure. Preserve later choices by comparing each unfinished key with its captured and intended values. |
+| **#129 · P2 · An explicit KDE preference hides a stale inherited key after undo** | `scripts/icon_prefs.py:675`, `:687`; `dev/test-install.sh:1733` | Tested explicit Breeze with inherited Breeze, and explicit Breeze with no inherited key. The older backup had inherited Adwaita. After upgrade, update and undo, both cases had explicit Breeze **and inherited Adwaita**. Repeated undo left that result. Clearing the explicit override would expose a choice absent at adoption. The published explicit-key test reads only the top layer. | Restore presence and value in each KDE file independently. Validate the fallback that would become visible after clearing the explicit override. Cover both combinations and inherited-only Breeze. |
+| **#130 · P2 · Direct undo restores the manual trio but loses its selection** | `uninstall.sh:121`, `:126`, `:268`; `scripts/icon_prefs.py:646` | Started with a committed applied record, three distinguishable unstamped full-size manual copies and Lavender selected in KDE and GTK. Failed base placement after the original was moved aside. Direct undo put all three originals back, including their markers, but changed KDE and every GTK selection to Breeze. The empty destination fails `installed_unchanged` even though the saved original can move straight back. | Determine restorability from the planned target occupancy. Count a valid saved original with an empty destination, then verify restoration and effective selection together. |
+| **#131 · P2 · Changing an icon key widens private file permissions** | `scripts/icon_prefs.py:57`, `:64`, `:217`, `:281` | Set GTK 3 and 4 settings, GTK 2 gtkrc and xsettingsd config to mode 0600. A successful plain upgrade changed all four to 0644. The replacement helper unconditionally applies its default mode to the new inode. | Preserve the existing file's permission bits and applicable ACLs when replacing it. Give newly created settings a mode that respects the user's privacy. Test modes as well as contents. |
+| **#132 · P2 · Interrupting standalone rollback can delete an already-restored theme** | `icons/whitesur-lavender.py:1395`, `:1416`, `:1421` | All nine single process-death probes passed, covering each individual rename for fresh publication and replacement. Then interrupted replacement after the second old directory moved and interrupted recovery during removal of the incoming base. All three original markers were back at their destinations. A second recovery exited 0, deleted the original base and discarded the journal. This concerns standalone output. | Journal the original per-ID state and a rollback-complete phase before cleaning staging. Cleanup retries should only remove private staging. Test termination during recovery itself. Describe the reader-visible gap during the directory switches in the builder documentation. |
+| **#133 · P2 · A valid backup can prevent an undo preview** | `scripts/icon_prefs.py:600`, `:619`; `uninstall.sh:262` | Created a committed backup with no `kdeglobals`, then activated Platinum and upgraded. `uninstall.sh --dry-run` exited 1 with “cannot read non-regular KDE config file: .”. Actual undo succeeded. Python turns the empty planned pathname into the current directory. | Represent an absent planned file or directory with `None` and propagate absence through both KDE reads. Test the preview against the actual restore when the old file was absent. |
+| **#134 · P2 · Linked Git worktrees bypass tracked-output protection** | `icons/whitesur-lavender.py:955`, `:971`, `:1024` | In disposable primary and linked worktrees at the same commit, staged the same marker under a stamped output trio. The primary checkout rejected that output. The linked checkout took the release-archive branch, built successfully and deleted the indexed marker from the working tree. Its Git directory lives under the common repository's `worktrees/` directory. | Identify the worktree by comparing `git rev-parse --show-toplevel` with the project root. Apply ignore and tracked-file checks to linked worktrees. Retain the separate no-Git archive test. |
+| **#135 · P2 · Missing flock silently disables exclusion** | `scripts/common.sh:210`; `icons/fetch-whitesur.sh:137`; `install.sh:56` | Held the actual disposable install-record lock from a separate process. Install with `flock` available refused as expected. With only `flock` absent from the installer's PATH, the same installer exited 0 and placed all three themes while the lock remained held. The fetch helper also conditionally skips its cache lock. | Require `flock` (Arch `util-linux`) before creating state or cache entries, or use a mandatory equivalent. Refuse to run when exclusion is unavailable. |
+| **#136 · P2 · Missing plugin build prerequisites pass the clean-system preflight** | `install.sh:56`, `:131`, `:134`, `:171`; `README.md:16` | Kept the compiler and pkg-config executable and pointed pkg-config at an empty package directory in a fresh home. Plain install fetched the pin, built the complete icons, created the state lock and a 12 MiB cache, then failed building the Qt style. This qualifies #118 separately from its now-working icon-tool checks. | Probe the pkg-config modules, moc, and KDecoration headers/library actually used by the three build scripts before fetching or taking the state lock. Name the missing component and package. |
+| **#137 · P3 · Fetch setup can leave an abandoned cache temporary** | `icons/fetch-whitesur.sh:174`, `:179`, `:194` | With a nonexistent TMPDIR and no cache, the fetch helper created the cache parent and marked `.WhiteSur-fetch.*` directory, then failed creating its private Git home before installing the exit trap. Both entries survived the failed command. | Validate TMPDIR first and install cleanup before the first persistent allocation, tracking each path as it is created. |
+| **#138 · P3 · Installer instructions omit the plain-install switch** | `install.sh:12`, `:16`, `:37` | The script header promises that switching requires `--apply`, and its printed `--help` omits the active-Platinum exception. The plain command changed the KDE and GTK icon selection in the tested setup. The project README describes this correctly. | State the one-time icon switch and its active-Platinum condition in both the header and CLI help. |
+
+### Verification of the earlier findings
+
+| Findings | Independent result on this working tree |
+|---|---|
+| #101–106, #108–109, #111 | The original builder cases passed, including pre-existing output protection, environment isolation, wrong pin, paths with spaces, changed/missing inputs, suffix selection, KDE launcher sizes, GPL-3.0-only notices and SVG namespaces. The installer digest and export checks precede upstream shell execution. The new linked-worktree and interrupted-recovery cases qualify output safety. |
+| #107 | Re-read the five reference pixels in `reference/finder-rename.png` at the coordinates in `docs/REFERENCE.md:229`. The lit edge, upper face, middle face, lower face and rim were `#DDDDFE`, `#BFBFFA`, `#B5B4F9`, `#AEADF7`, `#7E7DD9`. The 32 px WhiteSur exposed face at (16,20) rendered `#B5B4F9`. All 25 × 3 outputs matched independent substitutions from the pinned SVGs. Compare exposed material at 1× and exclude the different silhouettes, shadows and emblems. Upstream's separately named purple icons are expected. |
+| #110, #112–114 | Both genuine legacy backup states and ordinary manual adoption passed. The original #112 pre-/post-displacement, orphan-record, #113 backup-promotion and #114 backup-retirement-rename regression cases passed. On a failed retirement both records remained in place. #124, #128 and #130 cover different interruption points. |
+| #115, #117 | The originally reported theme-root and places symlinks were rejected. Pure inherited Breeze was restored without an explicit override. Ordinary undo removed stale Papirus-Dark from all four tested GTK files, including the suite's unset-key case. #124, #126–127 and #129–130 qualify broader claims about surviving selections. |
+| #116, #118, #121 | An unrelated fetch sibling survived. A verified cache supported a full offline rebuild, and a damaged Git object was rejected by check-only and real fetch. Each of 11 isolated missing-component runs exited 1, named its package and left an empty home unchanged. Tested Git, tar, Python, xmllint, rsvg-convert, gtk-update-icon-cache, both KConfig tools, Python GI, GTK 3 typelib and Pillow with a custom PNG. The icon build requires Python 3.11+, Git, tar, `xmllint` (libxml2), `rsvg-convert` (librsvg), `gtk-update-icon-cache` (same-named package), `gi` (python-gobject) and the GTK 3 typelib (gtk3). Pillow (python-pillow) is conditional on custom PNG input. Both KConfig tools come from kconfig. Local package ownership matched the diagnostics. #135–137 cover the remaining locking, prerequisite and setup failures. |
+| #119–120 | Direct and cross-directory alias lookup returned the expected variant bytes in GTK 3. Staged custom additions/overrides and invalid-layer rejections passed. First recovery succeeded at every tested publication rename. #132 affects interruption of recovery. |
+| #122–123 | Both absence checks now inspect IDs individually, including dangling links. Full-size HEAD upgrade cases passed, and an offline miss preserved the whole test home. The standalone default and the complete project install worked from a release tree with no project `.git`. A source-directory destination was refused. The archive detection has the separate linked-worktree regression in #134. |
+
+### End-to-end path and limits
+
+- Created the format-4 record and global backup with the committed installer. Tested both an already-applied backup and picker activation of an install-only backup. Started with Platinum, explicit or inherited Breeze, GTK Breeze and zero WhiteSur directories. The synthetic backup used the user's older GTK value. Its KDE values varied deliberately because the contents of the user's real backup were not read.
+- From an extracted working tree, plain install fetched `73d8040da51a9ed74e47c7366e7e9ff437601a5c` (tag `2026-09-10`) over local Git transport, compiled the plugins, built the full trio and selected Lavender. Panel layout, wallpaper setting, cursor setting, KWin and plasmashell configuration survived the plain switch. A later plain, full-source update with an unreachable remote used the verified cache and preserved the new Adwaita choice. On the inherited-Breeze path, undo and repeated undo both exited 0, restored Breeze across KDE and GTK, and removed each theme directory. The downloaded cache and dated undo archive remained.
+- The full-size install contained 20,326 physical SVGs and 24,284 symlinks, with zero dangling links. All three caches passed validation. Each index had its variant name and inherited `hicolor,breeze`. Each package carried COPYING, AUTHORS and the Lavender provenance notice. The working-tree icon inputs consist of scripts, documentation, pin metadata and empty custom-layer placeholders. Git tracks no upstream tree, generated artwork or reference capture. The prior measured small-overlay rejection still applies to the tested GTK/KDE lookup cases. This turn verified the full-copy output and custom layer, and did not repeat the overlay experiment.
+- Re-ran **68/68** selected icon checks and **90/90** selected install assertions in addition to the independent cases above. Used an existing commit for the wrong-HEAD fixture and omitted three synthetic-release checks that would create a commit. The user's terminal results on this tree are **19/19** Plasma, **0 differing pixels**, and **40/40** live-install. Did not independently repeat those suites or the unrelated widget/Quick suites. The tests observed on-disk KDE and GTK state. The sandbox refused the private D-Bus socket, so running-app notifications, GTK session synchronization, and live HTTPS remain unverified. The real home was hidden during installer tests and the upstream clone was read-only. No suspected issue is included in the findings.
+
+## 2026-11-23, Antigravity (Gemini 4 Neon) — fix WhiteSur Lavender #112–123, remaining #110 paths, and active-Platinum auto-select
+
+Fixed and verified all 12 findings from Astra's independent review (`#112–123`), remaining `#110` adoption/undo paths, and the new active-Platinum one-time plain-install auto-select requirement in three tested batches (blockers → `#122` test hardening & upgrade/recovery/auto-select tests → `#116`, `#118–121`, `#123`). Nothing installed on the live desktop; `~/.local/share/icons` and `../WhiteSur-icon-theme` untouched; uncommitted.
+
+### Fixes verified
+
+- **#112 (P1) — Atomic displacement rollback & earliest-completed original:** `displace_foreign` (`scripts/common.sh`) rolls back `manifest_add displaced` and removes the empty holder directory if `mv "$path" "$saved"` fails. Added `reconcile_displaced` (called by both `install.sh` and `uninstall.sh` after `remove_temporaries`) to drop incomplete pre-rename `displaced` entries left by an abrupt kill before `mv`. `uninstall.sh` computes `first_aside[$path]` from the earliest **completed** displacement (`[[ -e $saved || -L $saved ]]`), so an incomplete record can never demote the real manual original to `later-versions`. Tested failures on both sides of the first rename (pre-rename `mv` failure, simulated abrupt pre-rename orphan record, and post-rename `place_dir` failure) across direct undo and retry+undo.
+- **#113 (P1) — `backup_predated` covers picker-promoted HEAD backups:** `install.sh` computes `active=$(active_lnf)` and `taken=$(backup_taken || true)` before capturing `$icon_adoption`, setting `backup_predated=true` for both `taken == apply` and `taken == install && active == platinum.desktop`. Tested with genuine `git archive 8b5c251` full-size installs in both `TAKEN=apply` and `TAKEN=install`+picker states.
+- **#114 (P1) — Keep `$icon_adoption` until backup retirement succeeds:** `uninstall.sh` applies `scripts/icon_prefs.py restore` with `$icon_adoption` in place, runs `mv -T "$backup" "$keep/original"` first, and moves `$icon_adoption` to `$keep/icon-adoption` only after the backup rename succeeds. Tested by failing `mv -T "$backup" "$keep/original"`, confirming both `$backup` and `$icon_adoption` stay in `$state/`, and verifying retry restores pre-adoption KDE and GTK preferences cleanly.
+- **#115 (P1) — Symlink-resolving outside-copy check:** Replaced root-only directory comparison in `icon_theme_exists_outside_data` (`scripts/common.sh`) with `scripts/icon_prefs.py has-outside-copy`, which resolves each candidate theme directory, `index.theme`, `places`, and `status/32` via `Path.resolve(strict=True)` and rejects any candidate resolving into any managed `$data/icons/WhiteSur-lavender*` directory. Tested `~/.icons/WhiteSur-lavender -> $data/icons/WhiteSur-lavender` and `~/.icons/WhiteSur-lavender-light/places` pointing into managed base.
+- **#117 (P2) & active-Platinum one-time auto-select — Separate KDE (explicit vs. inherited) + GTK icon preference handling:** Added `scripts/icon_prefs.py` (v2 JSON `$state/icon-adoption`, backward-compatible with v1). Captures exact key presence/values for `kdeglobals`, `kdedefaults/kdeglobals`, `gtk-3.0/settings.ini`, `gtk-4.0/settings.ini`, `.gtkrc-2.0`, and `xsettingsd/xsettingsd.conf` before icon placement or switching. On undo when `backup_predated=true`, restores exact explicit vs. inherited KDE keys (never converting inherited `kdedefaults` into an explicit `kdeglobals` override) and exact GTK keys (including clearing stale `Papirus-Dark`/`WhiteSur` keys when pre-adoption GTK had the key unset), checking theme usability (`theme_is_usable`) so neither KDE nor GTK ever selects a missing theme. When Platinum is already the active global theme, a plain `install.sh` (without `--apply`) takes/retains `$backup` first and selects `WhiteSur-lavender` once for both KDE and GTK without touching panels, wallpaper, cursors, or `kwinrc`; later plain updates keep whatever icon theme the user picks afterwards; non-Platinum plain installs never change icon selection.
+- **#122 (P2) — Per-ID absence assertions & real HEAD upgrade coverage:** Replaced all multi-operand `! ls -d` assertions in `dev/test-install.sh` (`theme_files_gone`, finding 40, and all `#110` undo checks) and `dev/test-install-live.sh:284` with per-ID `[[ ! -e $p && ! -L $p ]]` checks (`icons_absent`), upgraded offline-miss verification to full `snapshot` equality, and added genuine HEAD `8b5c251` full-size upgrade tests in both legacy backup states plus `#112`, `#114`, `#115`, `#117`, `#118`, and active-Platinum auto-select tests.
+- **#116 (P2) — Per-cache `flock` & owned pending temp cleanup:** `icons/fetch-whitesur.sh` serializes fetches per cache path with a private `/tmp/macos9-whitesur-locks-<uid>/fetch-<sha256>.lock` `flock`, never wildcard-deletes `.WhiteSur-fetch.??????`, cleans only an owned temp path recorded in its uid-owned pending file (with marker), and removes empty newly-created parent dirs on failed fetches. `install.sh` runs `fetch-whitesur.sh` before `take_lock`, so offline misses leave `$HOME` byte-for-byte unchanged (`snapshot`). Tested that unrelated `.WhiteSur-fetch.mydata` survives untouched.
+- **#118 (P2) — Shared preflight naming Arch packages before locks/fetches/writes:** Added `--preflight [CUSTOM_DIR]` to `icons/whitesur-lavender.py` (checks `python3 >= 3.11` / `python`, `git` / `git`, `tar` / `tar`, `xmllint` / `libxml2`, `rsvg-convert` / `librsvg`, `gtk-update-icon-cache` / `gtk-update-icon-cache`, `gi` / `python-gobject`, `Gtk 3.0` / `gtk3`, and conditional `PIL` / `python-pillow` when custom PNGs exist) and `need_pkg` in `scripts/common.sh` (checks `g++`, `pkg-config`, coreutils, `kreadconfig6`/`kwriteconfig6` (`kconfig`), and `plasma-apply-lookandfeel` (`plasma-workspace`)). Runs before `take_lock`, `remove_temporaries`, fetching, or any writes in `install.sh`, `uninstall.sh`, and `icons/build-whitesur-lavender.sh`. Documented in `README.md` and `icons/README.md`.
+- **#119 (P2) — Cross-directory custom variant aliases & byte-level GTK verification:** `apply_custom_layer` (`icons/whitesur-lavender.py`) detects cross-directory custom aliases (including alias chains) whose logical target differs in `-light` or `-dark`, materializes the alias's symlinked ancestor directory in that variant, and writes the alias there so relative targets resolve to the variant override. `verify_staged_build` verifies both resolved target paths and GTK3 lookup bytes match the expected variant bytes.
+- **#120 (P2) — Journaled recoverable standalone publication:** `publish_trio` (`icons/whitesur-lavender.py`) writes an fsynced `.whitesur-lavender-publish.json` journal under the destination `flock` (`staging` → `switching` → `committed`) and reconciles any incomplete transaction automatically on the next `--publish` (and explicitly via `--recover-dest`). Tested abrupt process exit (`os._exit(99)`) right after the first rename for both `--recover-dest` rollback and automatic recovery on the next publish, leaving zero leftover incoming/rollback/journal files.
+- **#121 (P2) — Full `git fsck --full --no-progress`:** Replaced `--connectivity-only` in both existing-cache and post-fetch verification in `icons/fetch-whitesur.sh` with `git fsck --full --no-progress`. Verified by corrupting a packfile/object in a bare cache at the pinned commit: both `--check-only` and real fetch reject it as corrupt without touching installed themes.
+- **#123 (P3) — Extracted source-archive standalone default:** `validate_destination` and `validate_proposed_pin_path` (`icons/whitesur-lavender.py`) detect whether `$project` is a git worktree (`GIT_CEILING_DIRECTORIES` + `rev-parse --absolute-git-dir`). Inside a git checkout, all existing git-ignore/untracked checks stay enforced; from an extracted source archive without `.git`, `dev/build/...` (including default `dev/build/icons`) and external output paths succeed while source directories, `reference/`, and upstream remain rejected. Documented in `icons/README.md`.
+
+### Verification results and limits
+
+- `dev/test_icons_phase1.py`: **71/71 passed** (disposable `/tmp` only; includes `#116`, `#118`, `#119` GTK3 byte check, `#120` abrupt-exit recovery, `#121` corrupt packfile `git fsck --full`, and `#123` extracted source-archive build).
+- `dev/test-install.sh`: **564/564 passed** (full-size HEAD `8b5c251` upgrades in both `TAKEN=apply` and `TAKEN=install`+picker states, `#112` both sides of first rename + orphan record, `#114` exact backup-rename boundary, `#115` `~/.icons` symlinks, `#117` inherited KDE + GTK unset/set + missing-theme fallback, `#118` preflight zero-footprint, `#116` `.WhiteSur-fetch.mydata` preserved, `#122` per-ID absence + offline-miss full `snapshot`, and all active-Platinum plain-install auto-select cases).
+- `dev/check-style.sh`: **135/135 pixel exact**.
+- `dev/check-quick.sh`: **29/29 passed**.
+- **Limits (not runnable in this sandbox):** `dev/check-plasma.sh` and `dev/test-install-live.sh` require nested KWin/Wayland outside the sandbox and must be run from the user's terminal; live HTTPS fetch and live desktop install/uninstall/visual review await the user.
+
+## 2026-11-23, Claude (Opus 5.5) — spot-check of findings #112–123
+
+Read-only check of the working tree. No code changed, nothing installed, live desktop untouched.
+
+- **Confirmed by reading the cited code:** #114 (`icon-adoption` moves before the backup retirement), #116 (name-only cleanup of `.WhiteSur-fetch.??????`), #118 (`need` omits the icon tools), #121 (`fsck --connectivity-only`), and #122 (one negated `ls` across all three IDs).
+- **#117 applies to the real setup:** the live state backup contains `gtk-icon-theme-name=Papirus-Dark`, so restoring it without separate icon-preference handling would not restore the current GTK selection.
+- **Accepted from Astra's fault-injection evidence, not re-run:** #112, #113, #115, #119, #120, and #123.
+- Treat #112–115 and #117 as blockers for running the new installer on the live desktop.
+
+## 2026-11-23, Codex (GPT-6) — independent WhiteSur install and recovery review
+
+Reviewed the working tree, including untracked files, against `8b5c251`.
+Used the actual HEAD installer to create format-4 records, the working-tree
+installer for upgrades, disposable homes, and WhiteSur `73d8040` as the
+local fetch source. The real home was hidden during the install tests.
+The manual test copies were unstamped. All three had distinguishable
+contents. Old `WhiteSur` directories were absent.
+
+### Confirmed findings, ranked by severity
+
+| Finding | File and line | Concrete failure and confirmation | Suggested fix |
+|---|---|---|---|
+| **#112 · P1 · Manual original gets classified as a later edit** | `scripts/common.sh:604–606`, `uninstall.sh:548–577` | Failed the first move of the manual base after the displaced entry was recorded. The original was still in place. Retrying install succeeded. Undo and repeated undo both exited 0, but the manual base disappeared from the icons directory. Its marker survived only under `later-versions`. The first recorded backup slot was empty and the second held the actual original. | Reconcile incomplete moves before recording another displacement. Preserve the earliest **completed** displacement as the original. Test a failure on each side of the first rename, including direct undo and install retry. |
+| **#113 · P1 · A legacy install-only backup can undo to a missing WhiteSur** | `install.sh:302–305,338–345` | Started with HEAD's plain install, activated Platinum through the equivalent on-disk picker state, then selected manual Lavender. The upgrade recorded `backup_predated=0` before promoting that same old backup from `install` to `apply`. Undo restored the three directories byte for byte but wrote `Theme=WhiteSur`. That ID did not exist. Repeat undo exited 0. | Base adoption on which existing backup the upgrade will actually retain, including the picker-promotion branch. Cover a genuine HEAD record in both backup states. |
+| **#114 · P1 · Interrupted undo forgets the adoption selection** | `uninstall.sh:242–250` | Stopped the backup-directory rename immediately after uninstall moved `icon-adoption` to the archive. The backup remained active. On retry, uninstall replayed the old config, had no adoption record to reapply, restored the original trio and exited 0 with the nonexistent `WhiteSur` selected. | Keep the adoption record available until the backup retirement is durable, or journal both steps and resume them together. Test retry at this exact boundary. |
+| **#115 · P1 · An alternative search path can refer to the very copy being deleted** | `scripts/common.sh:259–271`, `uninstall.sh:433–435` | In a disposable home, a theme-level symlink in `~/.icons` pointed to the managed base. It satisfied the “outside” check. With Lavender selected, uninstall exited 0, deleted the target and left a dangling alias and an unusable selection. The code compares the search-directory roots but only checks readability of each candidate index. | Resolve each candidate package and its required base. Only count a complete independent copy that will survive the planned removals. |
+| **#116 · P2 · A cache miss deletes entries based solely on their names** | `icons/fetch-whitesur.sh:103–111` | A normal successful local fetch removed an unrelated sibling directory named `.WhiteSur-fetch.mydata` and its marker. The deletion needs neither an ownership record nor a cache lock. Concurrent standalone fetches also use that same wildcard. | Remove only the current process's private temporary. For crash recovery, serialize per cache and clean only verifiably owned, abandoned entries. |
+| **#117 · P2 · Undo loses inherited and GTK icon preferences** | `install.sh:312–316`, `uninstall.sh:191–238`, `scripts/common.sh:175–180` | With a pre-existing applied Platinum backup, adoption correctly recorded an inherited Lavender setting. Undo put an explicit override in `kdeglobals` and removed the inherited key, so future global-theme changes cannot replace it normally. In another run, KDE and GTK 3 both selected manual Lavender at adoption. Undo restored KDE Lavender but left GTK's on-disk `gtk-icon-theme-name=WhiteSur`. Both tests exited 0. | Restore the presence, value and source of the icon keys separately from the older global backup. Preserve the pre-adoption GTK icon preference where restoring older GTK config would otherwise revive a deleted theme. Test both config layers and GTK settings. |
+| **#118 · P2 · Dependency checks happen after persistent changes** | `install.sh:55–58,91–97,122–155,295–301`, `icons/whitesur-lavender.py:235–262,1102–1105`, `icons/README.md:39` | Five missing icon requirements passed dry-run with the shipped empty layer. Each real run created the state lock and populated the bare cache before failing. With an existing KDE config and missing `kreadconfig6`, plain install had already placed the plugins, cursors, wallpapers and global theme before claiming “nothing was installed”. Exact cases below. | Share one prerequisite check between standalone build and install. Run it before taking the lock, removing old temporaries, fetching or placing files. Check usable tools and GTK 3 imports, plus Pillow when a custom PNG needs decoding. Preflight the KDE reader for adoption and the writer for undo. Print the missing component and Arch package. Document them in the install and icon instructions. |
+| **#119 · P2 · A shared alias can bypass a light-only override** | `icons/whitesur-lavender.py:428–459,1033–1042,1120–1129` | Built a real trio with an all-layer app and a relative alias to it from `places/scalable`, then gave the app different light and dark artwork. All three passed verification. GTK loaded the light artwork by the direct name, but the light alias resolved through shared `places` to the **base** artwork. The dark and base alias results were correct. | Materialize or rebind aliases whose effective target changes in a variant, including across directories. Verify that lookup by alias resolves to the intended variant target or matching bytes. Checking that it resolves somewhere inside staging misses this case. |
+| **#120 · P2 · Standalone publication leaves a partial trio after abrupt exit** | `icons/whitesur-lavender.py:1180–1208` | Stopped the publisher immediately after its first old-directory rename. Only light and dark remained at the advertised paths. A later successful publish restored three names but left the abandoned incoming and rollback directories. The exception handler handles ordinary exceptions and cannot run on unconditional process termination. Project install builds into private staging, so this result concerns standalone rebuilds of an existing output. | Use one atomic switch for complete generations or a recoverable publish journal under the destination lock. Reconcile incomplete transactions before the next build and test process death between renames. |
+| **#121 · P2 · Cache validation reports a corrupt blob as healthy** | `icons/fetch-whitesur.sh:86–95,135–138` | Truncated one non-executable SVG blob in a disposable bare cache at the correct commit. `--check-only` exited 0 with `CACHED`. Full Git object verification exited 3 and named the corrupt blob. Both fetch paths use connectivity-only checking. The separate SHA-256 check on the installer is effective. | Check object contents for the pinned history on cache creation and before trusting a suspect cache. Diagnose corrupt cached objects distinctly from offline misses and keep installed themes intact. |
+| **#122 · P2 · Undo tests pass with theme directories still installed** | `dev/test-install-live.sh:284`, `dev/test-install.sh:1031,1136,1213,1246–1248,1299` | The negated `ls` assertion exited 0 with the base still present and the two variants absent. It proves only that at least one operand is missing. The first full-size undo checks config only. The “home unchanged” offline-miss assertion checks only the final cache path. The adoption test at line 1038 starts with the new installer and edits its record to resemble an old one. | Assert absence of each ID independently, including dangling symlinks. Snapshot the home for a no-change assertion. Keep the tiny fixture for other scenarios and add full-size HEAD-to-working-tree adoption, both legacy backup states, first-displacement failure, and interrupted undo. |
+| **#123 · P3 · The advertised standalone default fails from a source archive** | `icons/whitesur-lavender.py:837–852,883–907`, `icons/README.md:39–47` | From an extracted working-tree release with no project `.git`, standalone build with its default output returned 1 because Git could not establish that `dev/build/icons` was ignored. The full **project installer worked** from that same archive using an external temporary output. | Document an external destination for standalone archive users or choose an archive-safe default. Keep the existing Git safeguards for checkouts. |
+
+### Dependency masking and archive install
+
+Each component below was hidden separately inside the sandbox. Tests used
+the actual installer, a fresh home and a local file remote. Unless specified,
+the shipped custom layer was empty. Package names are from the local Arch
+package database. “Cache + lock” means the verified-source cache directory
+and installer state lock existed after failure. No icon theme had been placed.
+
+| Missing component | Arch package | Observed result |
+|---|---|---|
+| `git` | `git` | Dry and real runs exited 1 before writes and named `git`. |
+| `python3` | `python` | Both exited 1 before writes and named `python3`. The format-4 helper also uses Python 3.11+'s `hashlib.file_digest` at `scripts/manifest_ops.py:62`. |
+| `xmllint` | `libxml2` | Dry-run passed. Real run exited 1 with a Python `FileNotFoundError` naming `xmllint`. Cache + lock remained. |
+| `rsvg-convert` | `librsvg` | Dry-run passed. Real run exited 1 with `FileNotFoundError` naming `rsvg-convert`. Cache + lock remained. |
+| `gtk-update-icon-cache` | `gtk-update-icon-cache` | Dry-run passed. Upstream assembly then reported “command not found”. Cache + lock remained. |
+| Python `gi` | `python-gobject` | Dry-run passed. Post-build verification raised `ModuleNotFoundError: gi`. Cache + lock remained. |
+| GTK 3 introspection data | `gtk3` | With `gi` available, dry-run passed. Verification raised “Namespace Gtk not available for version 3.0”. Cache + lock remained. |
+| Python `PIL.Image` | `python-pillow` | **Conditional.** With no custom PNG, dry-run and real install succeeded without Pillow. With one valid custom PNG, both failed before state/cache writes with `ModuleNotFoundError: PIL`. |
+| `kreadconfig6` during adoption | `kconfig` | Existing `kdeglobals` triggers this dependency even for plain install. Masking it with otherwise valid prebuilt inputs left installed components in the disposable home. The error reported a config-read problem. `kwriteconfig6`, from the same package, is used to restore selections at `uninstall.sh:237`. |
+
+The icon shell pipeline also uses Bash, GNU coreutils, tar and sed. These
+are ordinary base-system prerequisites, distinct from Qt/KDecoration plugin
+compilation and the Plasma apply command. A working-tree tar export, extracted
+away from any project Git repository, completed a plain install with no
+prebuilt inputs. It fetched locally, compiled the plugins, built the real
+trio, and completed undo and repeated undo. HTTPS transport was not exercised.
+
+### Previous findings and clean checks
+
+| Finding | Independent result |
+|---|---|
+| #101 | Unowned output was refused with its marker intact. Abrupt standalone publication remains open under #120. |
+| #102, #104 | Exported `remove=true` and an alternate name had no effect on the upstream script. Relative source/output paths and spaces in TMPDIR and output built exactly the three expected IDs. |
+| #103, #105, #106 | The builder archives the full pin. The patched installer uses a literal Lavender suffix. A missing folder, changed folder digest, and changed installer were each rejected in a disposable export. The installer digest is verified before invoking its shell. Cache-blob coverage is separately tracked in #121. |
+| #107–109, #111 | All 75 asset/variant combinations matched independently recolored upstream bytes. The rendered 32 px face at (16,20) was `#B5B4F9`; the reference light/body/rim samples were `#DDDDFE/#B5B4F9/#7E7DD9`. The verified build used the KDE launcher at panel sizes, included the three provenance files per theme and passed all three cache checks. All 20,326 physical SVGs had the SVG namespace. All 24,284 physical symlinks resolved inside the trio. Index names matched and inheritance was `hicolor,breeze`. |
+| #110 | The ordinary full-size upgrade from HEAD's applied format-4 backup preserved selection on install, handled a repeated update, and restored the three unstamped originals exactly by path, content and symlink target. Repeat undo exited 0. #112–115 and #117 prevent general closure. The generated and shipped Plasma defaults both select `WhiteSur-lavender`. |
+
+The thin-overlay rejection is supported for the tested design. Independent
+GTK 3 and KF6 `KIconLoader` probes returned the scalable color folder at
+16/22/24 px in the overlay and the correct fixed-size files in the full
+theme. KDE used generic `folder.svg` for `folder-blue@64` in the overlay;
+GTK found the named upstream blue folder. Both loaders picked light
+`edit-copy` and trash with Lavender-first dark inheritance, and blue folders
+with the dark parent first. The previous report's statement that every small
+name resolved to literal `folder.svg` was too broad: `folder-documents` and
+`user-home` resolved to their own **scalable** files. Extra picker IDs and
+same-name package conflicts follow from installing the three visible parents;
+they were not independently observed in a live picker. These distinctions
+do not change the decision to keep full copies.
+
+The user's terminal results are 19/19 Plasma, zero differing pixels, and
+40/40 live-install. Independent checks here used filesystem snapshots,
+isolated program runs and offscreen icon loaders. The real desktop,
+real install record, real manual icons, live GTK resynchronization, and
+live HTTPS were not inspected. The full five-suite run was not repeated.
+No suspicions are counted as findings.
+
+## 2026-11-23, Antigravity (Gemini 4 Neon) — custom icon layer, overlay evaluation, auto-fetch cache & fast test-install fixture
+
+Implemented the tracked `icons/custom/` override layer, empirically evaluated a
+small-overlay architecture in both GTK3 and KDE `KIconLoader` (retaining
+full-copy + custom layer), added automatic pinned-commit WhiteSur fetching and
+caching in `install.sh`, and reduced `dev/test-install.sh` runtime and write
+volume with a tiny fixture plus real-size round-trip tests (all uncommitted).
+Nothing was installed, committed, or pushed; `~/.local/share/icons`, the live
+desktop, and `../WhiteSur-icon-theme` (`73d8040da51a9ed74e47c7366e7e9ff437601a5c`)
+were untouched.
+
+### 1. Small-overlay evaluation (GTK3 `Gtk.IconTheme` & KDE `KIconLoader`)
+
+Tested a thin overlay (`WhiteSur-lavender` with the 25 recolored SVGs + 72
+`places/scalable/` aliases inheriting upstream `WhiteSur`, and
+`WhiteSur-lavender-dark` tested with both `Inherits=WhiteSur-lavender,WhiteSur-dark`
+and `Inherits=WhiteSur-dark,WhiteSur-lavender`) against the full-copy build
+using both GTK3 and a compiled `KF6IconThemes` (`KIconLoader`) probe. Four
+reproduced failures rule out the small overlay:
+
+1. **Size vs. theme precedence breaks 16/22/24 px icons (GTK3 & KDE):**
+   In the overlay, `folder@16`, `folder@22`, `folder@24`, `inode-directory@16`,
+   `folder-documents@16`, and `user-home@16` all resolved to
+   `WhiteSur-lavender/places/scalable/folder.svg` (64 px color folder) instead
+   of crisp monochrome `places/{16,22,24}/*.svg` in both GTK3 and KDE, because
+   the Freedesktop Icon Theme Spec searches every directory of the active theme
+   before descending into `Inherits=` (affecting 19 icons at 16 px and 15 each
+   at 22/24 px, plus any future custom scalable icon).
+2. **KDE prefix fallback hijacks named upstream icons:**
+   In `KIconLoader`, `folder-blue@64` resolved to
+   `WhiteSur-lavender/places/scalable/folder.svg` (stripping `-blue` within the
+   active theme before checking `Inherits=WhiteSur`), whereas full-copy
+   resolves `folder-blue` cleanly.
+3. **`WhiteSur-lavender-dark` inheritance conflict:**
+   With `Inherits=WhiteSur-lavender,WhiteSur-dark`, depth-first traversal into
+   `WhiteSur-lavender -> WhiteSur` resolved `edit-copy@16` and `user-trash@64`
+   to light `WhiteSur` icons (never reaching `WhiteSur-dark`). Reversing to
+   `Inherits=WhiteSur-dark,WhiteSur-lavender` resolved `folder@64` to upstream
+   blue `WhiteSur-dark`.
+4. **Picker clutter and undo collision:**
+   Installing upstream `WhiteSur*` adds 3 extra blue themes to Plasma's picker
+   and collides with any user-installed `WhiteSur` during adoption/undo.
+
+**Decision:** Retain the full-copy trio with the tracked `icons/custom/` layer.
+
+### 2. Tracked custom icon layer (`icons/custom/{all,light,dark}/`)
+
+- Added `icons/custom/README.md` and tracked `all/`, `light/`, and `dark/`
+  directories (`.gitkeep` ignored at layer root). Documented adding,
+  replacing, aliasing, removing, precedence, and validation rules in
+  `icons/custom/README.md` and `icons/README.md`.
+- `icons/whitesur-lavender.py` validates every custom entry before install/publish
+  (allowed `index.theme` directories only; regular `.svg` checked for UTF-8,
+  XML, `{http://www.w3.org/2000/svg}svg`, `xmllint --nonet --noout`, and
+  `rsvg-convert`; `.png` verified via Pillow; aliases must be relative,
+  non-escaping, and resolve without broken links; no dotfiles/directory links).
+- Variant-only overrides in `light/` and `dark/` materialize symlinked parent
+  directories first (converting them to real directories with relative sibling
+  symlinks to `WhiteSur-lavender`) before applying `all/` and variant overrides,
+  preventing any cross-variant bleed-through and preserving exact relative
+  alias targets, then regenerate and validate `icon-theme.cache` and verify
+  GTK3 lookup.
+- `icons/review-whitesur-update.sh` adds section `## 7. Custom icon overrides`,
+  reporting brand-new icons, unchanged overrides, `UPSTREAM CHANGED OVERRIDDEN
+  ICON` (with old/new digest or symlink target), and blocking if upstream
+  removes a custom alias target.
+
+### 3. Automatic WhiteSur acquisition & caching (`icons/fetch-whitesur.sh`, `install.sh`)
+
+- Resolution order in `install.sh`: `M9_PREBUILT/icons` (tests) →
+  `M9_WHITESUR_UPSTREAM` (read-only explicit local checkout) → bare git cache
+  at `${XDG_CACHE_HOME:-$HOME/.cache}/macos9-theme/WhiteSur-icon-theme` via
+  `icons/fetch-whitesur.sh` (default remote
+  `https://github.com/vinceliuice/WhiteSur-icon-theme.git`, overrideable via
+  `M9_WHITESUR_REMOTE` for local fixture tests).
+- Fetches only the exact reviewed commit (`git -c core.hooksPath=/dev/null -c
+  core.symlinks=false init --bare` + `GIT_TERMINAL_PROMPT=0 git fetch --depth 1
+  --no-tags`), verifies `FETCH_HEAD` and `git fsck --connectivity-only`, sets
+  detached `HEAD`, and moves atomically into the cache (~11 MiB bare repo; zero
+  upstream code executed before `build-whitesur-lavender.sh` verifies all
+  pinned digests). Uses `GIT_CEILING_DIRECTORIES` + `--absolute-git-dir` so a
+  non-git cache inside an ancestor repo is rejected as corrupt rather than
+  inheriting the ancestor's `HEAD`.
+- `--dry-run` runs `--check-only` and never downloads or creates cache folders.
+  Offline hits reuse the verified cache; offline misses, corrupt caches,
+  symlinked caches, wrong-commit caches, and interrupted downloads fail with a
+  clear error and zero changes to the installed theme.
+
+### 4. `dev/test-install.sh` runtime & write-volume reduction (before vs. after)
+
+- Tiny 3-theme fixture (`16` files, `3` symlinks, `0.13 MiB`, preserving
+  `-light/places` and `-dark/status/32` relative symlinks) runs all 89 general
+  install/undo/interruption scenarios; 4 dedicated real-size (`20,344` files,
+  `24,284` symlinks, `44,628` entries, `41.78 MiB`) round-trip installs at the
+  end exercise full-size install/apply/undo, local-remote auto-fetch, offline
+  cache reuse, corrupt/wrong-commit/offline-miss refusals, and custom layer
+  overrides.
+- **Before** (full-size icons on all 89 installs, 448 checks): **29m 10s**
+  (`1,750 s`), **3,971,892** icon entries written (**~3.63 GiB** of icon copies
+  + ~400 MiB manifest checksum writes).
+- **After** (89 tiny-fixture + 4 real-size installs, 468 checks): **11m 38s**
+  (`698 s`, **2.5× faster**, **17m 32s saved**), **180,203** icon entries
+  written (**178.7 MiB** — **95.5% fewer icon entries** and **95.2% less icon
+  write volume**).
+
+### Suites run and limits
+
+- `dev/test_icons_phase1.py`: **59/59 passed** (disposable `/tmp` only; covers
+  `#101–109`, `#111`, update review, custom layer + override reporting + 6
+  validation rejections, and `fetch-whitesur.sh` offline/corrupt/wrong-commit/symlink
+  cases using a local bare `file://` remote).
+- `dev/test-install.sh`: **468/468 passed** (`11m 38s`; private D-Bus,
+  throwaway homes, local `file://` fixture remote — zero real network access).
+- `dev/check-style.sh`: **135/135 regions pixel exact**.
+- `dev/check-quick.sh`: **29/29 Qt Quick checks passed**.
+- **Limits:** Nested-KWin/Wayland suites (`dev/check-plasma.sh` and
+  `dev/test-install-live.sh`) cannot run inside the sandbox and must run from
+  the user's terminal; real HTTPS GitHub fetch and live desktop install/review
+  were not run (only local `file://` remote and throwaway homes).
+
+## 2026-11-23, Antigravity (Gemini 4 Neon) — Phase 1 follow-ups & Phase 2 (#110) WhiteSur Lavender integration
+
+Recorded Claude's 2026-11-22 Phase 1 spot-check (reported by user: spot-checked
+the poisoned-environment build, output, KDE launcher, and refusal to overwrite
+the manual live copy in `~/.local/share/icons`), completed both Phase 1
+follow-ups, and fixed `#110` in the working tree (uncommitted). Nothing was
+installed, committed, or pushed; `~/.local/share/icons`, the live desktop, and
+`../WhiteSur-icon-theme` (`73d8040da51a9ed74e47c7366e7e9ff437601a5c`) were not
+modified.
+
+### Phase 1 follow-ups
+
+- **Disposable test suite in repo:** Added `dev/test_icons_phase1.py` (runnable
+  with one documented command in `icons/README.md`). Uses only fresh disposable
+  `/tmp` directories (never writes to `dev/build/icons/`, `~/.local/share/icons`,
+  or `../WhiteSur-icon-theme`). Covers `#101–109`, `#111`, plus the external
+  pin and safe update review workflow. Result: **42/42 passed, 0 failed**.
+- **Externalized pin & safe upstream update workflow:** Moved all reviewed pin
+  metadata and SHA-256 digests out of `icons/whitesur-lavender.py` into
+  `icons/whitesur-pin.json`. Added `icons/review-whitesur-update.sh` (one
+  documented command taking `<TAG_OR_COMMIT>`). Exports the candidate commit
+  into a private temp dir without executing its `install.sh`, reports changes
+  across `install.sh` (with unified diff, patch-anchor check, and `bash -n`),
+  the 25 `colors/color-purple/` inputs (with dry-run recolor/`xmllint`/`rsvg`),
+  launcher files, `COPYING`/`AUTHORS`, symlinks (blocking on absolute/escaping
+  links), and the 64 SVG namespace exceptions, then writes a proposed pin JSON
+  for manual review (refusing to overwrite `icons/whitesur-pin.json` directly).
+  Verified with a simulated release containing an exec-trap in `install.sh`
+  (trap never triggered; all changed categories reported; builder refused the
+  unreviewed release until pin update).
+
+### Phase 2: #110 · P2 · fixed (working tree)
+
+- **Global theme defaults (`plasma/make-plasma.py`,
+  `plasma/look-and-feel/platinum.desktop/contents/defaults`):** Changed only
+  `[kdeglobals][Icons] Theme` from `breeze` to `WhiteSur-lavender`. Verified
+  `plasma/make-plasma.py` leaves every other file and setting unchanged.
+- **Fast O(N) format-v4 manifest operations (`scripts/manifest_ops.py`,
+  `scripts/common.sh`):** Added pure-stdlib Python helper preserving format
+  version 4 (`macos9-theme-record\t4`) for backward compatibility with existing
+  installations while eliminating per-file shell forks and quadratic
+  `manifest_has` scans on WhiteSur's 44,619 physical files/links.
+  `install.sh` places the three icon themes last (after smaller targets) and
+  `uninstall.sh` removes them first and drops their `sum` entries immediately.
+  Measured real non-`M9_PREBUILT` throwaway-home round trip (compiling all 3
+  C++ plugins + building & verifying WhiteSur Lavender from scratch + 44,619
+  checksums): **25.99 s install, 5.07 s uninstall**.
+- **Install, adoption, update, and undo (`install.sh`, `uninstall.sh`,
+  `scripts/common.sh`):**
+  - Added `WhiteSur-lavender`, `WhiteSur-lavender-light`, and
+    `WhiteSur-lavender-dark` under `$XDG_DATA_HOME/icons` to `targets`,
+    preserving relative symlinks (`cp -RP`) and stripping
+    `.macos9-whitesur-lavender-build` before placement so
+    `build-whitesur-lavender.sh` still refuses direct overwrites of
+    `$XDG_DATA_HOME/icons`.
+  - Validates builder/pin/upstream commit before any writes (even on
+    `--dry-run`) and builds/verifies the trio before changing any install
+    target.
+  - Records `$state/icon-adoption` once before adopting Lavender: captures
+    `backup_predated` (`1` when an existing Platinum `TAKEN=apply` backup
+    predates adoption), `effective_source` (`kdeglobals`/`kdedefaults`/`none`),
+    `effective_theme`, explicit `kdeglobals_theme`, `kdedefaults_theme`, and
+    `preexisting` (`manual`/`absent`) for each of the three IDs. Preserves
+    pre-existing `$state/backup` byte-for-byte untouched.
+  - Captures first manual copies of all three IDs in `$displaced` even when
+    bytes match the build, and preserves them across repeated updates, local
+    edits, and interrupted updates.
+  - On `uninstall.sh`: restores `$state/backup` first; when
+    `backup_predated=1` and the pre-adoption selection was a manual Lavender
+    variant, restores that selection in `kdeglobals` before restarting Plasma
+    (without assuming or requiring deleted old `WhiteSur` folders) and retires
+    `$state/icon-adoption` into `$keep/`. Inspects the surviving effective icon
+    selection (`kdeglobals` + `kdedefaults/kdeglobals`): if a managed variant
+    would lose its only usable copy (including base `WhiteSur-lavender` when
+    `-light` or `-dark` is selected, or when local edits prevent restoring a
+    displaced original), retains the required set with a retryable record.
+    Also cleans up `$state/icon-adoption` on early exit after a step-1
+    interrupted install (caught and verified by finding 7's step-1 test).
+
+### Suites run and limits
+
+- `dev/test_icons_phase1.py`: **42/42 passed** (disposable `/tmp` only).
+- `dev/check-style.sh`: **135/135 regions pixel exact**.
+- `dev/check-quick.sh`: **29/29 Qt Quick checks passed**.
+- `dev/test-install.sh`: **448/448 passed** (private D-Bus, throwaway homes;
+  includes all 367 prior checks + 81 new `#110` checks covering fresh install,
+  apply, dry run, live-desktop manual Lavender adoption with legacy `WhiteSur`
+  backup and missing old `WhiteSur`, repeated updates, local edits, interrupted
+  update recovery, independent selection of `WhiteSur-lavender`, `-light`, and
+  `-dark` with base dependency retention, repeated undo, and bad-upstream
+  refusal).
+- Real non-`M9_PREBUILT` throwaway-home round trip: **PASS** (25.99 s install,
+  5.07 s uninstall).
+- **Sandbox limits (not verified here — must run from the user's terminal):**
+  `dev/check-plasma.sh` failed inside the sandbox due to nested `kwin_wayland`
+  / Wayland DRM sandbox restrictions (`dev/shots/plasma-platinum-desktop.png`
+  not produced); `dev/test-install-live.sh` (updated with icon install/apply/undo
+  assertions) has the same nested-KWin requirement and was not run in the
+  sandbox. Physical-display visual review and live desktop install remain
+  untouched and unverified.
+
+## 2026-11-22, Antigravity (Gemini 4 Neon) — Phase 1 WhiteSur Lavender builder fixes (#101–109, #111)
+
+Fixed and verified all ten Phase 1 builder findings (`#101–109`, `#111`) in
+`icons/whitesur-lavender.py`, `icons/build-whitesur-lavender.sh`,
+`icons/README.md`, and `docs/REFERENCE.md` (working tree, uncommitted). `#110`
+was intentionally not started and awaits user approval for Phase 2. Nothing was
+installed, committed, or pushed; the upstream clone (`../WhiteSur-icon-theme`,
+clean at `73d8040da51a9ed74e47c7366e7e9ff437601a5c`) and `~/.local/share/icons`
+were not modified.
+
+### Findings addressed (working tree)
+
+- **#101 · P1 · fixed (working tree).** Rewrote the build pipeline to export,
+  patch, assemble, and verify all three themes in a fresh private `0700`
+  staging directory before touching `OUTPUT_DIR`. Destination validation runs
+  before any writes (and again under an exclusive per-destination `flock` in
+  `/tmp/macos9-whitesur-locks-<uid>/`): rejects symlinks anywhere in
+  `OUTPUT_DIR` or its existing parent chain, refuses writing into/across the
+  upstream clone, refuses project root / `.git` / `reference/` and any
+  non-ignored or tracked project path (handling `-light`'s symlinked `places`
+  dir on rebuilds), and refuses overwriting any existing `WhiteSur-lavender*`
+  directory lacking a valid `.macos9-whitesur-lavender-build` ownership stamp.
+  Publish copies into a same-filesystem private `.whitesur-lavender-incoming.*`
+  dir, swaps atomically via `os.rename`, and rolls back all three previous
+  themes on mid-swap failure. Sets `umask 022` so published dirs are `0755`
+  (not world-writable).
+- **#102 · P1 · fixed (working tree).** Runs `git`, `tar`, `python3 -I`, and
+  upstream `bash --noprofile --norc ./install.sh` under `env -i` with a small
+  explicit environment (`PATH=/usr/local/bin:/usr/bin:/bin`, `LC_ALL=C`,
+  `LANG=C`, `TERM=dumb`, private `HOME`/`XDG_*`/`XDG_RUNTIME_DIR`/`TMPDIR`, no
+  `DISPLAY`/`WAYLAND_DISPLAY`/`DBUS_SESSION_BUS_ADDRESS`/`DESKTOP_SESSION`),
+  passes `-n WhiteSur` explicitly, and verifies that staging contains only the
+  exact three expected theme IDs before publishing.
+- **#103 · P2 · fixed (working tree).** Pins and enforces full commit
+  `73d8040da51a9ed74e47c7366e7e9ff437601a5c` (fails if upstream `HEAD` differs),
+  archives only that pinned commit (never `HEAD`), reports that single verified
+  full commit ID, verifies all 15,971 upstream export symlinks stay inside the
+  export root, and rejects symlinked generator inputs/targets.
+- **#104 · P2 · fixed (working tree).** Resolves `UPSTREAM_CLONE`, `OUTPUT_DIR`,
+  and `TMPDIR` once relative to the caller's working directory, rejects empty
+  arguments / unknown options / extra arguments / tabs and newlines, and patches
+  upstream `install.sh` quoting on `THEME_DIR`, `${SRC_DIR}/src/status/...`,
+  and the `-light`/`-dark` `cd "${dest}"` symlink blocks.
+- **#105 · P2 · fixed (working tree).** Pins the exact 25-file manifest,
+  per-file SHA-256 digests, and per-file expected source paints in
+  `colors/color-purple/`, plus pinned SHA-256 digests for `install.sh`,
+  `COPYING`, `AUTHORS`, `plasma/places/{16,22,24}/start-here.svg`, and
+  `src/status/32/start-here.svg`. Validates XML syntax, SVG namespace,
+  `xmllint --nonet --noout`, `rsvg-convert` rendering, and `bash -n` on patched
+  `install.sh` before publishing anything into the export tree (zero leftover
+  `colors/color-lavender` on failure). `--verify` checks all 25 final bytes in
+  all three themes and GTK3 resolution at 64 px. Updated `icons/README.md` to
+  match these exact checks.
+- **#106 · P2 · fixed (working tree).** Replaced `THEME_VARIANTS[9]` with the
+  literal suffix `themes+=('-lavender')`, matched the full `THEME_VARIANTS`
+  declaration plus pinned `install.sh` digest, and verified staged theme IDs,
+  `index.theme` `Name`/`Inherits`/directories, and all 25 folder payloads.
+- **#107 · P2 · fixed (working tree).** Switched mapping to `#f299ff -> #ddddfe`,
+  `#e791f3 -> #b5b4f9`, `#c75cd6 -> #7e7dd9`, and recorded the verified
+  `reference/finder-rename.png` crop samples and coordinates in
+  `docs/REFERENCE.md`. Visual comparison below.
+- **#108 · P2 · fixed (working tree).** Passes `-p` (`--kde-plasma`) to
+  upstream `install.sh` for `places/{16,22,24,scalable}/start-here.svg`, AND
+  derives `src/status/32/start-here.svg` in the export from upstream's
+  `plasma/places/24/start-here.svg` (`width="32" height="32"`, `#f2f2f2` so
+  `-light` recolors it to `#363636`) because upstream's `-p` omits `status/32`
+  and GTK/KIconLoader resolved 32 px `start-here-kde-plasma` to the Apple logo
+  in `status/32/start-here.svg`. Verified all 18 GTK3 lookups (`16, 22, 24, 32,
+  48, 64` px across all 3 themes) resolve to KDE Plasma artwork with zero Apple
+  logo paths.
+- **#109 · P3 · fixed (working tree).** Separated script license
+  (`BSD-2-Clause` in `icons/whitesur-lavender.py`,
+  `icons/build-whitesur-lavender.sh`, and `icons/README.md`) from derived
+  artwork terms (`GPL-3.0-only`, removing the unverified `GPL-3.0-or-later`
+  claim). Patched `install.sh` to install verbatim upstream `COPYING`,
+  `AUTHORS`, and a dated `LAVENDER-NOTICE.txt` into all three built themes.
+- **#111 · P3 · fixed (working tree).** Normalizes all 64 pinned upstream
+  `src/` SVGs lacking `xmlns="http://www.w3.org/2000/svg"` in the disposable
+  export (each checked with `ElementTree`, `xmllint --nonet --noout`, and
+  `rsvg-convert`), and checks XML syntax and `{http://www.w3.org/2000/svg}svg`
+  root namespace separately across every physical SVG in the staged trio.
+- **#110 · P2 · open (Phase 2).** Not started; awaiting user approval.
+
+### #107 visual comparison (`reference/finder-rename.png` vs rendered 32×32 SVGs on `#FFFFFF`)
+
+Artifacts (ignored, private): `dev/build/icons-compare-107/`
+(`folder-side-by-side-1x.png`, `folder-side-by-side-4x.png`,
+`user-identity-side-by-side-1x.png`, `user-identity-side-by-side-4x.png`).
+
+- **Reference crop** (`reference/finder-rename.png` x=696–730, y=370–404, white
+  `#FFFFFF` backdrop): lit bevel `(704,376) = #DDDDFE` `(221,221,254)`, exposed
+  front face `(709,381) = #BFBFFA`, `(711,388) = #B5B4F9` `(181,180,249)`,
+  `(717,388) = #AEADF7`, dark edge `(720,385) = #7E7DD9` `(126,125,217)`.
+- **`folder.svg` at 32×32 on `#FFFFFF`:**
+  - Exposed front face center `(16,20)`: before `#9999FF` `(153,153,255)` (delta
+    `(-28, -27, +6)` vs `#B5B4F9`; `tools/compare.py diff` max diff 28) → after
+    `#B5B4F9` `(181,180,249)` (delta `(0, 0, 0)`; `tools/compare.py diff` 0/1
+    differing px, max diff 0).
+  - Exposed front face region (`x=6..25, y=14..24`, excluding backdrop/shadow):
+    before R `150–153`, G `150–153`, B `239–255` → after R `174–181`, G
+    `173–180`, B `234–249` (matches Finder face range `#AEADF7`–`#B5B4F9`).
+  - Upper tab (`x=5..11, y=7..8`): before R `130–134`, G `130–134`, B `215–216`
+    → after R `153–156`, G `152–155`, B `210–211`.
+  - Bottom rim (`x=6..25, y=25..26`): before R `145–160`, G `145–160`, B
+    `242–255` → after R `172–186`, G `171–185`, B `236–249`.
+- **`user-identity.svg` at 32×32 on `#FFFFFF`** (exercises `#f299ff → #DDDDFE`
+  and `#c75cd6 → #7E7DD9`, excluding white emblem):
+  - Upper lit region `(16,4)` vs `#DDDDFE`: before `#C6C6FC` `(198,198,252)`
+    (delta `(-23, -23, -2)`) → after `#D7D7FC` `(215,215,252)` (delta `(-6, -6,
+    -2)`, error reduced by 17 in R/G).
+  - Lower dark rim `(16,29)` vs `#7E7DD9`: before `#6767CC` `(103,103,204)`
+    (delta `(-23, -22, -13)`) → after `#7F7ED9` `(127,126,217)` (delta `(+1,
+    +1, 0)`, max channel error reduced from 23 to 1).
+
+### Checks run and built trio stats (`dev/build/icons/`)
+
+| Theme ID and index Name | Recolors matched / GTK 64 px | Resolved files | Physical symlinks | Physical SVGs / missing xmlns | Broken or escaping links | Cache validation |
+|---|---|---:|---:|---:|---:|---|
+| `WhiteSur-lavender` | 25 / 25 | 55,034 | 15,981 | 11,541 / 0 | 0 | passed (1,099,664 B) |
+| `WhiteSur-lavender-light` | 25 / 25 | 55,034 | 1,834 | 1,452 / 0 | 0 | passed (1,099,664 B) |
+| `WhiteSur-lavender-dark` | 25 / 25 | 55,034 | 6,469 | 7,333 / 0 | 0 | passed (1,099,664 B) |
+
+*(Resolved file count rose by +4 per theme from 55,030 to 55,034 due to
+`COPYING`, `AUTHORS`, `LAVENDER-NOTICE.txt`, and
+`.macos9-whitesur-lavender-build`; physical SVGs changed from 20,330 to 20,326
+and symlinks rose by +4 because `-p` makes `places/scalable/start-here*.svg`
+relative symlinks to `../16/start-here.svg` in base and dark.)*
+
+- **Phase 1 automated test suite (`test_icons_phase1.py`): 38/38 passed, 0
+  failed** covering: unowned-dir refusal, symlink destination/parent refusal,
+  upstream-tree refusal, trackable project/reference/`.git` refusal, pre-fix
+  unstamped `dev/build/icons` refusal, 7 bad-input CLI cases, unpinned commit
+  refusal, simultaneous spaces in `OUTPUT_DIR` and `TMPDIR` with poisoned env
+  (`remove=true`, `name=Hijacked`, `black=true`, `bold=true`,
+  `alternative=true`, `DESKTOP_SESSION`, `DISPLAY`, `WAYLAND_DISPLAY`,
+  `DBUS_SESSION_BUS_ADDRESS`, `GIT_DIR`, `GIT_WORK_TREE`, `BASH_ENV`),
+  relative `UPSTREAM_CLONE` and `OUTPUT_DIR` (`result`), failed rebuilds
+  leaving owned output untouched, simulated mid-publish rename failure rollback,
+  owned rebuilds (both in scratch and default `dev/build/icons/`), concurrent
+  writers serialized via `flock`, all `#103`/`#105`/`#106` direct generator
+  fault injections (zero leftover `color-lavender`), shifted `THEME_VARIANTS`
+  still producing `WhiteSur-lavender*`, `#111` 20,326/20,326 SVG namespaces +
+  negative check, `#108` 18/18 GTK3 launcher lookups, `#109` notices/headers,
+  and untouched upstream checkout.
+- **Limits:** Sandbox/offscreen verification only; not installed into
+  `~/.local/share/icons`; not tested in live Plasma or reviewed on physical
+  displays; `#110` install/apply/update/undo integration is pending Phase 2;
+  the five unrelated C++/Plasma/installer suites were not re-run because no
+  files outside `icons/` and `docs/REFERENCE.md` changed.
+
+## 2026-11-22, Claude (Opus 5.5) — verification of WhiteSur Lavender findings #101–111
+
+Reviewed Astra's findings against the uncommitted `icons/` files. No code changed, nothing installed, live desktop untouched.
+
+- **Reproduced:** #101 and #104 (an output path with spaces failed with exit 2, after the existing theme marker was deleted), and #102 (`remove=true` produced 0 themes, exit 0, and printed "Built").
+- **Confirmed in code or built output:** #103, #105, #106 (hard-coded index 9), #107 (measured separately from `finder-rename.png`), #108 (16, 22, and 24 px launcher aliases resolve to `start-here.svg`), #109 (`GPL-3.0-or-later` header), and #110 (`Theme=breeze`, no WhiteSur handling in install, uninstall, or common scripts).
+- **Accepted from Astra's evidence, not re-run:** #111 and the fault-injection details for #103, #105, and #106.
+- Fix #101 and #102 first. Treat #110 as a separate phase after the builder is safe, because it changes install and undo behavior.
+
+## 2026-11-22, Codex (GPT-6) — WhiteSur Lavender working-tree audit
+
+Reviewed the three uncommitted files in `icons/` on `8b5c251`, decision 7,
+the install and undo paths, and the clean sibling WhiteSur checkout. Its
+`2026-09-10` tag and detached HEAD both resolve to
+`73d8040da51a9ed74e47c7366e7e9ff437601a5c`. Upstream line references
+below refer to that revision. Builds and fault tests used disposable exports
+and destinations in the network-disabled sandbox.
+
+### Confirmed findings
+
+- **#101 · P1 · open — A rebuild deletes the previous output before it has a replacement.**
+  `icons/build-whitesur-lavender.sh:13–15` recursively removes the three IDs
+  in any caller-supplied destination. It checks neither ownership nor the
+  resolved parent. An ordinary failed build in a scratch destination with
+  spaces erased a pre-existing marker and left a base theme, an incomplete
+  light theme and no dark theme. A link in the destination's parent chain
+  directs the same operations to its target. A custom destination under the
+  source repo can also expose artwork to Git (`git check-ignore` rejected
+  `icons/WhiteSur-lavender/places/scalable/folder.svg` as an ignored path).
+  Build all three in a fresh private staging directory, verify them together,
+  and publish with rollback. Resolve and check the destination before any
+  writes. Refuse to replace unowned output, to write into the upstream tree,
+  or to publish into a trackable project path. Keep manual-copy adoption in
+  the project installer. Serialize writers to the same destination.
+
+- **#102 · P1 · open — Inherited shell variables can turn a build into an uninstall.**
+  `icons/build-whitesur-lavender.sh:15` changes HOME and unsets the two
+  displays but passes the rest of the caller's environment. Upstream
+  `install.sh:222,336,341–352` reads `remove` and `name` from that environment.
+  Against an empty scratch destination, exported `remove=true` selected
+  uninstall for all 30 IDs, returned 0 and printed “Built” with zero output
+  themes. The removal branch recursively deletes existing directories.
+  In a separate empty destination an exported `name` changed all three output
+  IDs and also returned 0. Start the reviewed builder with a small explicit
+  environment, fixed tool path, private HOME/XDG/runtime and no session bus.
+  Require exactly the expected three IDs before publishing.
+
+- **#103 · P2 · open — The builder executes whichever revision HEAD currently names.**
+  `icons/build-whitesur-lavender.sh:11,15–16` archives HEAD, executes the
+  exported installer, then queries HEAD again for the success message.
+  There is no comparison against the reviewed commit in `icons/README.md:5–6`.
+  This follows directly from those three commands. The second query can also
+  label the build with a different revision if the checkout moves. Changing
+  HOME does not confine the shell's filesystem access. The generator at
+  `icons/whitesur-lavender.py:29–33,43–49` follows source links during copying
+  and follows the installer path for writing. At the pin the installer and
+  25 inputs are regular files, and all 15,971 tracked symlinks resolve inside
+  the checkout. No escape was observed. Archive and report one verified full
+  commit ID. Make an upstream bump an explicit review of the installer,
+  file types and link targets. Reject linked generator inputs or paths that
+  resolve outside the export before writing. Restrict build writes to
+  staging if executing the upstream script.
+
+- **#104 · P2 · open — Relative paths and paths containing spaces break the build.**
+  `icons/build-whitesur-lavender.sh:8–15` interprets a relative output in
+  the caller's directory, then passes it to upstream after changing directory.
+  With `result` the requested directory ended empty and the command exited 1.
+  With an absolute output containing spaces the light build exited 2 at
+  upstream `install.sh:108` (unquoted `cd`). With a space only in TMPDIR,
+  it exited 1 at upstream line 98 (unquoted source path). Line 177 repeats
+  the destination issue. The private export was cleaned up in all three cases.
+  Resolve caller paths once, and correct the pinned script's quoting in
+  the export or give it controlled, whitespace-free internal paths and
+  publish separately. Exercise spaces in both output and TMPDIR.
+
+- **#105 · P2 · open — The palette guard accepts missing, unconverted and malformed assets.**
+  `icons/whitesur-lavender.py:33–41` checks the union of three matched
+  strings across a glob. In a disposable export, dropping `folder.svg` and
+  changing the accent in `folder-cloud.svg` to `#d65fce` let both generation
+  and upstream assembly exit 0. All three themes contained the stock folder
+  and the unrecolored cloud. A separate truncated SVG passed generation.
+  Removing a color everywhere did produce the documented error. That failure
+  and a changed installer anchor both left `color-lavender` behind when the
+  generator was run directly. Verify the pinned file manifest and each input's
+  expected paints or digest, parse and render the products, and check final
+  installed paths against the expected bytes. Validate all inputs and patch
+  anchors before publishing a complete generated directory and installer.
+  Update the guarantee in `icons/README.md:12` to match those checks.
+
+- **#106 · P2 · open — A compatible-looking installer change silently selects Nord.**
+  `icons/whitesur-lavender.py:45–48` appends Lavender but selects array
+  index 9. Inserting a variant before pink in a test copy preserved every
+  text anchor. The generator and installer both exited 0, producing only
+  `WhiteSur-nord`, `-light` and `-dark`. Select the literal Lavender suffix
+  or resolve it by name. Verify the three resulting IDs, indexes and folder
+  payloads before reporting success.
+
+- **#107 · P2 · open — The folder face uses the control palette, visibly darker than the Finder folder.**
+  `icons/whitesur-lavender.py:16–17` uses the scroll-box ramp documented at
+  `docs/REFERENCE.md:93`. In the native `reference/finder-rename.png` crop
+  x=696–730, y=370–404, the body includes `#BFBFFA` at (709,381),
+  `#B5B4F9` at (711,388) and `#AEADF7` at (717,388). The light shade is
+  `#DDDDFE` at (704,376) and the dark edge is `#7E7DD9` at (720,385).
+  Seven 35×35 crops in the capture matched byte for byte, including the
+  cited folder. The current scalable WhiteSur `folder.svg` rendered at 32×32
+  has an opaque body sample of `#9999FF` at (16,20). Against the middle
+  Finder sample its RGB difference is (−28, −27, +6), confirmed by
+  `tools/compare.py diff` on the two 1×1 samples.
+
+  | Upstream paint | Current target | Measured folder target |
+  |---|---|---|
+  | `#f299ff` | `#CCCCFF` | `#DDDDFE` |
+  | `#e791f3` | `#9999FF` | `#B5B4F9` |
+  | `#c75cd6` | `#6666CC` | `#7E7DD9` |
+
+  Record the folder samples and coordinates in the measured reference when
+  fixing this. Render before and after at 1×, using the scalable folder at
+  32 px and the same white backdrop as the capture. Put the crops side by
+  side and compare RGB ranges in like regions of each shape: exposed front
+  face, lit bevel and dark rim. Exclude background, shadows and emblems from
+  body samples. Report representative pixels and changes in channel error.
+  WhiteSur's silhouette and overlays differ, so a whole-crop difference
+  measures geometry as well as color. The plain folder uses only the middle
+  source paint. Also render `user-identity.svg`, which exercises the other
+  two substitutions. Retain WhiteSur artwork and keep the capture private.
+
+- **#108 · P2 · open — The project's neutral launcher resolves to the Apple logo.**
+  `icons/build-whitesur-lavender.sh:15` omits upstream's KDE option.
+  The layout requests `start-here-kde-plasma` at
+  `plasma/look-and-feel/platinum.desktop/contents/layouts/org.kde.plasma.desktop-layout.js:38`.
+  Its 16 px alias resolves to WhiteSur's default `start-here.svg` in the
+  generated themes. Upstream identifies that image as the Apple logo at
+  `install.sh:34`. A scratch build with `-p` gave the KDE artwork in all
+  three aliases, including the expected dark recolor. Pass the KDE option
+  or supply the agreed neutral launcher, and check the resolved launcher
+  at panel sizes. This finding concerns the built output. Git contains
+  no new logo asset.
+
+- **#109 · P3 · open — The artwork license notice claims an unverified grant.**
+  `icons/whitesur-lavender.py:7` labels derived WhiteSur artwork
+  `GPL-3.0-or-later`, whereas `icons/README.md:4,13` says GPL-3.0.
+  The pin includes GPL version 3 in `COPYING` and names Vince Liuice in
+  `AUTHORS`. The reviewed material gives no project-specific later-version
+  grant for the 25 inputs. The example grant in the license appendix is a
+  template. Upstream `install.sh:56` comments out its notices copy, and all
+  three outputs lack both files. Identify the generator's own license
+  separately, describe only the evidenced artwork terms, and include
+  upstream's notices plus source revision and a dated recoloring notice
+  with any distributed derivative. This was a private local build.
+
+- **#110 · P2 · open — Install, apply, update and undo have no Lavender integration.**
+  `install.sh:192–205` places cursors, wallpapers and the global theme but
+  has no icon-theme build or placement. The target list at
+  `scripts/common.sh:145–159` has none of the three IDs and
+  `uninstall.sh:385–388` skips unrecognized targets.
+  `plasma/make-plasma.py:612` emits `Theme=breeze`, confirmed in
+  `plasma/look-and-feel/platinum.desktop/contents/defaults:7–8`.
+  Consequently a fresh install supplies no Lavender theme, applying Platinum
+  advertises Breeze, updates skip the manual icons, and undo has no record
+  of their contents. This is the pending integration identified in PLAN.
+
+  Build and verify the pinned trio before changing any install targets.
+  Add the three directory IDs under `$XDG_DATA_HOME/icons` (default
+  `~/.local/share/icons`) to the existing manifest, displacement and restore
+  machinery. Preserve relative symlinks and capture the first manual copy of
+  each existing ID even when its bytes equal the build. Record absences.
+  Install-only should preserve selection. Make the generator and shipped
+  global defaults select `WhiteSur-lavender` on apply. Preserve the original
+  manual directories across repeated updates and later user edits.
+
+  For this upgrade, record the effective icon selection and where it came
+  from before adopting Lavender. A pre-existing Platinum config backup can
+  predate the manual switch (`install.sh:211–225`). Preserve that backup
+  and account separately for the manual icon state. Undo must put back the
+  same-ID manual copies and usable selection, including explicit versus
+  inherited settings. Inspect the config that will survive restoration
+  (`kdeglobals` and `kdedefaults/kdeglobals`). If a managed selection would
+  lose its only usable copy, retain it with a retryable record. Both light
+  and dark link into the base, so keep those dependencies together. Never
+  assume the removed old WhiteSur folders exist or require them for undo.
+  Test fresh install, manual Lavender already selected, legacy selection in
+  an older Platinum backup, plain update, apply, independent selection of
+  each variant, interrupted update, local edits, dry run and repeated undo.
+  Check manifest performance before wiring in `place_dir`: the built trio
+  has 44,619 physical files and links, and `record_sums` calls the linear
+  `manifest_has` for each entry (`scripts/common.sh:295,396–399`).
+
+- **#111 · P3 · open — Some copied upstream SVGs lack the SVG namespace.**
+  `icons/build-whitesur-lavender.sh:15` copies these unchanged from the
+  upstream install path. For example, pinned
+  `src/places/16/folder-vbox.svg:1` declares a bare `svg` element. All
+  20,330 physical SVG files parsed as XML. In 127 files (118 distinct byte
+  sequences) the root's expanded name was `svg` instead of
+  `{http://www.w3.org/2000/svg}svg`. This is an upstream format defect
+  outside the 25 recolors. librsvg accepted the sample. Report the affected
+  inputs upstream and document the exception or normalize them in a
+  reviewed export patch. Check the SVG namespace separately from XML syntax.
+
+### Pinned output and limits
+
+| Theme ID and index Name | Recolors matching expected bytes / rendered / found by GTK at 64 px | Resolved file paths | Physical symlinks | Broken or escaping links | Cache validation |
+|---|---|---:|---:|---:|---|
+| WhiteSur-lavender | 25 / 25 / 25 | 55,030 | 15,979 | 0 | passed |
+| WhiteSur-lavender-light | 25 / 25 / 25 | 55,030 | 1,834 | 0 | passed |
+| WhiteSur-lavender-dark | 25 / 25 / 25 | 55,030 | 6,467 | 0 | passed |
+
+All three indexes inherit `hicolor,breeze`. All 86 listed directories and
+sections exist per index, including 43 scale-2 entries. Each 1,099,664-byte
+icon cache passed `gtk-update-icon-cache --validate`. Each recolor passed
+`xmllint --nonet --noout` and librsvg rendering. The source-to-output byte
+comparison accounted for all three accent replacements. The 24 embedded PNG
+shadows contain only grayscale visible pixels. A separate scan of every
+scalable places SVG name in each variant found the old accent literals only
+in 46 upstream color-specific paths: 28 `purple-*`, 17 `folder_color_purple*`
+and `folder-violet.svg`. None belongs to the 25 Lavender assets.
+
+The wrapper's private `mktemp -d` and quoted EXIT cleanup operated on the
+export. The default output is Git-ignored. The source checkout is a sibling,
+and Git lists only the three new text files under `icons/`. No new upstream
+tree or Apple artwork is staged or tracked. Independent authorship of every
+upstream asset was outside the available evidence.
+
+The user's stated manual installation and selection were inputs to the undo
+review. The live files, saved live config, desktop appearance, future releases
+and an actual install/apply/uninstall round trip were not verified. Installer
+integration was traced in source. The five unrelated project suites were not
+run. No additional suspected issues were assigned finding numbers.
 
 ## 2026-11-22, Codex (GPT-6) — #99 and #100 follow-up, checkpoint 5 passed
 
