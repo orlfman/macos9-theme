@@ -68,6 +68,22 @@ need() {
     done
 }
 
+# Preflight tools with their Arch Linux package names (cmd:pkg), reporting all
+# missing items before taking locks, fetching, or writing files (AUDIT.md #118).
+need_pkg() {
+    local spec cmd pkg missing=()
+    for spec in "$@"; do
+        cmd=${spec%%:*}
+        pkg=${spec#*:}
+        have "$cmd" || missing+=("$cmd (Arch package: $pkg)")
+    done
+    if ((${#missing[@]})); then
+        local joined
+        joined=$(printf '%s; ' "${missing[@]}")
+        die "missing required tools: ${joined%; }. Install the missing Arch package(s) and try again; nothing was changed"
+    fi
+}
+
 refuse_root() {
     if ((EUID == 0)); then
         die "run this as your own user, not as root (everything goes into your home)"
@@ -96,6 +112,16 @@ manifest=$state/installed
 backup=$state/backup
 # Things that were in the way of an install target, to be put back.
 displaced=$state/displaced
+# Icon theme adoption transaction record (v3 JSON; AUDIT.md #110, #124, #128).
+icon_adoption=$state/icon-adoption
+# Fallback restore-decision marker when uninstalling a legacy backup with no $icon_adoption.
+restore_decision_file=$state/restore-decision
+# Retained throughout uninstall until backup, packages, and manifest are retired (#140).
+uninstall_marker=$state/uninstall-in-progress
+# Fast O(N) manifest helper (format version 4 compatible).
+manifest_ops=$here/scripts/manifest_ops.py
+# Durable KDE + GTK icon transaction and unified dependency checker.
+icon_prefs=$here/scripts/icon_prefs.py
 
 # The compiled plugins live in a folder of their own; the Plasma login
 # script puts it on Qt's plugin path (takes a new login). The decoration
@@ -139,6 +165,8 @@ plasma_theme=platinum
 piece_id=platinum.menubarpiece
 lnf_id=platinum.desktop
 wallpaper_ids=(platinum-ribbon platinum-lavender)
+icon_base_id=WhiteSur-lavender
+icon_theme_ids=(WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark)
 
 # Everything install.sh installs: kind and path. uninstall.sh removes
 # nothing else.
@@ -156,6 +184,9 @@ targets=(
 )
 for wallpaper_id in "${wallpaper_ids[@]}"; do
     targets+=("dir	$data/wallpapers/$wallpaper_id")
+done
+for icon_id in "${icon_theme_ids[@]}"; do
+    targets+=("dir	$data/icons/$icon_id")
 done
 
 # What applying the global theme (and --apply) changes, copied whole before
@@ -176,11 +207,12 @@ sh_quote() {
 }
 
 # One run at a time. The lock is released when the script exits.
+# Requires flock (Arch package: util-linux); never silently disables exclusion (#135).
 take_lock() {
     ((dry_run)) && return 0
+    have flock || die "missing required tool: flock (Arch package: util-linux); nothing was changed"
     mkdir -p "$state"
     exec 9> "$state/lock"
-    have flock || return 0
     flock -n 9 || die "another install.sh or uninstall.sh is running"
 }
 
@@ -191,11 +223,27 @@ active_lnf() {
         "$config_home/kdeglobals"
 }
 
+is_managed_icon_id() { # id
+    local id
+    for id in "${icon_theme_ids[@]}"; do
+        [[ $1 == "$id" ]] && return 0
+    done
+    return 1
+}
+
 # Running KDE apps reload their widget style on this signal (2 = style).
 notify_style() {
     ((dry_run)) && return 0
     if have dbus-send; then
         dbus-send --session --type=signal /KGlobalSettings org.kde.KGlobalSettings.notifyChange int32:2 int32:0 2> /dev/null || true
+    fi
+}
+
+# Running KDE apps reload their icon theme on this signal (4 = icon).
+notify_icons() {
+    ((dry_run)) && return 0
+    if have dbus-send; then
+        dbus-send --session --type=signal /KGlobalSettings org.kde.KGlobalSettings.notifyChange int32:4 int32:0 2> /dev/null || true
     fi
 }
 
@@ -252,24 +300,19 @@ real_path() { # path
 
 manifest_load() {
     manifest_entries=()
-    [[ -e $manifest ]] || return 0
-    [[ -f $manifest && ! -L $manifest ]] || die "$manifest isn't a regular file"
-    mapfile -t manifest_entries < "$manifest"
-    local first=${manifest_entries[0]:-}
-    [[ $first == "macos9-theme-record	$record_version" ]] ||
-        die "$manifest has a format this version doesn't know; nothing was changed"
-    local entry kind value
-    for entry in "${manifest_entries[@]:1}"; do
-        kind=${entry%%	*}
-        value=${entry#*	}
-        case $kind in
-            home) [[ $value == "$home" ]] || die "$manifest was made for the home $value, not $home; nothing was changed" ;;
-            data) [[ $value == "$data" ]] || die "$manifest was made with the data folder $value (XDG_DATA_HOME), not $data; run this again with XDG_DATA_HOME=$value; nothing was changed" ;;
-            config) [[ $value == "$config_home" ]] || die "$manifest was made with the config folder $value (XDG_CONFIG_HOME), not $config_home; run this again with XDG_CONFIG_HOME=$value; nothing was changed" ;;
-            madedir | file | dir | link | displaced | temp | sum) ;;
-            *) die "$manifest has an entry this version doesn't know ($kind); nothing was changed" ;;
-        esac
-    done
+    [[ -e $manifest || -L $manifest ]] || return 0
+    local out err_file
+    err_file=$(mktemp)
+    if ! out=$(python3 -I "$manifest_ops" load-meta "$manifest" "$record_version" "$home" "$data" "$config_home" 2> "$err_file"); then
+        local msg
+        msg=$(< "$err_file")
+        rm -f "$err_file"
+        die "${msg:-could not read $manifest}"
+    fi
+    rm -f "$err_file"
+    if [[ -n $out ]]; then
+        mapfile -t manifest_entries <<< "$out"
+    fi
 }
 
 # Every path on the record must still lead where it did. If not, a folder
@@ -305,12 +348,12 @@ manifest_lists() { # kind path
     manifest_has "$1	$2	$(real_path "$2")"
 }
 
-# Writes the record (through a temporary file, so it's never half written).
+# Writes the record (through a temporary file, so it's never half written),
+# preserving any existing sum lines in $manifest.
 manifest_write() {
     ((dry_run)) && return 0
     mkdir -p "$state"
-    printf '%s\n' "${manifest_entries[@]}" > "$manifest.new"
-    mv -f "$manifest.new" "$manifest"
+    printf '%s\n' "${manifest_entries[@]}" | python3 -I "$manifest_ops" write-meta "$manifest"
 }
 
 # Adds an entry (with where PATH leads now) and writes the record at once.
@@ -368,111 +411,57 @@ done_temp() { # path
 
 # --- Checksums of what was installed --------------------------------------
 
-sha_of() { # file
-    local sum
-    sum=$(sha256sum < "$1")
-    printf '%s' "${sum%% *}"
-}
-
-# Records the checksum of every file SOURCE (a file or folder) will put at
-# TARGET, before it's copied. new_sums holds them for prune_sums.
-declare -gA new_sums=()
+# Records the checksum of every file/link SOURCE (a file or folder) will put at
+# TARGET, before it's copied. Saves the key list in $last_sums_file for prune_sums.
+last_sums_file=""
 record_sums() { # source target
-    local rel sum path
-    new_sums=()
-    # (a dry run has no build to read, and writes no record)
     ((dry_run)) && return 0
-    if [[ -f $1 ]]; then
-        new_sums[$2]=$(sha_of "$1")
-    else
-        while IFS= read -r -d '' rel; do
-            new_sums[$2/${rel#./}]=$(sha_of "$1/$rel")
-        done < <(cd "$1" && find . -type f -print0)
-        # Links inside (the cursor theme has many): where they point.
-        while IFS= read -r -d '' rel; do
-            new_sums[$2/${rel#./}]="->$(readlink "$1/$rel")"
-        done < <(cd "$1" && find . -type l -print0)
-    fi
-    for path in "${!new_sums[@]}"; do
-        sum="sum	$path	${new_sums[$path]}"
-        manifest_has "$sum" || manifest_entries+=("$sum")
-    done
-    manifest_write
+    local tmp_base=/tmp
+    [[ -n ${build:-} && -d ${build:-} ]] && tmp_base=$build
+    last_sums_file=$(mktemp "$tmp_base/m9-sums.XXXXXX")
+    python3 -I "$manifest_ops" record-sums "$manifest" "$1" "$2" "$last_sums_file"
 }
 
 # After TARGET was replaced: drops the checksums of what was there before.
 prune_sums() { # target
-    local kept=() entry kind path sum
-    for entry in "${manifest_entries[@]}"; do
-        IFS=$'\t' read -r kind path sum <<< "$entry"
-        if [[ $kind == sum && ($path == "$1" || $path == "$1"/*) && ${new_sums[$path]:-} != "$sum" ]]; then
-            continue
-        fi
-        kept+=("$entry")
-    done
-    manifest_entries=("${kept[@]}")
-    manifest_write
+    ((dry_run)) && return 0
+    [[ -n $last_sums_file && -f $last_sums_file ]] || return 0
+    python3 -I "$manifest_ops" prune-sums "$manifest" "$1" "$last_sums_file"
+    rm -f "$last_sums_file"
+    last_sums_file=""
 }
 
-# The recorded checksums, for installed_file.
-declare -gA sum_index=()
+# Drops all recorded checksums under TARGET (after uninstall removes it).
+drop_target_sums() { # target
+    ((dry_run)) && return 0
+    python3 -I "$manifest_ops" drop-sums "$manifest" "$1"
+}
+
+# Kept for caller compatibility; manifest_ops queries $manifest directly.
 index_sums() {
-    local entry kind path sum
-    sum_index=()
-    for entry in "${manifest_entries[@]}"; do
-        IFS=$'\t' read -r kind path sum <<< "$entry"
-        [[ $kind == sum ]] && sum_index[$path	$sum]=1
-    done
     return 0
 }
 
-# Is PATH a file or a link install.sh put there? (index_sums first.)
+# Is PATH a file or a link install.sh put there?
 installed_file() { # path
     if [[ -L $1 ]]; then
         installed_link "$1"
         return
     fi
-    [[ -f $1 ]] || return 1
-    [[ -n ${sum_index[$1	$(sha_of "$1")]:-} ]]
-}
-
-# The folders inside the installed folder PATH that install.sh made: the
-# ones above a recorded file (index_sums first). Result in our_dir.
-declare -gA our_dir=()
-our_dirs() { # path
-    local key item
-    our_dir=()
-    for key in "${!sum_index[@]}"; do
-        item=${key%%	*}
-        [[ $item == "$1"/* ]] || continue
-        item=$(dirname "$item")
-        while [[ $item == "$1"/* ]]; do
-            our_dir[$item]=1
-            item=$(dirname "$item")
-        done
-    done
-    return 0
+    [[ -f $1 && -f $manifest ]] || return 1
+    python3 -I "$manifest_ops" check-file "$manifest" "$1"
 }
 
 # Is everything in the folder PATH as install.sh put it (no file or folder
 # added, no file changed; files it installed may be missing)?
 installed_tree() { # path
-    local item
-    our_dirs "$1"
-    while IFS= read -r -d '' item; do
-        if [[ -d $item && ! -L $item ]]; then
-            [[ -n ${our_dir[$item]:-} ]] || return 1 # a folder of yours (finding 41)
-        else
-            installed_file "$item" || return 1
-        fi
-    done < <(find "$1" -mindepth 1 -print0)
-    return 0
+    [[ -d $1 && ! -L $1 && -f $manifest ]] || return 1
+    python3 -I "$manifest_ops" check-tree "$manifest" "$1"
 }
 
 # Is what's at PATH, of KIND, exactly what install.sh installed there?
 installed_unchanged() { # kind path
     manifest_lists "$1" "$2" && is_kind "$1" "$2" || return 1
-    index_sums
     case $1 in
         file) installed_file "$2" ;;
         dir) installed_tree "$2" ;;
@@ -480,14 +469,10 @@ installed_unchanged() { # kind path
     esac
 }
 
-# Is PATH a link pointing where install.sh made it point? (index_sums first.)
+# Is PATH a link pointing where install.sh made it point?
 installed_link() { # path
-    local target
-    [[ -L $1 ]] || return 1
-    # The suffix keeps command substitution from dropping a line break
-    # in a changed target. The record still stores the original text.
-    target=$(readlink -n -- "$1" && printf '.') || return 1
-    [[ -n ${sum_index[$1	->${target%.}]:-} ]]
+    [[ -L $1 && -f $manifest ]] || return 1
+    python3 -I "$manifest_ops" check-link "$manifest" "$1"
 }
 
 # Installs a symbolic link: record (with where it points), then make it
@@ -497,10 +482,8 @@ place_link() { # points-to target
     displace_foreign link "$target"
     make_parents "$(dirname "$target")"
     manifest_add link "$target"
-    new_sums=([$target]="->$1")
-    if ! manifest_has "sum	$target	->$1"; then
-        manifest_entries+=("sum	$target	->$1")
-        manifest_write
+    if ((!dry_run)); then
+        python3 -I "$manifest_ops" record-single-sum "$manifest" "$target" "->$1"
     fi
     plan "link $target to $1"
     ((dry_run)) && return 0
@@ -509,7 +492,7 @@ place_link() { # points-to target
     ln -sfn "$1" "$staging"
     mv -fT "$staging" "$target"
     done_temp "$staging"
-    prune_sums "$target"
+    python3 -I "$manifest_ops" prune-single-sum "$manifest" "$target" "->$1"
 }
 
 # Is TARGET (kind<TAB>path) one of the install targets, or a folder above
@@ -573,9 +556,11 @@ make_parents() { # path
 }
 
 # If something install.sh didn't install is at PATH, moves it aside (and
-# records where), so it can be put back.
+# records where), so it can be put back. Rolls back the record if mv fails
+# so an interrupted or failed displacement can never shadow a later real copy
+# (AUDIT.md #112).
 displace_foreign() { # kind path
-    local kind=$1 path=$2 saved
+    local kind=$1 path=$2 holder saved real
     [[ -e $path || -L $path ]] || return 0
     # Ours and unchanged: replaced in place. Changed since: moved aside.
     installed_unchanged "$kind" "$path" && return 0
@@ -584,9 +569,15 @@ displace_foreign() { # kind path
         return 0
     fi
     mkdir -p "$displaced"
-    saved=$(mktemp -d "$displaced/XXXXXX")/$(basename "$path")
+    holder=$(mktemp -d "$displaced/XXXXXX")
+    saved=$holder/$(basename "$path")
+    real=$(real_path "$path")
     manifest_add displaced "$path" "$saved"
-    mv "$path" "$saved"
+    if ! mv "$path" "$saved"; then
+        manifest_drop "displaced	$path	$saved	$real"
+        rmdir "$holder" 2> /dev/null || true
+        die "couldn't move the existing $path aside"
+    fi
     say "Moved the existing $path aside (uninstall.sh puts it back)"
 }
 
@@ -623,9 +614,11 @@ place_dir() { # source target
     ((dry_run)) && return 0
     make_temp dir "$(dirname "$target")"
     staging=$made_temp
-    if ! cp -R "$1/." "$staging/"; then
+    if ! cp -RP "$1/." "$staging/"; then
         rm -rf "$staging"
         done_temp "$staging"
+        rm -f "${last_sums_file:-}"
+        last_sums_file=""
         die "couldn't write $target"
     fi
     chmod 755 "$staging"
@@ -663,10 +656,48 @@ remove_temporaries() {
         fi
         manifest_drop "$entry"
     done
-    for tmp in "$state"/backup.??????; do
+    for tmp in "$state"/backup.?????? "$state"/.restore-stage.??????; do
         [[ -d $tmp && ! -L $tmp ]] || continue
         plan "remove the leftover $tmp"
         ((dry_run)) || rm -rf "$tmp"
+    done
+    for tmp in "$state"/.icon-adoption.?????? "$state"/.icon-adoption.tmp.*; do
+        [[ -f $tmp && ! -L $tmp ]] || continue
+        plan "remove the leftover $tmp"
+        ((dry_run)) || rm -f "$tmp"
+    done
+    return 0
+}
+
+# Reconcile any incomplete displaced record left by an abrupt exit between
+# manifest_add displaced and mv "$path" "$saved" (AUDIT.md #112).
+reconcile_displaced() {
+    local entry kind path saved holder entries=("${manifest_entries[@]}")
+    local -A has_completed=() has_installed=()
+    for entry in "${entries[@]:1}"; do
+        IFS=$'\t' read -r kind path saved _ <<< "$entry"
+        case $kind in
+            file | dir | link) has_installed[$path]=1 ;;
+            displaced)
+                if [[ $saved == "$displaced"/* && (-e $saved || -L $saved) ]]; then
+                    has_completed[$path]=1
+                fi
+                ;;
+        esac
+    done
+    for entry in "${entries[@]:1}"; do
+        IFS=$'\t' read -r kind path saved _ <<< "$entry"
+        [[ $kind == displaced ]] || continue
+        [[ $saved == "$displaced"/* && ! (-e $saved || -L $saved) ]] || continue
+        holder=$(dirname "$saved")
+        if [[ -n ${has_completed[$path]:-} ]] ||
+            [[ -z ${has_installed[$path]:-} && $holder == "$displaced"/* && -d $holder && ! -L $holder && -z $(ls -A "$holder" 2> /dev/null) ]]; then
+            plan "drop incomplete displaced record for $path"
+            manifest_drop "$entry"
+            if ((!dry_run)) && [[ $holder == "$displaced"/* && -d $holder && ! -L $holder ]]; then
+                rmdir "$holder" 2> /dev/null || true
+            fi
+        fi
     done
     return 0
 }

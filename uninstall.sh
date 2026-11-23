@@ -40,6 +40,7 @@ source "$here/scripts/common.sh"
 dry_run=$dry
 
 refuse_root
+need_pkg python3:python sha256sum:coreutils flock:util-linux kreadconfig6:kconfig kwriteconfig6:kconfig
 ((dry_run)) && note "Dry run: nothing is changed."
 if [[ ! -e $state && ! -L $state ]]; then
     note "Nothing to remove: there's no install record in $state."
@@ -49,6 +50,7 @@ take_lock
 manifest_load
 check_record_paths
 remove_temporaries
+reconcile_displaced
 # A shell an earlier run stopped and couldn't start again (finding 38).
 shell_failed=0
 if ! shell_resume; then
@@ -61,7 +63,7 @@ if [[ ! -d $backup && ${#manifest_entries[@]} -eq 0 ]]; then
     ((shell_resumed)) || note "Nothing to remove: there's no install record in $state."
     if ((!dry_run)); then
         # What an earlier run stopped just before removing.
-        rm -f "$state/lock"
+        rm -f "$state/lock" "$icon_adoption" "$restore_decision_file" "$uninstall_marker"
         rmdir "$state" 2> /dev/null || true
     fi
     exit 0
@@ -99,6 +101,31 @@ put_back() { # source path
 }
 
 restored=0
+entries=("${manifest_entries[@]}")
+# Keep the earliest completed moved-aside copy distinct from any later
+# versions; ignore incomplete records whose saved path does not exist (#112).
+declare -A first_aside=()
+for entry in "${entries[@]:1}"; do
+    IFS=$'\t' read -r kind path saved _ <<< "$entry"
+    if [[ $kind == displaced && -z ${first_aside[$path]:-} && $saved == "$displaced"/* && (-e $saved || -L $saved) ]]; then
+        first_aside[$path]=$entry
+    fi
+done
+for entry in "${entries[@]:1}"; do
+    IFS=$'\t' read -r kind path _ <<< "$entry"
+    if [[ $kind == displaced && -z ${first_aside[$path]:-} ]]; then
+        first_aside[$path]=$entry
+    fi
+done
+
+icon_can_restore_original() { # id
+    local id=$1 path=$data/icons/$1 saved
+    [[ -n ${first_aside[$path]:-} ]] || return 1
+    IFS=$'\t' read -r _ path saved _ <<< "${first_aside[$path]}"
+    [[ $saved == "$displaced"/* && -d $saved && ! -L $saved && -s $saved/index.theme ]] &&
+        { [[ ! -e $path && ! -L $path ]] || installed_unchanged dir "$path"; }
+}
+
 declare -A planned_cursor_config=(
     ["$config_home/kcminputrc"]="$config_home/kcminputrc"
     ["$config_home/kdedefaults"]="$config_home/kdedefaults"
@@ -111,7 +138,14 @@ if [[ -d $backup ]]; then
         warn "the copy was taken with the config folder $config_root (now $config_home); putting it back there"
     taken=$(backup_taken || true)
     active=$(active_lnf)
-    if [[ $taken == apply || ($taken == install && $active == "$lnf_id") ]]; then
+    persisted_decision=none
+    if [[ -f $icon_adoption && ! -L $icon_adoption ]]; then
+        persisted_decision=$(python3 -I "$icon_prefs" read-restore-decision "$icon_adoption") ||
+            die "couldn't read $icon_adoption; nothing was changed"
+    elif [[ -f $restore_decision_file && ! -L $restore_decision_file ]]; then
+        persisted_decision=$(< "$restore_decision_file")
+    fi
+    if [[ $persisted_decision == restore_backup || $taken == apply || ($taken == install && $active == "$lnf_id") ]]; then
         # Each entry must lead where it did when it was copied (finding 29).
         moved=()
         while IFS=$'\t' read -r base name real; do
@@ -178,11 +212,63 @@ if [[ -d $backup ]]; then
             die "the copy of your config files is incomplete or was changed; nothing was changed. To remove the theme without putting back your config files, move $backup somewhere else and run uninstall.sh again"
         fi
         shell_stop || die "couldn't stop Plasma's shell, which has to be stopped while your panel layout is put back; nothing was changed. Try again, or log out and run uninstall.sh from a text console (Ctrl+Alt+F3)"
-        # If anything below fails, Plasma's shell still comes back (or the
-        # next run starts it).
-        trap 'shell_start || warn "$shell_failed_message"' EXIT
+        restore_stage=""
+        # If anything below fails, clean temporary stage and restart Plasma's shell.
+        trap '[[ -z ${restore_stage:-} ]] || rm -rf "$restore_stage"; shell_start || warn "$shell_failed_message"' EXIT
+
+        # Persist the uninstall-in-progress marker and restore decision BEFORE
+        # touching the first file so install.sh refuses unfinished undos (#140)
+        # and retry always resumes restoring regardless of LookAndFeelPackage (#124).
+        if ((!dry_run)); then
+            printf 'uninstall\n' > "$uninstall_marker"
+            if [[ -f $icon_adoption && ! -L $icon_adoption ]]; then
+                python3 -I "$icon_prefs" begin-restore "$icon_adoption" ||
+                    die "couldn't persist restore decision in $icon_adoption"
+            else
+                printf 'restore_backup\n' > "$restore_decision_file"
+            fi
+        fi
+
+        # Merge and validate pre-adoption KDE (explicit + inherited
+        # independently, #129) and GTK icon keys in private staged copies
+        # BEFORE publishing them, so stale themes are never exposed (#124, #131).
+        declare -A restore_overlay=()
+        if [[ $config_root == "$config_home" ]]; then
+            prep_args=("$config_home" "$home" "$backup" "$data/icons" "${XDG_DATA_DIRS:-}")
+            [[ -f $icon_adoption && ! -L $icon_adoption ]] && prep_args+=(--adoption "$icon_adoption")
+            if ((dry_run)); then
+                prep_args+=(--dry-run)
+            else
+                restore_stage=$(mktemp -d "$state/.restore-stage.XXXXXX")
+                chmod 700 "$restore_stage"
+                prep_args+=(--stage-dir "$restore_stage")
+            fi
+            for icon_id in "${icon_theme_ids[@]}"; do
+                icon_path=$data/icons/$icon_id
+                if icon_can_restore_original "$icon_id"; then
+                    prep_args+=(--restorable "$icon_id")
+                elif [[ -d $icon_path && ! -L $icon_path ]] && manifest_lists dir "$icon_path"; then
+                    prep_args+=(--managed-removing "$icon_id")
+                fi
+            done
+            prep_out=$(python3 -I "$icon_prefs" prepare-restore "${prep_args[@]}") ||
+                die "couldn't prepare merged icon preferences for restore; nothing else was changed"
+            while IFS=$'\t' read -r rtag rmsg; do
+                case $rtag in
+                    PLAN) plan "$rmsg" ;;
+                    SAY) say "$rmsg" ;;
+                    WARN) warn "$rmsg" ;;
+                esac
+            done <<< "$prep_out"
+            if ((!dry_run)) && [[ -f $restore_stage/OVERLAY ]]; then
+                while IFS=$'\t' read -r obase oname okind; do
+                    [[ -n $obase && -n $oname ]] && restore_overlay["$obase	$oname"]=$okind
+                done < "$restore_stage/OVERLAY"
+            fi
+        fi
 
         plan "keep your current config files in $keep/current"
+        declare -A overlay_applied=()
         while IFS=$'\t' read -r base name _; do
             case $base in config) root=$config_root ;; home) root=$home_root ;; *) die "$backup/ENTRIES is damaged" ;; esac
             path=$root/$name
@@ -194,7 +280,15 @@ if [[ -d $backup ]]; then
                 mkdir -p "$(dirname "$keep/current/$base/$name")"
                 cp -a "$path" "$keep/current/$base/$name"
             fi
-            if grep -qxF "$base	$name" "$backup/ABSENT"; then
+            okey="$base	$name"
+            if ((!dry_run)) && [[ -n ${restore_overlay[$okey]:-} ]]; then
+                overlay_applied[$okey]=1
+                if [[ ${restore_overlay[$okey]} == absent ]]; then
+                    [[ -e $path ]] && rm -rf "$path"
+                else
+                    put_back "$restore_stage/$base/$name" "$path"
+                fi
+            elif grep -qxF "$base	$name" "$backup/ABSENT"; then
                 if [[ -e $path ]]; then
                     plan "remove $path (it wasn't there before)"
                     ((dry_run)) || rm -rf "$path"
@@ -210,10 +304,39 @@ if [[ -d $backup ]]; then
                 fi
             fi
         done < "$backup/ENTRIES"
+        if ((!dry_run)); then
+            for okey in "${!restore_overlay[@]}"; do
+                [[ -z ${overlay_applied[$okey]:-} ]] || continue
+                obase=${okey%%	*}
+                oname=${okey#*	}
+                case $obase in config) root=$config_root ;; home) root=$home_root ;; *) continue ;; esac
+                path=$root/$oname
+                if [[ -L $path ]]; then
+                    warn "$path is a symbolic link now; left alone"
+                    continue
+                fi
+                if [[ -e $path ]]; then
+                    mkdir -p "$(dirname "$keep/current/$obase/$oname")"
+                    cp -a "$path" "$keep/current/$obase/$oname"
+                fi
+                if [[ ${restore_overlay[$okey]} == absent ]]; then
+                    [[ -e $path ]] && rm -rf "$path"
+                else
+                    put_back "$restore_stage/$obase/$oname" "$path"
+                fi
+            done
+            [[ -z $restore_stage ]] || rm -rf "$restore_stage"
+            restore_stage=""
+        fi
         plan "move the copy that was put back to $keep/original"
         if ((!dry_run)); then
             mkdir -p "$keep"
             mv -T "$backup" "$keep/original"
+            rm -f "$restore_decision_file"
+            if [[ -f $icon_adoption && ! -L $icon_adoption ]]; then
+                python3 -I "$icon_prefs" finish-restore "$icon_adoption" || true
+                mv -T "$icon_adoption" "$keep/icon-adoption"
+            fi
         fi
         say "Put back your config files from before the switch (the copy is in $keep/original, your files from just now in $keep/current)"
         restored=1
@@ -221,12 +344,17 @@ if [[ -d $backup ]]; then
         trap - EXIT
         reconfigure_kwin
         notify_style
+        notify_icons
     else
         # Never switched (or switched away again): leave the config alone.
         plan "move the unused copy of your config files to $keep/unused"
         if ((!dry_run)); then
+            printf 'uninstall\n' > "$uninstall_marker"
             mkdir -p "$keep"
             mv -T "$backup" "$keep/unused"
+            if [[ -f $icon_adoption && ! -L $icon_adoption ]]; then
+                mv -T "$icon_adoption" "$keep/icon-adoption-unused"
+            fi
         fi
         say "The theme isn't active, so your config files were left as they are (the copy from install time is in $keep/unused)"
     fi
@@ -321,14 +449,6 @@ for path in "${!kept_packages[@]}"; do
     fi
 done
 
-entries=("${manifest_entries[@]}")
-# Keep the original moved-aside copy distinct from any later versions.
-declare -A first_aside=()
-for entry in "${entries[@]:1}"; do
-    IFS=$'\t' read -r kind path saved _ <<< "$entry"
-    [[ $kind == displaced && -z ${first_aside[$path]:-} ]] && first_aside[$path]=$entry
-done
-
 # The cursor can be selected on its own, even with another global theme.
 # Use the settings that will remain after the config restore.
 selected_cursor() {
@@ -350,7 +470,7 @@ cursor_can_restore_original() {
     [[ -n ${first_aside[$cursor_theme_dir]:-} ]] || return 1
     IFS=$'\t' read -r _ path saved _ <<< "${first_aside[$cursor_theme_dir]}"
     [[ $saved == "$displaced"/* && -r $saved/index.theme && -s $saved/cursors/left_ptr ]] &&
-        installed_unchanged dir "$path"
+        { [[ ! -e $path && ! -L $path ]] || installed_unchanged dir "$path"; }
 }
 
 if [[ -d $cursor_theme_dir && ! -L $cursor_theme_dir ]] && manifest_lists dir "$cursor_theme_dir"; then
@@ -365,11 +485,55 @@ if [[ -d $cursor_theme_dir && ! -L $cursor_theme_dir ]] && manifest_lists dir "$
     fi
 fi
 
+# Unified KDE + GTK surviving icon-selection guard (#110, #126, #127).
+managed_icon_ids=()
+for icon_id in "${icon_theme_ids[@]}"; do
+    path=$data/icons/$icon_id
+    if [[ -d $path && ! -L $path ]] && manifest_lists dir "$path"; then
+        managed_icon_ids+=("$icon_id")
+    fi
+done
+if ((${#managed_icon_ids[@]})); then
+    surv_args=("$config_home" "$home" "$data/icons" "${XDG_DATA_DIRS:-}")
+    ((dry_run)) && surv_args+=(--dry-run)
+    ((restored)) && surv_args+=(--restored)
+    [[ -d $backup ]] && surv_args+=(--backup-dir "$backup")
+    [[ -f $icon_adoption && ! -L $icon_adoption ]] && surv_args+=(--adoption "$icon_adoption")
+    for icon_id in "${managed_icon_ids[@]}"; do
+        surv_args+=(--managed "$icon_id")
+        icon_can_restore_original "$icon_id" && surv_args+=(--restorable "$icon_id")
+    done
+    if surv_out=$(python3 -I "$icon_prefs" check-surviving "${surv_args[@]}"); then
+        declare -A warned_icon_sel=()
+        while IFS=$'\t' read -r stag sid ssrcs ssels; do
+            [[ $stag == KEEP && -n $sid ]] || continue
+            kept_packages[$data/icons/$sid]=selected
+            wkey="$ssels|$ssrcs"
+            if [[ -z ${warned_icon_sel[$wkey]:-} ]]; then
+                warned_icon_sel[$wkey]=1
+                if [[ $ssels == *WhiteSur-lavender-light* || $ssels == *WhiteSur-lavender-dark* ]]; then
+                    warn "$ssels is still selected in $ssrcs (and links to $icon_base_id). Choose another icon theme, then run uninstall.sh again."
+                else
+                    warn "$ssels is still selected in $ssrcs. Choose another icon theme, then run uninstall.sh again."
+                fi
+            fi
+        done <<< "$surv_out"
+    else
+        for icon_id in "${managed_icon_ids[@]}"; do
+            kept_packages[$data/icons/$icon_id]=unknown
+        done
+        warn "couldn't read KDE or GTK icon settings. Keeping installed WhiteSur Lavender icon themes. Run uninstall.sh again when settings can be read."
+    fi
+fi
+
 # --- 2. Installed files, newest first ---------------------------------------
 #
 # Each entry leaves the record as soon as it's done, so a second run after
 # a failure never redoes a step: a file put back is never taken for the
 # installed one (finding 27). What's left alone stays on the record.
+if ((!dry_run)) && ((${#entries[@]} > 1)); then
+    printf 'uninstall\n' > "$uninstall_marker"
+fi
 
 had_plasma_style=0
 # Only files whose content is what install.sh put there are removed; what
@@ -388,11 +552,13 @@ for ((i = ${#entries[@]} - 1; i >= 1; i--)); do
     fi
     if [[ ! -e $path && ! -L $path ]]; then
         manifest_drop "$entry"
+        drop_target_sums "$path"
         continue
     fi
     if ! is_kind "$kind" "$path"; then
         warn "$path isn't the $kind install.sh put there any more; left alone as yours"
         manifest_drop "$entry"
+        drop_target_sums "$path"
         continue
     fi
     [[ $path == */desktoptheme/* ]] && had_plasma_style=1
@@ -406,6 +572,7 @@ for ((i = ${#entries[@]} - 1; i >= 1; i--)); do
             warn "$path points somewhere else now; left alone as yours"
         fi
         manifest_drop "$entry"
+        drop_target_sums "$path"
         continue
     fi
     if [[ $kind == file ]]; then
@@ -417,35 +584,23 @@ for ((i = ${#entries[@]} - 1; i >= 1; i--)); do
             warn "$path was changed since it was installed; left alone as yours"
         fi
         manifest_drop "$entry"
+        drop_target_sums "$path"
         continue
     fi
-    # A folder: its installed files, then the folders that held them.
-    our_dirs "$path"
-    kept=()
-    while IFS= read -r -d '' item; do
-        if installed_file "$item"; then
-            ((dry_run)) || rm -f "$item"
-        else
-            kept+=("${item#"$path"/}")
-        fi
-    done < <(find "$path" -mindepth 1 ! -type d -print0)
-    while IFS= read -r -d '' item; do
-        [[ -n ${our_dir[$item]:-} ]] || kept+=("${item#"$path"/}/")
-    done < <(find "$path" -mindepth 1 -type d -print0)
-    if ((${#kept[@]} == 0)); then
+    # A folder: its installed files/links, then the folders that held them.
+    clean_args=("$manifest" "$path")
+    ((dry_run)) && clean_args+=(--dry-run)
+    clean_out=$(python3 -I "$manifest_ops" clean-dir "${clean_args[@]}")
+    if [[ $clean_out == REMOVED ]]; then
         plan "remove $path"
-        ((dry_run)) || rm -rf "$path"
         planned_path[$path]=removed
     else
+        IFS=$'\t' read -r _ _ kept_preview <<< "$clean_out"
         plan "remove the installed files in $path"
-        if ((!dry_run)); then
-            while IFS= read -r -d '' item; do
-                [[ -n ${our_dir[$item]:-} ]] && rmdir "$item" 2> /dev/null || true
-            done < <(find "$path" -mindepth 1 -depth -type d -print0)
-        fi
-        warn "kept what you added or changed in $path: ${kept[*]:0:5}$( ((${#kept[@]} > 5)) && printf ' ...')"
+        warn "kept what you added or changed in $path: $kept_preview"
     fi
     manifest_drop "$entry"
+    drop_target_sums "$path"
 done
 
 # What was in the way of an install target goes back. If more than one
@@ -455,7 +610,7 @@ done
 # a second run after an interruption can't mix them up (finding 39).
 for entry in "${entries[@]:1}"; do
     IFS=$'\t' read -r kind path saved _ <<< "$entry"
-    [[ $kind == displaced && ${first_aside[$path]} != "$entry" ]] || continue
+    [[ $kind == displaced && ${first_aside[$path]:-} != "$entry" ]] || continue
     [[ -z ${kept_packages[$path]:-} ]] || continue
     if [[ $saved != "$displaced"/* || ! (-e $saved || -L $saved) ]]; then
         manifest_drop "$entry"
@@ -472,7 +627,7 @@ for entry in "${entries[@]:1}"; do
 done
 for entry in "${entries[@]:1}"; do
     IFS=$'\t' read -r kind path saved _ <<< "$entry"
-    [[ $kind == displaced && ${first_aside[$path]} == "$entry" ]] || continue
+    [[ $kind == displaced && ${first_aside[$path]:-} == "$entry" ]] || continue
     [[ -z ${kept_packages[$path]:-} ]] || continue
     if ! is_target file "$path" && ! is_target dir "$path" && ! is_target link "$path"; then
         warn "the record lists $path as moved aside, which isn't a place install.sh installs to; left alone"
@@ -540,12 +695,12 @@ if ((left)); then
 fi
 
 if ((!dry_run)); then
-    rm -f "$manifest" "$state/lock"
+    rm -f "$manifest" "$state/lock" "$icon_adoption" "$restore_decision_file" "$uninstall_marker"
     rmdir "$state" 2> /dev/null || true
 else
     plan "remove the install record $manifest"
 fi
-say "Removed the Platinum style (widgets and Qt Quick), decoration, color scheme, Plasma style, global theme, wallpapers, cursors and login script"
+say "Removed the Platinum style (widgets and Qt Quick), decoration, color scheme, Plasma style, global theme, wallpapers, cursors, icons and login script"
 if ((shell_failed)); then
     warn "$shell_failed_message"
     exit 1

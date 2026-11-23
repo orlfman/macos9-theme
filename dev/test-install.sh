@@ -18,6 +18,7 @@
 #
 # usage: test-install.sh        (exit 1 if anything failed)
 set -euo pipefail
+umask 022
 dev=$(dirname "$(readlink -f "$0")")
 project=$(dirname "$dev")
 
@@ -32,16 +33,52 @@ echo "systemctl \$*" >> "$root/systemctl.log"
 exit 3
 EOF
     chmod +x "$root/bin/systemctl"
-    # Build the plugins once; install.sh copies them (M9_PREBUILT).
+    # Build the C++ plugins and one real-size WhiteSur Lavender trio once, plus
+    # a tiny 3-theme fixture (for fast general scenarios) and a local bare git
+    # remote (for offline/auto-fetch tests with zero real network access).
     "$project/style/build.sh" "$root/prebuilt/style" > /dev/null
     "$project/decoration/build.sh" "$root/prebuilt/decoration" > /dev/null
     "$project/style/quick/build.sh" "$root/prebuilt/quick" > /dev/null
+    upstream_src="${M9_WHITESUR_UPSTREAM:-$(dirname "$project")/WhiteSur-icon-theme}"
+    mkdir -p "$root/prebuilt-real/icons" "$root/prebuilt/icons"
+    "$project/icons/build-whitesur-lavender.sh" "$upstream_src" "$root/prebuilt-real/icons" > /dev/null
+    rm -f "$root/prebuilt-real/icons"/WhiteSur-lavender{,-light,-dark}/.macos9-whitesur-lavender-build
+    cp -R "$root/prebuilt/style" "$root/prebuilt/decoration" "$root/prebuilt/quick" "$root/prebuilt-real/"
+    # Build tiny valid 3-theme icon fixture mirroring WhiteSur Lavender's symlink structure (~18 entries).
+    python3 -I - "$root/prebuilt-real/icons" "$root/prebuilt/icons" << 'PYEND'
+import shutil, sys
+from pathlib import Path
+src, dst = Path(sys.argv[1]), Path(sys.argv[2])
+for tid in ("WhiteSur-lavender", "WhiteSur-lavender-light", "WhiteSur-lavender-dark"):
+    (dst / tid).mkdir(parents=True, exist_ok=True)
+    for meta in ("index.theme", "COPYING", "AUTHORS", "LAVENDER-NOTICE.txt"):
+        shutil.copy2(src / tid / meta, dst / tid / meta)
+base = dst / "WhiteSur-lavender"
+(base / "places/scalable").mkdir(parents=True)
+(base / "status/32").mkdir(parents=True)
+shutil.copy2(src / "WhiteSur-lavender/places/scalable/folder.svg", base / "places/scalable/folder.svg")
+shutil.copy2(src / "WhiteSur-lavender/status/32/start-here.svg", base / "status/32/start-here.svg")
+(base / "places@2x").symlink_to("places")
+light = dst / "WhiteSur-lavender-light"
+(light / "status/32").mkdir(parents=True)
+shutil.copy2(src / "WhiteSur-lavender-light/status/32/start-here.svg", light / "status/32/start-here.svg")
+(light / "places").symlink_to("../WhiteSur-lavender/places")
+dark = dst / "WhiteSur-lavender-dark"
+(dark / "places/scalable").mkdir(parents=True)
+(dark / "status").mkdir(parents=True)
+shutil.copy2(src / "WhiteSur-lavender-dark/places/scalable/folder.svg", dark / "places/scalable/folder.svg")
+(dark / "status/32").symlink_to("../../WhiteSur-lavender/status/32")
+PYEND
+    # Local bare remote for automatic-fetch tests (zero network access).
+    git clone --bare --quiet "$upstream_src" "$root/local-remote.git"
+    git -C "$root/local-remote.git" config uploadpack.allowAnySHA1InWant true
     exec env -i HOME="$root/home" USER="$USER" PATH="$root/bin:/usr/local/bin:/usr/bin" \
         XDG_CONFIG_HOME="$root/home/.config" XDG_DATA_HOME="$root/home/.local/share" \
         XDG_CACHE_HOME="$root/home/.cache" XDG_STATE_HOME="$root/home/.local/state" \
         XDG_DATA_DIRS=/usr/local/share:/usr/share XDG_CONFIG_DIRS=/etc/xdg \
         XDG_RUNTIME_DIR="$root/runtime" M9_TEST_INNER="$root" M9_PROJECT_BUILD="$dev/build" LANG=C.UTF-8 \
-        M9_PREBUILT="$root/prebuilt" M9_USTOPS="${M9_USTOPS:-}" QT_QPA_PLATFORM=offscreen \
+        M9_PREBUILT="$root/prebuilt" M9_PREBUILT_REAL="$root/prebuilt-real" \
+        M9_TEST_REMOTE="file://$root/local-remote.git" M9_USTOPS="${M9_USTOPS:-}" QT_QPA_PLATFORM=offscreen \
         dbus-run-session -- bash "$0"
 fi
 
@@ -124,10 +161,28 @@ next_login() {
     done
     return 0
 }
+icons_absent() {
+    local d=${1:-$data} id
+    for id in WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark; do
+        [[ ! -e $d/icons/$id && ! -L $d/icons/$id ]] || return 1
+    done
+    return 0
+}
 theme_files_gone() {
     next_login
-    ! ls -d "$home"/.local/lib/macos9-theme "$data"/plasma/*/platinum* "$data/color-schemes/Platinum.colors" "$data/wallpapers/"platinum-{ribbon,lavender} \
-        "$config/plasma-workspace/env/macos9-theme.sh" "$config"/plasma-workspace/env/macos9-theme-cleanup*.sh > /dev/null 2>&1
+    local p
+    shopt -s nullglob
+    for p in "$home/.local/lib/macos9-theme" "$data"/plasma/*/platinum* "$data/color-schemes/Platinum.colors" \
+        "$data/wallpapers/platinum-ribbon" "$data/wallpapers/platinum-lavender" \
+        "$data/icons/WhiteSur-lavender" "$data/icons/WhiteSur-lavender-light" "$data/icons/WhiteSur-lavender-dark" \
+        "$config/plasma-workspace/env/macos9-theme.sh" "$config"/plasma-workspace/env/macos9-theme-cleanup*.sh; do
+        if [[ -e $p || -L $p ]]; then
+            shopt -u nullglob
+            return 1
+        fi
+    done
+    shopt -u nullglob
+    return 0
 }
 kept_dir() { ls -d "$home"/.local/state/macos9-theme-uninstalled-* 2> /dev/null | tail -1; }
 # The home without what uninstall keeps on purpose (its dated folder).
@@ -164,7 +219,7 @@ for id in platinum-ribbon platinum-lavender; do
         "$project/wallpapers/$id/contents/images/3840x2160.jxl" \
         "$data/wallpapers/$id/contents/images/3840x2160.jxl"
 done
-check "the record lists the 12 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 12
+check "the record lists the 15 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 15
 check "Kirigami's plugin link for the Qt Quick style points at KDE's" \
     bash -c "[[ \$(readlink '$home/.local/lib/macos9-theme/style/kf6/kirigami/platform/Platinum.so') == */kf6/kirigami/platform/org.kde.desktop.so ]]"
 check "install alone leaves the config files alone" same "$seed" "$(config_state)"
@@ -190,8 +245,8 @@ else
     echo "skip    the installed style plugin loads (build dev/build/styleshot first: dev/check-style.sh)"
 fi
 check "a second plain install exits 0" run install-2 "$project/install.sh"
-check "the record still lists 12 targets, nothing moved aside" \
-    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 12 ]] && ! grep -q '^displaced' '$state/installed'"
+check "the record still lists 15 targets, nothing moved aside" \
+    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 15 ]] && ! grep -q '^displaced' '$state/installed'"
 
 check "--apply exits 0" run apply env QT_PLUGIN_PATH="$plugins/style:$plugins/decoration" "$project/install.sh" --apply
 check "--apply explains the next login for Qt Quick apps" grep -Fq 'Log out and back in for Qt Quick apps' "$root/$n-apply.log"
@@ -587,12 +642,25 @@ check "uninstall refuses (exit 1)" bash -c "! '$project/uninstall.sh' > '$root/4
 check "  and names the missing file" grep -q "kdedefaults/custom-settings is missing" "$root/40.log"
 check "  and changed nothing" same "$before" "$(snapshot)"
 mv "$state/backup" "$root/backup-moved-away"
-check "with the copy moved away, uninstall stops with the active cursors kept" bash -c '! "$1" > "$2" 2>&1' _ "$project/uninstall.sh" "$root/40-without-backup.log"
-check "  it removed the other theme files" theme_files_gone
+check "with the copy moved away, uninstall stops with the active cursors and icons kept" bash -c '! "$1" > "$2" 2>&1' _ "$project/uninstall.sh" "$root/40-without-backup.log"
+check "  it removed the other theme files" bash -c '
+    next_login() { for s in "$1"/plasma-workspace/env/*.sh; do [ -f "$s" ] && sh -c ". \"\$1\"" _ "$s"; done; }
+    next_login "$2"
+    shopt -s nullglob
+    for p in "$3/.local/lib/macos9-theme" "$4"/plasma/*/platinum* "$4/color-schemes/Platinum.colors" \
+        "$4/wallpapers/platinum-ribbon" "$4/wallpapers/platinum-lavender" \
+        "$4/icons/WhiteSur-lavender-light" "$4/icons/WhiteSur-lavender-dark" \
+        "$2/plasma-workspace/env/macos9-theme.sh" "$2"/plasma-workspace/env/macos9-theme-cleanup*.sh; do
+        [[ ! -e $p && ! -L $p ]] || exit 1
+    done
+' _ "$config" "$config" "$home" "$data"
 check "  the active cursors remain" test -f "$data/icons/macOS-cursors/cursors/left_ptr"
+check "  the active WhiteSur-lavender icon theme remains" test -f "$data/icons/WhiteSur-lavender/index.theme"
 kwriteconfig6 --file kcminputrc --group Mouse --key cursorTheme Breeze
-check "  retry after changing the cursor exits 0" run retry "$project/uninstall.sh"
+kwriteconfig6 --file kdeglobals --group Icons --key Theme breeze
+check "  retry after changing the cursor and icons exits 0" run retry "$project/uninstall.sh"
 check "  it removes the cursor package" test ! -e "$data/icons/macOS-cursors"
+check "  it removes WhiteSur-lavender" test ! -e "$data/icons/WhiteSur-lavender"
 rm -rf "$root/backup-moved-away"
 
 # --------------------------------------------------------------------------
@@ -937,6 +1005,1370 @@ for mode in --dry-run --apply; do
     check "  the reason is the cursor archive" grep -Fq 'the bundled cursor archive is missing or has changed' "$root/bad-cursor.log"
     check "  the home is unchanged" same "$before" "$(snapshot)"
 done
+
+# --------------------------------------------------------------------------
+# #110: WhiteSur Lavender icons install, apply, adoption, update, and undo
+# --------------------------------------------------------------------------
+eff_icon() {
+    local v
+    v=$(kreadconfig6 --file "$config/kdeglobals" --group Icons --key Theme)
+    [[ -n $v ]] || v=$(kreadconfig6 --file "$config/kdedefaults/kdeglobals" --group Icons --key Theme 2> /dev/null || true)
+    printf '%s' "$v"
+}
+
+fresh "#110 fresh install, apply, relative symlinks, and clean undo"
+before=$(snapshot)
+run dry-icons "$project/install.sh" --dry-run
+check "install --dry-run lists all three WhiteSur Lavender themes" bash -c '
+    grep -Fq "would install $1/icons/WhiteSur-lavender/" "$2" &&
+    grep -Fq "would install $1/icons/WhiteSur-lavender-light/" "$2" &&
+    grep -Fq "would install $1/icons/WhiteSur-lavender-dark/" "$2"
+' _ "$data" "$root/$n-dry-icons.log"
+check "install --dry-run changes nothing" same "$before" "$(snapshot)"
+check "plain install exits 0" run install "$project/install.sh"
+check "  all three icon themes are installed without builder ownership stamps" bash -c '
+    for id in WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark; do
+        test -f "$1/icons/$id/index.theme" && test ! -e "$1/icons/$id/.macos9-whitesur-lavender-build" || exit 1
+    done
+' _ "$data"
+check "  relative symlinks in -light and -dark are preserved as links" bash -c '
+    [[ $(readlink "$1/icons/WhiteSur-lavender-light/places") == "../WhiteSur-lavender/places" ]] &&
+    [[ $(readlink "$1/icons/WhiteSur-lavender-dark/status/32") == "../../WhiteSur-lavender/status/32" ]]
+' _ "$data"
+check "  plain install records absences in icon-adoption" python3 -I - "$state/icon-adoption" << 'PYEND'
+import json, sys
+d = json.loads(open(sys.argv[1]).read())
+assert d["version"] == 3 and d["backup_predated"] is False and d["phase"] == "skipped"
+for tid in ("WhiteSur-lavender", "WhiteSur-lavender-light", "WhiteSur-lavender-dark"):
+    assert d["preexisting"][tid] == "absent", d
+PYEND
+check "  plain install leaves icon selection untouched" bash -c '[[ -z $(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme) ]]' _ "$config"
+check "--apply exits 0" run apply "$project/install.sh" --apply
+check "  global theme selects WhiteSur-lavender" bash -c '[[ $(kreadconfig6 --file "$1/kdedefaults/kdeglobals" --group Icons --key Theme) == WhiteSur-lavender ]]' _ "$config"
+check "  other global theme defaults stay unchanged" bash -c '
+    [[ $(kreadconfig6 --file "$1/kdedefaults/kdeglobals" --group KDE --key widgetStyle) == Platinum ]] &&
+    [[ $(kreadconfig6 --file "$1/kdedefaults/kdeglobals" --group General --key ColorScheme) == Platinum ]] &&
+    [[ $(kreadconfig6 --file "$1/kdedefaults/kcminputrc" --group Mouse --key cursorTheme) == macOS-cursors ]]
+' _ "$config"
+check "uninstall --dry-run plans removal of all three icon themes" bash -c '
+    "$1/uninstall.sh" --dry-run > "$2" 2>&1 &&
+    grep -Fq "would remove $3/icons/WhiteSur-lavender" "$2" &&
+    grep -Fq "would remove $3/icons/WhiteSur-lavender-light" "$2" &&
+    grep -Fq "would remove $3/icons/WhiteSur-lavender-dark" "$2"
+' _ "$project" "$root/110-fresh-dry.log" "$data"
+check "uninstall exits 0" run undo "$project/uninstall.sh"
+check "  all three icon themes are gone" icons_absent "$data"
+check "  inherited icon setting and full config are back byte for byte" same "$seed" "$(config_state)"
+check "  no state record left" no_record_left
+
+fresh "#110 adopt manual Lavender with pre-existing Platinum backup (old WhiteSur + Papirus-Dark gone)"
+# 1. Seed a legacy pre-Platinum config that referenced old deleted WhiteSur icons and GTK Papirus-Dark.
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme WhiteSur
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=Papirus-Dark\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=Papirus-Dark\n' > "$config/gtk-4.0/settings.ini"
+printf 'gtk-icon-theme-name="Papirus-Dark"\n' > "$home/.gtkrc-2.0"
+printf 'Net/IconThemeName "Papirus-Dark"\n' > "$config/xsettingsd/xsettingsd.conf"
+check "pre-existing Platinum apply exits 0" run pre-apply "$project/install.sh" --apply
+# Simulate the older pre-icon Platinum install: remove icon tracking/dirs from state & disk
+# so $state/backup has TAKEN=apply (with legacy Theme=WhiteSur + GTK Papirus-Dark) predating manual Lavender!
+for icon_id in WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark; do
+    rm -rf "$data/icons/$icon_id"
+done
+python3 -I - "$state/installed" "$data/icons/WhiteSur-lavender" << 'PYEND'
+import sys
+from pathlib import Path
+p = Path(sys.argv[1])
+pref = sys.argv[2]
+lines = [ln for ln in p.read_text().splitlines() if pref not in ln]
+p.write_text("\n".join(lines) + "\n")
+PYEND
+rm -f "$state/icon-adoption"
+# 2. User manually copied unstamped WhiteSur-lavender trio (byte-identical to build on -light/-dark,
+#    plus a distinct marker on base to verify restoration; also verify identical bytes get captured!)
+mkdir -p "$data/icons"
+for icon_id in WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark; do
+    cp -RP "$M9_PREBUILT/icons/$icon_id" "$data/icons/$icon_id"
+    rm -f "$data/icons/$icon_id/.macos9-whitesur-lavender-build"
+done
+printf '# manual lavender base\n' >> "$data/icons/WhiteSur-lavender/index.theme"
+# Select manual WhiteSur-lavender explicitly in kdeglobals and GTK (old WhiteSur folders do not exist!)
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme WhiteSur-lavender
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=WhiteSur-lavender\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=WhiteSur-lavender\n' > "$config/gtk-4.0/settings.ini"
+printf 'gtk-icon-theme-name="WhiteSur-lavender"\n' > "$home/.gtkrc-2.0"
+printf 'Net/IconThemeName "WhiteSur-lavender"\n' > "$config/xsettingsd/xsettingsd.conf"
+backup_sums_before=$(cd "$state/backup" && find . -type f -print0 | sort -z | xargs -0 sha256sum)
+check "updated install.sh (plain update) adopts manual trio" run adopt "$project/install.sh"
+backup_sums_after=$(cd "$state/backup" && find . -type f -print0 | sort -z | xargs -0 sha256sum)
+check "  pre-existing Platinum backup is preserved byte for byte" same "$backup_sums_before" "$backup_sums_after"
+check "  icon-adoption recorded backup_predated=true and manual KDE+GTK selection" python3 -I - "$state/icon-adoption" << 'PYEND'
+import json, sys
+d = json.loads(open(sys.argv[1]).read())
+assert d["version"] == 3 and d["backup_predated"] is True
+cap = d["captured"]
+assert cap["kde"]["effective_source"] == "kdeglobals" and cap["kde"]["effective_theme"] == "WhiteSur-lavender"
+assert cap["gtk"]["gtk3"]["value"] == "WhiteSur-lavender" and cap["gtk"]["gtk4"]["value"] == "WhiteSur-lavender"
+assert cap["gtk"]["gtk2"]["value"] == "WhiteSur-lavender" and cap["gtk"]["xsettingsd"]["value"] == "WhiteSur-lavender"
+for tid in ("WhiteSur-lavender", "WhiteSur-lavender-light", "WhiteSur-lavender-dark"):
+    assert d["preexisting"][tid] == "manual", d
+PYEND
+check "  all three manual copies were displaced (including byte-identical -light and -dark)" bash -c '
+    for id in WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark; do
+        grep -q "^displaced	$1/icons/$id	" "$2/installed" || exit 1
+    done
+' _ "$data" "$state"
+check "  managed WhiteSur-lavender replaced the manual copy in place" bash -c '! grep -Fq "# manual lavender base" "$1/icons/WhiteSur-lavender/index.theme"' _ "$data"
+check "  plain update preserved WhiteSur-lavender selection" bash -c '[[ $(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme) == WhiteSur-lavender ]]' _ "$config"
+# Repeated plain update + local edit + another update must preserve original manual copies!
+check "repeated plain update exits 0" run update-2 "$project/install.sh"
+printf 'my-later-edit\n' > "$data/icons/WhiteSur-lavender/local-edit.txt"
+check "update after local edit exits 0" run update-3 "$project/install.sh"
+check "uninstall --dry-run plans restoring manual selection and copies" bash -c '
+    "$1/uninstall.sh" --dry-run > "$2" 2>&1 &&
+    grep -Fq "would restore explicit KDE icon theme (WhiteSur-lavender)" "$2" &&
+    grep -Fq "would restore gtk3 icon theme (WhiteSur-lavender)" "$2" &&
+    grep -Fq "would put back the earlier $3/icons/WhiteSur-lavender" "$2" &&
+    ! grep -Fq "is still selected" "$2"
+' _ "$project" "$root/110-adopt-dry.log" "$data"
+check "uninstall exits 0 without assuming old WhiteSur exists" run undo "$project/uninstall.sh"
+check "  original manual WhiteSur-lavender base is restored" grep -Fq "# manual lavender base" "$data/icons/WhiteSur-lavender/index.theme"
+check "  manual -light and -dark are restored with working relative symlinks" bash -c '
+    [[ $(readlink "$1/icons/WhiteSur-lavender-light/places") == "../WhiteSur-lavender/places" ]] &&
+    test -f "$1/icons/WhiteSur-lavender-light/places/scalable/folder.svg" &&
+    [[ $(readlink "$1/icons/WhiteSur-lavender-dark/status/32") == "../../WhiteSur-lavender/status/32" ]] &&
+    test -f "$1/icons/WhiteSur-lavender-dark/status/32/start-here.svg"
+' _ "$data"
+check "  WhiteSur-lavender icon selection is restored in kdeglobals and GTK (not Papirus-Dark)" bash -c '
+    [[ $(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme) == WhiteSur-lavender ]] &&
+    grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$1/gtk-3.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$1/gtk-4.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=\"WhiteSur-lavender\"" "$2/.gtkrc-2.0" &&
+    grep -qx "Net/IconThemeName \"WhiteSur-lavender\"" "$1/xsettingsd/xsettingsd.conf"
+' _ "$config" "$home"
+check "  later local-edit copy was preserved in later-versions" bash -c 'grep -rlx my-later-edit "$1"/macos9-theme-uninstalled-*/later-versions 2> /dev/null | grep -q local-edit.txt' _ "$home/.local/state"
+check "  no state record left" no_record_left
+check "repeated uninstall exits 0 and leaves restored manual copies untouched" bash -c '
+    "$1/uninstall.sh" > "$2" 2>&1 &&
+    grep -Fq "# manual lavender base" "$3/icons/WhiteSur-lavender/index.theme" &&
+    [[ $(kreadconfig6 --file "$4/kdeglobals" --group Icons --key Theme) == WhiteSur-lavender ]]
+' _ "$project" "$root/110-repeat-undo.log" "$data" "$config"
+
+# Independent selection of all three variants + base dependency retention
+for variant in WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark; do
+    fresh "#110 independent selection of $variant retains required copy until unselected"
+    check "install exits 0" run install "$project/install.sh"
+    kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme "$variant"
+    before=$(snapshot)
+    check "uninstall --dry-run warns about $variant and changes nothing" bash -c '
+        "$1/uninstall.sh" --dry-run > "$2" 2>&1 &&
+        grep -Fq "$3 is still selected" "$2"
+    ' _ "$project" "$root/110-sel-$variant-dry.log" "$variant"
+    check "  dry run left home unchanged" same "$before" "$(snapshot)"
+    if run undo "$project/uninstall.sh"; then
+        fail "uninstall defers $variant while selected"
+    else
+        pass "uninstall defers $variant while selected"
+    fi
+    check "  $variant remains usable" test -f "$data/icons/$variant/index.theme"
+    check "  base WhiteSur-lavender remains usable" test -f "$data/icons/WhiteSur-lavender/places/scalable/folder.svg"
+    if [[ $variant == WhiteSur-lavender-light ]]; then
+        check "  unselected -dark was removed" test ! -e "$data/icons/WhiteSur-lavender-dark"
+    elif [[ $variant == WhiteSur-lavender-dark ]]; then
+        check "  unselected -light was removed" test ! -e "$data/icons/WhiteSur-lavender-light"
+    else
+        check "  unselected -light and -dark were removed" bash -c 'test ! -e "$1/icons/WhiteSur-lavender-light" && test ! -e "$1/icons/WhiteSur-lavender-dark"' _ "$data"
+    fi
+    kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme breeze
+    check "  retry after switching to breeze exits 0" run retry "$project/uninstall.sh"
+    check "  all three icon dirs are now gone" icons_absent "$data"
+    check "  no state record left" no_record_left
+done
+
+fresh "#110 local edits inside managed icon theme survive uninstall (unselected and selected)"
+check "install exits 0" run install "$project/install.sh"
+printf 'user-custom-file\n' > "$data/icons/WhiteSur-lavender/custom.txt"
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme WhiteSur-lavender-light
+if run undo-sel "$project/uninstall.sh"; then
+    fail "uninstall keeps selected -light and edited base together"
+else
+    pass "uninstall keeps selected -light and edited base together"
+fi
+check "  base folder and its installed icons stay intact while -light is selected" test -f "$data/icons/WhiteSur-lavender/places/scalable/folder.svg"
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme breeze
+check "retry after switching away exits 0" run undo-retry "$project/uninstall.sh"
+check "  user custom file in WhiteSur-lavender is preserved" grep -Fxq user-custom-file "$data/icons/WhiteSur-lavender/custom.txt"
+check "  unchanged installed icons around it were removed" test ! -e "$data/icons/WhiteSur-lavender/places/scalable/folder.svg"
+check "  unmodified -light and -dark were removed" bash -c 'test ! -e "$1/icons/WhiteSur-lavender-light" && test ! -e "$1/icons/WhiteSur-lavender-dark"' _ "$data"
+
+fresh "#110 interrupted update during icon placement recovers cleanly on retry"
+mkdir -p "$data/icons"
+for icon_id in WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark; do
+    cp -RP "$M9_PREBUILT/icons/$icon_id" "$data/icons/$icon_id"
+    rm -f "$data/icons/$icon_id/.macos9-whitesur-lavender-build"
+done
+printf '# manual-before-interrupt\n' >> "$data/icons/WhiteSur-lavender/index.theme"
+fail_bin=$root/fail-icon-mv
+mkdir -p "$fail_bin"
+cat > "$fail_bin/mv" << 'STUB'
+#!/bin/bash
+if [[ ${!#} == "$M9_FAIL_ICON_TARGET" ]]; then
+    exit 1
+fi
+exec /usr/bin/mv "$@"
+STUB
+chmod +x "$fail_bin/mv"
+if run interrupted env PATH="$fail_bin:$PATH" M9_FAIL_ICON_TARGET="$data/icons/WhiteSur-lavender-light" "$project/install.sh"; then
+    fail "interrupted install reports failure"
+else
+    pass "interrupted install reports failure"
+fi
+check "retry install exits 0" run retry-install "$project/install.sh"
+check "  all three icon themes are installed cleanly" bash -c '
+    for id in WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark; do
+        test -f "$1/icons/$id/index.theme" || exit 1
+    done
+' _ "$data"
+check "  no leftover temp directories in icons/" bash -c '! ls -d "$1/icons"/.macos9-theme.* > /dev/null 2>&1' _ "$data"
+check "uninstall after recovered install exits 0" run undo "$project/uninstall.sh"
+check "  original manual WhiteSur-lavender base survived the interruption and was restored" grep -Fq "# manual-before-interrupt" "$data/icons/WhiteSur-lavender/index.theme"
+
+fresh "#110 unpinned upstream repo is rejected before any writes (without M9_PREBUILT)"
+bad_up=$root/bad-whitesur-up
+rm -rf "$bad_up"
+mkdir -p "$bad_up"
+before=$(snapshot)
+for mode in --dry-run ""; do
+    if env -u M9_PREBUILT M9_WHITESUR_UPSTREAM="$bad_up" "$project/install.sh" ${mode:+"$mode"} > "$root/110-bad-up.log" 2>&1; then
+        fail "install ${mode:-real} rejects bad upstream"
+    else
+        pass "install ${mode:-real} rejects bad upstream"
+    fi
+    check "  home unchanged after bad upstream (${mode:-real})" same "$before" "$(snapshot)"
+done
+
+# --------------------------------------------------------------------------
+# Real-size 44,619-entry WhiteSur Lavender round-trip, custom layer, and
+# automatic fetch/cache tests (local file:// remote, zero real network)
+# --------------------------------------------------------------------------
+fresh "#110 real-size 44,619-entry install, apply, adoption, custom layer, and undo"
+# 1. Real-size fresh install + --apply + undo (M9_PREBUILT_REAL)
+check "real-size install exits 0" run real-install env M9_PREBUILT="$M9_PREBUILT_REAL" "$project/install.sh"
+check "  real-size WhiteSur-lavender installed (>20k files/links)" bash -c '[[ $(find "$1/icons/WhiteSur-lavender" -mindepth 1 | wc -l) -gt 20000 ]]' _ "$data"
+check "real-size --apply exits 0" run real-apply env M9_PREBUILT="$M9_PREBUILT_REAL" "$project/install.sh" --apply
+check "  real-size --apply selected WhiteSur-lavender" bash -c '[[ $(kreadconfig6 --file "$1/kdedefaults/kdeglobals" --group Icons --key Theme) == WhiteSur-lavender ]]' _ "$config"
+check "real-size uninstall exits 0" run real-undo "$project/uninstall.sh"
+check "  all three real-size icon dirs removed" icons_absent "$data"
+check "  real-size config restored byte for byte" same "$seed" "$(config_state)"
+check "  no state record left" no_record_left
+
+# 2. Automatic fetch/cache + custom icon layer (no M9_PREBUILT/icons; local file:// remote only!)
+fresh "#110 automatic WhiteSur fetch/cache, offline/corrupt/wrong-commit handling, and custom layer"
+# Build a prebuilt dir containing ONLY the C++ plugins (no icons/) so install.sh uses real fetch+build!
+no_icon_prebuilt=$root/prebuilt-cpp-only
+rm -rf "$no_icon_prebuilt"
+mkdir -p "$no_icon_prebuilt"
+cp -R "$M9_PREBUILT/style" "$M9_PREBUILT/decoration" "$M9_PREBUILT/quick" "$no_icon_prebuilt/"
+
+custom_test_dir=$root/test-custom-icons
+rm -rf "$custom_test_dir"
+mkdir -p "$custom_test_dir/all/apps/scalable" "$custom_test_dir/light/places/scalable" "$custom_test_dir/dark/apps/scalable"
+printf '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#123456"/></svg>\n' > "$custom_test_dir/all/apps/scalable/m9-custom-app.svg"
+ln -s m9-custom-app.svg "$custom_test_dir/all/apps/scalable/m9-custom-alias.svg"
+printf '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#abcdef"/></svg>\n' > "$custom_test_dir/light/places/scalable/folder.svg"
+printf '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><circle cx="32" cy="32" r="20" fill="#222222"/></svg>\n' > "$custom_test_dir/dark/apps/scalable/firefox.svg"
+
+cache_repo=$XDG_CACHE_HOME/macos9-theme/WhiteSur-icon-theme
+before=$(snapshot)
+check "install --dry-run does not download or create cache dir" bash -c '
+    M9_PREBUILT="$1" M9_WHITESUR_REMOTE="$2" M9_ICON_CUSTOM_DIR="$3" "$4/install.sh" --dry-run > "$5" 2>&1 &&
+    grep -Fq "would fetch pinned WhiteSur commit" "$5" &&
+    test ! -e "$6"
+' _ "$no_icon_prebuilt" "$M9_TEST_REMOTE" "$custom_test_dir" "$project" "$root/110-fetch-dry.log" "$XDG_CACHE_HOME/macos9-theme"
+check "  home completely unchanged after --dry-run" same "$before" "$(snapshot)"
+
+# Offline miss when cache does not exist yet
+if env M9_PREBUILT="$no_icon_prebuilt" M9_WHITESUR_REMOTE="file:///nonexistent-offline-repo" "$project/install.sh" > "$root/110-offline-miss.log" 2>&1; then
+    fail "offline install fails when cache is missing"
+else
+    pass "offline install fails when cache is missing"
+fi
+check "  offline miss prints clear error" grep -qi "offline\|unreachable\|could not fetch" "$root/110-offline-miss.log"
+check "  offline miss leaves entire home unchanged" same "$before" "$(snapshot)"
+
+# #118: Missing icon-builder tool fails preflight BEFORE lock, fetch, or writes and names Arch package
+masked_bin=$root/masked-xmllint
+rm -rf "$masked_bin"
+mkdir -p "$masked_bin"
+for t in bash sh env awk sed grep find sort xargs cat head tail tr cut mkdir rmdir rm mv cp ln chmod touch mktemp realpath dirname basename readlink tar sha256sum g++ pkg-config install ldd python3 git kreadconfig6 kwriteconfig6 rsvg-convert gtk-update-icon-cache flock dbus-send; do
+    tpath=$(command -v "$t" 2> /dev/null || true)
+    [[ -n $tpath ]] && ln -sf "$tpath" "$masked_bin/$t"
+done
+if env PATH="$masked_bin" M9_PREBUILT="$no_icon_prebuilt" M9_WHITESUR_REMOTE="$M9_TEST_REMOTE" "$project/install.sh" > "$root/118-preflight.log" 2>&1; then
+    fail "#118 preflight rejects missing xmllint"
+else
+    pass "#118 preflight rejects missing xmllint"
+fi
+check "  #118 error names missing xmllint and Arch package libxml2" bash -c '
+    grep -Fq "xmllint" "$1" && grep -Fq "libxml2" "$1"
+' _ "$root/118-preflight.log"
+check "  #118 failed preflight left entire home unchanged (no lock, no cache)" same "$before" "$(snapshot)"
+
+# #116: Unrelated sibling dir .WhiteSur-fetch.mydata must survive real fetch untouched!
+mkdir -p "$XDG_CACHE_HOME/macos9-theme/.WhiteSur-fetch.mydata"
+printf 'keep-my-data\n' > "$XDG_CACHE_HOME/macos9-theme/.WhiteSur-fetch.mydata/note.txt"
+check "real install auto-fetches pinned commit from local remote and applies custom layer" \
+    run real-fetch-install env M9_PREBUILT="$no_icon_prebuilt" M9_WHITESUR_REMOTE="$M9_TEST_REMOTE" M9_ICON_CUSTOM_DIR="$custom_test_dir" "$project/install.sh"
+check "  cache populated and unrelated .WhiteSur-fetch.mydata preserved (#116)" bash -c '
+    test -d "$1" && grep -Fxq "keep-my-data" "$2/.WhiteSur-fetch.mydata/note.txt"
+' _ "$cache_repo" "$XDG_CACHE_HOME/macos9-theme"
+check "  custom brand-new icon, alias, and light/dark overrides installed cleanly" bash -c '
+    grep -Fq "#123456" "$1/icons/WhiteSur-lavender/apps/scalable/m9-custom-app.svg" &&
+    [[ $(readlink "$1/icons/WhiteSur-lavender/apps/scalable/m9-custom-alias.svg") == "m9-custom-app.svg" ]] &&
+    grep -Fq "#abcdef" "$1/icons/WhiteSur-lavender-light/places/scalable/folder.svg" &&
+    grep -Fq "#b5b4f9" "$1/icons/WhiteSur-lavender/places/scalable/folder.svg" &&
+    grep -Fq "#222222" "$1/icons/WhiteSur-lavender-dark/apps/scalable/firefox.svg"
+' _ "$data"
+
+# Offline reuse of populated cache succeeds with unreachable remote URL!
+check "offline update reuses populated cache without network" \
+    run real-offline-hit env M9_PREBUILT="$no_icon_prebuilt" M9_WHITESUR_REMOTE="file:///nonexistent-offline-repo" M9_ICON_CUSTOM_DIR="$custom_test_dir" "$project/install.sh"
+
+# Corrupt cache rejected with clear error and installed theme left untouched!
+mv "$cache_repo" "$root/cache-repo.saved"
+mkdir -p "$cache_repo"
+printf 'not a git repo\n' > "$cache_repo/corrupt"
+if env M9_PREBUILT="$no_icon_prebuilt" M9_WHITESUR_REMOTE="$M9_TEST_REMOTE" "$project/install.sh" > "$root/110-corrupt-cache.log" 2>&1; then
+    fail "corrupt cache is rejected"
+else
+    pass "corrupt cache is rejected"
+fi
+check "  corrupt cache error is clear and installed icons untouched" bash -c '
+    grep -qi "corrupt" "$1" && grep -Fq "#123456" "$2/icons/WhiteSur-lavender/apps/scalable/m9-custom-app.svg"
+' _ "$root/110-corrupt-cache.log" "$data"
+
+# Cache at wrong commit rejected with clear error and installed theme left untouched!
+rm -rf "$cache_repo"
+git clone --quiet "$root/local-remote.git" "$cache_repo"
+git -C "$cache_repo" -c user.name=Test -c user.email=test@example.invalid commit --allow-empty -q -m "wrong commit"
+if env M9_PREBUILT="$no_icon_prebuilt" M9_WHITESUR_REMOTE="$M9_TEST_REMOTE" "$project/install.sh" > "$root/110-wrong-cache.log" 2>&1; then
+    fail "wrong-commit cache is rejected"
+else
+    pass "wrong-commit cache is rejected"
+fi
+check "  wrong-commit cache error is clear and installed icons untouched" bash -c '
+    grep -Fq "expected reviewed pin" "$1" && grep -Fq "#123456" "$2/icons/WhiteSur-lavender/apps/scalable/m9-custom-app.svg"
+' _ "$root/110-wrong-cache.log" "$data"
+rm -rf "$cache_repo"
+mv "$root/cache-repo.saved" "$cache_repo"
+
+check "uninstall after real-size custom install exits 0" run real-custom-undo "$project/uninstall.sh"
+check "  all three real-size icon dirs removed" icons_absent "$data"
+
+# --------------------------------------------------------------------------
+# #112, #113, #114, #115, #117, #122 + active-Platinum auto-select tests
+# --------------------------------------------------------------------------
+
+# Export real HEAD 8b5c251 into $root/head-project to test genuine format-4
+# full-size upgrades in BOTH legacy backup states (TAKEN=apply and TAKEN=install+picker).
+head_project=$root/head-project
+rm -rf "$head_project"
+mkdir -p "$head_project"
+git -C "$project" archive 8b5c251 | tar -x -C "$head_project"
+
+fresh "#113/#117/#122 real-size upgrade from genuine HEAD 8b5c251 (TAKEN=apply, manual Lavender, old WhiteSur + Papirus-Dark)"
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme WhiteSur
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=Papirus-Dark\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=Papirus-Dark\n' > "$config/gtk-4.0/settings.ini"
+printf 'gtk-icon-theme-name="Papirus-Dark"\n' > "$home/.gtkrc-2.0"
+printf 'Net/IconThemeName "Papirus-Dark"\n' > "$config/xsettingsd/xsettingsd.conf"
+check "HEAD 8b5c251 install --apply exits 0" run head-apply env M9_PREBUILT="$no_icon_prebuilt" "$head_project/install.sh" --apply
+check "  HEAD backup has TAKEN=apply" grep -qx apply "$state/backup/TAKEN"
+# User manually installed unstamped full-size Lavender trio and selected it in KDE & GTK.
+mkdir -p "$data/icons"
+for icon_id in WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark; do
+    cp -RP "$M9_PREBUILT_REAL/icons/$icon_id" "$data/icons/$icon_id"
+done
+printf '# real-head-apply-manual\n' >> "$data/icons/WhiteSur-lavender/index.theme"
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme WhiteSur-lavender
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=WhiteSur-lavender\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=WhiteSur-lavender\n' > "$config/gtk-4.0/settings.ini"
+printf 'gtk-icon-theme-name="WhiteSur-lavender"\n' > "$home/.gtkrc-2.0"
+printf 'Net/IconThemeName "WhiteSur-lavender"\n' > "$config/xsettingsd/xsettingsd.conf"
+backup_sums_before=$(cd "$state/backup" && find . -type f -print0 | sort -z | xargs -0 sha256sum)
+check "working-tree full-size upgrade exits 0" run wt-upgrade env M9_PREBUILT="$M9_PREBUILT_REAL" "$project/install.sh"
+backup_sums_after=$(cd "$state/backup" && find . -type f -print0 | sort -z | xargs -0 sha256sum)
+check "  HEAD backup untouched byte for byte" same "$backup_sums_before" "$backup_sums_after"
+check "  all three real-size manual copies were displaced" bash -c '
+    for id in WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark; do
+        grep -q "^displaced	$1/icons/$id	" "$2/installed" || exit 1
+    done
+' _ "$data" "$state"
+check "uninstall after HEAD TAKEN=apply upgrade exits 0" run wt-undo "$project/uninstall.sh"
+check "  original real-size manual Lavender base restored" grep -Fq "# real-head-apply-manual" "$data/icons/WhiteSur-lavender/index.theme"
+check "  real-size -light/-dark restored with working relative symlinks" bash -c '
+    [[ $(readlink "$1/icons/WhiteSur-lavender-light/places") == "../WhiteSur-lavender/places" ]] &&
+    test -f "$1/icons/WhiteSur-lavender-light/places/scalable/folder.svg" &&
+    [[ $(readlink "$1/icons/WhiteSur-lavender-dark/status/32") == "../../WhiteSur-lavender/status/32" ]] &&
+    test -f "$1/icons/WhiteSur-lavender-dark/status/32/start-here.svg"
+' _ "$data"
+check "  KDE and GTK restored to WhiteSur-lavender (not missing WhiteSur or Papirus-Dark)" bash -c '
+    [[ $(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme) == WhiteSur-lavender ]] &&
+    grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$1/gtk-3.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$1/gtk-4.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=\"WhiteSur-lavender\"" "$2/.gtkrc-2.0" &&
+    grep -qx "Net/IconThemeName \"WhiteSur-lavender\"" "$1/xsettingsd/xsettingsd.conf"
+' _ "$config" "$home"
+check "  no state record left" no_record_left
+
+fresh "#113/#117/#122 real-size upgrade from genuine HEAD 8b5c251 (TAKEN=install + picker activation, inherited KDE Lavender)"
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme WhiteSur
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=Papirus-Dark\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=Papirus-Dark\n' > "$config/gtk-4.0/settings.ini"
+check "HEAD 8b5c251 plain install exits 0" run head-plain env M9_PREBUILT="$no_icon_prebuilt" "$head_project/install.sh"
+check "  HEAD backup has TAKEN=install" grep -qx install "$state/backup/TAKEN"
+# Simulate System Settings picker activating Platinum + inherited kdedefaults WhiteSur-lavender + manual full-size copies.
+kwriteconfig6 --file "$config/kdeglobals" --group KDE --key LookAndFeelPackage platinum.desktop
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme --delete
+mkdir -p "$config/kdedefaults"
+kwriteconfig6 --file "$config/kdedefaults/kdeglobals" --group Icons --key Theme WhiteSur-lavender
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=WhiteSur-lavender\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=WhiteSur-lavender\n' > "$config/gtk-4.0/settings.ini"
+mkdir -p "$data/icons"
+for icon_id in WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark; do
+    cp -RP "$M9_PREBUILT_REAL/icons/$icon_id" "$data/icons/$icon_id"
+done
+printf '# real-head-picker-manual\n' >> "$data/icons/WhiteSur-lavender/index.theme"
+check "working-tree full-size upgrade promotes backup and sets backup_predated=true" run wt-picker-upgrade env M9_PREBUILT="$M9_PREBUILT_REAL" "$project/install.sh"
+check "  backup/TAKEN promoted to apply" grep -qx apply "$state/backup/TAKEN"
+check "  icon-adoption recorded backup_predated=true and inherited kdedefaults source" python3 -I - "$state/icon-adoption" << 'PYEND'
+import json, sys
+d = json.loads(open(sys.argv[1]).read())
+assert d["version"] == 3 and d["backup_predated"] is True
+assert d["captured"]["kde"]["effective_source"] == "kdedefaults"
+assert d["captured"]["kde"]["effective_theme"] == "WhiteSur-lavender"
+assert d["captured"]["kde"]["kdeglobals"]["present"] is False
+PYEND
+check "uninstall after HEAD TAKEN=install+picker upgrade exits 0" run wt-picker-undo "$project/uninstall.sh"
+check "  original real-size manual Lavender base restored" grep -Fq "# real-head-picker-manual" "$data/icons/WhiteSur-lavender/index.theme"
+check "  inherited KDE WhiteSur-lavender preserved in kdedefaults without writing explicit kdeglobals override (#117)" bash -c '
+    [[ -z $(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme) ]] &&
+    ! grep -q "^Theme=" "$1/kdeglobals" &&
+    [[ $(kreadconfig6 --file "$1/kdedefaults/kdeglobals" --group Icons --key Theme) == WhiteSur-lavender ]]
+' _ "$config"
+check "  GTK restored to WhiteSur-lavender (not Papirus-Dark)" bash -c '
+    grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$1/gtk-3.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$1/gtk-4.0/settings.ini"
+' _ "$config"
+check "  no state record left" no_record_left
+
+fresh "#112 displacement failure on BOTH sides of the first rename (and abrupt pre-rename orphan record)"
+# Side 1a: mv fails BEFORE the displacement rename of WhiteSur-lavender
+mkdir -p "$data/icons"
+for icon_id in WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark; do
+    cp -RP "$M9_PREBUILT/icons/$icon_id" "$data/icons/$icon_id"
+done
+printf '# manual-side1a\n' >> "$data/icons/WhiteSur-lavender/index.theme"
+fail_disp_bin=$root/fail-disp-mv
+mkdir -p "$fail_disp_bin"
+cat > "$fail_disp_bin/mv" << 'STUB'
+#!/bin/bash
+if [[ $1 == "$M9_FAIL_DISP_SRC" && $2 == */displaced/* ]]; then
+    exit 1
+fi
+exec /usr/bin/mv "$@"
+STUB
+chmod +x "$fail_disp_bin/mv"
+if run disp-fail-before env PATH="$fail_disp_bin:$PATH" M9_FAIL_DISP_SRC="$data/icons/WhiteSur-lavender" "$project/install.sh"; then
+    fail "displacement mv failure reports error"
+else
+    pass "displacement mv failure reports error"
+fi
+check "  manual copy untouched in place after pre-rename mv failure" grep -Fq "# manual-side1a" "$data/icons/WhiteSur-lavender/index.theme"
+check "  failed displaced record was rolled back from manifest" bash -c '! grep -q "^displaced	$1/icons/WhiteSur-lavender	" "$2/installed"' _ "$data" "$state"
+check "  retry install exits 0" run disp-retry1 "$project/install.sh"
+check "  uninstall restores original manual copy cleanly (not demoted to later-versions)" run disp-undo1 "$project/uninstall.sh"
+check "  manual-side1a is back in place" grep -Fq "# manual-side1a" "$data/icons/WhiteSur-lavender/index.theme"
+check "  no state record left" no_record_left
+
+# Side 1b: simulated abrupt SIGKILL between manifest_add displaced and mv "$path" "$saved"
+fresh "#112 abrupt pre-rename orphan displaced record recovered on retry + undo"
+mkdir -p "$data/icons" "$state/displaced/orph01"
+for icon_id in WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark; do
+    cp -RP "$M9_PREBUILT/icons/$icon_id" "$data/icons/$icon_id"
+done
+printf '# manual-side1b\n' >> "$data/icons/WhiteSur-lavender/index.theme"
+real_base=$(realpath -m -- "$data/icons")/WhiteSur-lavender
+printf 'macos9-theme-record\t4\nhome\t%s\ndata\t%s\nconfig\t%s\ndisplaced\t%s/icons/WhiteSur-lavender\t%s/displaced/orph01/WhiteSur-lavender\t%s\n' \
+    "$home" "$data" "$config" "$data" "$state" "$real_base" > "$state/installed"
+check "install after abrupt pre-rename orphan record exits 0" run disp-retry1b "$project/install.sh"
+check "  orphan empty holder cleaned and real displacement recorded" bash -c 'test ! -e "$1/displaced/orph01" && [[ $(grep -c "^displaced	$2/icons/WhiteSur-lavender	" "$1/installed") -eq 1 ]]' _ "$state" "$data"
+check "uninstall restores original manual-side1b copy (not demoted to later-versions)" run disp-undo1b "$project/uninstall.sh"
+check "  manual-side1b is back in place" grep -Fq "# manual-side1b" "$data/icons/WhiteSur-lavender/index.theme"
+check "  no state record left" no_record_left
+
+# Side 2: failure AFTER the first displacement rename (displace_foreign succeeded, place_dir mv failed)
+fresh "#112 failure AFTER first displacement rename recovers on both direct undo and retry+undo"
+mkdir -p "$data/icons"
+for icon_id in WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark; do
+    cp -RP "$M9_PREBUILT/icons/$icon_id" "$data/icons/$icon_id"
+done
+printf '# manual-side2\n' >> "$data/icons/WhiteSur-lavender/index.theme"
+if run disp-fail-after env PATH="$fail_bin:$PATH" M9_FAIL_ICON_TARGET="$data/icons/WhiteSur-lavender" "$project/install.sh"; then
+    fail "post-displacement place_dir failure reports error"
+else
+    pass "post-displacement place_dir failure reports error"
+fi
+check "  direct uninstall restores manual-side2 back into icons/" run disp-direct-undo "$project/uninstall.sh"
+check "  manual-side2 restored by direct uninstall" grep -Fq "# manual-side2" "$data/icons/WhiteSur-lavender/index.theme"
+check "  no state record left" no_record_left
+# Same failure again, then retry install -> undo
+if run disp-fail-after2 env PATH="$fail_bin:$PATH" M9_FAIL_ICON_TARGET="$data/icons/WhiteSur-lavender" "$project/install.sh"; then
+    fail "second post-displacement failure reports error"
+else
+    pass "second post-displacement failure reports error"
+fi
+check "  retry install after post-displacement failure exits 0" run disp-retry2 "$project/install.sh"
+check "  uninstall after retry restores manual-side2" run disp-undo2 "$project/uninstall.sh"
+check "  manual-side2 back in place after retry+undo" grep -Fq "# manual-side2" "$data/icons/WhiteSur-lavender/index.theme"
+check "  no state record left" no_record_left
+
+fresh "#114 interrupted undo at exact backup -> keep/original boundary keeps icon-adoption intact"
+kwriteconfig6 --file "$config/kdeglobals" --group KDE --key LookAndFeelPackage platinum.desktop
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme breeze
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+# Predating backup with legacy WhiteSur + Papirus-Dark
+mkdir -p "$state/backup/config/gtk-3.0" "$state/backup/config/gtk-4.0"
+printf '[KDE]\nLookAndFeelPackage=org.kde.breeze.desktop\n[Icons]\nTheme=WhiteSur\n' > "$state/backup/config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=Papirus-Dark\n' > "$state/backup/config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=Papirus-Dark\n' > "$state/backup/config/gtk-4.0/settings.ini"
+printf 'apply\n' > "$state/backup/TAKEN"
+printf 'config\t%s\nhome\t%s\n' "$config" "$home" > "$state/backup/ROOTS"
+: > "$state/backup/ABSENT"
+for f in kdeglobals gtk-3.0/settings.ini gtk-4.0/settings.ini; do
+    printf 'config\t%s\t%s\n' "$f" "$config/$f"
+done > "$state/backup/ENTRIES"
+(cd "$state/backup" && find config -type f -print0 | sort -z | xargs -0 sha256sum) > "$state/backup/SUMS"
+check "plain install on active Platinum exits 0" run install-114 "$project/install.sh"
+fail_bak_mv=$root/fail-bak-mv
+mkdir -p "$fail_bak_mv"
+cat > "$fail_bak_mv/mv" << 'STUB'
+#!/bin/bash
+if [[ $1 == -T && $2 == */macos9-theme/backup && $3 == */original ]]; then
+    exit 1
+fi
+exec /usr/bin/mv "$@"
+STUB
+chmod +x "$fail_bak_mv/mv"
+if run undo-114-fail env PATH="$fail_bak_mv:$PATH" "$project/uninstall.sh"; then
+    fail "interrupted undo at backup rename exits non-zero"
+else
+    pass "interrupted undo at backup rename exits non-zero"
+fi
+check "  backup and icon-adoption BOTH remain in state after failed backup rename" bash -c 'test -d "$1/backup" && test -f "$1/icon-adoption"' _ "$state"
+check "retry uninstall after backup-rename interruption exits 0" run undo-114-retry "$project/uninstall.sh"
+check "  pre-adoption breeze restored in KDE and GTK (not WhiteSur or Papirus-Dark)" bash -c '
+    [[ $(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme) == breeze ]] &&
+    grep -qx "gtk-icon-theme-name=breeze" "$1/gtk-3.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=breeze" "$1/gtk-4.0/settings.ini"
+' _ "$config"
+check "  all three icon dirs removed" icons_absent "$data"
+check "  no state record left" no_record_left
+
+fresh "#115 ~/.icons symlink to managed WhiteSur-lavender is rejected as an outside copy"
+check "install exits 0" run install-115 "$project/install.sh"
+mkdir -p "$home/.icons"
+ln -s "$data/icons/WhiteSur-lavender" "$home/.icons/WhiteSur-lavender"
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme WhiteSur-lavender
+if run undo-115-base "$project/uninstall.sh"; then
+    fail "uninstall keeps managed base when ~/.icons/WhiteSur-lavender points to it"
+else
+    pass "uninstall keeps managed base when ~/.icons/WhiteSur-lavender points to it"
+fi
+check "  managed base dir survived (not deleted through ~/.icons symlink)" test -f "$data/icons/WhiteSur-lavender/index.theme"
+# Also test a variant in ~/.icons whose places symlink resolves into managed base!
+rm -f "$home/.icons/WhiteSur-lavender"
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme breeze
+check "  clean up after base test" run undo-115-clean1 "$project/uninstall.sh"
+check "  reinstall for variant places symlink test" run install-115b "$project/install.sh"
+ln -s "$data/icons/WhiteSur-lavender" "$home/.icons/WhiteSur-lavender"
+mkdir -p "$home/.icons/WhiteSur-lavender-light"
+cp "$data/icons/WhiteSur-lavender-light/index.theme" "$home/.icons/WhiteSur-lavender-light/index.theme"
+ln -s ../WhiteSur-lavender/places "$home/.icons/WhiteSur-lavender-light/places"
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme WhiteSur-lavender-light
+if run undo-115-light "$project/uninstall.sh"; then
+    fail "uninstall keeps managed -light and base when ~/.icons/-light/places resolves into managed base"
+else
+    pass "uninstall keeps managed -light and base when ~/.icons/-light/places resolves into managed base"
+fi
+check "  managed base and -light both kept intact" bash -c 'test -f "$1/icons/WhiteSur-lavender/index.theme" && test -f "$1/icons/WhiteSur-lavender-light/index.theme"' _ "$data"
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme breeze
+check "  retry after switching to breeze exits 0" run undo-115-done "$project/uninstall.sh"
+check "  all three managed icon dirs removed" icons_absent "$data"
+check "  no state record left" no_record_left
+
+fresh "#117 inherited KDE key + unset GTK key + missing-theme fallback safety"
+mkdir -p "$config/kdedefaults"
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n' > "$config/kdeglobals"
+printf '[Icons]\nTheme=breeze\n' > "$config/kdedefaults/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\n' > "$config/gtk-3.0/settings.ini"
+rm -f "$config/gtk-4.0/settings.ini" "$home/.gtkrc-2.0" "$config/xsettingsd/xsettingsd.conf"
+# Predating backup has explicit WhiteSur in kdeglobals AND stale Papirus-Dark in GTK 3/4/2/xsettingsd
+mkdir -p "$state/backup/config/gtk-3.0" "$state/backup/config/gtk-4.0" "$state/backup/config/xsettingsd" "$state/backup/home"
+printf '[KDE]\nLookAndFeelPackage=org.kde.breeze.desktop\n[Icons]\nTheme=WhiteSur\n' > "$state/backup/config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=Papirus-Dark\n' > "$state/backup/config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=Papirus-Dark\n' > "$state/backup/config/gtk-4.0/settings.ini"
+printf 'gtk-icon-theme-name="Papirus-Dark"\n' > "$state/backup/home/.gtkrc-2.0"
+printf 'Net/IconThemeName "Papirus-Dark"\n' > "$state/backup/config/xsettingsd/xsettingsd.conf"
+printf 'apply\n' > "$state/backup/TAKEN"
+printf 'config\t%s\nhome\t%s\n' "$config" "$home" > "$state/backup/ROOTS"
+printf 'config\tkdedefaults\n' > "$state/backup/ABSENT"
+{
+    for f in kdeglobals kdedefaults gtk-3.0/settings.ini gtk-4.0/settings.ini xsettingsd/xsettingsd.conf; do
+        printf 'config\t%s\t%s\n' "$f" "$config/$f"
+    done
+    printf 'home\t.gtkrc-2.0\t%s/.gtkrc-2.0\n' "$home"
+} > "$state/backup/ENTRIES"
+(cd "$state/backup" && find config home -type f -print0 | sort -z | xargs -0 sha256sum) > "$state/backup/SUMS"
+check "plain install on active Platinum (inherited breeze, unset GTK) exits 0" run install-117 "$project/install.sh"
+check "  plain install selected WhiteSur-lavender in KDE and GTK" bash -c '
+    [[ $(kreadconfig6 --file "$1/kdedefaults/kdeglobals" --group Icons --key Theme) == WhiteSur-lavender ]] &&
+    grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$1/gtk-3.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$1/gtk-4.0/settings.ini"
+' _ "$config"
+check "uninstall restores inherited KDE breeze and clears stale GTK Papirus-Dark" run undo-117 "$project/uninstall.sh"
+check "  kdeglobals has NO explicit Theme key; kdedefaults has inherited breeze" bash -c '
+    ! grep -q "^Theme=" "$1/kdeglobals" &&
+    [[ $(kreadconfig6 --file "$1/kdedefaults/kdeglobals" --group Icons --key Theme) == breeze ]]
+' _ "$config"
+check "  stale Papirus-Dark cleared from GTK 3, GTK 4, GTK 2, and xsettingsd" bash -c '
+    ! grep -q "gtk-icon-theme-name" "$1/gtk-3.0/settings.ini" &&
+    test ! -e "$1/gtk-4.0/settings.ini" &&
+    test ! -e "$2/.gtkrc-2.0" &&
+    test ! -e "$1/xsettingsd/xsettingsd.conf"
+' _ "$config" "$home"
+check "  all three icon dirs removed" icons_absent "$data"
+check "  no state record left" no_record_left
+
+fresh "#117 missing pre-adoption icon theme falls back safely (never selects a missing theme)"
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n[Icons]\nTheme=MissingTheme999\n' > "$config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=MissingTheme999\n' > "$config/gtk-3.0/settings.ini"
+mkdir -p "$state/backup/config/gtk-3.0"
+printf '[KDE]\nLookAndFeelPackage=org.kde.breeze.desktop\n[Icons]\nTheme=WhiteSur\n' > "$state/backup/config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=Papirus-Dark\n' > "$state/backup/config/gtk-3.0/settings.ini"
+printf 'apply\n' > "$state/backup/TAKEN"
+printf 'config\t%s\nhome\t%s\n' "$config" "$home" > "$state/backup/ROOTS"
+: > "$state/backup/ABSENT"
+printf 'config\tkdeglobals\t%s/kdeglobals\nconfig\tgtk-3.0/settings.ini\t%s/gtk-3.0/settings.ini\n' "$config" "$config" > "$state/backup/ENTRIES"
+(cd "$state/backup" && find config -type f -print0 | sort -z | xargs -0 sha256sum) > "$state/backup/SUMS"
+check "plain install exits 0" run install-missing-fb "$project/install.sh"
+check "uninstall exits 0 and falls back away from missing theme" run undo-missing-fb "$project/uninstall.sh"
+check "  neither KDE nor GTK selects MissingTheme999, WhiteSur, or Papirus-Dark" bash -c '
+    kde_eff=$(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme)
+    [[ -n $kde_eff ]] || kde_eff=$(kreadconfig6 --file "$1/kdedefaults/kdeglobals" --group Icons --key Theme 2>/dev/null || true)
+    [[ $kde_eff == breeze ]] &&
+    grep -qx "gtk-icon-theme-name=breeze" "$1/gtk-3.0/settings.ini"
+' _ "$config"
+check "  all three icon dirs removed" icons_absent "$data"
+
+fresh "active-Platinum plain-install auto-select: one-time only, other settings untouched, clean undo (with & without prior backup)"
+# Case A: Platinum active + predating backup + live explicit breeze + custom panels/cursors/kwinrc
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n[Icons]\nTheme=breeze\n' > "$config/kdeglobals"
+printf '[Mouse]\ncursorTheme=Breeze_Custom\n' > "$config/kcminputrc"
+printf '[org.kde.kdecoration2]\nButtonsOnLeft=X\nButtonsOnRight=AI\n' > "$config/kwinrc"
+printf 'panel=my-live-panel\nwallpaper=my-live-wall\n' > "$config/plasma-org.kde.plasma.desktop-appletsrc"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+printf 'gtk-icon-theme-name="breeze"\n' > "$home/.gtkrc-2.0"
+printf 'Net/IconThemeName "breeze"\n' > "$config/xsettingsd/xsettingsd.conf"
+mkdir -p "$state/backup/config/gtk-3.0" "$state/backup/config/gtk-4.0" "$state/backup/config/xsettingsd" "$state/backup/home"
+printf '[KDE]\nLookAndFeelPackage=org.kde.breeze.desktop\n[Icons]\nTheme=WhiteSur\n' > "$state/backup/config/kdeglobals"
+printf '[Mouse]\ncursorTheme=Breeze_Orig\n' > "$state/backup/config/kcminputrc"
+printf '[org.kde.kdecoration2]\nButtonsOnLeft=M\nButtonsOnRight=IAX\n' > "$state/backup/config/kwinrc"
+printf 'panel=orig-panel\n' > "$state/backup/config/plasma-org.kde.plasma.desktop-appletsrc"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=Papirus-Dark\n' > "$state/backup/config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=Papirus-Dark\n' > "$state/backup/config/gtk-4.0/settings.ini"
+printf 'gtk-icon-theme-name="Papirus-Dark"\n' > "$state/backup/home/.gtkrc-2.0"
+printf 'Net/IconThemeName "Papirus-Dark"\n' > "$state/backup/config/xsettingsd/xsettingsd.conf"
+printf 'apply\n' > "$state/backup/TAKEN"
+printf 'config\t%s\nhome\t%s\n' "$config" "$home" > "$state/backup/ROOTS"
+: > "$state/backup/ABSENT"
+{
+    for f in kdeglobals kcminputrc kwinrc plasma-org.kde.plasma.desktop-appletsrc gtk-3.0/settings.ini gtk-4.0/settings.ini xsettingsd/xsettingsd.conf; do
+        printf 'config\t%s\t%s\n' "$f" "$config/$f"
+    done
+    printf 'home\t.gtkrc-2.0\t%s/.gtkrc-2.0\n' "$home"
+} > "$state/backup/ENTRIES"
+(cd "$state/backup" && find config home -type f -print0 | sort -z | xargs -0 sha256sum) > "$state/backup/SUMS"
+before=$(snapshot)
+check "plain install --dry-run plans active-Platinum auto-select and changes nothing" bash -c '
+    "$1/install.sh" --dry-run > "$2" 2>&1 &&
+    grep -Fq "would select WhiteSur-lavender icons for KDE and GTK" "$2"
+' _ "$project" "$root/auto-sel-dry.log"
+check "  home unchanged after --dry-run" same "$before" "$(snapshot)"
+check "plain install on active Platinum exits 0" run auto-sel-1 "$project/install.sh"
+check "  selected WhiteSur-lavender in KDE and GTK without touching panels, wallpaper, cursors, or kwinrc" bash -c '
+    [[ $(kreadconfig6 --file "$1/kdedefaults/kdeglobals" --group Icons --key Theme) == WhiteSur-lavender ]] &&
+    ! grep -q "^Theme=" "$1/kdeglobals" &&
+    grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$1/gtk-3.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$1/gtk-4.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=\"WhiteSur-lavender\"" "$2/.gtkrc-2.0" &&
+    grep -qx "Net/IconThemeName \"WhiteSur-lavender\"" "$1/xsettingsd/xsettingsd.conf" &&
+    grep -qx "cursorTheme=Breeze_Custom" "$1/kcminputrc" &&
+    grep -qx "ButtonsOnLeft=X" "$1/kwinrc" &&
+    grep -qx "panel=my-live-panel" "$1/plasma-org.kde.plasma.desktop-appletsrc" &&
+    grep -qx "wallpaper=my-live-wall" "$1/plasma-org.kde.plasma.desktop-appletsrc"
+' _ "$config" "$home"
+# User switches icons to breeze later -> subsequent plain update MUST keep user choice!
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme breeze
+sed -i 's/WhiteSur-lavender/breeze/' "$config/gtk-3.0/settings.ini" "$config/gtk-4.0/settings.ini" "$home/.gtkrc-2.0" "$config/xsettingsd/xsettingsd.conf"
+check "second plain update exits 0 and keeps user chosen breeze" run auto-sel-2 "$project/install.sh"
+check "  user breeze choice preserved across plain update" bash -c '
+    [[ $(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme) == breeze ]] &&
+    grep -qx "gtk-icon-theme-name=breeze" "$1/gtk-3.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=breeze" "$1/gtk-4.0/settings.ini"
+' _ "$config"
+check "uninstall restores explicit breeze in KDE & GTK and removes trio" run auto-sel-undo "$project/uninstall.sh"
+check "  explicit breeze restored in KDE & GTK (not Papirus-Dark or WhiteSur)" bash -c '
+    [[ $(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme) == breeze ]] &&
+    grep -qx "gtk-icon-theme-name=breeze" "$1/gtk-3.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=breeze" "$1/gtk-4.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=\"breeze\"" "$2/.gtkrc-2.0" &&
+    grep -qx "Net/IconThemeName \"breeze\"" "$1/xsettingsd/xsettingsd.conf" &&
+    grep -qx "panel=orig-panel" "$1/plasma-org.kde.plasma.desktop-appletsrc"
+' _ "$config" "$home"
+check "  all three icon dirs removed" icons_absent "$data"
+check "  no state record left" no_record_left
+
+# Case B: Active Platinum with NO prior backup (backup_predated=0) -> backup taken BEFORE auto-select!
+fresh "active-Platinum plain-install auto-select without prior backup restores pre-switch breeze byte-for-byte"
+mkdir -p "$config/kdedefaults"
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n' > "$config/kdeglobals"
+printf '[Icons]\nTheme=breeze\n' > "$config/kdedefaults/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+seed_b=$(config_state)
+check "plain install on active Platinum without prior backup exits 0" run auto-nobak "$project/install.sh"
+check "  selected WhiteSur-lavender in KDE and GTK" bash -c '
+    [[ $(kreadconfig6 --file "$1/kdedefaults/kdeglobals" --group Icons --key Theme) == WhiteSur-lavender ]] &&
+    grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$1/gtk-3.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$1/gtk-4.0/settings.ini"
+' _ "$config"
+check "uninstall restores exact pre-install breeze state byte for byte" run auto-nobak-undo "$project/uninstall.sh"
+check "  config and GTK files back byte for byte" same "$seed_b" "$(config_state)"
+check "  all three icon dirs removed" icons_absent "$data"
+check "  no state record left" no_record_left
+
+# Case C: Non-Platinum desktop -> plain install must NOT change KDE or GTK icon selection!
+fresh "non-Platinum desktop plain install never changes KDE or GTK icon selection"
+printf '[KDE]\nLookAndFeelPackage=org.kde.breeze.desktop\n[Icons]\nTheme=breeze\n' > "$config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+seed_c=$(config_state)
+check "plain install on Breeze desktop exits 0" run nonplat-plain "$project/install.sh"
+check "  KDE and GTK icon selection completely untouched" same "$seed_c" "$(config_state)"
+check "uninstall exits 0" run nonplat-undo "$project/uninstall.sh"
+check "  all three icon dirs removed" icons_absent "$data"
+check "  no state record left" no_record_left
+
+# --------------------------------------------------------------------------
+# #124–#131, #133, #135, #136, #138 regression suite
+# --------------------------------------------------------------------------
+
+fresh "#124 interrupted undo on HEAD TAKEN=install+picker backup resumes restore and never exposes WhiteSur/Papirus-Dark"
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme WhiteSur
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=Papirus-Dark\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=Papirus-Dark\n' > "$config/gtk-4.0/settings.ini"
+printf 'gtk-icon-theme-name="Papirus-Dark"\n' > "$home/.gtkrc-2.0"
+printf 'Net/IconThemeName "Papirus-Dark"\n' > "$config/xsettingsd/xsettingsd.conf"
+check "HEAD plain install creates TAKEN=install backup" run head-124 env M9_PREBUILT="$no_icon_prebuilt" "$head_project/install.sh"
+check "  HEAD backup has TAKEN=install" grep -qx install "$state/backup/TAKEN"
+# Activate Platinum via picker and select breeze across KDE + GTK (no WhiteSur dirs).
+kwriteconfig6 --file "$config/kdeglobals" --group KDE --key LookAndFeelPackage platinum.desktop
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme breeze
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+printf 'gtk-icon-theme-name="breeze"\n' > "$home/.gtkrc-2.0"
+printf 'Net/IconThemeName "breeze"\n' > "$config/xsettingsd/xsettingsd.conf"
+# Fail upgrade on first icon placement (so backup/TAKEN stays "install"!).
+if run upg-124-fail env PATH="$fail_bin:$PATH" M9_FAIL_ICON_TARGET="$data/icons/WhiteSur-lavender" "$project/install.sh"; then
+    fail "upgrade fails on first icon placement"
+else
+    pass "upgrade fails on first icon placement"
+fi
+check "  backup/TAKEN is still install" grep -qx install "$state/backup/TAKEN"
+# Stop undo right AFTER kdeglobals is put back (before backup retires!).
+fail_124_mv=$root/fail-124-mv
+mkdir -p "$fail_124_mv"
+cat > "$fail_124_mv/mv" << 'STUB'
+#!/bin/bash
+if [[ $1 == -T && $3 == */gtk-3.0/settings.ini ]]; then
+    exit 1
+fi
+exec /usr/bin/mv "$@"
+STUB
+chmod +x "$fail_124_mv/mv"
+if run undo-124-mid env PATH="$fail_124_mv:$PATH" "$project/uninstall.sh"; then
+    fail "interrupted undo mid-restore exits non-zero"
+else
+    pass "interrupted undo mid-restore exits non-zero"
+fi
+# Even mid-interruption, staged merge ensured kdeglobals already has breeze (NEVER WhiteSur)!
+check "  mid-interruption kdeglobals already has breeze (never missing WhiteSur)" bash -c '
+    [[ $(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme) == breeze ]] &&
+    [[ $(kreadconfig6 --file "$1/kdeglobals" --group KDE --key LookAndFeelPackage) == org.kde.breeze.desktop ]]
+' _ "$config"
+check "  persisted restore_decision=restore_backup in icon-adoption" bash -c '
+    [[ $(python3 -I "$1/scripts/icon_prefs.py" read-restore-decision "$2/icon-adoption") == restore_backup ]]
+' _ "$project" "$state"
+check "retry uninstall resumes restore despite TAKEN=install and Breeze LookAndFeelPackage" run undo-124-retry "$project/uninstall.sh"
+check "  KDE and all 4 GTK files restored to breeze (never WhiteSur or Papirus-Dark)" bash -c '
+    [[ $(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme) == breeze ]] &&
+    grep -qx "gtk-icon-theme-name=breeze" "$1/gtk-3.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=breeze" "$1/gtk-4.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=\"breeze\"" "$2/.gtkrc-2.0" &&
+    grep -qx "Net/IconThemeName \"breeze\"" "$1/xsettingsd/xsettingsd.conf"
+' _ "$config" "$home"
+check "  all three icon dirs absent and no state left" bash -c '
+    for id in WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark; do
+        [[ ! -e "$1/icons/$id" && ! -L "$1/icons/$id" ]] || exit 1
+    done
+    [[ ! -e "$2" ]]
+' _ "$data" "$state"
+
+fresh "#125 concurrent personal file saved during clean-dir removal is preserved (rmdir only, never rmtree)"
+check "real-size install exits 0" run inst-125 env M9_PREBUILT="$M9_PREBUILT_REAL" "$project/install.sh"
+# Spawn a watcher that creates personal-note as soon as index.theme disappears during undo!
+(
+    for _ in $(seq 1 400); do
+        if [[ ! -e "$data/icons/WhiteSur-lavender/index.theme" && -d "$data/icons/WhiteSur-lavender" ]]; then
+            printf 'keep-this-concurrent-note\n' > "$data/icons/WhiteSur-lavender/personal-note" 2>/dev/null || true
+            break
+        fi
+        sleep 0.01
+    done
+) &
+watcher_pid=$!
+check "real-size uninstall exits 0 while concurrent file is saved" run undo-125 "$project/uninstall.sh"
+wait "$watcher_pid" || true
+check "  concurrently saved personal-note survived clean-dir removal (#125)" grep -Fxq "keep-this-concurrent-note" "$data/icons/WhiteSur-lavender/personal-note"
+check "  uninstall reported keeping personal-note" grep -Fq "personal-note" "$root/$n-undo-125.log"
+check "  unchanged variants -light and -dark were removed" bash -c 'test ! -e "$1/icons/WhiteSur-lavender-light" && test ! -e "$1/icons/WhiteSur-lavender-dark"' _ "$data"
+
+fresh "#126 undo refuses to delete a theme still selected by GTK (even when KDE selects breeze)"
+check "plain install on Breeze desktop exits 0" run inst-126 "$project/install.sh"
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme breeze
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=WhiteSur-lavender-dark\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=WhiteSur-lavender-dark\n' > "$config/gtk-4.0/settings.ini"
+printf 'gtk-icon-theme-name="WhiteSur-lavender-dark"\n' > "$home/.gtkrc-2.0"
+printf 'Net/IconThemeName "WhiteSur-lavender-dark"\n' > "$config/xsettingsd/xsettingsd.conf"
+if run undo-126 "$project/uninstall.sh"; then
+    fail "uninstall keeps -dark and base while selected in GTK"
+else
+    pass "uninstall keeps -dark and base while selected in GTK"
+fi
+check "  warning names GTK selection" grep -q "WhiteSur-lavender-dark is still selected in GTK" "$root/$n-undo-126.log"
+check "  managed -dark and base WhiteSur-lavender remain usable; unselected -light removed" bash -c '
+    test -f "$1/icons/WhiteSur-lavender-dark/index.theme" &&
+    test -f "$1/icons/WhiteSur-lavender/places/scalable/folder.svg" &&
+    test ! -e "$1/icons/WhiteSur-lavender-light"
+' _ "$data"
+sed -i 's/WhiteSur-lavender-dark/breeze/g' "$config/gtk-3.0/settings.ini" "$config/gtk-4.0/settings.ini" "$home/.gtkrc-2.0" "$config/xsettingsd/xsettingsd.conf"
+check "  retry after switching GTK away exits 0" run undo-126-retry "$project/uninstall.sh"
+check "  all three icon dirs removed" icons_absent "$data"
+
+fresh "#127 outside copy in ~/.icons with only apps/ linked to managed base is rejected as independent"
+check "install exits 0" run inst-127 "$project/install.sh"
+mkdir -p "$home/.icons/WhiteSur-lavender/places/scalable" "$home/.icons/WhiteSur-lavender/status/32"
+printf '[Icon Theme]\nName=WhiteSur-lavender\nInherits=hicolor,breeze\nDirectories=places/scalable,status/32,apps/scalable\n' > "$home/.icons/WhiteSur-lavender/index.theme"
+cp "$data/icons/WhiteSur-lavender/places/scalable/folder.svg" "$home/.icons/WhiteSur-lavender/places/scalable/folder.svg"
+cp "$data/icons/WhiteSur-lavender/status/32/start-here.svg" "$home/.icons/WhiteSur-lavender/status/32/start-here.svg"
+mkdir -p "$data/icons/WhiteSur-lavender/apps/scalable"
+printf '<svg/>\n' > "$data/icons/WhiteSur-lavender/apps/scalable/firefox.svg"
+ln -s "$data/icons/WhiteSur-lavender/apps" "$home/.icons/WhiteSur-lavender/apps"
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme WhiteSur-lavender
+if run undo-127 "$project/uninstall.sh"; then
+    fail "uninstall rejects partially shared outside copy (apps/ symlink)"
+else
+    pass "uninstall rejects partially shared outside copy (apps/ symlink)"
+fi
+check "  managed base stayed intact so ~/.icons/WhiteSur-lavender/apps/scalable/firefox.svg still resolves" test -f "$home/.icons/WhiteSur-lavender/apps/scalable/firefox.svg"
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme breeze
+check "  retry after switching to breeze exits 0" run undo-127-done "$project/uninstall.sh"
+
+fresh "#128 retry finishes unfinished first selection (both failed placement and read-only GTK 4 dir)"
+# Case A: fail during first base placement after capture -> plain retry MUST complete selection!
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n[Icons]\nTheme=breeze\n' > "$config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+if run inst-128a-fail env PATH="$fail_bin:$PATH" M9_FAIL_ICON_TARGET="$data/icons/WhiteSur-lavender" "$project/install.sh"; then
+    fail "first install fails on base placement"
+else
+    pass "first install fails on base placement"
+fi
+check "  transaction stays in phase=captured" python3 -I -c 'import json, sys; assert json.load(open(sys.argv[1]))["phase"] == "captured"' "$state/icon-adoption"
+check "plain retry completes placement AND selects WhiteSur-lavender everywhere" run inst-128a-retry "$project/install.sh"
+check "  KDE and GTK 3/4 now select WhiteSur-lavender and phase=selected" bash -c '
+    [[ $(kreadconfig6 --file "$1/kdedefaults/kdeglobals" --group Icons --key Theme) == WhiteSur-lavender ]] &&
+    ! grep -q "^Theme=" "$1/kdeglobals" &&
+    grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$1/gtk-3.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$1/gtk-4.0/settings.ini" &&
+    python3 -I -c "import json, sys; assert json.load(open(sys.argv[1]))[\"phase\"] == \"selected\"" "$2/icon-adoption"
+' _ "$config" "$state"
+check "  undo restores breeze cleanly" run undo-128a "$project/uninstall.sh"
+
+# Case B: read-only gtk-4.0 dir stops mid-selection -> fixing perms and retrying finishes GTK 4/2/xsettingsd!
+fresh "#128b read-only gtk-4.0 dir mid-selection resumes cleanly on retry and preserves later choices after completion"
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n[Icons]\nTheme=breeze\n' > "$config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+printf 'gtk-icon-theme-name="breeze"\n' > "$home/.gtkrc-2.0"
+printf 'Net/IconThemeName "breeze"\n' > "$config/xsettingsd/xsettingsd.conf"
+chmod 500 "$config/gtk-4.0"
+if run inst-128b-fail "$project/install.sh"; then
+    fail "install fails when gtk-4.0 dir is read-only"
+else
+    pass "install fails when gtk-4.0 dir is read-only"
+fi
+chmod 700 "$config/gtk-4.0"
+check "  transaction stays in phase=selecting after partial failure" python3 -I -c 'import json, sys; assert json.load(open(sys.argv[1]))["phase"] == "selecting"' "$state/icon-adoption"
+check "retry after fixing gtk-4.0 permissions exits 0" run inst-128b-retry "$project/install.sh"
+check "  KDE and ALL 4 GTK files now select WhiteSur-lavender and phase=selected" bash -c '
+    [[ $(kreadconfig6 --file "$1/kdedefaults/kdeglobals" --group Icons --key Theme) == WhiteSur-lavender ]] &&
+    grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$1/gtk-3.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$1/gtk-4.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=\"WhiteSur-lavender\"" "$2/.gtkrc-2.0" &&
+    grep -qx "Net/IconThemeName \"WhiteSur-lavender\"" "$1/xsettingsd/xsettingsd.conf" &&
+    python3 -I -c "import json, sys; assert json.load(open(sys.argv[1]))[\"phase\"] == \"selected\"" "$3/icon-adoption"
+' _ "$config" "$home" "$state"
+check "  undo restores breeze cleanly" run undo-128b "$project/uninstall.sh"
+
+fresh "#129 explicit KDE breeze does not leave stale inherited Adwaita from older backup underneath"
+for kd_mode in same_breeze absent_kd; do
+    rm -rf "$state" "$config/kdedefaults"
+    mkdir -p "$state/backup/config/kdedefaults" "$config/kdedefaults"
+    printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n[Icons]\nTheme=breeze\n' > "$config/kdeglobals"
+    if [[ $kd_mode == same_breeze ]]; then
+        printf '[Icons]\nTheme=breeze\n' > "$config/kdedefaults/kdeglobals"
+    fi
+    # Older predating backup has inherited Adwaita in kdedefaults/kdeglobals!
+    printf '[KDE]\nLookAndFeelPackage=org.kde.breeze.desktop\n' > "$state/backup/config/kdeglobals"
+    printf '[Icons]\nTheme=Adwaita\n' > "$state/backup/config/kdedefaults/kdeglobals"
+    printf 'apply\n' > "$state/backup/TAKEN"
+    printf 'config\t%s\nhome\t%s\n' "$config" "$home" > "$state/backup/ROOTS"
+    : > "$state/backup/ABSENT"
+    printf 'config\tkdeglobals\t%s/kdeglobals\nconfig\tkdedefaults\t%s/kdedefaults\n' "$config" "$config" > "$state/backup/ENTRIES"
+    (cd "$state/backup" && find config -type f -print0 | sort -z | xargs -0 sha256sum) > "$state/backup/SUMS"
+    check "install ($kd_mode) exits 0" run "inst-129-$kd_mode" "$project/install.sh"
+    check "undo ($kd_mode) exits 0" run "undo-129-$kd_mode" "$project/uninstall.sh"
+    if [[ $kd_mode == same_breeze ]]; then
+        check "  ($kd_mode) explicit kdeglobals=breeze AND inherited kdedefaults=breeze (not Adwaita)" bash -c '
+            [[ $(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme) == breeze ]] &&
+            [[ $(kreadconfig6 --file "$1/kdedefaults/kdeglobals" --group Icons --key Theme) == breeze ]]
+        ' _ "$config"
+    else
+        check "  ($kd_mode) explicit kdeglobals=breeze AND kdedefaults has NO stale Adwaita" bash -c '
+            [[ $(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme) == breeze ]] &&
+            [[ -z $(kreadconfig6 --file "$1/kdedefaults/kdeglobals" --group Icons --key Theme 2>/dev/null || true) ]]
+        ' _ "$config"
+    fi
+done
+
+fresh "#130 direct undo after post-displacement base failure restores manual trio AND preserves Lavender selection"
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme WhiteSur
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=Papirus-Dark\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=Papirus-Dark\n' > "$config/gtk-4.0/settings.ini"
+check "HEAD apply creates predating backup" run head-130 env M9_PREBUILT="$no_icon_prebuilt" "$head_project/install.sh" --apply
+mkdir -p "$data/icons"
+for icon_id in WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark; do
+    cp -RP "$M9_PREBUILT/icons/$icon_id" "$data/icons/$icon_id"
+done
+printf '# manual-130-marker\n' >> "$data/icons/WhiteSur-lavender/index.theme"
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme WhiteSur-lavender
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=WhiteSur-lavender\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=WhiteSur-lavender\n' > "$config/gtk-4.0/settings.ini"
+if run upg-130-fail env PATH="$fail_bin:$PATH" M9_FAIL_ICON_TARGET="$data/icons/WhiteSur-lavender" "$project/install.sh"; then
+    fail "post-displacement base placement fails"
+else
+    pass "post-displacement base placement fails"
+fi
+check "  base target is currently empty while displaced original exists" test ! -e "$data/icons/WhiteSur-lavender"
+check "direct uninstall exits 0" run undo-130 "$project/uninstall.sh"
+check "  manual trio restored AND KDE + GTK selection stays WhiteSur-lavender (#130)" bash -c '
+    grep -Fq "# manual-130-marker" "$1/icons/WhiteSur-lavender/index.theme" &&
+    [[ $(kreadconfig6 --file "$2/kdeglobals" --group Icons --key Theme) == WhiteSur-lavender ]] &&
+    grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$2/gtk-3.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=WhiteSur-lavender" "$2/gtk-4.0/settings.ini"
+' _ "$data" "$config"
+
+fresh "#131 private 0600 permissions preserved across install, update, and undo"
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n[Icons]\nTheme=breeze\n' > "$config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+printf 'gtk-icon-theme-name="breeze"\n' > "$home/.gtkrc-2.0"
+printf 'Net/IconThemeName "breeze"\n' > "$config/xsettingsd/xsettingsd.conf"
+chmod 600 "$config/kdeglobals" "$config/gtk-3.0/settings.ini" "$config/gtk-4.0/settings.ini" "$home/.gtkrc-2.0" "$config/xsettingsd/xsettingsd.conf"
+check "plain install on active Platinum exits 0" run inst-131 "$project/install.sh"
+check "  all 0600 files stayed 0600 after plain auto-select (#131)" bash -c '
+    for f in "$1/kdeglobals" "$1/gtk-3.0/settings.ini" "$1/gtk-4.0/settings.ini" "$2/.gtkrc-2.0" "$1/xsettingsd/xsettingsd.conf"; do
+        [[ $(stat -c "%a" "$f") == 600 ]] || { echo "mode of $f is $(stat -c %a "$f")"; exit 1; }
+    done
+' _ "$config" "$home"
+check "uninstall exits 0" run undo-131 "$project/uninstall.sh"
+check "  all 0600 files stayed 0600 after undo (#131)" bash -c '
+    for f in "$1/kdeglobals" "$1/gtk-3.0/settings.ini" "$1/gtk-4.0/settings.ini" "$2/.gtkrc-2.0" "$1/xsettingsd/xsettingsd.conf"; do
+        [[ $(stat -c "%a" "$f") == 600 ]] || { echo "mode of $f is $(stat -c %a "$f")"; exit 1; }
+    done
+' _ "$config" "$home"
+
+fresh "#133 uninstall --dry-run succeeds when backup had ABSENT kdeglobals"
+rm -f "$config/kdeglobals"
+check "HEAD plain install records kdeglobals in ABSENT" run head-133 env M9_PREBUILT="$no_icon_prebuilt" "$head_project/install.sh"
+check "  backup/ABSENT lists config/kdeglobals" grep -qxF $'config\tkdeglobals' "$state/backup/ABSENT"
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n[Icons]\nTheme=breeze\n' > "$config/kdeglobals"
+check "upgrade exits 0" run upg-133 "$project/install.sh"
+before_133=$(snapshot)
+check "uninstall --dry-run exits 0 with absent backup kdeglobals (#133)" run dry-133 "$project/uninstall.sh" --dry-run
+check "  --dry-run changed nothing" same "$before_133" "$(snapshot)"
+check "real uninstall exits 0" run undo-133 "$project/uninstall.sh"
+
+fresh "#135 missing flock is refused before creating state or cache entries"
+noflock_bin=$root/masked-flock
+rm -rf "$noflock_bin"
+mkdir -p "$noflock_bin"
+for t in bash sh env awk sed grep find sort xargs cat head tail tr cut mkdir rmdir rm mv cp ln chmod touch mktemp realpath dirname basename readlink tar sha256sum g++ pkg-config install ldd python3 git kreadconfig6 kwriteconfig6 xmllint rsvg-convert gtk-update-icon-cache dbus-send; do
+    tpath=$(command -v "$t" 2> /dev/null || true)
+    [[ -n $tpath ]] && ln -sf "$tpath" "$noflock_bin/$t"
+done
+before_135=$(snapshot)
+if env PATH="$noflock_bin" M9_PREBUILT="$M9_PREBUILT" "$project/install.sh" > "$root/135-install.log" 2>&1; then
+    fail "#135 install refuses when flock is missing"
+else
+    pass "#135 install refuses when flock is missing"
+fi
+check "  #135 install error names flock and util-linux and left home unchanged" bash -c '
+    grep -Fq "flock" "$1" && grep -Fq "util-linux" "$1"
+' _ "$root/135-install.log"
+check "  #135 home completely unchanged" same "$before_135" "$(snapshot)"
+
+fresh "#136 missing plugin build prerequisites (pkg-config Qt6/KF6) fail preflight before fetching or locking"
+empty_pc=$root/empty-pkgconfig
+mkdir -p "$empty_pc"
+before_136=$(snapshot)
+if env -u M9_PREBUILT PKG_CONFIG_LIBDIR="$empty_pc" PKG_CONFIG_PATH="" M9_WHITESUR_REMOTE="$M9_TEST_REMOTE" "$project/install.sh" > "$root/136-preflight.log" 2>&1; then
+    fail "#136 preflight rejects missing Qt6/KF6 pkg-config modules"
+else
+    pass "#136 preflight rejects missing Qt6/KF6 pkg-config modules"
+fi
+check "  #136 error names qt6-base, qt6-declarative, and kcoreaddons" bash -c '
+    grep -Fq "qt6-base" "$1" && grep -Fq "qt6-declarative" "$1" && grep -Fq "kcoreaddons" "$1"
+' _ "$root/136-preflight.log"
+check "  #136 failed preflight created no lock and no cache" same "$before_136" "$(snapshot)"
+
+fresh "#138 install.sh --help documents active-Platinum one-time plain-install icon switch"
+check "install.sh --help mentions active Platinum plain-install WhiteSur-lavender switch" bash -c '
+    out=$("$1/install.sh" --help) &&
+    grep -Fq "Platinum" <<< "$out" &&
+    grep -Fq "WhiteSur-lavender" <<< "$out"
+' _ "$project"
+
+# --------------------------------------------------------------------------
+# #139, #140, #141, #127 (incomplete outside copy), #131 (0644 backup / 0600 live)
+# --------------------------------------------------------------------------
+
+fresh "#139 capture precedes first change to installed targets or manifest; failed first target still undoes cleanly"
+mkdir -p "$config/kdedefaults"
+printf '[KDE]\nLookAndFeelPackage=org.kde.breeze.desktop\n' > "$config/kdeglobals"
+printf '[Icons]\nTheme=Adwaita\n' > "$config/kdedefaults/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=Papirus-Dark\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=Papirus-Dark\n' > "$config/gtk-4.0/settings.ini"
+printf 'gtk-icon-theme-name="Papirus-Dark"\n' > "$home/.gtkrc-2.0"
+printf 'Net/IconThemeName "Papirus-Dark"\n' > "$config/xsettingsd/xsettingsd.conf"
+check "HEAD plain install creates committed TAKEN=install backup" run head-139 env M9_PREBUILT="$no_icon_prebuilt" "$head_project/install.sh"
+# Picker activates Platinum + explicit KDE breeze (no inherited key) + GTK breeze
+rm -rf "$config/kdedefaults"
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n[Icons]\nTheme=breeze\n' > "$config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+printf 'gtk-icon-theme-name="breeze"\n' > "$home/.gtkrc-2.0"
+printf 'Net/IconThemeName "breeze"\n' > "$config/xsettingsd/xsettingsd.conf"
+# Case A: fail capture itself (make $state read-only after lock exists) -> ZERO targets or manifest changed!
+lnf_before=$(sha256sum "$data/plasma/look-and-feel/platinum.desktop/contents/defaults" | awk '{print $1}')
+man_before=$(sha256sum "$state/installed" | awk '{print $1}')
+touch "$state/lock"
+chmod 500 "$state"
+if run cap-139-fail "$project/install.sh"; then
+    fail "#139 failed capture exits non-zero"
+else
+    pass "#139 failed capture exits non-zero"
+fi
+chmod 700 "$state"
+check "  #139 failed capture left look-and-feel and manifest untouched" bash -c '
+    [[ $(sha256sum "$1" | awk "{print \$1}") == "$2" ]] &&
+    [[ $(sha256sum "$3" | awk "{print \$1}") == "$4" ]] &&
+    test ! -e "$5/icon-adoption"
+' _ "$data/plasma/look-and-feel/platinum.desktop/contents/defaults" "$lnf_before" "$state/installed" "$man_before" "$state"
+# Case B: fail on the VERY FIRST target placement (platinumstyle.so) -> capture already succeeded before it!
+if run first-target-139-fail env PATH="$fail_bin:$PATH" M9_FAIL_ICON_TARGET="$home/.local/lib/macos9-theme/style/styles/platinumstyle.so" "$project/install.sh"; then
+    fail "#139 first-target placement failure exits non-zero"
+else
+    pass "#139 first-target placement failure exits non-zero"
+fi
+check "  #139 icon-adoption was durably captured BEFORE first target placement" test -f "$state/icon-adoption"
+check "  #139 direct undo restores KDE breeze (no stale Adwaita) and GTK breeze (no Papirus-Dark)" run undo-139 "$project/uninstall.sh"
+check "  #139 post-undo KDE and GTK match pre-adoption breeze exactly" bash -c '
+    [[ $(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme) == breeze ]] &&
+    [[ -z $(kreadconfig6 --file "$1/kdedefaults/kdeglobals" --group Icons --key Theme 2>/dev/null || true) ]] &&
+    grep -qx "gtk-icon-theme-name=breeze" "$1/gtk-3.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=breeze" "$1/gtk-4.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=\"breeze\"" "$2/.gtkrc-2.0" &&
+    grep -qx "Net/IconThemeName \"breeze\"" "$1/xsettingsd/xsettingsd.conf"
+' _ "$config" "$home"
+check "  #139 no state record left" no_record_left
+
+fresh "#140 install refuses unfinished undo across all 3 boundaries (mid-restore, phase=restored, post-archive manifest)"
+# Boundary 1: kill undo after merged GTK 3 published (phase=restoring)
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n[Icons]\nTheme=breeze\n' > "$config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+check "install on active Platinum exits 0" run inst-140a "$project/install.sh"
+fail_140_gtk4=$root/fail-140-gtk4
+mkdir -p "$fail_140_gtk4"
+cat > "$fail_140_gtk4/mv" << 'STUB'
+#!/bin/bash
+if [[ $1 == -T && $3 == */gtk-4.0/settings.ini ]]; then
+    exit 1
+fi
+exec /usr/bin/mv "$@"
+STUB
+chmod +x "$fail_140_gtk4/mv"
+if run undo-140a-mid env PATH="$fail_140_gtk4:$PATH" "$project/uninstall.sh"; then
+    fail "#140 boundary 1 undo stops mid-restore"
+else
+    pass "#140 boundary 1 undo stops mid-restore"
+fi
+before_140a=$(snapshot)
+if run inst-140a-refused "$project/install.sh"; then
+    fail "#140 install refuses during phase=restoring"
+else
+    pass "#140 install refuses during phase=restoring"
+fi
+check "  #140 boundary 1 refused install changed nothing" same "$before_140a" "$(snapshot)"
+check "  #140 boundary 1 resuming uninstall finishes cleanly" run undo-140a-finish "$project/uninstall.sh"
+check "  #140 boundary 1 no state left" no_record_left
+
+# Boundary 2: kill undo after phase=restored saved, BEFORE icon-adoption archived
+fresh "#140b install refuses after phase=restored saved before archive, and fresh install carries no stale decision"
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n[Icons]\nTheme=breeze\n' > "$config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+check "install exits 0" run inst-140b "$project/install.sh"
+fail_140_arch=$root/fail-140-arch
+mkdir -p "$fail_140_arch"
+cat > "$fail_140_arch/mv" << 'STUB'
+#!/bin/bash
+if [[ $1 == -T && $2 == */icon-adoption && $3 == */icon-adoption ]]; then
+    exit 1
+fi
+exec /usr/bin/mv "$@"
+STUB
+chmod +x "$fail_140_arch/mv"
+if run undo-140b-stop env PATH="$fail_140_arch:$PATH" "$project/uninstall.sh"; then
+    fail "#140 boundary 2 undo stops after phase=restored before archive"
+else
+    pass "#140 boundary 2 undo stops after phase=restored before archive"
+fi
+if run inst-140b-refused "$project/install.sh"; then
+    fail "#140 install refuses when phase=restored and uninstall unfinished"
+else
+    pass "#140 install refuses when phase=restored and uninstall unfinished"
+fi
+check "  #140 boundary 2 resuming uninstall finishes cleanly" run undo-140b-finish "$project/uninstall.sh"
+check "  #140 boundary 2 no state left" no_record_left
+
+# Boundary 3: kill undo immediately AFTER backup + icon-adoption archived, while old manifest & packages remain!
+fresh "#140c install refuses after icon-adoption archived while manifest remains; after uninstall finishes, fresh install works"
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n[Icons]\nTheme=breeze\n' > "$config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+check "install exits 0" run inst-140c "$project/install.sh"
+fail_140_rm=$root/fail-140-rm
+mkdir -p "$fail_140_rm"
+cat > "$fail_140_rm/rm" <<'STUB'
+#!/usr/bin/env bash
+for arg in "$@"; do
+    if [[ $arg == *Platinum.colors ]]; then
+        exit 1
+    fi
+done
+exec /usr/bin/rm "$@"
+STUB
+chmod +x "$fail_140_rm/rm"
+if run undo-140c-stop env PATH="$fail_140_rm:$PATH" "$project/uninstall.sh"; then
+    fail "#140 boundary 3 undo stops in section 2 after journal archival"
+else
+    pass "#140 boundary 3 undo stops in section 2 after journal archival"
+fi
+check "  #140 boundary 3 backup and icon-adoption are archived while manifest and uninstall-in-progress remain" bash -c '
+    test ! -e "$1/backup" &&
+    test ! -e "$1/icon-adoption" &&
+    test -f "$1/installed" &&
+    test -f "$1/uninstall-in-progress"
+' _ "$state"
+if run inst-140c-refused "$project/install.sh"; then
+    fail "#140 install refuses when uninstall-in-progress remains after journal archival"
+else
+    pass "#140 install refuses when uninstall-in-progress remains after journal archival"
+fi
+check "  #140 boundary 3 resuming uninstall retires manifest and marker" run undo-140c-finish "$project/uninstall.sh"
+check "  #140 boundary 3 no state left" no_record_left
+# Now a brand-new install on active Platinum captures fresh preferences and selects WhiteSur-lavender cleanly!
+kwriteconfig6 --file "$config/kdeglobals" --group KDE --key LookAndFeelPackage platinum.desktop
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme breeze
+check "  #140 boundary 3 fresh install after completed undo succeeds and selects WhiteSur-lavender" run inst-140c-fresh "$project/install.sh"
+check "  #140 boundary 3 fresh install has new restore_decision=none and WhiteSur-lavender selected" bash -c '
+    [[ $(python3 -I "$1/scripts/icon_prefs.py" read-restore-decision "$2/icon-adoption") == none ]] &&
+    [[ $(kreadconfig6 --file "$3/kdedefaults/kdeglobals" --group Icons --key Theme) == WhiteSur-lavender ]]
+' _ "$project" "$state" "$config"
+check "  #140 boundary 3 undo exits 0" run undo-140c-done "$project/uninstall.sh"
+
+fresh "#141 pending selection (captured AND selecting) cancels cleanly if user switched away from Platinum"
+# Case A: killed after phase=captured -> user switches global theme to Breeze + breeze icons -> retry keeps Breeze!
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n[Icons]\nTheme=breeze\n' > "$config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+if run inst-141a-fail env PATH="$fail_bin:$PATH" M9_FAIL_ICON_TARGET="$data/icons/WhiteSur-lavender" "$project/install.sh"; then
+    fail "#141a install stops while phase=captured"
+else
+    pass "#141a install stops while phase=captured"
+fi
+kwriteconfig6 --file "$config/kdeglobals" --group KDE --key LookAndFeelPackage org.kde.breeze.desktop
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme breeze
+check "#141a retry after switching away from Platinum exits 0" run inst-141a-retry "$project/install.sh"
+check "  #141a global theme stays Breeze, icons stay breeze (NOT WhiteSur-lavender), and phase=skipped" bash -c '
+    [[ $(kreadconfig6 --file "$1/kdeglobals" --group KDE --key LookAndFeelPackage) == org.kde.breeze.desktop ]] &&
+    [[ $(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme) == breeze ]] &&
+    grep -qx "gtk-icon-theme-name=breeze" "$1/gtk-3.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=breeze" "$1/gtk-4.0/settings.ini" &&
+    python3 -I -c "import json, sys; assert json.load(open(sys.argv[1]))[\"phase\"] == \"skipped\"" "$2/icon-adoption"
+' _ "$config" "$state"
+check "  #141a undo exits 0" run undo-141a "$project/uninstall.sh"
+
+# Case B: killed during phase=selecting (KDE + GTK 3 switched to Lavender, GTK 4 failed read-only) ->
+# user switches global theme to Breeze and sets KDE to Adwaita (leaving GTK 3 at partial Lavender) ->
+# retry keeps user's Adwaita in KDE, rolls back partial GTK 3 Lavender to breeze, and sets phase=skipped!
+fresh "#141b partial selecting phase reconciles transaction-owned writes and preserves later user choice on Breeze"
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n[Icons]\nTheme=breeze\n' > "$config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+chmod 500 "$config/gtk-4.0"
+if run inst-141b-fail "$project/install.sh"; then
+    fail "#141b install stops during phase=selecting"
+else
+    pass "#141b install stops during phase=selecting"
+fi
+chmod 700 "$config/gtk-4.0"
+kwriteconfig6 --file "$config/kdeglobals" --group KDE --key LookAndFeelPackage org.kde.breeze.desktop
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme Adwaita
+check "#141b retry after switching to Breeze + Adwaita exits 0" run inst-141b-retry "$project/install.sh"
+check "  #141b KDE keeps user Adwaita, partial GTK 3 rolled back to breeze, GTK 4 stays breeze, phase=skipped" bash -c '
+    [[ $(kreadconfig6 --file "$1/kdeglobals" --group KDE --key LookAndFeelPackage) == org.kde.breeze.desktop ]] &&
+    [[ $(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme) == Adwaita ]] &&
+    grep -qx "gtk-icon-theme-name=breeze" "$1/gtk-3.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=breeze" "$1/gtk-4.0/settings.ini" &&
+    python3 -I -c "import json, sys; assert json.load(open(sys.argv[1]))[\"phase\"] == \"skipped\"" "$2/icon-adoption"
+' _ "$config" "$state"
+check "  #141b undo exits 0" run undo-141b "$project/uninstall.sh"
+
+fresh "#127 incomplete outside copy (index.theme only, zero advertised artwork dirs) cannot authorize deleting managed trio"
+check "real-size install exits 0" run inst-127b env M9_PREBUILT="$M9_PREBUILT_REAL" "$project/install.sh"
+mkdir -p "$home/.icons/WhiteSur-lavender"
+cp "$data/icons/WhiteSur-lavender/index.theme" "$home/.icons/WhiteSur-lavender/index.theme"
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme WhiteSur-lavender
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=WhiteSur-lavender\n' > "$config/gtk-3.0/settings.ini"
+if run undo-127b "$project/uninstall.sh"; then
+    fail "#127 incomplete outside copy (index.theme only) is rejected"
+else
+    pass "#127 incomplete outside copy (index.theme only) is rejected"
+fi
+check "  #127 managed base and its real Lavender folder.svg stayed intact" test -f "$data/icons/WhiteSur-lavender/places/scalable/folder.svg"
+kwriteconfig6 --file "$config/kdeglobals" --group Icons --key Theme breeze
+sed -i 's/WhiteSur-lavender/breeze/g' "$config/gtk-3.0/settings.ini"
+check "  #127 retry after switching away exits 0" run undo-127b-done "$project/uninstall.sh"
+check "  #127 all three managed icon dirs removed" icons_absent "$data"
+
+fresh "#131 legacy 0644 backup does not widen pre-adoption 0600 permissions on undo (even when backed-up key already matches)"
+printf '[KDE]\nLookAndFeelPackage=org.kde.breeze.desktop\n[Icons]\nTheme=WhiteSur\n' > "$config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=Papirus-Dark\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+printf 'gtk-icon-theme-name="Papirus-Dark"\n' > "$home/.gtkrc-2.0"
+printf 'Net/IconThemeName "Papirus-Dark"\n' > "$config/xsettingsd/xsettingsd.conf"
+chmod 644 "$config/kdeglobals" "$config/gtk-3.0/settings.ini" "$config/gtk-4.0/settings.ini" "$home/.gtkrc-2.0" "$config/xsettingsd/xsettingsd.conf"
+has_acl=0
+if command -v setfacl >/dev/null && setfacl -m u:0:r-- "$config/gtk-4.0/settings.ini" 2>/dev/null; then
+    has_acl=1
+fi
+check "HEAD install --apply creates 0644 legacy backup" run head-131b env M9_PREBUILT="$no_icon_prebuilt" "$head_project/install.sh" --apply
+check "  legacy backup gtk-3.0 is 0644 and gtk-4.0 is group/world readable" bash -c '
+    [[ $(stat -c "%a" "$1/backup/config/gtk-3.0/settings.ini") == 644 ]] &&
+    [[ $(stat -c "%a" "$1/backup/config/gtk-4.0/settings.ini") == 644 ]]
+' _ "$state"
+# Before adopting, user has breeze across KDE & GTK and hardened all 5 files to 0600
+# (clearing any legacy ACL on gtk-4.0 and adding a custom pre-adoption ACL on xsettingsd.conf).
+printf '[KDE]\nLookAndFeelPackage=platinum.desktop\n[Icons]\nTheme=breeze\n' > "$config/kdeglobals"
+printf '[Settings]\ngtk-theme-name=Breeze\ngtk-icon-theme-name=breeze\n' > "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-icon-theme-name=breeze\n' > "$config/gtk-4.0/settings.ini"
+printf 'gtk-icon-theme-name="breeze"\n' > "$home/.gtkrc-2.0"
+printf 'Net/IconThemeName "breeze"\n' > "$config/xsettingsd/xsettingsd.conf"
+if ((has_acl)); then
+    setfacl -b "$config/gtk-4.0/settings.ini" "$config/xsettingsd/xsettingsd.conf"
+fi
+chmod 600 "$config/kdeglobals" "$config/gtk-3.0/settings.ini" "$config/gtk-4.0/settings.ini" "$home/.gtkrc-2.0" "$config/xsettingsd/xsettingsd.conf"
+if ((has_acl)); then
+    setfacl -m u:0:r-- "$config/xsettingsd/xsettingsd.conf"
+fi
+check "plain upgrade exits 0" run upg-131b "$project/install.sh"
+check "  pre-adoption 0600 modes and ACL stayed intact after upgrade" bash -c '
+    for f in "$1/kdeglobals" "$1/gtk-3.0/settings.ini" "$1/gtk-4.0/settings.ini" "$2/.gtkrc-2.0"; do
+        [[ $(stat -c "%a" "$f") == 600 ]] || { echo "upgrade mode of $f is $(stat -c %a "$f")"; exit 1; }
+    done
+    if [[ $3 == 1 ]]; then
+        getfacl -p "$1/xsettingsd/xsettingsd.conf" | grep -qx "user:root:r--" || exit 1
+        ! getfacl -p "$1/gtk-4.0/settings.ini" | grep -q "^user:root:"
+    else
+        [[ $(stat -c "%a" "$1/xsettingsd/xsettingsd.conf") == 600 ]]
+    fi
+' _ "$config" "$home" "$has_acl"
+check "plain update exits 0" run upd-131b "$project/install.sh"
+check "uninstall exits 0" run undo-131b "$project/uninstall.sh"
+check "  all 5 files restored to breeze AND kept pre-adoption 0600 + ACL despite 0644 legacy backup (#131)" bash -c '
+    [[ $(kreadconfig6 --file "$1/kdeglobals" --group Icons --key Theme) == breeze ]] &&
+    grep -qx "gtk-icon-theme-name=breeze" "$1/gtk-3.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=breeze" "$1/gtk-4.0/settings.ini" &&
+    grep -qx "gtk-icon-theme-name=\"breeze\"" "$2/.gtkrc-2.0" &&
+    grep -qx "Net/IconThemeName \"breeze\"" "$1/xsettingsd/xsettingsd.conf" &&
+    for f in "$1/kdeglobals" "$1/gtk-3.0/settings.ini" "$1/gtk-4.0/settings.ini" "$2/.gtkrc-2.0"; do
+        [[ $(stat -c "%a" "$f") == 600 ]] || { echo "undo mode of $f is $(stat -c %a "$f")"; exit 1; }
+    done
+    if [[ $3 == 1 ]]; then
+        getfacl -p "$1/xsettingsd/xsettingsd.conf" | grep -qx "user:root:r--" || { echo "missing ACL on xsettingsd.conf"; exit 1; }
+        ! getfacl -p "$1/gtk-4.0/settings.ini" | grep -q "^user:root:" || { echo "stale legacy ACL on gtk-4.0"; exit 1; }
+    else
+        [[ $(stat -c "%a" "$1/xsettingsd/xsettingsd.conf") == 600 ]]
+    fi
+' _ "$config" "$home" "$has_acl"
+check "  repeated uninstall exits 0 and keeps 0600 + ACL" run undo-131b-2 "$project/uninstall.sh"
+check "  all 5 files still 0600 + ACL after repeated uninstall" bash -c '
+    for f in "$1/kdeglobals" "$1/gtk-3.0/settings.ini" "$1/gtk-4.0/settings.ini" "$2/.gtkrc-2.0"; do
+        [[ $(stat -c "%a" "$f") == 600 ]] || exit 1
+    done
+    if [[ $3 == 1 ]]; then
+        getfacl -p "$1/xsettingsd/xsettingsd.conf" | grep -qx "user:root:r--" || exit 1
+        ! getfacl -p "$1/gtk-4.0/settings.ini" | grep -q "^user:root:"
+    else
+        [[ $(stat -c "%a" "$1/xsettingsd/xsettingsd.conf") == 600 ]]
+    fi
+' _ "$config" "$home" "$has_acl"
 
 echo
 if ((failed)); then

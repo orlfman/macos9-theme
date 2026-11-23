@@ -13,13 +13,25 @@ look). Still to come: icons, cursors, fonts, GTK, extras. Details in
 
 ## Install
 
-Everything goes into your home; no root. It needs a C++ compiler and the
-Qt 6 and KDecoration 3 development files (on Arch: `base-devel`, `qt6-base`,
-`qt6-declarative`, `kcoreaddons` and `kdecoration`).
+Everything goes into your home; no root. It needs a C++ compiler, Qt 6 and
+KDecoration 3 development files, and the WhiteSur Lavender icon builder tools
+(on Arch: `base-devel`, `qt6-base`, `qt6-declarative`, `kcoreaddons`,
+`kdecoration`, `kconfig`, `util-linux`, `git`, `python`, `libxml2`, `librsvg`,
+`gtk-update-icon-cache`, `python-gobject`, and `gtk3`; plus `python-pillow` if
+you add custom `.png` icons under `icons/custom/`). `install.sh` preflights
+these (including `pkg-config` modules, `moc`, and KDecoration 3 headers/library)
+before taking locks, fetching, or writing files.
 
 ```bash
 ./install.sh
 ```
+
+If Platinum is already your active global theme, a plain `./install.sh` also
+selects `WhiteSur-lavender` once for both KDE and GTK without touching your
+panels, wallpaper, cursors, or other settings (recording your previous KDE and
+GTK icon preferences first so `./uninstall.sh` restores them cleanly). Later
+plain updates preserve whatever icon theme you pick afterwards; when Platinum
+is not active, a plain `./install.sh` never changes your icon selection.
 
 Then log out and back in once (a Plasma login script lets Qt find the
 style and the window decoration), and switch:

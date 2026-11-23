@@ -31,6 +31,8 @@ EOF
     "$project/style/build.sh" "$root/prebuilt/style" > /dev/null
     "$project/decoration/build.sh" "$root/prebuilt/decoration" > /dev/null
     "$project/style/quick/build.sh" "$root/prebuilt/quick" > /dev/null
+    "$project/icons/build-whitesur-lavender.sh" "${M9_WHITESUR_UPSTREAM:-$(dirname "$project")/WhiteSur-icon-theme}" "$root/prebuilt/icons" > /dev/null
+    rm -f "$root/prebuilt/icons"/WhiteSur-lavender{,-light,-dark}/.macos9-whitesur-lavender-build
     status=0
     env -i HOME="$root/home" USER="$USER" PATH="$root/bin:/usr/local/bin:/usr/bin" \
         XDG_CONFIG_HOME="$root/home/.config" XDG_DATA_HOME="$root/home/.local/share" \
@@ -161,14 +163,26 @@ cursor_theme() {
     [[ -n $v ]] || v=$(kreadconfig6 --file "$config/kdedefaults/kcminputrc" --group Mouse --key cursorTheme)
     printf '%s' "$v"
 }
+icon_theme() {
+    local v
+    v=$(kreadconfig6 --file kdeglobals --group Icons --key Theme)
+    [[ -n $v ]] || v=$(kreadconfig6 --file "$config/kdedefaults/kdeglobals" --group Icons --key Theme)
+    printf '%s' "$v"
+}
 kwriteconfig6 --file kcminputrc --group Mouse --key cursorTheme Breeze_Light
 before_files=$(files_state)
 
 check "install exits 0" bash -c "'$project/install.sh' > '$root/install.log' 2>&1"
 check "install alone keeps both wallpapers" same "$before_backgrounds" "$(desktop_backgrounds)"
 check "install installed the cursor theme" test -r "$XDG_DATA_HOME/icons/macOS-cursors/cursors/left_ptr"
+check "install installed the WhiteSur Lavender icon themes" bash -c '
+    test -r "$1/icons/WhiteSur-lavender/places/scalable/folder.svg" &&
+    test -r "$1/icons/WhiteSur-lavender-light/index.theme" &&
+    test -r "$1/icons/WhiteSur-lavender-dark/index.theme"
+' _ "$XDG_DATA_HOME"
 check "install --apply exits 0" bash -c "'$project/install.sh' --apply > '$root/apply.log' 2>&1"
 check "apply selects the Platinum cursors (macOS-cursors)" same macOS-cursors "$(cursor_theme)"
+check "apply selects the WhiteSur Lavender icons (WhiteSur-lavender)" same WhiteSur-lavender "$(icon_theme)"
 sleep 6
 after_panels=$(panels)
 echo "info    after --apply: $after_panels"
@@ -267,6 +281,11 @@ done
 check "every config and GTK file is back byte for byte" same "$before_files" "$(files_state)"
 check "uninstall restored the previous cursor" same Breeze_Light "$(cursor_theme)"
 check "uninstall removed the cursor theme" test ! -e "$XDG_DATA_HOME/icons/macOS-cursors"
+check "uninstall removed the WhiteSur Lavender icon themes" bash -c '
+    for id in WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark; do
+        [[ ! -e "$1/icons/$id" && ! -L "$1/icons/$id" ]] || exit 1
+    done
+' _ "$XDG_DATA_HOME"
 touch "$root/go"
 launcher_status=0
 wait "$launcher" || launcher_status=$?
