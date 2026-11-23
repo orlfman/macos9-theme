@@ -40,7 +40,14 @@
 
 #include <algorithm>
 
-K_PLUGIN_FACTORY_WITH_JSON(PlatinumDecorationFactory, "platinum.json", registerPlugin<Platinum::Decoration>(); registerPlugin<Platinum::Button>();)
+K_PLUGIN_FACTORY_WITH_JSON(PlatinumDecorationFactory, "platinum.json", registerPlugin<Platinum::Decoration>(); registerPlugin<Platinum::Button>(
+    [](QWidget *, QObject *parent, const KPluginMetaData &, const QVariantList &args) -> QObject * {
+        if (args.size() < 2 || !args[0].canConvert<KDecoration3::DecorationButtonType>()) {
+            return nullptr;
+        }
+        return Platinum::Button::create(args[0].value<KDecoration3::DecorationButtonType>(),
+                                        args[1].value<KDecoration3::Decoration *>(), parent);
+    });)
 
 namespace Platinum
 {
@@ -178,12 +185,27 @@ std::shared_ptr<KDecoration3::DecorationShadow> createShadow(QRgb color)
  * Decoration
  */
 
+namespace
+{
+// KWin creates and destroys decorations on its GUI thread. Retain both
+// variants across focus changes until the last decoration goes away.
+int decorationCount = 0;
+std::shared_ptr<KDecoration3::DecorationShadow> activeShadow, inactiveShadow;
+} // namespace
+
 Decoration::Decoration(QObject *parent, const QVariantList &args)
     : KDecoration3::Decoration(parent, args)
 {
+    ++decorationCount;
 }
 
-Decoration::~Decoration() = default;
+Decoration::~Decoration()
+{
+    if (--decorationCount == 0) {
+        activeShadow.reset();
+        inactiveShadow.reset();
+    }
+}
 
 bool Decoration::isActiveLook() const
 {
@@ -216,10 +238,12 @@ bool Decoration::init()
         update();
     });
     connect(w, &Window::widthChanged, this, &Decoration::updateButtonsGeometry);
+    // setBorders() proposes a state. Lay out against the applied borders,
+    // even when the compositor applies that state after the width change.
     connect(this, &KDecoration3::Decoration::bordersChanged, this, &Decoration::updateButtonsGeometry);
-    connect(w, &Window::maximizedChanged, this, &Decoration::recalculate);
-    connect(w, &Window::maximizedHorizontallyChanged, this, &Decoration::recalculate);
-    connect(w, &Window::maximizedVerticallyChanged, this, &Decoration::recalculate);
+    connect(w, &Window::maximizedChanged, this, &Decoration::updateBorders);
+    connect(w, &Window::maximizedHorizontallyChanged, this, &Decoration::updateBorders);
+    connect(w, &Window::maximizedVerticallyChanged, this, &Decoration::updateBorders);
     connect(w, &Window::shadedChanged, this, &Decoration::recalculate);
     connect(w, &Window::resizeableChanged, this, &Decoration::recalculate);
     connect(s, &Settings::fontChanged, this, &Decoration::recalculate);
@@ -234,6 +258,8 @@ bool Decoration::init()
     m_leftButtons = new Group(Group::Position::Left, this, &Button::create);
     m_rightButtons = new Group(Group::Position::Right, this, &Button::create);
     setOpaque(true);
+    m_leftButtons->setSpacing(BoxGap);
+    m_rightButtons->setSpacing(BoxGap);
     recalculate();
     updateShadow();
     return true;
@@ -243,7 +269,6 @@ void Decoration::recalculate()
 {
     updateBorders();
     updateButtonsGeometry();
-    update();
 }
 
 void Decoration::updateBorders()
@@ -276,12 +301,9 @@ void Decoration::updateButtonsGeometry()
     // there are 3 px (16 px per box). The groups only lay themselves out now
     // and then, so every button is placed here.
     auto place = [&](KDecoration3::DecorationButtonGroup *group, bool left) {
-        group->setSpacing(BoxGap);
         const auto buttons = group->buttons();
         QList<KDecoration3::DecorationButton *> shown;
         for (KDecoration3::DecorationButton *b : buttons) {
-            connect(b, &KDecoration3::DecorationButton::visibilityChanged, this, &Decoration::updateButtonsGeometry,
-                    Qt::ConnectionType(Qt::QueuedConnection | Qt::UniqueConnection));
             if (b->isVisible()) {
                 shown << b;
             } else {
@@ -305,9 +327,11 @@ void Decoration::updateButtonsGeometry()
 
 void Decoration::updateShadow()
 {
-    static std::shared_ptr<KDecoration3::DecorationShadow> active = createShadow(qRgba(0, 0, 0, 255));
-    static std::shared_ptr<KDecoration3::DecorationShadow> inactive = createShadow(qRgba(0x55, 0x55, 0x55, 255));
-    setShadow(isActiveLook() ? active : inactive);
+    if (!activeShadow) {
+        activeShadow = createShadow(qRgba(0, 0, 0, 255));
+        inactiveShadow = createShadow(qRgba(0x55, 0x55, 0x55, 255));
+    }
+    setShadow(isActiveLook() ? activeShadow : inactiveShadow);
 }
 
 void Decoration::paint(QPainter *painter, const QRectF &repaintArea)
@@ -315,7 +339,9 @@ void Decoration::paint(QPainter *painter, const QRectF &repaintArea)
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing, false);
     paintFrame(painter);
-    paintTitle(painter);
+    if (repaintArea.isEmpty() || repaintArea.intersects(titleBarRect())) {
+        paintTitle(painter);
+    }
     m_leftButtons->paint(painter, repaintArea);
     m_rightButtons->paint(painter, repaintArea);
     painter->restore();
@@ -461,19 +487,7 @@ void Decoration::paintTitle(QPainter *painter)
 Button::Button(DecorationButtonType type, Decoration *decoration, QObject *parent)
     : KDecoration3::DecorationButton(type, decoration, parent)
 {
-    auto repaint = [this] {
-        if (auto *d = this->decoration()) {
-            d->update(geometry());
-        }
-    };
-    connect(this, &DecorationButton::hoveredChanged, this, repaint);
-    connect(this, &DecorationButton::pressedChanged, this, repaint);
-    connect(this, &DecorationButton::checkedChanged, this, repaint);
-}
-
-Button::Button(QObject *parent, const QVariantList &args)
-    : Button(args.value(0).value<DecorationButtonType>(), args.value(1).value<Decoration *>(), parent)
-{
+    connect(this, &DecorationButton::visibilityChanged, decoration, &Decoration::updateButtonsGeometry, Qt::QueuedConnection);
 }
 
 KDecoration3::DecorationButton *Button::create(DecorationButtonType type, KDecoration3::Decoration *decoration, QObject *parent)

@@ -49,6 +49,7 @@ public:
     bool isActiveLook() const;
 
 private:
+    friend class Button;
     void recalculate();
     void updateBorders();
     void updateButtonsGeometry();
@@ -68,7 +69,6 @@ class Button : public KDecoration3::DecorationButton
     Q_OBJECT
 
 public:
-    explicit Button(QObject *parent, const QVariantList &args);
     Button(KDecoration3::DecorationButtonType type, Decoration *decoration, QObject *parent = nullptr);
 
     static KDecoration3::DecorationButton *create(KDecoration3::DecorationButtonType type, KDecoration3::Decoration *decoration, QObject *parent);
