@@ -533,3 +533,75 @@ determinate fills and clears the border image at an exactly empty trough.
 Horizontal GTK progress reverses in RTL, so the themed shadow and end
 cap follow the GTK node's start-edge class. The same logic handles
 vertically inverted bars, while vertical activity uses an unframed tile.
+
+## GTK 4 named Platinum control slice (2026-11-23, Codex GPT-6.2 Sol)
+
+- GTK 4.24.1 accepts the named stylesheet in the normal theme directory on
+  Broadway and Wayland. When a named theme loads, controls outside its
+  selectors can lose stock styling. Importing GTK's bundled default theme
+  resource supplies the unported widget rules and dark and high-contrast
+  variants. The Platinum rules are enabled for light mode at normal contrast.
+  Toggling the disposable high-contrast preference on Wayland kept
+  `gtk-theme-name=Platinum` and changed `gtk-interface-contrast` from high (2)
+  back to default (1). The screenshots also show the corresponding selection
+  and focus colors.
+- GTK 4 groups `GtkCheckButton` instances as radios through
+  `checkbutton > radio`. Entry keyboard focus is on the child `text` node
+  and its parent matches `:focus-within`. The window sets `.default` on the
+  effective default button. A grouped check button can also be inconsistent.
+- GTK 4 texture filtering can sample adjacent pixels when stretching a
+  one-pixel strip in a nine-slice. Duplicating the center row and column of
+  the measured push-button artwork on each side of the strip preserves the
+  measured 1× result for normal and pressed buttons. GTK 3's generated
+  artwork stays byte-identical.
+- Nested KWin reported output scales of 1.5 and 2, and GTK 4 reported those
+  same fractional and integer surface scales. Both physical compositor
+  captures show the entire dialog and its focus and selection colors.
+
+### Initial slice audit follow-up
+
+- GTK's default stylesheet supplies higher-specificity hover fills for
+  checkbox and radio indicators. Explicit Platinum hover rules preserve
+  the off, on and mixed artwork while pointer hover and press overlap.
+- On GTK 4.24.1 in nested Wayland, ordinary deactivation cleared the
+  visible focus state. Calling `gtk_window_set_focus()` to reassign the
+  focus widget while the window remained inactive brought back the focus
+  selectors alongside `:backdrop`. Platinum now clears the outline for
+  that combination on buttons, checkboxes and radios.
+- The Wayland harness loads Platinum through GSettings with no
+  `gtk-theme-name` in `settings.ini`. The 1× chrome, gallery and contrast
+  captures used the default `GskVulkanRenderer`. The 36 chrome crops
+  matched their references in both the Vulkan and Broadway Cairo runs.
+- GtkStackSwitcher and toolbar layouts use ordinary button nodes. Subclass and
+  image-button exclusions alone still style their children. Including GTK's
+  linked and toolbar parent roles, including the nested toolbar layout,
+  restored stock measurements in the two-theme fixture.
+- GTK's disabled label rule can override the foreground inherited from a
+  disabled button. The disabled checkbox label resolved to `#929595` even
+  though the parent resolved to `#777777`. An explicit inheritance rule
+  restores the Platinum color.
+- A live contrast preference notification can arrive before the focused
+  entry finishes its visual transition. After settling, the high-contrast
+  render matched GTK’s stock high-contrast entry pixel for pixel and the
+  original Platinum rendering returned in the same mapped window.
+
+## Firefox 160.0.1 chrome and `userChrome.css` discovery (2026-11-24, Antigravity Gemini 4 Carbon)
+
+Verified in isolated nested `kwin_wayland --virtual` via `dev/firefox-test.sh` and `dev/check-firefox-m1.sh` (**46/46 PASS**, `dev/build/firefox-m1.zVJtP1/probe-report.json`):
+
+- **Normal profile loading & host isolation:** `<profile>/chrome/userChrome.css` loads on cold launch when `toolkit.legacyUserProfileCustomizations.stylesheets = true` (`29,506` `#CCCCFF` marker pixels on `#PersonalToolbar` vs `0` when `false` or absent). Isolating `HOME`, `XDG_*`, and `XDG_RUNTIME_DIR` in `dev/firefox-test.sh` prevents Firefox from creating `~/.mozilla` or touching the host's `~/.config/mozilla`.
+- **Host `profiles.ini` location & `[Install*]` precedence:** On this host, Firefox 160.0.1 stores profiles under the XDG path `~/.config/mozilla/firefox/profiles.ini` (`~/.mozilla` does not exist). `[Install4F96D1932A9F858E]` selects `Default=*.default-release`, while `[Profile1]` (`default`) still carries the legacy `Default=1` key. Milestone 6's `firefox/install.sh` must prioritize `[Install*]` `Default=` over `[Profile*]` `Default=1`.
+- **MozJar `omni.ja` archive header:** `/usr/lib/firefox/omni.ja` and `/usr/lib/firefox/browser/omni.ja` use Mozilla's optimized jar header (`zipfile.BadZipFile` in Python's stdlib `zipfile`); `/usr/bin/unzip -p` / `-l` extracts them intact with exit status `2` (compensated header warning). Milestone 5's selector checker must treat `unzip` exit codes `0–2` with non-empty output as valid or parse MozJar headers directly.
+- **KWin Platinum SSD join (`browser.tabs.inTitlebar = 0`):** Clears `customtitlebar` on `:root`, hides `.titlebar-buttonbox-container` and `.titlebar-spacer`, and avoids top-corner rounding. KWin's bottom titlebar border (`y+21 = #000000` under `y+20 = #999999`) meets `#navigator-toolbox` row `y+22` directly with zero gap and no doubled black border (`#DDDDDD` on stock; `#FFFFFF` top bevel highlight in the wrapped toolbar probe).
+- **GTK 3 Platinum inheritance vs `widget.non-native-theme.enabled = true`:** Under `default-theme@mozilla.org`, Firefox resolves GTK 3 Platinum colors (`-moz-headerbar = rgb(221, 221, 221)` `#DDDDDD`, `SelectedItem = AccentColor = rgb(204, 204, 255)` `#CCCCFF`, `InactiveCaptionText = rgb(119, 119, 119)` `#777777`). Because `widget.non-native-theme.enabled` (`true`) and `widget.gtk.overlay-scrollbars.enabled` (`true`) are enabled by default, chrome `<menupopup>`s (`#menu_FilePopup`, `#contentAreaContextMenu`), HTML form controls, and scrollbars do not paint GTK 3 widget sprites — chrome `<menupopup>`/`menuitem`/`menuseparator` and panels must be styled directly in `userChrome.css`.
+- **Light DOM vs Shadow DOM & sidebar modes:**
+  - `#navigator-toolbox`, `#toolbar-menubar`, `#TabsToolbar`, `#tabbrowser-tabs`, `#nav-bar`, `#nav-bar-customization-target`, `#urlbar-container`, `<html:moz-urlbar id="urlbar">`, `#PersonalToolbar`, `#PlacesToolbarItems`, `#sidebar-box`, `#sidebar-splitter`, and `#statuspanel` are all **light DOM**. The AppMenu panel ID in 160.0.1 is `#appMenu-popup` (not `#PanelUI-popup`); `<menupopup>` and `<panel>` use an open shadow root only for their internal `arrowscrollbox` (`part="arrowscrollbox content"`), keeping menu items in light DOM.
+  - `<html:sidebar-main>` (`sidebar.revamp = true`, default) renders its 7 `<moz-button>` tool icons inside an open Shadow DOM exposing only `part="overflow-button"` and CSS variables, confirming IE5 rotated text tabs cannot be applied to revamp launcher buttons via `userChrome.css`.
+  - **Vertical tabs (`sidebar.verticalTabs = true`):** Moves `#tabbrowser-tabs[orient="vertical"]` into the light-DOM `<box id="vertical-tabs">` slotted inside `<html:sidebar-main>` and sets `[tabs-hidden]` on `#navigator-toolbox`, keeping the vertical tab strip itself stylable in light DOM.
+  - **Legacy sidebar (`sidebar.revamp = false`):** Remains functional in 160.0.1 (`bookmarksSidebar.xhtml` / `historySidebar.xhtml`), hiding `<html:sidebar-main>` and exposing light-DOM `#sidebar-header` (`#sidebar-switcher-target`, `#sidebar-close`) and `#bookmarks-view`.
+- **Two-row IE5 toolbar + full-width address band without false overflow:**
+  - Wrapping `#urlbar-container` via `flex-wrap: wrap` on `#nav-bar-customization-target` leaves a `40–104 px` right-side gap (because `#PanelUI-button` and `#nav-bar-overflow-button` sit outside `#nav-bar-customization-target`) and causes `OverflowableToolbar` to set `[overflowing]` falsely at `1120 px` width.
+  - Reserving `padding-bottom: 26px` on `&:not([customizing]) #nav-bar` (`position: relative`) and placing `&:not([customizing]) #urlbar-container` at `position: absolute; inset-inline: 0; bottom: 0; width: 100%; height: 26px` spans the full window width (`1120 px`, `0 px` gap), produces zero false overflow at `1120 px`, preserves real button overflow when narrowed (`520 px` → `5` overflowed buttons), reverts cleanly to static flow in Customize Mode (`:root[customizing]`), and preserves `gURLBar.focus()` and Shift+Tab `ToolbarKeyboardNavigator` focus.
+  - Inside CSS-nested `:root:not([lwtheme]) { ... }`, root attribute guards must use `&:not([customizing])` (an unprefixed `:root` parses as a descendant combinator `:root :root` and never matches). Multi-row Lavender gradients must use discrete whole-pixel stops or 1× PNGs to avoid WebRender color interpolation between stops.
+- **Toolbar button labels & host extensions:** Every primary `.toolbarbutton-1` in `#nav-bar` (`Sidebars`, `Back`, `Forward`, `Reload`, `Stop`, `Home`, `Print`, `Find`, `Downloads`, `Account`, `Extensions`, `Firefox`, plus system-installed WebExtensions such as `uBlock Origin` on CachyOS) populates `.toolbarbutton-text` from `label`. Showing `.toolbarbutton-text` with `flex-direction: column` and `width: auto; max-width: none` renders unclipped centered labels under icons; `home-button` starts in the CustomizableUI palette, and `#nav-bar` ships two `<toolbarspring>` spacers (`customizableui-special-spring1`, `customizableui-special-spring2`) that push right-side buttons inward unless collapsed (`display: none` or `flex: 0 0 0px` outside Customize Mode).
+- **Theme, dark-mode, and contrast gating (`browser.nova.enabled = true`):** In Firefox 160.0.1 (`browser.nova.enabled = true`), `firefox-compact-light@mozilla.org` and `firefox-compact-dark@mozilla.org` use `[theme-in-app]` and **do not set `[lwtheme]`** on `:root` (`lwtheme == false`; only `firefox-alpenglow@mozilla.org` sets `[lwtheme]`). Gating `userChrome.css` with `@media (-moz-native-theme) and (prefers-color-scheme: light) and (not (prefers-contrast)) and (not (forced-colors)) { :root:not([lwtheme]) { ... } }` activates **only** on the default System theme in normal light mode and stays inactive on Compact Light, Compact Dark, Alpenglow, System Dark (`ui.systemUsesDarkTheme = 1`), and GTK HighContrast (`prefers-contrast`).

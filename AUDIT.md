@@ -3,9 +3,11 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
-Terminal palette (Kwi/Konsole), 2026-11-23. **#173–176 fixed in the working tree.** Verified ANSI contrast in Kwi and Konsole and preservation of the selected palette during uninstall. #95 remains open.
+GTK Milestone 4 initial controls, 2026-11-24. **#181–188 fixed and verified in the working tree.** The follow-up passed 78/78 Wayland and 56/56 Broadway, with all 36 reference crops exact on each. User visual review is pending. #95 remains open.
 
-GTK Milestone 3 Batch 2, 2026-11-23. **#177–180 fixed and independently cross-verified in the working tree.** Final evidence passed 62/62 on virtual Wayland (`dev/build/gtk3-m3b2-plasma.EJiAYi`) and 61/61 on fresh Broadway (`dev/build/gtk3-m3b2-broadway.kDQb5m`) and ASan/UBSan (`dev/build/m3b2-sanitizers.uwTiMK`), including all 45 reference crops at tolerance zero and an 80-combination ASan/UBSan progressbar matrix (`0` diagnostics). User visual review and Batch 2 fractional-scale inspection remain pending. #95 remains open.
+Terminal palette (Kwi/Konsole), 2026-11-23. **#173–176 fixed and pushed in `b34dcb0`.** Verified ANSI contrast in Kwi and Konsole and preservation of the selected palette during uninstall. #95 remains open.
+
+GTK Milestone 3 Batch 2, 2026-11-23. **#177–180 fixed, independently cross-verified and pushed in `733afcb`.** Final evidence passed 62/62 on virtual Wayland (`dev/build/gtk3-m3b2-plasma.EJiAYi`) and 61/61 on fresh Broadway (`dev/build/gtk3-m3b2-broadway.kDQb5m`) and ASan/UBSan (`dev/build/m3b2-sanitizers.uwTiMK`), including all 45 reference crops at tolerance zero and an 80-combination ASan/UBSan progressbar matrix (`0` diagnostics). User visual review and Batch 2 fractional-scale inspection remain pending. #95 remains open.
 
 GTK Milestone 3 Batch 1, 2026-11-23. **#168–172 fixed and verified in the working tree.** Virtual Wayland passed 39/39 and Broadway passed 38/38. All 27 reference crops matched on both backends. Wayland verifies actual backdrop, an overflowing GTK combobox, and Meld's active window and rendered theme. #95 remains open.
 
@@ -17,6 +19,92 @@ Current C++ audit status, 2026-11-22. Checkpoint 5 passed. #99 (P3) and
 #100 (P2) are fixed and verified in the working tree. #95 remains open (P3).
 
 Status: #53–58 passed their original regression cases. #59–68 are fixed in this revision, including code commits `ef8250a` and `fb4156f`. The user has completed the first desktop install. #3 (P3) awaits the user's visual review. The panel-resize fix for #23 is verified at the user’s 32 px setting. The panel follow-ups #69 and #70 are fixed in the working tree and verified in nested Plasma. The user reported that the updated Kwi tab close button worked well on their desktop (#71–74). Wallpaper findings #75–77 are fixed and verified in disposable Plasma. Cursor findings #78–80 are fixed; the cursors are now bundled (`cursors/`), which removes the external download they concerned. The bundled cursor follow-ups #81–84 are fixed in the working tree. The decisions on #21, #25 and #26 still apply.
+
+## 2026-11-24, Codex (GPT-6) — re-audit the GTK 4 initial control fixes
+
+Reviewed the working tree over `733afcb`, including Gemini’s #181–184 and
+the assumptions in the subsequent verification. Four follow-up findings were
+reproduced and fixed.
+
+- **#185 · P2 · fixed.** The expanded custom-child selector also styled GTK’s stack switcher, linked buttons and toolbars. A stock two-page switcher measured 267×34, compared with 72×27 under Platinum. A toolbar measured 60×44 stock and 44×35 under Platinum. Restricted the selector and verified five GTK role samples against the same widgets under Adwaita, including a nested toolbar and a button in an OSD box. All five now match in natural size and every rendered pixel. A separate direct-window push button retained its 4 px frame.
+- **#186 · P3 · fixed.** The stock disabled label rule overrode the inherited Platinum foreground. A disabled checkbox had a `#777777` parent and a `#929595` label. Disabled labels inside checkboxes, grouped radios and framed custom-child buttons now inherit their control’s foreground. All four tested label types resolved to `#777777`.
+- **#187 · P2 · fixed.** Identically corrupting the pressed and pressed-hover pictures of the checked checkbox still passed the old verifier. It now compares each of six indicators in four states to the project artwork and checks all six on the actual 2× compositor output. The inactive-focus check now requires evidence that the combined background and visible-focus flags were exercised. On this host all four controls reached that state through ordinary GTK focus reassignment.
+- **#188 · P2 · fixed.** A black high-contrast screenshot passed the previous color-absence test. The two preference values were also sampled in different processes. The private session now changes the preference while the same focused GTK window stays mapped. Its high-contrast pixels match the stock GTK high-contrast fixture exactly and the restored image matches its original Platinum rendering.
+
+Fresh evidence in `dev/build/gtk4-m4-plasma.O41st5` (78/78, default Vulkan)
+and `dev/build/gtk4-m4-broadway.SpZcXt` (56/56, Cairo) includes 36/36
+zero-tolerance Mac OS 9 reference crops on each. Broadway with ASan/UBSan
+passed 56/56 in `dev/build/gtk4-m4-broadway.2AWndD`; leak detection was off.
+The old verifier accepted the magenta pressed state and black contrast capture
+together (66/66). The revised verifier rejected six injected defects in
+`dev/build/gtk4-followup.zWYDlo/negative.log`.
+
+An additional Wayland input client held its connection through pointer moves,
+presses, releases, Tab and Space in a disposable KWin. All seven inspected
+indicator crops matched the intended artwork, including a press on the
+checkbox label and a press on the selected radio. The checkbox toggled, the
+second radio became selected, and Space activated the custom button once.
+Evidence is in `dev/build/gtk4-followup.zWYDlo/native.vJJqIZ`. This was a
+separate input run. The standard six-indicator matrix uses GTK state flags.
+
+Project suites passed 135/135 Qt Widgets, 29/29 Qt Quick, 19/19 Plasma,
+80/80 icons, 727/727 install and undo, and 40/40 nested live install.
+Widget Factory and the two named themes ran inside nested Wayland.
+The 150% check covers layout, focus and selection. Pixel-exact physical
+indicator comparisons ran at 200%. User visual review remains pending.
+
+## 2026-11-23, Codex (GPT-6.2 Sol) — verify and fix the GTK 4 slice audit
+
+Audited the uncommitted Milestone 4 slice over `733afcb`. Confirmed #181–184
+and left the fixes in the working tree.
+
+- **#181 · P2 · fixed.** The new probe reproduced the Adwaita hover fill on all six off, on and mixed checkbox and radio samples. The higher-specificity hover rules now keep the Platinum artwork. The pressed mixed radio also defines its shadow explicitly so hovering while pressed preserves its appearance.
+- **#182 · P2 · fixed.** Ordinary KWin deactivation cleared the visible focus flags in this session. Reassigning focus with `gtk_window_set_focus()` while inactive reproduced the ring, with 242 active pixels on the default button and 594 each on the checkbox and radio before the fix. Both inactive cases now have zero active outline pixels on all four tested controls.
+- **#183 · P2 · fixed.** Confirmed the launcher forced Cairo on the 1× probes and populated the Wayland INI theme key. The Wayland probes now use GTK's chosen renderer, which was Vulkan for both 1× captures and both contrast states. The named theme is read from GSettings. The verifier checks the renderer, absence of environment overrides and absence of the INI theme key.
+- **#184 · P3 · fixed.** A framed button with a custom child now uses the push-button rules. The fixture checks its measured frame and activation with an icon-and-label child, traverses to the actual default button for focus, and the standalone verifier rejects a missing completion marker. The Widget Factory comparison confirmed the stock combo boxes and list headers retain their styling.
+
+Wayland passed **66/66** (`dev/build/gtk4-m4-plasma.0s5s2n`) and Broadway passed
+**55/55** (`dev/build/gtk4-m4-broadway.oycT3e`). All 36 reference crops matched
+at tolerance zero on both. Broadway ASan/UBSan passed 55/55 with no diagnostics
+(`dev/build/gtk4-audit-sanitizers.4ya_mfd_`). The verifier rejected five
+deliberate defects in `dev/build/gtk4-audit-negative.lz_4isp6`. The pre-fix
+probe is `dev/build/gtk4-m4-plasma.kfRF5m`. GTK 3 passed 51/51 Wayland
+and 47/47 Broadway.
+
+Project regressions passed 135/135 Qt Widgets, 29/29 Qt Quick, 19/19 Plasma, 80/80 icons, 727/727 install and undo, and 40/40 nested live install.
+
+The hover probe exercises GTK's state flags. Deactivation and theme selection
+run in disposable KWin with Widget Factory as the ordinary GTK 4 app. User
+visual review and the later GTK 4 batches remain pending.
+
+## 2026-11-23, Antigravity (Gemini 4 Carbon) — independent audit of GTK Milestone 4 initial slice
+
+Audited: uncommitted working tree over `733afcb` covering `gtk/Platinum/palette.css`, `gtk/Platinum/gtk-3.0/gtk.css`, `gtk/Platinum/gtk-4.0/{gtk.css,controls.css,assets/}`, `gtk/gen-assets.py`, `dev/check-gtk4.sh`, `dev/gtk4-check/{fixture.c,session.sh,verify.py}`, `docs/GTK-PLAN.md`, `docs/FINDINGS.md`, and saved Wayland/Broadway/negative-control evidence (`dev/build/gtk4-m4-plasma.wBIFUg`, `dev/build/gtk4-m4-broadway.9OjwcN`, `dev/build/gtk4-m4-negative.ea0wBt`). Left all implementation files untouched; no claims held.
+
+**Verdict: HOLD — 4 open findings (`#181–183` P2, `#184` P3).**
+
+### Open findings
+
+- **#181 · P2 · open — Hovering checkboxes or radio buttons replaces Platinum sprites with Adwaita fills (`Default-light.css` `:hover` specificity beats `controls.css`).** `gtk/Platinum/gtk-4.0/gtk.css:11`, `gtk/Platinum/gtk-4.0/controls.css:192-288`, `dev/gtk4-check/fixture.c`. Importing `resource:///org/gtk/libgtk/theme/Default/gtk.css` brings in `Default-light.css`'s `check:hover, radio:hover { background-image: image(#f2f2f2); }` (specificity `(0, 1, 1)`, higher than `checkbutton > check` and `checkbutton > radio` at `(0, 0, 2)`) and `check:checked:hover, radio:checked:hover` + `check:indeterminate:hover, radio:indeterminate:hover { background-image: linear-gradient(to bottom, #5d9de9 10%, #478fe6 90%); }` (specificity `(0, 2, 1)`, higher than `controls.css`'s `:checked` and `:indeterminate` rules at `(0, 1, 2)`). Reproduced in a disposable Broadway hover probe (`GTK_STATE_FLAG_PRELIGHT`): hovering an unchecked checkbox or radio button erases `check-off.png` / `radio-off.png` into a borderless `#F2F2F2` square, and hovering a checked or mixed checkbox or radio button erases the Platinum sprite into a solid Adwaita blue square (`#5D9DE9`→`#478FE6`, square even on radios because `controls.css:182` sets `border-radius: 0`), changing `456` indicator pixels across `Check`, `Radio`, and `Radio2`. Mac OS 9 checkboxes and radio buttons (`reference/controls-general-controls.png`, `docs/REFERENCE.md`, and `gtk/Platinum/gtk-3.0/gtk.css`) have no hover fill change. Neither `fixture.c` nor `verify.py` exercises `:hover` on any slice control.
+- **#182 · P2 · open — Focused buttons, checkboxes, and radio buttons retain active `#6666CC` keyboard focus rings on inactive (`:backdrop`) windows.** `gtk/Platinum/gtk-4.0/controls.css:59-64,169-174`, `dev/gtk4-check/fixture.c:341-364`, `dev/gtk4-check/verify.py:175-180`. While `entry:not(.flat):focus-within:backdrop` (`controls.css:125-127`) drops the `#6666CC` focus border on `:backdrop` (matching GTK 3 Milestone 2 where `gtk3-dialog-backdrop.png` has `0` `#6666CC` pixels and `dev/gtk3-check/verify.py:244` asserts `focus_ring_px == 0`), `button.text-button...:focus-visible` (`controls.css:59`) and `checkbutton:focus:focus-visible` (`controls.css:169`) omit `:not(:backdrop)`. Because `Default-light.css` does not clear `outline` on `:backdrop` and GTK 4 preserves `:focus-visible` on the window's focused widget across window deactivation, a focused button, checkbox, or radio button keeps its bright `#6666CC` outline on an inactive window (`266` `#6666CC` pixels in our focused-button backdrop probe, identical to active). `fixture.c:341-354` missed this because it captured `dialog-backdrop.png` only while `selected` (`GtkEntry`) had focus, before tabbing to `normal`, `empty_check`, and `radio_one` (`lines 356-364`).
+- **#183 · P2 · open — `dev/gtk4-check/session.sh` forces `GSK_RENDERER=cairo` for 1× `chrome`, `gallery`, and `contrast` on Wayland, and `dev/check-gtk4.sh` pre-populates `settings.ini` in `plasma` mode.** `dev/gtk4-check/session.sh:33-34,40,42`, `dev/check-gtk4.sh:23-28`, `docs/GTK-PLAN.md:12,22,56-57`.
+  1. `docs/GTK-PLAN.md:12,22` requires acceptance on the normal launch path without process-local overrides. Plain GTK 4 windows in virtual KWin Wayland run cleanly on GTK 4's default GPU renderer (`session.sh:62` `gtk4-widget-factory` and `session.sh:89` `scale-1.5`/`scale-2` run without `GSK_RENDERER`), yet `session.sh:33-34,40,42` forces `GSK_RENDERER=cairo` even when `mode == plasma`, leaving the 36 1× reference crops, 1× `gallery`, and `contrast` untested on GTK 4's default Wayland renderer at the user's native `scale=1`.
+  2. `docs/GTK-PLAN.md:56-57` states that the launcher selects `Platinum` through `settings.ini` on Broadway and GSettings on Wayland, but `dev/check-gtk4.sh:23-28` writes `gtk-theme-name=Platinum` into `$home/.config/gtk-4.0/settings.ini` in both modes (requiring `session.sh:61` to `sed -i` `settings.ini` alongside `gsettings` when switching `gtk4-widget-factory` to `Adwaita`). Omit `gtk-theme-name=Platinum` from `settings.ini` in `plasma` mode so the Wayland session proves GSettings/portal named-theme discovery rather than a `settings.ini` fallback.
+- **#184 · P3 · open — `button.text-button` excludes ordinary framed `GtkButton`s built with custom child widgets, `fixture.c` omits default-button keyboard focus, and standalone `verify.py` does not check `complete`.** `gtk/Platinum/gtk-4.0/controls.css:21-97`, `dev/gtk4-check/fixture.c:120-125,356`, `dev/gtk4-check/verify.py:120-130`. In GTK 4, `.text-button` is added automatically only by `gtk_button_new_with_label()` / `gtk_button_set_label()`. An ordinary framed dialog/window button constructed via `gtk_button_new()` + `gtk_button_set_child()` (such as a `GtkBox` holding an icon + `"Open File"` label, or `fixture.c:122-123` where `chrome_button()` had to add `.text-button` manually) lacks `.text-button` and falls back to rounded Adwaita chrome right next to Platinum `"Cancel"`/`"Continue"` buttons. In addition, `fixture.c:356` tests keyboard focus on `normal`, `empty_check`, and `radio_one` without testing `default_button` (`"Continue"`), and `verify.py` does not verify `(root / "complete").is_file()` when invoked directly.
+
+### Verified passing checks and limits
+
+- **Reference fidelity, assets, and shared palette:** Fresh `dev/check-gtk4.sh broadway` (`dev/build/gtk4-m4-broadway.bE9GAF`) passed **47/47** and saved virtual Wayland `dev/build/gtk4-m4-plasma.wBIFUg` re-verified **52/52** under `python3 -I -W error`, with all **36/36** 1× reference crops at `0` differing pixels (`--tolerance 0`). Direct pixel comparison of `wBIFUg/scale-2/output.png` (2× GPU-rendered compositor output) against 2× nearest-neighbor `dialog.png` confirmed `0` differing border pixels on `"Continue"`, `"Cancel"`, `"Disabled"`, and both entries. Clean regeneration of `gtk/gen-assets.py` matched all `200` GTK 3 PNGs and `4` GTK 4 `pad_slice_center` PNGs byte for byte (zero Apple files), and `dev/check-gtk3.sh broadway` passed **47/47** with shared `gtk/Platinum/palette.css`.
+- **Sanitizers, CSS parser diagnostics, accessibility/dark delegation, and negative controls:** `dev/gtk4-check/fixture.c` built cleanly with `cc -Wall -Wextra -Werror` and ran `chrome` + `gallery` with zero errors under `-fsanitize=address,undefined` (`ASan/UBSan`). Injecting an invalid CSS property and value into `controls.css` emitted `Gtk-WARNING: Theme parser error` on default stderr (without `GTK_DEBUG=css`) and failed `verify.py` (`rc=1`; note as a GTK 4.24 platform fact that `GTK_DEBUG=css` also logs `@define-color and named colors are deprecated` warnings, while default stderr is `0`). Re-running `dev/build/gtk4-m4-negative.ea0wBt` rejected all 3 corrupted checks (`49/52`, `rc=1`). Dark preference (`#353535` `Default-dark.css`) and Wayland high-contrast round-trip (`contrast=2 -> 1`) cleanly bypass `controls.css` via `@media (prefers-color-scheme: light) and (not (prefers-contrast: more))`.
+- **Limits:** Virtual KWin (`dev/check-gtk4.sh plasma`) cannot run directly inside the agent sandbox, so Wayland checks combined re-scoring and pixel inspection of `dev/build/gtk4-m4-plasma.wBIFUg` (`chrome.png`, `dialog.png`, `dialog-backdrop.png`, `focus-*.png`, `factory-{Platinum,Adwaita}.png`, `contrast-*.png`, `scale-{1.5,2}/output.png`) with fresh in-sandbox Broadway, ASan/UBSan, and adversarial probes. User live-desktop visual review remains pending.
+
+## 2026-11-23, Codex (GPT-6.2 Sol) — retest the GTK 4 initial controls and GTK 3
+
+- Working-tree GTK 4 checks passed 52/52 in virtual Wayland and 47/47 in Broadway. All 36 1× regions matched at tolerance zero on each. Reviewed the dialog, the 150% and 200% compositor captures, and Widget Factory. The fixed-geometry entry probe suppresses its caret to keep those crops deterministic. The separate editable gallery uses the normal caret.
+- The verifier rejected single-pixel reference corruption, substituting the Adwaita screenshot for Widget Factory under Platinum, and a falsified 150% surface scale. Evidence is in `dev/build/gtk4-m4-negative.ea0wBt`.
+- GTK 3 retests passed Milestone 2 (51/51 virtual Wayland and 47/47 Broadway), Milestone 3 Batch 1 (38/38 Broadway), and Milestone 3 Batch 2 (61/61 Broadway). The shared palette import produced zero CSS diagnostics and the 200 GTK 3 PNGs were byte-identical on regeneration. Discovery verifier controls passed 32/32. No regression findings.
+- Project regressions passed 135/135 Qt Widgets, 29/29 Qt Quick, 19/19 Plasma crops, 80/80 icons, 727/727 install and undo, and 40/40 nested live install.
+- Limits are one ordinary GTK 4 application, a disposable session, and the initial control slice. User visual review is pending.
 
 ## 2026-11-23, Antigravity (Gemini 4 Carbon) — independent verification of GTK Milestone 3 Batch 2 audit and fixes (#177–180)
 

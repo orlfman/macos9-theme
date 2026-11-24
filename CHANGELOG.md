@@ -2,6 +2,52 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-24, Antigravity (Gemini 4 Carbon) — Firefox Milestone 1 sandbox harness and chrome discovery
+
+- Implemented **Firefox Milestone 1** (`docs/FIREFOX-PLAN.md` Milestone 1):
+  - Added `firefox/README.md` (component scope and rules), `dev/firefox-test.sh` (headless nested `kwin_wayland --virtual` Firefox launcher with full `env -i` + isolated `HOME`/`XDG_*`/`XDG_RUNTIME_DIR`, Platinum KDecoration with `browser.tabs.inTitlebar=0`, Platinum GTK 3 theme, and throwaway deterministic Firefox profile), and the Milestone 1 verification suite (`dev/check-firefox-m1.sh`, `dev/firefox-m1/{probe.py,verify.py}`).
+  - Verified normal `<profile>/chrome/userChrome.css` cold loading (`29,506` `#CCCCFF` pixels on `#PersonalToolbar`) and negative control (`0` pixels with `toolkit.legacyUserProfileCustomizations.stylesheets = false`), exact KWin Platinum SSD bottom border to `#navigator-toolbox` join (`#999999` → `#000000` → `#DDDDDD`/`#FFFFFF`, no doubled line or corner clipping), and zero host leakage (`~/.mozilla` absent, `~/.config/mozilla` untouched).
+  - Recorded verified Firefox 160.0.1 (`browser.nova.enabled = true`) platform facts in `docs/FINDINGS.md`, `docs/DEVELOPMENT.md`, and `docs/FIREFOX-PLAN.md`:
+    - Host `profiles.ini` lives at XDG `~/.config/mozilla/firefox/profiles.ini` where `[Install*]` `Default=` selects `*.default-release` over legacy `[Profile1]` `Default=1`; `omni.ja` uses MozJar headers (`unzip` exits `2` on header compensation).
+    - Wrapping `#urlbar-container` via `flex-wrap: wrap` on `#nav-bar-customization-target` leaves a `104 px` right-side gap under `#PanelUI-button` and triggers false `OverflowableToolbar` `[overflowing]` at `1120 px`; reserving `padding-bottom: 26px` on `&:not([customizing]) #nav-bar` with `position: absolute; inset-inline: 0; bottom: 0` on `&:not([customizing]) #urlbar-container` renders a full-width 26 px Lavender address band with zero false overflow at `1120 px`, real button overflow at `520 px` (`5` items), clean Customize Mode round-trip, and working `gURLBar.focus()` + Shift+Tab `ToolbarKeyboardNavigator` focus.
+    - All primary `.toolbarbutton-1` buttons populate light-DOM `.toolbarbutton-text` labels; `#tabbrowser-tabs[orient="vertical"]` stays light-DOM slotted inside `#vertical-tabs` when `sidebar.verticalTabs=true`; legacy `sidebar.revamp=false` remains functional and light-DOM stylable; `widget.non-native-theme.enabled=true` means `userChrome.css` must style chrome `<menupopup>`s and panels directly while Firefox already inherits GTK 3 `-moz-headerbar = #DDDDDD` and `SelectedItem = #CCCCFF`.
+    - Under Nova (`browser.nova.enabled = true`), `firefox-compact-light@mozilla.org` and `firefox-compact-dark@mozilla.org` omit `[lwtheme]`, so `userChrome.css` must gate on `@media (-moz-native-theme) and (prefers-color-scheme: light) and (not (prefers-contrast)) and (not (forced-colors))` alongside `:root:not([lwtheme])`.
+- Checks: `dev/check-firefox-m1.sh` (`dev/build/firefox-m1.zVJtP1`) **46/46 PASS**; regressions `dev/check-style.sh` **135/135 PASS**, `dev/check-quick.sh` **29/29 PASS**, `dev/test_icons_phase1.py` **80/80 PASS**; `bash -n`, `python3 -I -m py_compile`, and `git diff --check` clean; visually inspected all 11 `dev/shots/firefox-m1-*.png` renders.
+- Remaining: user visual review of Milestone 1 renders and Milestone 2 sandbox mockups (tab placement, Lavender address-band ramp, toolbar labels vs icons-only, and status band); uncommitted in working tree; cleared `firefox` and `shared` claims (`nobody`).
+
+## 2026-11-24, Codex (GPT-6) — re-audit GTK 4 button roles and verification
+
+- Fixed #185–188 in the uncommitted Milestone 4 slice. Restored stock stack-switcher, linked-button and toolbar geometry and corrected disabled label colors.
+- Extended the fixture and verifier with a live high-contrast round trip against GTK's own rendering, exact 1× and 2× indicator checks, explicit backdrop state coverage and stock composite comparisons. Rejected six injected defects. A separate Wayland pointer and keyboard run confirmed seven indicator crops and custom-button activation.
+- Passed 78/78 Wayland, 56/56 Broadway and 56/56 Broadway with ASan/UBSan. Both backends matched all 36 reference crops. Project suites passed 135/135 Qt Widgets, 29/29 Qt Quick, 19/19 Plasma, 80/80 icons, 727/727 install and undo, and 40/40 nested live install.
+- User visual review is pending. GTK 4 menus, dropdowns and lists remain the next batch.
+
+## 2026-11-23, Codex (GPT-6.2 Sol) — fix the GTK 4 initial slice audit
+
+- Fixed #181–184 in the GTK 4 controls and verification harness. Checkboxes and radios keep their artwork on hover, focus rings clear on inactive windows, and framed buttons with custom children use Platinum chrome. The harness checks default-button focus and standalone session completion.
+- Wayland now verifies GSettings-only theme discovery and GTK's default 1× renderer. Passed 66/66 Wayland, 55/55 Broadway, 55/55 under ASan/UBSan, and 51/51 Wayland and 47/47 Broadway on GTK 3. All 36 reference crops still match exactly on both GTK 4 backends. Five injected faults were rejected.
+- Project regressions passed 135/135 Qt Widgets, 29/29 Qt Quick, 19/19 Plasma, 80/80 icons, 727/727 install and undo, and 40/40 nested live install.
+- The Milestone 4 fixes are uncommitted. User visual review and the remaining GTK 4 batches are pending.
+
+## 2026-11-23, Antigravity (Gemini 4 Carbon) — independent audit of GTK Milestone 4 initial slice
+
+- Independently audited Codex (GPT-6.2 Sol)'s uncommitted GTK Milestone 4 initial control slice over `733afcb` (`gtk/Platinum/palette.css`, `gtk/Platinum/gtk-3.0/gtk.css`, `gtk/Platinum/gtk-4.0/{gtk.css,controls.css,assets/}`, `gtk/gen-assets.py`, `dev/check-gtk4.sh`, `dev/gtk4-check/{fixture.c,session.sh,verify.py}`, `docs/GTK-PLAN.md`, `docs/FINDINGS.md`, and saved Wayland/Broadway/negative-control runs).
+- Recorded **4 open findings** in `AUDIT.md` (`#181–183` P2, `#184` P3):
+  - **#181 (P2):** Hovering checkboxes or radio buttons replaces Platinum sprites with Adwaita fills (`Default-light.css`'s `check:hover, radio:hover` `(0,1,1)` beats `checkbutton > check` / `> radio` `(0,0,2)` → borderless `#F2F2F2` square; `check:checked:hover, radio:checked:hover` and `:indeterminate:hover` `(0,2,1)` beat `controls.css` `(0,1,2)` → solid `#5D9DE9`→`#478FE6` Adwaita blue square; `456` differing indicator pixels in hover probe; `:hover` untested in `fixture.c`).
+  - **#182 (P2):** `button.text-button...:focus-visible` (`controls.css:59`) and `checkbutton:focus:focus-visible` (`controls.css:169`) omit `:not(:backdrop)`, leaving `266` active `#6666CC` focus-ring pixels lit on inactive `:backdrop` windows (`fixture.c:341-364` only tested `:backdrop` while `selected` `GtkEntry` held focus).
+  - **#183 (P2):** `dev/gtk4-check/session.sh:33-34,40,42` forces `GSK_RENDERER=cairo` in `plasma` mode (skipping GTK 4's default Wayland GPU renderer on the 36 1× crops, 1× gallery, and contrast round-trip), and `dev/check-gtk4.sh:23-28` pre-populates `gtk-theme-name=Platinum` in `gtk-4.0/settings.ini` on `plasma` (masking whether GSettings/portal alone selects `Platinum` on Wayland as stated in `docs/GTK-PLAN.md:56-57`).
+  - **#184 (P3):** `button.text-button` (`controls.css:21-97`) misses ordinary framed `GtkButton`s built with custom child widgets (`gtk_button_new()` + `gtk_button_set_child()`, e.g., icon+label `GtkBox`), `fixture.c:356` omits keyboard focus on `default_button`, and standalone `verify.py` does not check `root / "complete"`.
+- Verified passing checks: fresh `dev/check-gtk4.sh broadway` (`dev/build/gtk4-m4-broadway.bE9GAF`) **47/47**, saved Wayland `dev/build/gtk4-m4-plasma.wBIFUg` **52/52** (including `0` differing border pixels on 2× GPU-rendered `"Continue"`/`"Cancel"`/`"Disabled"`/entries in `scale-2/output.png`), `dev/gtk4-check/fixture.c` clean under `-Wall -Wextra -Werror` and `-fsanitize=address,undefined` ASan/UBSan, CSS parser error rejection verified without `GTK_DEBUG=css`, `dev/build/gtk4-m4-negative.ea0wBt` `49/52` (`rc=1`), dark-mode delegation (`#353535`) clean, `200` GTK 3 + `4` GTK 4 PNGs regenerate byte-identically, and `dev/check-gtk3.sh broadway` **47/47**.
+- Audit-only changes (`AUDIT.md`, `CHANGELOG.md`); no implementation files modified, no claims held, `#95` remains open, no live install/commit/push.
+
+## 2026-11-23, Codex (GPT-6.2 Sol) — start the named GTK 4 Platinum theme
+
+- Published the terminal palette packaging checkpoint in `b34dcb0` and the GTK 3 Milestone 3 Batch 2 checkpoint in `733afcb` on `origin/main` before starting Milestone 4.
+- Added `gtk/Platinum/gtk-4.0/` with framed text buttons, default buttons, entries, checks and radios. Both toolkits share `palette.css` and the measured artwork. Four generated GTK 4 variants preserve the normal and pressed button edges when GTK stretches them. The 200 GTK 3 PNGs regenerate byte for byte. The new theme delegates unported widgets, dark mode and high contrast to GTK's default styles.
+- Added `dev/check-gtk4.sh` and `dev/gtk4-check/`. Named theme discovery passed 52/52 in virtual Wayland and 47/47 in Broadway with all 36 reference regions pixel-exact on each. Wayland verifies active and backdrop selection, Widget Factory against Adwaita, a high-contrast round trip, native 1.5× and 2× surface scales and unclipped compositor captures. Three deliberately corrupted results were detected.
+- Project regressions passed 135/135 Qt Widgets, 29/29 Qt Quick, 19/19 Plasma crops, 80/80 icons, 727/727 install and undo, and 40/40 nested live install.
+- Remaining are the GTK 4 menu, list, scroll and window-control batches and user visual review. Milestone 4 changes are uncommitted. The GTK installer is scheduled for Milestone 6.
+
 ## 2026-11-23, Antigravity (Gemini 4 Carbon) — verify GTK Milestone 3 Batch 2 audit and fixes (#177–180)
 
 - Independently verified Codex (GPT-6.2 Sol)'s Milestone 3 Batch 2 audit and fixes (`#177–180`) in `gtk/Platinum/gtk-3.0/gtk.css`, `gtk/gen-assets.py` (100 procedural assets = 200 1× + `@2` PNGs, verified 200/200 byte-identical on clean regeneration), and `dev/gtk3-m3b2/{m3b2shot.c,verify.py}`. **Verdict: PASS (zero new findings).**
