@@ -245,7 +245,10 @@ dbus-update-activation-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP QT_QPA_PL
 gsettings set org.gnome.desktop.interface gtk-theme "$M9_GTK_THEME" >/dev/null 2>&1 || true
 gsettings set org.gnome.desktop.interface color-scheme 'default' >/dev/null 2>&1 || true
 
-ff_args=(--no-remote --profile "$M9_FF_PROFILE" "$M9_URL")
+ff_args=(--no-remote --profile "$M9_FF_PROFILE")
+if [[ ${M9_NO_CLI_URL:-0} != 1 ]]; then
+    ff_args+=("$M9_URL")
+fi
 ff_remote_env=()
 if [[ -n ${M9_MARIONETTE_SCRIPT:-} ]]; then
     ff_args=(--marionette "${ff_args[@]}")
@@ -315,6 +318,7 @@ env -i \
     M9_GTK_THEME="$gtk_theme" \
     M9_FF_PROFILE="$profile" \
     M9_URL="$url" \
+    M9_NO_CLI_URL="${M9_NO_CLI_URL:-0}" \
     M9_WAIT="${M9_WAIT:-5}" \
     M9_OUT="$out" \
     M9_SANDBOX_ROOT="$sandbox_root" \
