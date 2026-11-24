@@ -2,6 +2,21 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-23, Antigravity (Gemini 4 Neon) — align Firefox plan status with IE5-inspired fidelity target
+
+- Cleaned up remaining stale references to required IE5 VM captures and the old milestone numbering in `PLAN.md` (status block + `firefox` Claims row) and `docs/FIREFOX-PLAN.md` (measured-values note + open question 2 pointing to Milestone 2 mockups) so the docs consistently reflect the user's clarification: inspired by IE5 for a Mac OS 9 Platinum look and feel, not a 1:1 clone, with further IE5 captures optional.
+- Checks: `git diff --check` clean; Claims rows remain `nobody`; no Firefox code written, launched, installed, or committed.
+- Next: user confirmation to start Milestone 1 (sandboxed Firefox harness + DOM discovery) and Milestone 2 (visual mockups for tab placement, Lavender address-band shade, toolbar labels, and status bar).
+
+## 2026-11-23, Antigravity (Claude Opus 5.5) — Firefox theme plan
+
+- Added `docs/FIREFOX-PLAN.md` for decision 14 (optional IE5 Mac-style Firefox theme in Platinum Lavender). It records the target (Firefox 160.0.1, `userChrome.css` only), the measured IE5 bands from `reference/ie5-window-blank.png` (toolbar y=185–226 with a 3-row `#DEDEDE`/`#CCCCCC`/`#E8E6E8` pinstripe, 26-row teal address tube with every row value, favorites bar y=253–276, Explorer-bar strip, status band, label and icon colors, 56 px button pitch), the IE5 captures still needed, seven milestones, an install/undo contract and five open questions for the user.
+- Checked from the installed `omni.ja`: `#nav-bar`, `#urlbar-container`, `#PersonalToolbar`, `#TabsToolbar`, `#sidebar-box`, `#statuspanel` exist in 160.0.1; `<sidebar-main>` is shadow DOM exposing only `part="overflow-button"` and CSS variables, so IE-style rotated Explorer-bar tabs on the new sidebar launcher are not possible through userChrome. Not yet verified in a running Firefox.
+- No Firefox profile folder was visible from the agent sandbox (`~/.mozilla`, `~/.config/mozilla`); recorded as open question 3, possibly a sandbox limit.
+- Edited only `docs/FIREFOX-PLAN.md` (new), the PLAN.md status block, decision 14 and firefox/shared Claims rows (claimed for the session, now `nobody`), and this entry. No code, nothing installed, nothing committed, no Firefox launched. Scratch crops in the agent's own scratch folder only.
+- User clarification (19:36): the Firefox theme is **inspired by IE5, not a 1:1 clone**; go as far as `userChrome.css` allows. Added this to PLAN.md decision 14 and a "Fidelity target" section in `docs/FIREFOX-PLAN.md`: Platinum colors and bevels stay exact from REFERENCE.md, IE5 is a layout guide with no pixel comparison against it, Firefox features get a Platinum treatment instead of being hidden, IE5 captures are optional. Milestone 2 is now sandbox mockups instead of captures.
+- Next: the user answers the open questions (tabs, address-band ramp, which profile, toolbar labels, status band), partly through milestone 2 mockups; milestone 1 (sandboxed Firefox harness and DOM discovery) needs the firefox and shared claims.
+
 ## 2026-11-23, Codex (GPT-6) — user completed plain live reinstall
 
 The user's terminal showed the working-tree installer reaching Done with no inline cache override and all three GTK icon caches created. Platinum was already active. The user previously removed the stale KDE marker manually. The user's live kreadconfig6 query returned WhiteSur-lavender. The user visually approved the desktop appearance after the reinstall. The Lavender reinstall checkpoint is complete.

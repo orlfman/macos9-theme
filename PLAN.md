@@ -2,6 +2,8 @@
 
 ## Status
 
+**Firefox plan updated 2026-11-23** (`docs/FIREFOX-PLAN.md`, decision 14): inspired by IE5 for Mac rather than a 1:1 clone (Platinum colors/bevels exact from `docs/REFERENCE.md`, IE5 as layout guide, no IE5 pixel comparison, further IE5 captures optional). Seven milestones, install/undo contract, and five open questions (tab placement, address-band Lavender ramp, which Firefox profile, toolbar labels, status band). Ready for Milestone 1 (sandboxed harness & DOM discovery) + Milestone 2 (mockups); no Firefox code yet.
+
 Updated 2026-11-23 by Antigravity (Gemini 4 Neon). Earlier audit fixes are in `ef8250a` and `fb4156f`.
 
 Independent review on 2026-11-23 cleared the #142/#143 fixes for commit and plain reinstall on the user's existing Platinum setup (see AUDIT.md). Both nested Plasma suites passed in the user's terminal. The user completed the plain live reinstall without an inline cache override, live `kreadconfig6` returned `WhiteSur-lavender`, and the user visually approved the desktop appearance. The #142/#143 fixes are committed on `main` and the Lavender reinstall checkpoint is complete; #95 remains open.
@@ -133,7 +135,7 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | icons      | icons/                    | nobody | #101–109, #111, #116, #118–121, #123, #132, #134, #135, #137, #143 committed on `main` against pinned `2026-09-10` (`73d8040da51a9ed74e47c7366e7e9ff437601a5c`); external pin (`icons/whitesur-pin.json`), tracked custom layer (`icons/custom/{all,light,dark}/` + cross-dir variant aliases), read-only update review (`icons/review-whitesur-update.sh`), mandatory-`flock` full-`fsck` bare-git cache (`icons/fetch-whitesur.sh` with safe user-owned symlinked `~/.cache`), recovery-safe journaled publish, archive + linked-worktree safeguards, and disposable suite (`dev/test_icons_phase1.py`, 80/80); full-copy + custom layer retained |
 | cursors    | cursors/                  | nobody | bundled black cursors (`macOS-cursors`) installed and selected by the global theme, verified in nested Plasma; discovery, selection and undo verified (#78–#84). No cursors of our own (decision 8, user). |
 | gtk        | gtk/                      | nobody     | not started |
-| firefox    | firefox/                  | nobody     | not started; scope in decision 14; one native IE5 capture taken |
+| firefox    | firefox/                  | nobody | plan written (`docs/FIREFOX-PLAN.md`, 2026-11-23): IE5-inspired Platinum look & feel (not a 1:1 clone, captures optional); ready for Milestone 1 (harness/discovery) + Milestone 2 (mockups) |
 | extras     | extras/, wallpapers/      | nobody | Pastel Ribbon Landscape and Lavender Desktop Pattern packaged with the global theme. Konsole and Kwi colors, Plasma Login Manager, splash, and lock screen remain. |
 | packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's four audits (#4-#14, #27-#31, #34-#42 fixed); Qt Quick style & pass-through (#59–65); wallpapers (#75–77); bundled cursors (#78–84); WhiteSur Lavender #110, #112–115, #117–118, #122, #124–131, #133, #135–136, #138–143 committed on `main` (`dev/test-install.sh` 702/702 with real `XDG_CONFIG_DIRS` cascade; `dev/test-install-live.sh` 40/40 in user's terminal); live plain reinstall completed and visually approved by user; desktop uninstall untested |
 
@@ -234,9 +236,12 @@ Open decisions need the user. Record the answer here with the date.
     Platinum design because IE5 had none. Native reference:
     `reference/ie5-window-blank.png`. The user's screenshot
     `/home/pieman/Pictures/Screenshots/Screenshot_20261122_225730.png` is
-    slightly scaled, so use it for layout only. Toolbar, address-bar, sidebar,
-    and inactive-window captures are still needed. Don't start until the user
-    asks.
+    slightly scaled, so use it for layout only. **Clarified 2026-11-23
+    (user):** not a 1:1 IE5 clone. IE5 is the layout inspiration for giving
+    Firefox a Mac OS 9 look and feel; go as far as `userChrome.css` allows.
+    Platinum colors and bevels still come from docs/REFERENCE.md; IE5 pixels
+    are not a comparison target, and further IE5 captures are optional.
+    Plan: docs/FIREFOX-PLAN.md.
 
 ## Components
 
