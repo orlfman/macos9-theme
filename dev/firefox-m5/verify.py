@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import pathlib
 import sys
-from PIL import Image
+from PIL import Image, ImageChops
 
 
 class Suite:
@@ -61,12 +61,6 @@ def main() -> int:
     for p in (kb_png, s150_png, s200_png):
         s.check(f"shot-exists-{p.stem}", p.is_file() and p.stat().st_size > 10000, str(p))
 
-    # Verify keyboard focus screenshot actually paints abundant #6666CC focus rings!
-    if kb_png.is_file():
-        im_kb = Image.open(kb_png)
-        ring_px = count_rgb(im_kb, (0x66, 0x66, 0xCC))
-        s.check("keyboard-focus-rings-visible-in-render", ring_px > 2000, f"#6666CC_px={ring_px}")
-
     # Verify 150% and 200% compositor captures keep full 2400x1600 physical output
     # and render crisp Deep Lavender (#1B1B52 full-width top row + #7A7AE0 specular
     # highlight behind "Address:") chrome.
@@ -86,9 +80,43 @@ def main() -> int:
     s.check("m5-report-exists", rep_path.is_file(), str(rep_path))
     if rep_path.is_file():
         rep = json.loads(rep_path.read_text(encoding="utf-8"))
+        s.check("rtl-address-label-at-inline-start", rep["rtl"] == {
+            "goOnLeft": True, "goHit": True, "rightPadding": "68px", "labelRight": "0px", "separator": "1px"}, str(rep["rtl"]))
         kb = rep["keyboard_focus"]
+        width, height = map(round, kb["homeSize"])
+        control = rdir / "home-without-focus.png"
+        painted = False
+        if kb_png.is_file() and control.is_file():
+            focused = Image.open(kb_png).convert("RGB")
+            unfocused = Image.open(control).convert("RGB")
+            # Wayland does not expose the window's compositor origin. Locate
+            # the changed pixels in the capture instead of guessing an offset.
+            box = ImageChops.difference(focused, unfocused).getbbox()
+            if box:
+                on, off = focused.crop(box), unfocused.crop(box)
+                gained = Image.new("L", on.size)
+                lavender = (102, 102, 204)
+                a, b = on.load(), off.load()
+                gained.putdata([int(a[x, y] == lavender and b[x, y] != lavender)
+                                for y in range(on.height) for x in range(on.width)])
+                edges = gained.getbbox()
+                if edges:
+                    ring = gained.crop(edges)
+                    expected = Image.new("L", (width, height), 1)
+                    expected.paste(0, (2, 2, width - 2, height - 2))
+                    painted = ring.size == expected.size and ring.tobytes() == expected.tobytes()
+        s.check("home-focus-ring-painted", painted)
         s.check("kb-shift-tab-navigates-toolbar", kb["shiftTabInNavBar"] is True)
-        for key in ("urlbar", "toolbarButton", "bookmarkItem", "horizontalTab", "verticalTab", "findbarInput"):
+        for key in (
+            "urlbar",
+            "toolbarButton",
+            "bookmarkItem",
+            "horizontalTab",
+            "verticalTab",
+            "findbarInput",
+            "newTabButton",
+            "findbarButton",
+        ):
             item = kb.get(key, {})
             s.check(
                 f"kb-focus-ring-{key}",

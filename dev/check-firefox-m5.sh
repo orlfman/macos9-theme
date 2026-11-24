@@ -37,7 +37,8 @@ python3 -I -W error "$project/tools/check-firefox-selectors.py" || real_rc=$?
 # Negative control A: missing #id selector
 neg_id_dir="$rdir/neg-id"
 mkdir -p "$neg_id_dir"
-printf '#m9-nonexistent-removed-selector { color: red; }\n' > "$neg_id_dir/bad.css"
+# A common color literal in omni.ja must not count as a browser element ID.
+printf '#ffffff { color: red; }\n' > "$neg_id_dir/bad.css"
 neg_missing_id_rc=0
 python3 -I -W error "$project/tools/check-firefox-selectors.py" --css-dir "$neg_id_dir" >/dev/null 2>&1 || neg_missing_id_rc=$?
 

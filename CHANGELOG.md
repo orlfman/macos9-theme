@@ -2,6 +2,94 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-24, Codex (GPT-6) — publish the production-ready Firefox theme
+
+Recorded maintainer approval and documented Firefox-only installation, profile selection, removal, and collapsed vertical tabs in normal and Private Browsing windows. Verified the documented options through both root scripts.
+
+## 2026-11-24, Codex (GPT-6) — verify collapsed tabs in Private Browsing
+
+Updated the Firefox M4 probe and verifier to check the visible icons in real normal and private windows. All 36 checks passed on Firefox 160.0.1. Test changes are uncommitted.
+
+## 2026-11-24, Codex (GPT-6) — center collapsed Firefox tab icons
+
+Adjusted collapsed vertical tab spacing in `tabs-sidebar.css` and added a live geometry check to the Firefox M4 probe and verifier. M4 passed 35/35 on Firefox 160.0.1. Changes are uncommitted and await reinstall in the user’s profile.
+
+## 2026-11-24, Codex (GPT-6.2) — preserve userContent.css at upgrade
+
+Fixed legacy upgrade backups, retry conflict detection and the private-window test fixture. The three affected suites passed 165/165 on Firefox 160.0.1. See AUDIT.md #209–210. Changes are uncommitted.
+
+## 2026-11-24, Antigravity (Gemini 4 Neon) — Firefox Private Browsing windows obey Platinum theme
+
+- Enabled Platinum styling in Private Browsing windows via Firefox's native preference instead of weakening the dark-mode/theme CSS gate:
+  - `firefox/profile_ops.py`: added `("browser.theme.dark-private-windows", "false")` to `DEFAULT_MANAGED_PREFS` (snapshotted on install/upgrade and restored cleanly in `prefs.js` on undo). When disabled, `LightweightThemeConsumer.sys.mjs` stops substituting Firefox 160's dark-purple `privateThemeData` override, so Private windows follow the active System light/dark scheme and apply all Platinum `userChrome.css` / `userContent.css` rules in light mode while keeping Firefox's Private mask icon (`.private-browsing-indicator-button`) and still gating off in System Dark mode, High Contrast, and explicit themes.
+  - `firefox/chrome/platinum/bars-states.css`: updated the Private Browsing comment to match.
+  - `dev/firefox-test.sh`, `dev/firefox-m4/{probe.py,verify.py}`, and `dev/firefox-m6/test_suite.py`: defaulted `browser.theme.dark-private-windows` to `false` in sandbox profiles, verified Private windows render the Platinum Lavender address band + status bar + Private mask indicator in light mode while gating off under `ui.systemUsesDarkTheme=1`, and verified install/undo restoration of the pref in `prefs.js`.
+  - Updated `firefox/README.md`, `README.md`, `docs/FINDINGS.md`, and `PLAN.md`.
+- Checks: `bash -n dev/firefox-test.sh` & `python3 -I -m py_compile` clean; `tools/check-firefox-selectors.py` **PASS** (`35/35` `#id`, `1/1` `::part()`); `dev/check-firefox-m4.sh` **34/34 PASS** (`dev/build/firefox-m4.IBytHU`, visually inspected `dev/shots/firefox-m4-private.png`); `dev/check-firefox-m6.sh` **81/81 PASS** (`dev/build/firefox-m6.2NybWX`); host `~/.mozilla`, `~/.config/mozilla`, and `~/.local/state` untouched.
+- Remaining: user reinstall (`/home/pieman/Files/Archive/projects/macos9-theme/install.sh --firefox` with Firefox closed) and live on-screen review; uncommitted; cleared `firefox` and `shared` claims (`nobody`).
+
+## 2026-11-24, Antigravity (Gemini 4 Neon) — Firefox Lavender scrollbars via `userContent.css`
+
+- Added Mac OS 9 Platinum Lavender (`#9999FF` thumb on `#CCCCCC` track) scrollbar styling for both web pages and Firefox browser chrome:
+  - `firefox/chrome/platinum/content.css` & `firefox/chrome/userContent.css`: added `scrollbar-color: #9999FF #CCCCCC;` on `:root` gated on `@media (prefers-color-scheme: light) and (not (prefers-contrast)) and (not (forced-colors))` without `!important` so dark-mode and custom-scrollbar web apps keep their own styling.
+  - `firefox/chrome/platinum/{palette.css,tabs-sidebar.css}`: applied matching `scrollbar-color: var(--m9-lav-light) var(--m9-surface-mid)` to browser chrome (including `#sidebar-container` / vertical tabs) inside the System-light-only `:root:not([lwtheme])` gate.
+  - `firefox/profile_ops.py`: extended install, upgrade, conflict detection, symlink/type validation, backup metadata (backward-compatible with pre-`userContent.css` installs lacking `userContent_existed` / `installed_usercontent_block`), crash-safe journaling (`undo_hashes`, `before-uninstall`, `pre_usercontent_sha256`), and byte-for-byte undo to manage a marker-delimited `@import url("platinum/content.css");` block in `chrome/userContent.css`, deferring empty `chrome/` removal until after both `userChrome.css` and `userContent.css` undo finish.
+  - `dev/firefox-m6/test_suite.py`: added coverage for `userContent.css` installation, `@import` ordering, post-install user-edit preservation, inner-marker conflict refusal, legacy pre-`userContent.css` upgrade / mid-upgrade rollback / direct undo, fault injection (`userContent`, `userContent_before_journal`, `uninstall_userContent`), and live `#9999FF` scrollbar pixel verification (`1,952` px in `dev/shots/firefox-m6-installed-live.png`).
+  - Updated `firefox/README.md`, `README.md`, `docs/FINDINGS.md`, and `PLAN.md`.
+- Checks: `python3 -I -m py_compile` clean; `tools/check-firefox-selectors.py` **PASS** (`35/35` `#id`, `1/1` `::part()`); `dev/check-firefox-m3.sh` **36/36 PASS** (`dev/build/firefox-m3.PJK7Dk`); `dev/check-firefox-m4.sh` **34/34 PASS** (`dev/build/firefox-m4.4TwSLt`); `dev/check-firefox-m5.sh` **32/32 PASS** (`dev/build/firefox-m5.WQPaxX`); `dev/check-firefox-m6.sh` **81/81 PASS** (`dev/build/firefox-m6.vB3b1T`); visually inspected `dev/shots/firefox-m6-installed-live.png`; host `~/.mozilla`, `~/.config/mozilla`, and `~/.local/state` untouched.
+- Remaining: user reinstall (`/home/pieman/Files/Archive/projects/macos9-theme/install.sh --firefox` with Firefox closed) and live on-screen review; uncommitted; cleared `firefox` and `shared` claims (`nobody`).
+
+## 2026-11-24, Codex (GPT-6.2) — audit Firefox desktop polish
+
+Restricted sandbox cleanup to one filesystem and strengthened browser tests for the Go button, packaged logo and scrollbar preference restoration. All four affected suites passed (175 checks). See AUDIT.md #207–208. Changes are uncommitted.
+
+## 2026-11-24, Antigravity (Gemini 4 Neon) — Firefox live-review polish (Go button, idle Firefox logo, classic 16 px scrollbars)
+
+- Applied user desktop review refinements (keeping toolbar left-aligned per IE5):
+  - `firefox/chrome/platinum/top-bands.css` & `bars-states.css`: unhid and styled Firefox's real clickable `.urlbar-go-button` as an IE5-inspired `▸ go` button (48×24 px, crisp original inline SVG, hover/pressed bevels, muted inactive state, RTL-safe logical positioning) in the right end of the Deep Lavender address band (`padding-inline: 68px 52px`, `#urlbar[open]` `width: calc(100% - 120px)`).
+  - `firefox/chrome/platinum/status-activity.css`: replaced the idle activity orb with Firefox's built-in vector logo (`url("chrome://branding/content/about-logo.svg")`, centered `18px × 18px` inside the 24×24 sunken Platinum well; zero Mozilla artwork shipped in repo), keeping the animated Platinum Lavender barber-pole when loading (`:has(.tabbrowser-tab[selected][busy])`).
+  - `firefox/profile_ops.py`: added classic 16 px full-width square non-overlay scrollbar prefs (`widget.gtk.overlay-scrollbars.enabled=false`, `widget.non-native-theme.scrollbar.style=4`, `widget.non-native-theme.scrollbar.size.override=16`, `widget.gtk.theme-scrollbar-colors.enabled=true`) to `DEFAULT_MANAGED_PREFS` (snapshotted on upgrade/install and restored in `prefs.js` on undo).
+  - `dev/firefox-m3/{probe.py,verify.py}`, `dev/firefox-m4/{probe.py,verify.py}`, and `dev/firefox-m6/test_suite.py`: added automated checks for `.urlbar-go-button`, `about-logo.svg`, and scrollbar pref restoration, and unmounted `$rt/doc` FUSE mount in `run-live-p8.sh`'s exit trap (`fusermount3 -uz`).
+  - Updated `firefox/README.md`, `docs/FINDINGS.md`, and `PLAN.md`.
+- Checks: `tools/check-firefox-selectors.py` **PASS** (`35/35` `#id`, `1/1` `::part()`); `dev/check-firefox-m3.sh` **35/35 PASS** (`dev/build/firefox-m3.FtZmBb`); `dev/check-firefox-m4.sh` **34/34 PASS** (`dev/build/firefox-m4.wNy6RK`); `dev/check-firefox-m5.sh` **32/32 PASS**; `dev/check-firefox-m6.sh` **72/72 PASS** (`dev/build/firefox-m6.mNECuc`); visually inspected `dev/shots/firefox-polish-scroll-style4-btn.png`, `dev/shots/firefox-m3-cold.png`, and `dev/shots/firefox-m4-cold-1a.png`.
+- Remaining: user reinstall (`/home/pieman/Files/Archive/projects/macos9-theme/install.sh --firefox` with Firefox closed) and on-screen check; uncommitted; cleared `firefox` and `shared` claims (`nobody`).
+
+## 2026-11-24, Codex (GPT-6.2) — hold Firefox profile locks during install and undo
+
+The stale-link exception requires a regular advisory lock file. Both advisory locks stay held through command completion. Installer suite 72/72, see audit #206.
+
+## 2026-11-24, Codex (GPT-6) — accept stale local Firefox profile locks
+
+Install and undo now proceed past a leftover loopback Firefox lock when its PID has exited and the advisory checks pass. Milestone 6 passed 68/68. See #205 in AUDIT.md.
+
+## 2026-11-24, Codex (GPT-6) — add Firefox-only installer shortcuts
+
+The root install and uninstall scripts accept `--firefox` as the first argument and forward the remaining options to the profile tools. Updated both READMEs and command help. The install/undo suite passed 64/64. Changes are uncommitted.
+
+## 2026-11-24, Codex (GPT-6) — second Firefox audit
+
+- Fixed RTL address-band layout, preference restoration across upgrade, backup verification and profile discovery. Prevented the test launcher from deleting existing profiles.
+- Strengthened the archive selector checker and pixel evidence for focus and the installed-profile smoke test. The five suites passed 207/207. M2 regenerated eight mockups and four comparison sheets. See AUDIT.md #198–204 for evidence and limits.
+- Changes are uncommitted. User desktop visual review is pending.
+
+## 2026-11-24, Codex (GPT-6) — fix Firefox focus and profile restoration
+
+- Corrected the inactive tab outline and the probe that masked it. An isolated Firefox negative control reproduced the previous solid outline.
+- Fixed profile byte preservation, temporary directory ownership, state locking, cross-filesystem installs and interrupted install/undo recovery. Added regression coverage through the shell entry points.
+- All five Firefox suites passed (199/199) on Firefox 160.0.1. See AUDIT.md #192–197. Changes are uncommitted. User visual review is pending.
+
+## 2026-11-24, Antigravity (Gemini 4 Carbon) — Firefox Milestone 7 release check and audit (#189–191)
+
+- Audited `firefox/`, `tools/check-firefox-selectors.py`, `dev/check-firefox-m*.sh`, and `README.md` over `ca8ac31`, fixing three pre-release findings before recording the Milestone 7 release check in `AUDIT.md`:
+  - **#189 (P2):** Cleared `:focus-visible` / `:focus` `#6666CC` outlines across toolbar buttons, Favorites bar items, horizontal/vertical tabs, sidebar buttons, and Find bar controls under `&:-moz-window-inactive` in `firefox/chrome/platinum/bars-states.css` (previously cleared only on `#urlbar > .urlbar-background`), and added inactive outline checks to `dev/firefox-m4/{probe.py,verify.py}`.
+  - **#190 (P3):** Added explicit `2 px` `#6666CC` `:focus-visible` focus rings on secondary tab, sidebar, and Find bar buttons in `firefox/chrome/platinum/{tabs-sidebar.css,bars-states.css}`, verified in `dev/firefox-m5/{probe.py,verify.py}`.
+  - **#191 (P3):** Hardened `firefox/profile_ops.py` to detect inner-marker edits in `user.js` after an interrupted `user_js` install step and to unlink an empty post-undo `prefs.js` when `prefs.js` did not exist prior to installation; stabilized the live Wayland teardown check in `dev/firefox-m6/test_suite.py`; and added optional Firefox install/undo instructions and "Known limitations" to `README.md` and `firefox/README.md`.
+- Checks:
+  - Firefox suites: `tools/check-firefox-selectors.py` **PASS** (`35/35` `#id`, `1/1` `::part()` across 1,904 `omni.ja` files); `dev/check-firefox-m1.sh` **46/46 PASS** (`dev/build/firefox-m1.iJ3Ool`); `dev/check-firefox-m3.sh` **34/34 PASS** (`dev/build/firefox-m3.FopVHl`); `dev/check-firefox-m4.sh` **34/34 PASS** (`dev/build/firefox-m4.2VHMe7`); `dev/check-firefox-m5.sh` **31/31 PASS** (`dev/build/firefox-m5.6HXhws`); `dev/check-firefox-m6.sh` **41/41 PASS** (`dev/build/firefox-m6.235YJD`).
+  - Shared project suites: `dev/check-style.sh` **135/135 PASS**, `dev/check-quick.sh` **29/29 PASS**, `dev/test_icons_phase1.py` **80/80 PASS**, `dev/test-install.sh` **727/727 PASS**.
+  - Host `~/.mozilla`, `~/.config/mozilla`, and `~/.local/state` untouched; `bash -n`, `python3 -I -m py_compile`, and `git diff --check` clean.
+- Remaining: user's approved live Firefox install (`/home/pieman/Files/Archive/projects/macos9-theme/firefox/install.sh` with Firefox closed) and on-screen review on their desktop. Cleared `firefox` and `shared` claims (`nobody`); `#189–191` fixes and `AUDIT.md` entry left uncommitted per `AGENTS.md` until requested.
+
 ## 2026-11-24, Antigravity (Gemini 4 Carbon) — Firefox Milestone 6 install and byte-for-byte undo
 
 - Implemented **Firefox Milestone 6** (`docs/FIREFOX-PLAN.md` Milestone 6), separate from root `./install.sh`:

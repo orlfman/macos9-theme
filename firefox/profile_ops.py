@@ -10,16 +10,16 @@ Safety guarantees (docs/FIREFOX-PLAN.md Milestone 6):
     and $HOME/.mozilla/firefox/profiles.ini, prioritizing [Install*] Default=
     over [Profile*] Default=1 (XDG preferred over legacy ~/.mozilla).
   - Never touches more than the single chosen profile.
-  - Refuses while the target profile is in use (lock symlink/file or an active
+  - Refuses while the target profile is in use (lock file, live or unknown lock symlink, or an active
     POSIX fcntl / BSD flock lock on .parentlock) or if any target path/parent
     is a symbolic link or was repointed since installation.
   - Journals and backs up (with SHA-256 verification) the entire pre-existing
     chrome/ folder, user.js, and prefs.js + exact per-pref snapshot BEFORE any
     profile file is modified.
   - Installs chrome/platinum/, prepends one marker-delimited @import block to
-    chrome/userChrome.css (after @charset if present, preserving @namespace and
-    all user rules below it), and appends one marker-delimited user_pref block
-    to user.js.
+    chrome/userChrome.css and chrome/userContent.css (after @charset if present,
+    preserving @namespace and all user rules below it), and appends one
+    marker-delimited user_pref block to user.js.
   - On reinstall or upgrade, preserves the original pre-install backup and
     prefs_snapshot, updates chrome/platinum/ and marker blocks cleanly, and
     restores any retired managed pref.
@@ -36,8 +36,8 @@ from __future__ import annotations
 
 import argparse
 import configparser
+from contextlib import ExitStack
 import datetime as dt
-import errno
 import fcntl
 import hashlib
 import json
@@ -62,6 +62,12 @@ USERCHROME_BLOCK = (
     f"{MARKER_END}\n"
 )
 
+USERCONTENT_BLOCK = (
+    f"{MARKER_BEGIN}\n"
+    '@import url("platinum/content.css");\n'
+    f"{MARKER_END}\n"
+)
+
 # Managed prefs written into user.js (in deterministic order).
 # Overrideable via M9_FF_MANAGED_PREFS_JSON in tests to verify upgrade path
 # (adding/retiring a managed pref across theme versions).
@@ -69,6 +75,11 @@ DEFAULT_MANAGED_PREFS: list[tuple[str, str]] = [
     ("toolkit.legacyUserProfileCustomizations.stylesheets", "true"),
     ("browser.tabs.inTitlebar", "0"),
     ("browser.toolbars.bookmarks.visibility", '"always"'),
+    ("browser.theme.dark-private-windows", "false"),
+    ("widget.gtk.overlay-scrollbars.enabled", "false"),
+    ("widget.non-native-theme.scrollbar.style", "4"),
+    ("widget.non-native-theme.scrollbar.size.override", "16"),
+    ("widget.gtk.theme-scrollbar-colors.enabled", "true"),
 ]
 
 
@@ -142,7 +153,8 @@ def atomic_write_bytes(target: pathlib.Path, data: bytes, mode: int = 0o644) -> 
     tmp = target.parent / f".macos9-ff-tmp.{secrets.token_hex(6)}"
     fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
     try:
-        os.write(fd, data)
+        with os.fdopen(fd, "wb", closefd=False) as stream:
+            stream.write(data)
         os.fsync(fd)
     except BaseException:
         os.close(fd)
@@ -160,17 +172,6 @@ def atomic_write_bytes(target: pathlib.Path, data: bytes, mode: int = 0o644) -> 
 def atomic_write_json(target: pathlib.Path, obj: Any) -> None:
     raw = (json.dumps(obj, indent=2, sort_keys=True) + "\n").encode("utf-8")
     atomic_write_bytes(target, raw, 0o600)
-
-
-def clean_profile_temps(prof_dir: pathlib.Path) -> None:
-    for d in (prof_dir, prof_dir / "chrome"):
-        if d.is_dir() and not d.is_symlink():
-            for child in d.iterdir():
-                if child.name.startswith(".macos9-ff-tmp."):
-                    if child.is_symlink() or child.is_file():
-                        child.unlink()
-                    elif child.is_dir():
-                        shutil.rmtree(child)
 
 
 # ---------------------------------------------------------------------------
@@ -222,14 +223,19 @@ def discover_profiles(home: pathlib.Path, config_home: pathlib.Path, state_dir: 
         ("legacy", home / ".mozilla" / "firefox"),
     ]
     raw_profiles: list[dict[str, Any]] = []
-    seen_real: set[str] = set()
+    seen_real: dict[str, dict[str, Any]] = {}
 
     for store_name, base_dir in stores:
         ini_path = base_dir / "profiles.ini"
         if not ini_path.is_file() or ini_path.is_symlink():
             continue
         cp = configparser.RawConfigParser()
-        cp.read(ini_path, encoding="utf-8")
+        try:
+            with ini_path.open(encoding="utf-8-sig") as source:
+                cp.read_file(source)
+        except (configparser.Error, UnicodeError, OSError) as error:
+            print(f"Warning: skipping unreadable profile registry {ini_path}: {error}", file=sys.stderr)
+            continue
 
         install_defaults: list[pathlib.Path] = []
         for sec in cp.sections():
@@ -252,17 +258,20 @@ def discover_profiles(home: pathlib.Path, config_home: pathlib.Path, state_dir: 
                 continue
             is_rel = cp.get(sec, "IsRelative", fallback="1").strip() != "0"
             prof_path = (base_dir / raw_p) if (is_rel and not raw_p.startswith("/")) else pathlib.Path(raw_p)
-            if not prof_path.exists() and not prof_path.is_symlink():
+            if not prof_path.is_absolute() or not prof_path.is_dir():
                 continue
 
             real_str = os.path.realpath(str(prof_path))
-            if real_str in seen_real:
-                continue
-            seen_real.add(real_str)
 
             name = cp.get(sec, "Name", fallback=prof_path.name).strip() or prof_path.name
             leg_def = cp.get(sec, "Default", fallback="0").strip() == "1"
             inst_def = (real_str in install_default_reals) or (str(prof_path) in install_default_raws)
+
+            if real_str in seen_real:
+                prior = seen_real[real_str]
+                prior["install_default"] |= inst_def
+                prior["legacy_default"] |= leg_def
+                continue
 
             pkey = profile_key(prof_path)
             pstate_dir = state_dir / "profiles" / pkey
@@ -290,6 +299,8 @@ def discover_profiles(home: pathlib.Path, config_home: pathlib.Path, state_dir: 
                     "status": status,
                 }
             )
+
+            seen_real[real_str] = raw_profiles[-1]
 
     if not raw_profiles:
         return []
@@ -448,63 +459,58 @@ def select_profile(
     return candidates[int(choice) - 1]
 
 
-def check_profile_not_in_use(prof_dir: pathlib.Path, prog: str) -> bool:
-    """Return True if profile is NOT locked; emit error and return False if locked."""
+def stale_loopback_lock(target: str) -> bool:
+    """Recognize a Firefox loopback lock whose PID no longer exists."""
+    match = re.fullmatch(r"127\.(\d{1,3})\.(\d{1,3})\.(\d{1,3}):\+([1-9]\d{0,9})", target, re.ASCII)
+    if not match or any(int(octet) > 255 for octet in match.groups()[:3]):
+        return False
+
+    try:
+        os.kill(int(match[4]), 0)
+    except ProcessLookupError:
+        return True
+    except (OSError, OverflowError):
+        pass
+    return False
+
+
+def hold_profile_lock(prof_dir: pathlib.Path, prog: str, handles: ExitStack) -> bool:
+    """Hold the existing Firefox advisory locks until this command finishes."""
     lock_link = prof_dir / "lock"
-    if os.path.lexists(str(lock_link)):
-        target_info = ""
-        if lock_link.is_symlink():
-            try:
-                target_info = f" -> {os.readlink(str(lock_link))}"
-            except OSError:
-                pass
-        die(
-            prog,
-            f"profile is in use ({lock_link}{target_info} exists). "
-            "Close Firefox completely and try again; nothing was changed",
-        )
+    try:
+        target = os.readlink(lock_link)
+    except FileNotFoundError:
+        target = None
+    except OSError as error:
+        die(prog, f"cannot verify {lock_link}: {error}; refusing to touch profile")
+        return False
+
+    if target is not None and not stale_loopback_lock(target):
+        die(prog, f"profile is in use or has an unknown lock ({lock_link} -> {target}); nothing was changed")
         return False
 
     plock = prof_dir / ".parentlock"
-    if os.path.lexists(str(plock)):
-        if plock.is_symlink():
-            die(prog, f"{plock} is a symbolic link; refusing to touch profile; nothing was changed")
-            return False
-        try:
-            fd = os.open(str(plock), os.O_RDWR)
-        except OSError as e:
-            die(prog, f"cannot open {plock} ({e.strerror}); close Firefox and try again; nothing was changed")
-            return False
-        try:
-            # Probe POSIX advisory write lock (Firefox nsProfileLock on Linux)
-            # AND BSD flock so both locking mechanisms are caught cleanly while
-            # an unlocked leftover 0-byte .parentlock on a closed profile passes.
-            try:
-                fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                fcntl.lockf(fd, fcntl.LOCK_UN)
-            except OSError as e:
-                if e.errno in (errno.EACCES, errno.EAGAIN):
-                    die(
-                        prog,
-                        f"profile is currently in use by a running Firefox process ({plock} is locked). "
-                        "Close Firefox completely and try again; nothing was changed",
-                    )
-                    return False
-                raise
-            try:
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                fcntl.flock(fd, fcntl.LOCK_UN)
-            except OSError as e:
-                if e.errno in (errno.EACCES, errno.EAGAIN, errno.EWOULDBLOCK):
-                    die(
-                        prog,
-                        f"profile is currently in use ({plock} is flock-locked). "
-                        "Close Firefox completely and try again; nothing was changed",
-                    )
-                    return False
-                raise
-        finally:
-            os.close(fd)
+    try:
+        fd = os.open(plock, os.O_RDWR | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        if target is None:
+            return True  # Fresh profile without Firefox lock artifacts.
+        die(prog, f"cannot verify leftover {lock_link} without {plock}; nothing was changed")
+        return False
+    except OSError as error:
+        die(prog, f"cannot open {plock}: {error}; nothing was changed")
+        return False
+
+    handles.callback(os.close, fd)
+    if not stat.S_ISREG(os.fstat(fd).st_mode):
+        die(prog, f"{plock} is not a regular lock file; nothing was changed")
+        return False
+    try:
+        fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError as error:
+        die(prog, f"cannot lock {plock}: {error}; close Firefox and try again; nothing was changed")
+        return False
     return True
 
 
@@ -517,7 +523,7 @@ def check_profile_symlinks(prof_dir: pathlib.Path, prog: str) -> bool:
         die(prog, f"profile folder {prof_dir} does not exist; nothing was changed")
         return False
 
-    for rel in ("chrome", "chrome/userChrome.css", "chrome/platinum", "user.js", "prefs.js"):
+    for rel in ("chrome", "chrome/userChrome.css", "chrome/userContent.css", "chrome/platinum", "user.js", "prefs.js"):
         p = prof_dir / rel
         if p.is_symlink():
             die(
@@ -525,6 +531,12 @@ def check_profile_symlinks(prof_dir: pathlib.Path, prog: str) -> bool:
                 f"{p} is a symbolic link; {prog} refuses to write through symlinks. "
                 "Replace it with a regular file/folder and try again; nothing was changed",
             )
+            return False
+
+    for rel in ("chrome/userChrome.css", "chrome/userContent.css", "user.js", "prefs.js", "chrome/platinum"):
+        path = prof_dir / rel
+        if path.exists() and not path.is_file() and not (rel == "chrome/platinum" and path.is_dir()):
+            die(prog, f"unexpected file type at {path}; nothing was changed")
             return False
 
     chrome_dir = prof_dir / "chrome"
@@ -536,10 +548,10 @@ def check_profile_symlinks(prof_dir: pathlib.Path, prog: str) -> bool:
             rp = pathlib.Path(root)
             for name in dirs + files:
                 cand = rp / name
-                if cand.is_symlink():
+                if cand.is_symlink() or not (cand.is_file() or cand.is_dir()):
                     die(
                         prog,
-                        f"{cand} inside {chrome_dir} is a symbolic link; "
+                        f"{cand} inside {chrome_dir} is a symbolic link or special file; "
                         "replace it with a regular file/folder first; nothing was changed",
                     )
                     return False
@@ -590,17 +602,11 @@ def insert_userchrome_block(existing_text: str, block: str) -> tuple[str, str]:
 
     # Preserve optional UTF-8 BOM + @charset "..."; at byte 0 per CSS Syntax Level 3.
     m = re.match(r'^(\ufeff?@charset\s+"[^"]*"\s*;[ \t]*(?:\r?\n)?)', existing_text)
-    sep = "\n" if not existing_text.startswith(("\n", "\r\n")) else ""
+    prefix_len = m.end() if m else int(existing_text.startswith("\ufeff"))
+    rest = existing_text[prefix_len:]
+    sep = "\n" if rest and not rest.startswith(("\n", "\r\n")) else ""
     chunk = block + sep
-    if m:
-        prefix = m.group(1)
-        if not prefix.endswith("\n"):
-            prefix += "\n"
-            rest = existing_text[m.end() :]
-        else:
-            rest = existing_text[m.end() :]
-        return (prefix + chunk + rest, chunk)
-    return (chunk + existing_text, chunk)
+    return (existing_text[:prefix_len] + chunk + rest, chunk)
 
 
 def insert_userjs_block(existing_text: str, block: str) -> tuple[str, str]:
@@ -628,7 +634,7 @@ def parse_prefs_snapshot(prefs_path: pathlib.Path, pref_names: list[str]) -> dic
     if not prefs_path.is_file():
         return snap
 
-    text = prefs_path.read_text(encoding="utf-8", errors="surrogateescape")
+    text = prefs_path.read_bytes().decode("utf-8", errors="surrogateescape")
     for line in text.splitlines(keepends=True):
         stripped = line.rstrip("\r\n")
         m = USER_PREF_LINE_RE.match(stripped)
@@ -721,28 +727,46 @@ def tree_sums(root: pathlib.Path) -> dict[str, str]:
     return sums
 
 
-def check_platinum_dir_intact(plat_dir: pathlib.Path, recorded_sums: dict[str, str]) -> tuple[bool, str]:
-    """Verify chrome/platinum contains no modified or user-added files."""
-    if not plat_dir.exists() and not plat_dir.is_symlink():
-        return (True, "")
-    if plat_dir.is_symlink() or not plat_dir.is_dir():
-        return (False, f"{plat_dir} is no longer a regular folder")
+def matches_installed_theme(path: pathlib.Path, manifests: list[dict[str, str]]) -> bool:
+    if not path.is_dir():
+        return False
+    sums = tree_sums(path)
+    if sums not in manifests:
+        return False
+    expected_dirs = {parent for name in sums for parent in (path / name).parents}
+    return all(entry in expected_dirs for entry in path.rglob("*") if entry.is_dir())
 
-    for dirpath, dirnames, filenames in os.walk(str(plat_dir), followlinks=False):
-        dp = pathlib.Path(dirpath)
-        for d in dirnames:
-            if (dp / d).is_symlink():
-                return (False, f"symlink added inside {plat_dir}: {dp / d}")
-        for fn in filenames:
-            fp = dp / fn
-            if fp.is_symlink() or not fp.is_file():
-                return (False, f"non-regular entry inside {plat_dir}: {fp}")
-            rel = str(fp.relative_to(plat_dir))
-            if rel not in recorded_sums:
-                return (False, f"user file added inside {plat_dir}: {rel}")
-            if sha256_file(fp) != recorded_sums[rel]:
-                return (False, f"installed file modified inside {plat_dir}: {rel}")
-    return (True, "")
+
+def remove_stage(chrome: pathlib.Path, journal: dict) -> None:
+    name = journal.get("stage")
+    if name and re.fullmatch(r"\.macos9-ff-tmp\.[0-9a-f]{24}", name):
+        stage = chrome / name
+        if stage.is_dir() and not stage.is_symlink():
+            shutil.rmtree(stage)
+
+
+def original_platinum_matches(path: pathlib.Path, backup: pathlib.Path) -> bool:
+    if path.is_file() and backup.is_file():
+        return sha256_file(path) == sha256_file(backup)
+    if path.is_dir() and backup.is_dir():
+        return tree_sums(path) == tree_sums(backup) and {
+            p.relative_to(path) for p in path.rglob("*") if p.is_dir()
+        } == {p.relative_to(backup) for p in backup.rglob("*") if p.is_dir()}
+    return False
+
+
+def backup_modes(backup: pathlib.Path) -> dict[str, int]:
+    """Include empty directories, entry types and permissions in the manifest."""
+    result = {}
+    for entry in backup.rglob("*"):
+        rel = str(entry.relative_to(backup))
+        if rel == "BACKUP_META.json":
+            continue
+        mode = entry.lstat().st_mode
+        if not (stat.S_ISDIR(mode) or stat.S_ISREG(mode)):
+            raise ValueError(f"unexpected entry in backup: {entry}")
+        result[rel] = mode
+    return result
 
 
 def take_initial_backup(prof_dir: pathlib.Path, pstate_dir: pathlib.Path, managed_prefs: list[tuple[str, str]]) -> dict[str, Any]:
@@ -755,6 +779,7 @@ def take_initial_backup(prof_dir: pathlib.Path, pstate_dir: pathlib.Path, manage
 
     chrome_dir = prof_dir / "chrome"
     uc_file = chrome_dir / "userChrome.css"
+    ucnt_file = chrome_dir / "userContent.css"
     plat_dir = chrome_dir / "platinum"
     ujs_file = prof_dir / "user.js"
     pjs_file = prof_dir / "prefs.js"
@@ -764,6 +789,8 @@ def take_initial_backup(prof_dir: pathlib.Path, pstate_dir: pathlib.Path, manage
         "chrome_mode": (stat.S_IMODE(chrome_dir.stat().st_mode) if chrome_dir.exists() else 0o755),
         "userChrome_existed": uc_file.is_file(),
         "userChrome_mode": (stat.S_IMODE(uc_file.stat().st_mode) if uc_file.is_file() else 0o644),
+        "userContent_existed": ucnt_file.is_file(),
+        "userContent_mode": (stat.S_IMODE(ucnt_file.stat().st_mode) if ucnt_file.is_file() else 0o644),
         "foreign_platinum_existed": plat_dir.exists(),
         "foreign_platinum_is_dir": plat_dir.is_dir() if plat_dir.exists() else False,
         "user_js_existed": ujs_file.is_file(),
@@ -782,7 +809,7 @@ def take_initial_backup(prof_dir: pathlib.Path, pstate_dir: pathlib.Path, manage
         shutil.copy2(pjs_file, bak_tmp / "prefs.js")
 
     sums = tree_sums(bak_tmp)
-    atomic_write_json(bak_tmp / "BACKUP_META.json", {"meta": meta, "sums": sums})
+    atomic_write_json(bak_tmp / "BACKUP_META.json", {"meta": meta, "sums": sums, "modes": backup_modes(bak_tmp)})
 
     if bak_final.exists():
         shutil.rmtree(bak_final)
@@ -791,26 +818,64 @@ def take_initial_backup(prof_dir: pathlib.Path, pstate_dir: pathlib.Path, manage
     return meta
 
 
-def verify_backup(pstate_dir: pathlib.Path) -> tuple[bool, dict[str, Any], str]:
-    bak = pstate_dir / "backup"
+def verify_backup(bak: pathlib.Path) -> tuple[bool, dict[str, Any], str]:
     meta_file = bak / "BACKUP_META.json"
     if not bak.is_dir() or bak.is_symlink() or not meta_file.is_file() or meta_file.is_symlink():
         return (False, {}, f"backup folder {bak} is missing or incomplete")
 
-    payload = json.loads(meta_file.read_text(encoding="utf-8"))
-    recorded_sums: dict[str, str] = payload.get("sums", {})
-    actual_sums = tree_sums(bak)
-    actual_sums.pop("BACKUP_META.json", None)
+    try:
+        payload = json.loads(meta_file.read_text(encoding="utf-8"))
+        modes = backup_modes(bak)
+        if "modes" in payload and modes != payload["modes"]:
+            return (False, {}, f"backup entries or permissions changed in {bak}")
+        recorded_sums = payload["sums"]
+        meta = payload["meta"]
+        original = bak / "chrome/platinum"
+        if meta["foreign_platinum_existed"] != original.exists() or meta["foreign_platinum_is_dir"] != original.is_dir():
+            return (False, {}, f"original platinum backup missing or replaced in {bak}")
+        actual_sums = tree_sums(bak)
+        actual_sums.pop("BACKUP_META.json", None)
+    except (KeyError, TypeError, ValueError, OSError, RuntimeError) as error:
+        return (False, {}, f"cannot verify backup {bak}: {error}")
     if actual_sums != recorded_sums:
         return (False, {}, f"backup checksum verification failed in {bak}")
     return (True, payload["meta"], "")
+
+
+def backup_usercontent_info(bak_dir: pathlib.Path, bak_meta: dict[str, Any]) -> tuple[bool, int]:
+    """Return (existed, mode) for chrome/userContent.css, compatible with older backups."""
+    bak_ucnt = bak_dir / "chrome" / "userContent.css"
+    existed = bool(bak_meta["userContent_existed"]) if "userContent_existed" in bak_meta else bak_ucnt.is_file()
+    if "userContent_mode" in bak_meta:
+        mode = int(bak_meta["userContent_mode"])
+    elif bak_ucnt.is_file():
+        mode = stat.S_IMODE(bak_ucnt.stat().st_mode)
+    else:
+        mode = 0o644
+    return (existed, mode)
 
 
 # ---------------------------------------------------------------------------
 # Install / Reinstall / Upgrade
 # ---------------------------------------------------------------------------
 
-def cmd_install(args: argparse.Namespace) -> int:
+def content_backup(state_dir: pathlib.Path, backup_dir: pathlib.Path, meta: dict,
+                   adoption: dict | None) -> tuple[pathlib.Path, bool, int]:
+    """Use the file as it existed when this installer first managed it."""
+    if adoption is None:
+        existed, mode = backup_usercontent_info(backup_dir, meta)
+        return backup_dir / "chrome/userContent.css", existed, mode
+    path = state_dir / "adopted-userContent.css"
+    return path, adoption["sha256"] is not None, adoption["mode"]
+
+
+def valid_adoption(path: pathlib.Path, adoption: dict | None) -> bool:
+    if adoption is None or adoption["sha256"] is None:
+        return True
+    return path.is_file() and not path.is_symlink() and sha256_file(path) == adoption["sha256"]
+
+
+def cmd_install(args: argparse.Namespace, handles: ExitStack) -> int:
     prog = PROG_INSTALL
     home = pathlib.Path(args.home)
     config_home = pathlib.Path(args.config_home)
@@ -819,7 +884,11 @@ def cmd_install(args: argparse.Namespace) -> int:
     dry_run = bool(args.dry_run)
 
     src_platinum = repo_ff_dir / "chrome" / "platinum"
-    if not src_platinum.is_dir() or not (src_platinum / "platinum.css").is_file():
+    if (
+        not src_platinum.is_dir()
+        or not (src_platinum / "platinum.css").is_file()
+        or not (src_platinum / "content.css").is_file()
+    ):
         return die(prog, f"missing theme stylesheets in {src_platinum}; nothing was changed")
 
     ver_info = check_firefox_version(repo_ff_dir, prog)
@@ -850,13 +919,16 @@ def cmd_install(args: argparse.Namespace) -> int:
     prof_dir = pathlib.Path(chosen["path"])
     if not check_profile_symlinks(prof_dir, prog):
         return 1
-    if not check_profile_not_in_use(prof_dir, prog):
+    if not hold_profile_lock(prof_dir, prog, handles):
         return 1
 
     pkey = chosen["key"]
     pstate_dir = state_dir / "profiles" / pkey
     jpath = pstate_dir / "journal.json"
     spath = pstate_dir / "state.json"
+
+    if pstate_dir.is_dir() and any(pstate_dir.iterdir()) and not (jpath.is_file() or spath.is_file()):
+        return die(prog, f"unrecognized profile state in {pstate_dir}; refusing to replace it")
 
     existing_journal: dict[str, Any] | None = None
     if jpath.is_file():
@@ -898,7 +970,7 @@ def cmd_install(args: argparse.Namespace) -> int:
     has_prior_backup = False
     bak_meta: dict[str, Any] = {}
     if existing_state is not None or (existing_journal and existing_journal.get("backup_complete")):
-        ok, bak_meta, err = verify_backup(pstate_dir)
+        ok, bak_meta, err = verify_backup(pstate_dir / "backup")
         if not ok:
             return die(prog, f"existing state backup is damaged ({err}); nothing was changed")
         has_prior_backup = True
@@ -908,44 +980,87 @@ def cmd_install(args: argparse.Namespace) -> int:
             shutil.rmtree(pstate_dir)
         existing_journal = None
 
-    # Pre-check existing chrome/platinum, userChrome.css, and user.js for conflicts BEFORE writing!
+    # Pre-check existing chrome/platinum, userChrome.css, userContent.css, and user.js for conflicts BEFORE writing!
     chrome_dir = prof_dir / "chrome"
     plat_dir = chrome_dir / "platinum"
     uc_file = chrome_dir / "userChrome.css"
+    ucnt_file = chrome_dir / "userContent.css"
     ujs_file = prof_dir / "user.js"
     pjs_file = prof_dir / "prefs.js"
 
-    if has_prior_backup and existing_state is not None:
-        ok_plat, reason = check_platinum_dir_intact(plat_dir, existing_state.get("platinum_sums", {}))
-        if not ok_plat:
-            return die(
-                prog,
-                f"conflict in {plat_dir} ({reason}); move your changes out of chrome/platinum/ first; nothing was changed",
-            )
+    recovering = (existing_journal or {}).get("phase") == "installing" and has_prior_backup
+    pending = (existing_journal or {}).get("pending", {}) if recovering else {}
+    records = [pending, existing_state or {}]
+    if existing_state or recovering:
+        original = pstate_dir / "backup/chrome/platinum"
+        known = [r["platinum_sums"] for r in records if "platinum_sums" in r]
+        if recovering and not pending:
+            known.append(tree_sums(src_platinum))  # Legacy journal
+        if plat_dir.exists() and not matches_installed_theme(plat_dir, known):
+            if not (recovering and not existing_state and original_platinum_matches(plat_dir, original)):
+                return die(prog, f"conflict in {plat_dir}; nothing was changed")
 
     # Inspect userChrome.css markers
-    uc_existing_text = uc_file.read_text(encoding="utf-8", errors="surrogateescape") if uc_file.is_file() else ""
+    uc_existing_text = uc_file.read_bytes().decode("utf-8", errors="surrogateescape") if uc_file.is_file() else ""
     uc_mstate, uc_before, uc_inner, uc_after = inspect_markers(uc_existing_text)
+    if uc_mstate == "absent" and existing_state and uc_file.exists():
+        return die(prog, f"conflict in {uc_file}: installed markers are missing; nothing was changed")
     if uc_mstate == "corrupt":
         return die(prog, f"corrupted {MARKER_BEGIN} markers in {uc_file}; fix them first; nothing was changed")
+    uc_record = None
     if uc_mstate == "present":
         if not has_prior_backup:
             return die(prog, f"{uc_file} already contains macos9-theme-firefox markers without an install record; nothing was changed")
-        rec_uc_block = (existing_state or {}).get("installed_userchrome_block", USERCHROME_BLOCK)
-        if uc_inner != rec_uc_block:
+        uc_record = next((r for r in records if r.get("installed_userchrome_block") == uc_inner), None)
+        if uc_record is None and (any(records) or uc_inner != USERCHROME_BLOCK):
             return die(prog, f"conflict in {uc_file}: lines inside macos9-theme-firefox markers were edited; nothing was changed")
 
+    # Inspect userContent.css markers (older installs before userContent.css support
+    # lack installed_usercontent_block in existing_state, so an absent marker block
+    # is expected when upgrading from those versions).
+    ucnt_existing_raw = ucnt_file.read_bytes() if ucnt_file.is_file() else b""
+    ucnt_existing_text = ucnt_existing_raw.decode("utf-8", errors="surrogateescape")
+    ucnt_mstate, ucnt_before, ucnt_inner, ucnt_after = inspect_markers(ucnt_existing_text)
+    ucnt_managed_before = bool(existing_state and "installed_usercontent_block" in existing_state)
+    if ucnt_mstate == "absent" and "installed_usercontent_block" in pending:
+        observed = sha256_bytes(ucnt_existing_raw) if ucnt_file.is_file() else None
+        if observed != pending.get("pre_usercontent_sha256"):
+            return die(prog, f"conflict in {ucnt_file}: stylesheet changed during interrupted install")
+    if ucnt_mstate == "absent" and ucnt_managed_before and ucnt_file.exists():
+        return die(prog, f"conflict in {ucnt_file}: installed markers are missing; nothing was changed")
+    if ucnt_mstate == "corrupt":
+        return die(prog, f"corrupted {MARKER_BEGIN} markers in {ucnt_file}; fix them first; nothing was changed")
+    ucnt_record = None
+    if ucnt_mstate == "present":
+        if not has_prior_backup:
+            return die(prog, f"{ucnt_file} already contains macos9-theme-firefox markers without an install record; nothing was changed")
+        ucnt_record = next((r for r in records if r.get("installed_usercontent_block") == ucnt_inner), None)
+        if ucnt_record is None and (any(records) or ucnt_inner != USERCONTENT_BLOCK):
+            return die(prog, f"conflict in {ucnt_file}: lines inside macos9-theme-firefox markers were edited; nothing was changed")
+
     # Inspect user.js markers
-    ujs_existing_text = ujs_file.read_text(encoding="utf-8", errors="surrogateescape") if ujs_file.is_file() else ""
+    ujs_existing_text = ujs_file.read_bytes().decode("utf-8", errors="surrogateescape") if ujs_file.is_file() else ""
     ujs_mstate, ujs_before, ujs_inner, ujs_after = inspect_markers(ujs_existing_text)
+    if ujs_mstate == "absent" and existing_state and ujs_file.exists():
+        return die(prog, f"conflict in {ujs_file}: installed markers are missing; nothing was changed")
     if ujs_mstate == "corrupt":
         return die(prog, f"corrupted {MARKER_BEGIN} markers in {ujs_file}; fix them first; nothing was changed")
+    ujs_record = None
     if ujs_mstate == "present":
         if not has_prior_backup:
             return die(prog, f"{ujs_file} already contains macos9-theme-firefox markers without an install record; nothing was changed")
-        rec_ujs_block = (existing_state or {}).get("installed_userjs_block")
-        if rec_ujs_block is not None and ujs_inner != rec_ujs_block:
+        ujs_record = next((r for r in records if r.get("installed_userjs_block") == ujs_inner), None)
+        if ujs_record is None and (any(records) or ujs_inner != new_ujs_block):
             return die(prog, f"conflict in {ujs_file}: lines inside macos9-theme-firefox markers were edited; nothing was changed")
+
+    adoption = pending.get("content_adoption", (existing_state or {}).get("content_adoption"))
+    first_adoption = existing_state is not None and not ucnt_managed_before and not pending
+    if first_adoption:
+        adoption = {"sha256": sha256_bytes(ucnt_existing_raw) if ucnt_file.is_file() else None,
+                    "mode": stat.S_IMODE(ucnt_file.stat().st_mode) if ucnt_file.is_file() else 0o644}
+    content_path, _, ucnt_mode = content_backup(pstate_dir, pstate_dir / "backup", bak_meta, adoption)
+    if not first_adoption and not valid_adoption(content_path, adoption):
+        return die(prog, "damaged userContent.css upgrade backup")
 
     if dry_run:
         print("Dry run: nothing is changed.")
@@ -953,15 +1068,17 @@ def cmd_install(args: argparse.Namespace) -> int:
         if not has_prior_backup:
             print(f"  would back up existing chrome/, user.js, and prefs.js snapshot to {pstate_dir / 'backup'}")
             if plat_dir.exists():
-                print(f"  would move existing {plat_dir} aside to {pstate_dir / 'displaced/platinum'}")
+                print(f"  would preserve {plat_dir} in the backup")
         else:
             print(f"  would preserve original pre-install backup in {pstate_dir / 'backup'}")
         print(f"  would install {src_platinum} -> {plat_dir}/")
         print(f"  would write marker-delimited @import block in {uc_file}")
+        print(f"  would write marker-delimited @import block in {ucnt_file}")
         print(f"  would write marker-delimited user_pref block in {ujs_file}")
         return 0
 
-    clean_profile_temps(prof_dir)
+    if recovering:
+        remove_stage(chrome_dir, existing_journal)
     pstate_dir.mkdir(parents=True, exist_ok=True)
 
     # Step 1: Journal & take initial backup if first install; on upgrade, extend
@@ -980,43 +1097,84 @@ def cmd_install(args: argparse.Namespace) -> int:
         )
         bak_meta = take_initial_backup(prof_dir, pstate_dir, managed_prefs)
         prefs_snapshot = dict(bak_meta["prefs_snapshot"])
-        atomic_write_json(
-            jpath,
-            {
-                "phase": "installing",
-                "backup_complete": True,
-                "profile_path": str(prof_dir),
-                "profile_real": cur_real,
-                "profile_parent_real": cur_parent_real,
-            },
-        )
-        maybe_inject_fault("backup")
     else:
-        prefs_snapshot = dict((existing_state or {}).get("prefs_snapshot") or bak_meta["prefs_snapshot"])
+        prefs_snapshot = dict(pending.get("prefs_snapshot", (existing_state or {}).get("prefs_snapshot", bak_meta["prefs_snapshot"])))
         new_keys = [k for k, _ in managed_prefs if k not in prefs_snapshot]
         if new_keys:
             extra = parse_prefs_snapshot(pjs_file, new_keys)
             prefs_snapshot.update(extra)
-        atomic_write_json(
-            jpath,
-            {
-                "phase": "installing",
-                "backup_complete": True,
-                "profile_path": str(prof_dir),
-                "profile_real": cur_real,
-                "profile_parent_real": cur_parent_real,
-            },
-        )
 
-    # Step 2a: Displace pre-existing foreign chrome/platinum (first install only) & stage chrome/platinum/
+    if first_adoption and adoption["sha256"] is not None:
+        atomic_write_bytes(content_path, ucnt_existing_raw, 0o600)
+
+    # Record the planned marker blocks before publishing any file.
+    if uc_mstate == "present":
+        # Replace existing marker block in place, keeping surrounding bytes intact.
+        new_uc_text = uc_before + USERCHROME_BLOCK + uc_after
+        inserted_uc_chunk = (uc_record or {}).get("installed_userchrome_chunk", USERCHROME_BLOCK)
+    else:
+        new_uc_text, inserted_uc_chunk = insert_userchrome_block(uc_existing_text, USERCHROME_BLOCK)
+
+    uc_bytes = new_uc_text.encode("utf-8", errors="surrogateescape")
+
+    if ucnt_mstate == "present":
+        new_ucnt_text = ucnt_before + USERCONTENT_BLOCK + ucnt_after
+        inserted_ucnt_chunk = (ucnt_record or {}).get("installed_usercontent_chunk", USERCONTENT_BLOCK)
+    else:
+        new_ucnt_text, inserted_ucnt_chunk = insert_userchrome_block(ucnt_existing_text, USERCONTENT_BLOCK)
+
+    ucnt_bytes = new_ucnt_text.encode("utf-8", errors="surrogateescape")
+
+    if ujs_mstate == "present":
+        new_ujs_text = ujs_before + new_ujs_block + ujs_after
+        inserted_ujs_chunk = (ujs_record or {}).get("installed_userjs_chunk", ujs_inner).replace(ujs_inner, new_ujs_block)
+    else:
+        new_ujs_text, inserted_ujs_chunk = insert_userjs_block(ujs_existing_text, new_ujs_block)
+
+    ujs_bytes = new_ujs_text.encode("utf-8", errors="surrogateescape")
+    pending = {
+        "installed_userchrome_block": USERCHROME_BLOCK,
+        "installed_userchrome_chunk": inserted_uc_chunk,
+        "installed_usercontent_block": USERCONTENT_BLOCK,
+        "installed_usercontent_chunk": inserted_ucnt_chunk,
+        "installed_userjs_block": new_ujs_block,
+        "installed_userjs_chunk": inserted_ujs_chunk,
+        "platinum_sums": tree_sums(src_platinum),
+        "prefs_snapshot": prefs_snapshot,
+    }
+    if adoption is not None:
+        pending["content_adoption"] = adoption
+    if ucnt_mstate == "absent" and ucnt_file.is_file() and not ucnt_managed_before:
+        pending["pre_usercontent_sha256"] = sha256_bytes(ucnt_existing_raw)
+    stage = chrome_dir / f".macos9-ff-tmp.{secrets.token_hex(12)}"
+    for key, backup, insert, block, old_text, new_bytes in (
+        ("userchrome", pstate_dir / "backup/chrome/userChrome.css", insert_userchrome_block,
+         USERCHROME_BLOCK, uc_existing_text, uc_bytes),
+        ("usercontent", content_path, insert_userchrome_block,
+         USERCONTENT_BLOCK, ucnt_existing_text, ucnt_bytes),
+        ("userjs", pstate_dir / "backup/user.js", insert_userjs_block,
+         new_ujs_block, ujs_existing_text, ujs_bytes),
+    ):
+        original = backup.read_bytes().decode("utf-8", "surrogateescape") if backup.is_file() else ""
+        expected, _ = insert(original, block)
+        hash_key = f"untouched_{key}_sha256"
+        old_hash = sha256_bytes(old_text.encode("utf-8", "surrogateescape"))
+        # Older installs normalized line endings. Their recorded hash still
+        # identifies the unedited file and its byte-exact original backup.
+        untouched = any(r.get(hash_key) == old_hash for r in records)
+        if untouched or expected.encode("utf-8", "surrogateescape") == new_bytes:
+            pending[hash_key] = sha256_bytes(new_bytes)
+    atomic_write_json(jpath, {
+        "phase": "installing", "backup_complete": True, "pending": pending, "stage": stage.name,
+        "profile_path": str(prof_dir), "profile_real": cur_real,
+        "profile_parent_real": cur_parent_real,
+    })
+    maybe_inject_fault("backup")
+
+    # Stage both directory renames on the profile filesystem.
     chrome_dir.mkdir(parents=True, exist_ok=True)
-    displaced_plat = pstate_dir / "displaced" / "platinum"
-    if existing_state is None and bak_meta.get("foreign_platinum_existed") and plat_dir.exists() and not displaced_plat.exists():
-        displaced_plat.parent.mkdir(parents=True, exist_ok=True)
-        os.replace(str(plat_dir), str(displaced_plat))
-        fsync_dir(displaced_plat.parent)
-
-    stage_plat = chrome_dir / f".macos9-ff-tmp.{secrets.token_hex(6)}"
+    stage.mkdir(mode=0o700)
+    stage_plat = stage / "new"
     shutil.copytree(src_platinum, stage_plat, symlinks=False, copy_function=shutil.copy2)
     for root, dirs, files in os.walk(str(stage_plat)):
         os.chmod(root, 0o755)
@@ -1024,39 +1182,24 @@ def cmd_install(args: argparse.Namespace) -> int:
             os.chmod(os.path.join(root, d), 0o755)
         for fn in files:
             os.chmod(os.path.join(root, fn), 0o644)
-    new_plat_sums = tree_sums(stage_plat)
 
     if plat_dir.exists():
-        old_plat = chrome_dir / f".macos9-ff-tmp.old.{secrets.token_hex(6)}"
-        os.replace(str(plat_dir), str(old_plat))
-        os.replace(str(stage_plat), str(plat_dir))
-        shutil.rmtree(old_plat)
-    else:
-        os.replace(str(stage_plat), str(plat_dir))
+        os.replace(plat_dir, stage / "old")
+        maybe_inject_fault("platinum_swap")
+    os.replace(stage_plat, plat_dir)
+    shutil.rmtree(stage)
     fsync_dir(chrome_dir)
     maybe_inject_fault("platinum")
 
-    # Step 2b: Write chrome/userChrome.css atomically (keeping existing user rules below markers).
-    if uc_mstate == "present":
-        # Replace existing marker block in place, keeping surrounding bytes intact.
-        new_uc_text = uc_before + USERCHROME_BLOCK + uc_after
-        inserted_uc_chunk = (existing_state or {}).get("installed_userchrome_chunk", USERCHROME_BLOCK)
-    else:
-        new_uc_text, inserted_uc_chunk = insert_userchrome_block(uc_existing_text, USERCHROME_BLOCK)
-
-    uc_bytes = new_uc_text.encode("utf-8", errors="surrogateescape")
     uc_mode = bak_meta.get("userChrome_mode", 0o644)
     atomic_write_bytes(uc_file, uc_bytes, uc_mode)
     maybe_inject_fault("userChrome")
 
-    # Step 2c: Write user.js atomically (keeping existing user lines outside markers).
-    if ujs_mstate == "present":
-        new_ujs_text = ujs_before + new_ujs_block + ujs_after
-        inserted_ujs_chunk = (existing_state or {}).get("installed_userjs_chunk", new_ujs_block)
-    else:
-        new_ujs_text, inserted_ujs_chunk = insert_userjs_block(ujs_existing_text, new_ujs_block)
+    if ucnt_file.is_file():
+        ucnt_mode = stat.S_IMODE(ucnt_file.stat().st_mode)
+    atomic_write_bytes(ucnt_file, ucnt_bytes, ucnt_mode)
+    maybe_inject_fault("userContent")
 
-    ujs_bytes = new_ujs_text.encode("utf-8", errors="surrogateescape")
     ujs_mode = bak_meta.get("user_js_mode", 0o644)
     atomic_write_bytes(ujs_file, ujs_bytes, ujs_mode)
     maybe_inject_fault("user_js")
@@ -1066,39 +1209,12 @@ def cmd_install(args: argparse.Namespace) -> int:
     active_pref_keys = {k for k, _ in managed_prefs}
     retired_keys = {k: v for k, v in prefs_snapshot.items() if k not in active_pref_keys}
     if retired_keys and pjs_file.is_file():
-        cur_pjs_text = pjs_file.read_text(encoding="utf-8", errors="surrogateescape")
+        cur_pjs_text = pjs_file.read_bytes().decode("utf-8", errors="surrogateescape")
         new_pjs_bytes = restore_prefs_in_text(cur_pjs_text, None, retired_keys)
         pjs_mode = stat.S_IMODE(pjs_file.stat().st_mode)
         atomic_write_bytes(pjs_file, new_pjs_bytes, pjs_mode)
         for rk in retired_keys:
             prefs_snapshot.pop(rk, None)
-
-    # Preserve original untouched full-file checksums when upgrading an unedited
-    # install, or recompute when reinstalling/upgrading cleanly!
-    # Wait: if the user hasn't edited outside markers, removing our new block yields
-    # exact backup bytes, so installed_userchrome_sha256 == sha256(uc_bytes) holds
-    # whenever userChrome.css has no post-install user edits! Let's check against backup!
-    bak_uc = pstate_dir / "backup" / "chrome" / "userChrome.css"
-    bak_ujs = pstate_dir / "backup" / "user.js"
-    uc_matches_untouched = False
-    if not bak_meta.get("userChrome_existed"):
-        uc_matches_untouched = uc_bytes == USERCHROME_BLOCK.encode("utf-8")
-    elif bak_uc.is_file():
-        expected_uc, _ = insert_userchrome_block(
-            bak_uc.read_text(encoding="utf-8", errors="surrogateescape"),
-            USERCHROME_BLOCK,
-        )
-        uc_matches_untouched = uc_bytes == expected_uc.encode("utf-8", errors="surrogateescape")
-
-    ujs_matches_untouched = False
-    if not bak_meta.get("user_js_existed"):
-        ujs_matches_untouched = ujs_bytes == new_ujs_block.encode("utf-8")
-    elif bak_ujs.is_file():
-        expected_ujs, _ = insert_userjs_block(
-            bak_ujs.read_text(encoding="utf-8", errors="surrogateescape"),
-            new_ujs_block,
-        )
-        ujs_matches_untouched = ujs_bytes == expected_ujs.encode("utf-8", errors="surrogateescape")
 
     state_obj = {
         "schema": 1,
@@ -1108,15 +1224,8 @@ def cmd_install(args: argparse.Namespace) -> int:
         "profile_path": str(prof_dir),
         "profile_real": cur_real,
         "profile_parent_real": cur_parent_real,
-        "platinum_sums": new_plat_sums,
-        "installed_userchrome_block": USERCHROME_BLOCK,
-        "installed_userchrome_chunk": inserted_uc_chunk,
-        "untouched_userchrome_sha256": sha256_bytes(uc_bytes) if uc_matches_untouched else None,
-        "installed_userjs_block": new_ujs_block,
-        "installed_userjs_chunk": inserted_ujs_chunk,
-        "untouched_userjs_sha256": sha256_bytes(ujs_bytes) if ujs_matches_untouched else None,
+        **pending,
         "managed_prefs": managed_prefs,
-        "prefs_snapshot": prefs_snapshot,
     }
     atomic_write_json(spath, state_obj)
     atomic_write_json(
@@ -1132,7 +1241,7 @@ def cmd_install(args: argparse.Namespace) -> int:
 
     action_word = "Updated" if has_prior_backup else "Installed"
     print(f"{action_word} Platinum for Firefox in profile '{chosen['name']}' ({prof_dir}).")
-    print("Restart Firefox to load chrome/userChrome.css.")
+    print("Restart Firefox to load chrome/userChrome.css and chrome/userContent.css.")
     return 0
 
 
@@ -1144,8 +1253,10 @@ def plan_marker_removal(
     file_path: pathlib.Path,
     existed_before: bool,
     backup_file: pathlib.Path,
-    expected_block: str | None,
-    untouched_sha256: str | None,
+    key: str,
+    state: dict,
+    pending: dict,
+    interrupted: bool,
 ) -> tuple[str, bytes | None, str]:
     """Validate and plan undo for a marker-delimited file (userChrome.css or user.js).
 
@@ -1165,45 +1276,57 @@ def plan_marker_removal(
         return ("conflict", None, f"{file_path} was replaced by a symlink or folder")
 
     raw_bytes = file_path.read_bytes()
-    if untouched_sha256 and sha256_bytes(raw_bytes) == untouched_sha256:
-        if existed_before:
-            return ("restore_backup", None, "")
-        return ("delete", None, "")
-
     text = raw_bytes.decode("utf-8", errors="surrogateescape")
     mstate, before, inner, after = inspect_markers(text)
     if mstate == "corrupt":
         return ("conflict", None, f"{file_path} has corrupted or duplicate macos9-theme-firefox markers")
     if mstate == "absent":
+        if interrupted and not state.get(f"installed_{key}_block"):
+            if pending.get(f"pre_{key}_sha256") == sha256_bytes(raw_bytes):
+                return ("noop", None, "")
+            if not state and backup_file.is_file() and raw_bytes == backup_file.read_bytes():
+                return ("noop", None, "")
         return (
             "conflict",
             None,
             f"{file_path} was modified and no longer contains macos9-theme-firefox markers; refusing to overwrite",
         )
 
-    if expected_block is not None and inner != expected_block:
+    recorded = next((r for r in (state, pending) if r.get(f"installed_{key}_block") == inner), None)
+    if recorded is None and interrupted and not (state or pending):
+        # Recover profiles written by the older installer before it published state.json.
+        if key == "userchrome":
+            block = USERCHROME_BLOCK
+            insert = insert_userchrome_block
+        elif key == "usercontent":
+            block = USERCONTENT_BLOCK
+            insert = insert_userchrome_block
+        else:
+            block = build_userjs_block(get_managed_prefs())
+            insert = insert_userjs_block
+        if inner == block:
+            original = backup_file.read_bytes().decode("utf-8", "surrogateescape") if existed_before else ""
+            _, chunk = insert(original, block)
+            recorded = {f"installed_{key}_chunk": chunk}
+    if recorded is None:
         return (
             "conflict",
             None,
             f"{file_path} was edited inside the macos9-theme-firefox marker block; refusing to overwrite",
         )
 
-    # Cleanly strip the marker block + separator while keeping user edits outside markers!
-    if after.startswith("\n") and existed_before and (before == "" or before.lstrip("\ufeff").startswith("@charset")):
-        # Strip the single separator newline we added after the top userChrome.css block.
-        after_clean = after[1:]
-    elif after == "" and before.endswith("\n\n") and existed_before:
-        # Strip the extra blank separator newline we added before the bottom user.js block.
-        before_clean = before[:-1]
-        remainder = before_clean
-        rem_bytes = remainder.encode("utf-8", errors="surrogateescape")
-        if backup_file.is_file() and rem_bytes == backup_file.read_bytes():
-            return ("restore_backup", None, "")
-        return ("write", rem_bytes, "")
-    else:
-        after_clean = after
-
-    remainder = before + after_clean
+    # Remove only separators added by the installer, even after edits on
+    # either side of the block. Older state files already record this chunk.
+    if recorded.get(f"untouched_{key}_sha256") == sha256_bytes(raw_bytes):
+        return ("restore_backup" if existed_before else "delete", None, "")
+    installed_chunk = recorded.get(f"installed_{key}_chunk")
+    if installed_chunk and inner in installed_chunk:
+        lead, _, tail = installed_chunk.partition(inner)
+        if lead and before.endswith(lead):
+            before = before[:-len(lead)]
+        if tail and after.startswith(tail):
+            after = after[len(tail):]
+    remainder = before + after
     if not existed_before and remainder == "":
         return ("delete", None, "")
 
@@ -1214,7 +1337,7 @@ def plan_marker_removal(
     return ("write", rem_bytes, "")
 
 
-def cmd_uninstall(args: argparse.Namespace) -> int:
+def cmd_uninstall(args: argparse.Namespace, handles: ExitStack) -> int:
     prog = PROG_UNINSTALL
     home = pathlib.Path(args.home)
     config_home = pathlib.Path(args.config_home)
@@ -1263,7 +1386,7 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
 
     if not check_profile_symlinks(prof_dir, prog):
         return 1
-    if not check_profile_not_in_use(prof_dir, prog):
+    if not hold_profile_lock(prof_dir, prog, handles):
         return 1
 
     cur_real = os.path.realpath(str(prof_dir))
@@ -1282,73 +1405,97 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
             f"parent path of {prof_dir} moved ({cur_parent_real} vs {rec_parent_real}); nothing was changed",
         )
 
-    ok_bak, bak_meta, bak_err = verify_backup(pstate_dir)
+    bak_dir = pstate_dir / "backup"
+    if phase == "uninstalling" and not bak_dir.exists() and journal.get("archive_dir"):
+        bak_dir = pathlib.Path(journal["archive_dir"]) / "restored-backup"
+    ok_bak, bak_meta, bak_err = verify_backup(bak_dir)
     if not ok_bak:
         return die(prog, f"refusing to restore from damaged backup ({bak_err}); nothing was changed")
 
     completed_steps: list[str] = list(journal.get("completed_steps", [])) if phase == "uninstalling" else []
-    interrupted_install = phase == "installing"
+    interrupted_install = phase == "installing" or journal.get("interrupted_install", False)
+    pending = journal.get("pending", {})
 
     chrome_dir = prof_dir / "chrome"
     plat_dir = chrome_dir / "platinum"
     uc_file = chrome_dir / "userChrome.css"
+    ucnt_file = chrome_dir / "userContent.css"
     ujs_file = prof_dir / "user.js"
     pjs_file = prof_dir / "prefs.js"
-    bak_dir = pstate_dir / "backup"
-    displaced_plat = pstate_dir / "displaced" / "platinum"
+
+    adoption = pending.get("content_adoption", state.get("content_adoption"))
+    bak_ucnt, ucnt_existed, ucnt_mode = content_backup(pstate_dir, bak_dir, bak_meta, adoption)
+    if not valid_adoption(bak_ucnt, adoption):
+        return die(prog, "damaged userContent.css upgrade backup")
+    usercontent_managed = any("installed_usercontent_block" in r for r in (state, pending))
 
     # Pre-validate all remaining steps BEFORE mutating anything so a conflict stops cleanly!
-    if "platinum" not in completed_steps and not interrupted_install:
-        ok_plat, reason = check_platinum_dir_intact(plat_dir, state.get("platinum_sums", {}))
-        if not ok_plat:
-            return die(prog, f"conflict in {plat_dir} ({reason}); nothing was overwritten")
+    if "platinum" not in completed_steps and plat_dir.exists():
+        known = [r["platinum_sums"] for r in (state, pending) if "platinum_sums" in r]
+        if interrupted_install and not pending:
+            known.append(tree_sums(pathlib.Path(__file__).parent / "chrome/platinum"))
+        original = bak_dir / "chrome/platinum"
+        if not matches_installed_theme(plat_dir, known):
+            may_be_original = phase == "uninstalling" or (interrupted_install and not state)
+            if not (may_be_original and original_platinum_matches(plat_dir, original)):
+                return die(prog, f"conflict in {plat_dir}; nothing was overwritten")
+
+    # If a rename succeeded just before interruption, its journal update
+    # may be missing. Recognize the exact planned result before replaying.
+    undo_hashes = journal.get("undo_hashes", {})
+    already_written = set()
+    for step, path in (("userChrome", uc_file), ("userContent", ucnt_file), ("user_js", ujs_file)):
+        if step in undo_hashes and step not in completed_steps:
+            current = sha256_file(path) if path.is_file() else None
+            if current == undo_hashes[step]:
+                already_written.add(step)
 
     uc_action, uc_new_bytes = ("noop", None)
-    if "userChrome" not in completed_steps:
-        if interrupted_install:
-            uc_action = "restore_backup" if bak_meta.get("userChrome_existed") else "delete"
-        else:
-            uc_action, uc_new_bytes, uc_err = plan_marker_removal(
-                uc_file,
-                bool(bak_meta.get("userChrome_existed")),
-                bak_dir / "chrome" / "userChrome.css",
-                state.get("installed_userchrome_block", USERCHROME_BLOCK),
-                state.get("untouched_userchrome_sha256"),
-            )
-            if uc_action == "conflict":
-                return die(prog, f"conflict: {uc_err}")
+    if "userChrome" not in completed_steps and "userChrome" not in already_written:
+        uc_action, uc_new_bytes, err = plan_marker_removal(
+            uc_file, bak_meta["userChrome_existed"], bak_dir / "chrome/userChrome.css",
+            "userchrome", state, pending, interrupted_install,
+        )
+        if err:
+            return die(prog, f"conflict: {err}")
+
+    ucnt_action, ucnt_new_bytes = ("noop", None)
+    if usercontent_managed and "userContent" not in completed_steps and "userContent" not in already_written:
+        ucnt_action, ucnt_new_bytes, err = plan_marker_removal(
+            ucnt_file, ucnt_existed, bak_ucnt,
+            "usercontent", state, pending, interrupted_install,
+        )
+        if err:
+            return die(prog, f"conflict: {err}")
 
     ujs_action, ujs_new_bytes = ("noop", None)
-    if "user_js" not in completed_steps:
-        if interrupted_install:
-            ujs_action = "restore_backup" if bak_meta.get("user_js_existed") else "delete"
-        else:
-            ujs_action, ujs_new_bytes, ujs_err = plan_marker_removal(
-                ujs_file,
-                bool(bak_meta.get("user_js_existed")),
-                bak_dir / "user.js",
-                state.get("installed_userjs_block"),
-                state.get("untouched_userjs_sha256"),
-            )
-            if ujs_action == "conflict":
-                return die(prog, f"conflict: {ujs_err}")
+    if "user_js" not in completed_steps and "user_js" not in already_written:
+        ujs_action, ujs_new_bytes, err = plan_marker_removal(
+            ujs_file, bak_meta["user_js_existed"], bak_dir / "user.js",
+            "userjs", state, pending, interrupted_install,
+        )
+        if err:
+            return die(prog, f"conflict: {err}")
 
     if dry_run:
         print("Dry run: nothing is changed.")
         print(f"  target profile: {chosen['name']} ({prof_dir})")
         if "platinum" not in completed_steps:
             print(f"  would remove {plat_dir}/")
-            if displaced_plat.exists():
-                print(f"  would put back displaced {displaced_plat} -> {plat_dir}")
+            if bak_meta.get("foreign_platinum_existed"):
+                print(f"  would restore the original {plat_dir}")
         if "userChrome" not in completed_steps:
             print(f"  would undo {uc_file} ({uc_action})")
+        if usercontent_managed and "userContent" not in completed_steps:
+            print(f"  would undo {ucnt_file} ({ucnt_action})")
         if "user_js" not in completed_steps:
             print(f"  would undo {ujs_file} ({ujs_action})")
         if "prefs_js" not in completed_steps:
             print(f"  would restore managed prefs in {pjs_file}")
         return 0
 
-    clean_profile_temps(prof_dir)
+
+    remove_stage(chrome_dir, journal)
 
     # Save pre-uninstall archive folder (once per uninstall transaction).
     archive_dir_str = journal.get("archive_dir")
@@ -1362,7 +1509,7 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
         cand.mkdir(parents=True, mode=0o700)
         before_snap = cand / "before-uninstall"
         before_snap.mkdir(mode=0o700)
-        for rel in ("chrome/userChrome.css", "user.js", "prefs.js"):
+        for rel in ("chrome/userChrome.css", "chrome/userContent.css", "user.js", "prefs.js"):
             fp = prof_dir / rel
             if fp.is_file():
                 dst = before_snap / rel
@@ -1370,43 +1517,62 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
                 shutil.copy2(fp, dst)
         archive_dir_str = str(cand)
 
+    for step, action, data, backup in (
+        ("userChrome", uc_action, uc_new_bytes, bak_dir / "chrome/userChrome.css"),
+        ("userContent", ucnt_action, ucnt_new_bytes, bak_ucnt),
+        ("user_js", ujs_action, ujs_new_bytes, bak_dir / "user.js"),
+    ):
+        if action == "write":
+            undo_hashes[step] = sha256_bytes(data)
+        elif action == "restore_backup":
+            undo_hashes[step] = sha256_file(backup)
+        elif action == "delete":
+            undo_hashes[step] = None
+
+    stage = chrome_dir / f".macos9-ff-tmp.{secrets.token_hex(12)}"
+
     def save_progress() -> None:
         atomic_write_json(
             jpath,
             {
                 "phase": "uninstalling",
+                "stage": stage.name,
+                "interrupted_install": interrupted_install,
+                "pending": pending,
                 "backup_complete": True,
                 "profile_path": str(prof_dir),
                 "profile_real": cur_real,
                 "profile_parent_real": cur_parent_real,
                 "completed_steps": completed_steps,
+                "undo_hashes": undo_hashes,
                 "archive_dir": archive_dir_str,
             },
         )
 
     save_progress()
 
-    # Step 1: Remove chrome/platinum/ & restore any displaced pre-install chrome/platinum
+    # Restore from the verified backup, including backups from older installers.
     if "platinum" not in completed_steps:
-        if plat_dir.is_dir() and not plat_dir.is_symlink():
-            shutil.rmtree(plat_dir)
-        elif plat_dir.is_file():
-            plat_dir.unlink()
-        if displaced_plat.exists():
+        original = bak_dir / "chrome/platinum"
+        if plat_dir.exists() or original.exists():
             chrome_dir.mkdir(parents=True, exist_ok=True)
-            os.replace(str(displaced_plat), str(plat_dir))
+            stage.mkdir(mode=0o700)
+            if original.is_dir():
+                shutil.copytree(original, stage / "original")
+            elif original.is_file():
+                shutil.copy2(original, stage / "original")
+            if plat_dir.exists():
+                os.replace(plat_dir, stage / "installed")
+                maybe_inject_fault("uninstall_platinum_swap")
+            if original.exists():
+                os.replace(stage / "original", plat_dir)
             fsync_dir(chrome_dir)
-        elif interrupted_install and bak_meta.get("foreign_platinum_existed") and (bak_dir / "chrome" / "platinum").exists():
-            src_fp = bak_dir / "chrome" / "platinum"
-            if src_fp.is_dir():
-                shutil.copytree(src_fp, plat_dir, symlinks=False, copy_function=shutil.copy2)
-            else:
-                shutil.copy2(src_fp, plat_dir)
+            shutil.rmtree(stage)
         completed_steps.append("platinum")
         save_progress()
         maybe_inject_fault("uninstall_platinum")
 
-    # Step 2: Restore or strip marker block in chrome/userChrome.css (+ rmdir chrome/ if created by us & empty)
+    # Step 2a: Restore or strip marker block in chrome/userChrome.css
     if "userChrome" not in completed_steps:
         bak_uc = bak_dir / "chrome" / "userChrome.css"
         if uc_action == "restore_backup" and bak_uc.is_file():
@@ -1424,6 +1590,28 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
             cur_mode = stat.S_IMODE(uc_file.stat().st_mode) if uc_file.is_file() else bak_meta.get("userChrome_mode", 0o644)
             atomic_write_bytes(uc_file, uc_new_bytes, cur_mode)
 
+        maybe_inject_fault("userChrome_before_journal")
+        completed_steps.append("userChrome")
+        save_progress()
+        maybe_inject_fault("uninstall_userChrome")
+
+    # Step 2b: Restore or strip marker block in chrome/userContent.css (+ rmdir chrome/ if created by us & empty)
+    if "userContent" not in completed_steps:
+        if ucnt_action == "restore_backup" and bak_ucnt.is_file():
+            chrome_dir.mkdir(parents=True, exist_ok=True)
+            tmp = chrome_dir / f".macos9-ff-tmp.{secrets.token_hex(6)}"
+            shutil.copy2(bak_ucnt, tmp)
+            os.chmod(str(tmp), ucnt_mode)
+            os.replace(str(tmp), str(ucnt_file))
+            fsync_dir(chrome_dir)
+        elif ucnt_action == "delete":
+            if ucnt_file.exists():
+                ucnt_file.unlink()
+                fsync_dir(chrome_dir)
+        elif ucnt_action == "write" and ucnt_new_bytes is not None:
+            cur_mode = stat.S_IMODE(ucnt_file.stat().st_mode) if ucnt_file.is_file() else ucnt_mode
+            atomic_write_bytes(ucnt_file, ucnt_new_bytes, cur_mode)
+
         if not bak_meta.get("chrome_existed") and chrome_dir.is_dir():
             try:
                 chrome_dir.rmdir()
@@ -1432,9 +1620,10 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
         elif bak_meta.get("chrome_existed") and chrome_dir.is_dir():
             os.chmod(str(chrome_dir), bak_meta.get("chrome_mode", 0o755))
 
-        completed_steps.append("userChrome")
+        maybe_inject_fault("userContent_before_journal")
+        completed_steps.append("userContent")
         save_progress()
-        maybe_inject_fault("uninstall_userChrome")
+        maybe_inject_fault("uninstall_userContent")
 
     # Step 3: Restore or strip marker block in user.js
     if "user_js" not in completed_steps:
@@ -1459,46 +1648,37 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
 
     # Step 4: Restore managed prefs in prefs.js directly!
     if "prefs_js" not in completed_steps:
-        prefs_snap = state.get("prefs_snapshot") or bak_meta.get("prefs_snapshot") or {}
+        prefs_snap = pending.get("prefs_snapshot", state.get("prefs_snapshot", bak_meta["prefs_snapshot"]))
         bak_pjs = bak_dir / "prefs.js"
-        if pjs_file.is_file():
-            pre_sha = bak_meta.get("prefs_js_sha256")
-            if pre_sha and sha256_file(pjs_file) == pre_sha:
-                # prefs.js was never touched (e.g. Firefox was not launched while installed):
-                # leave it completely untouched so mtime, permissions, and bytes are preserved!
-                pass
-            elif not bak_meta.get("prefs_js_existed"):
-                cur_text = pjs_file.read_text(encoding="utf-8", errors="surrogateescape")
-                restored_bytes = restore_prefs_in_text(cur_text, None, prefs_snap)
-                cur_mode = stat.S_IMODE(pjs_file.stat().st_mode)
-                atomic_write_bytes(pjs_file, restored_bytes, cur_mode)
-            else:
-                bak_bytes = bak_pjs.read_bytes() if bak_pjs.is_file() else None
-                cur_text = pjs_file.read_text(encoding="utf-8", errors="surrogateescape")
-                restored_bytes = restore_prefs_in_text(cur_text, bak_bytes, prefs_snap)
-                if bak_bytes is not None and restored_bytes == bak_bytes and bak_pjs.is_file():
-                    tmp = prof_dir / f".macos9-ff-tmp.{secrets.token_hex(6)}"
-                    shutil.copy2(bak_pjs, tmp)
-                    os.chmod(str(tmp), bak_meta.get("prefs_js_mode", 0o600))
-                    os.replace(str(tmp), str(pjs_file))
-                    fsync_dir(prof_dir)
-                else:
-                    cur_mode = stat.S_IMODE(pjs_file.stat().st_mode)
-                    atomic_write_bytes(pjs_file, restored_bytes, cur_mode)
-        elif bak_meta.get("prefs_js_existed") and bak_pjs.is_file():
-            tmp = prof_dir / f".macos9-ff-tmp.{secrets.token_hex(6)}"
-            shutil.copy2(bak_pjs, tmp)
-            os.chmod(str(tmp), bak_meta.get("prefs_js_mode", 0o600))
-            os.replace(str(tmp), str(pjs_file))
-            fsync_dir(prof_dir)
+        backup_bytes = bak_pjs.read_bytes() if bak_pjs.is_file() else None
+        current = pjs_file.read_bytes() if pjs_file.is_file() else None
+        base = current if current is not None else (backup_bytes or b"")
+        # A later version may have adopted a preference the user changed after
+        # the first install. Only use the original file wholesale if its values
+        # agree with the snapshots taken when each preference was adopted.
+        compatible = parse_prefs_snapshot(bak_pjs, list(prefs_snap)) == prefs_snap
+        restored = restore_prefs_in_text(base.decode("utf-8", "surrogateescape"),
+                                         backup_bytes if compatible else None, prefs_snap)
+        if backup_bytes is None and not restored:
+            if current is not None:
+                pjs_file.unlink()
+                fsync_dir(prof_dir)
+        elif current != restored:
+            mode = bak_meta["prefs_js_mode"]
+            if current is not None and restored != backup_bytes:
+                mode = stat.S_IMODE(pjs_file.stat().st_mode)
+            atomic_write_bytes(pjs_file, restored, mode)
 
         completed_steps.append("prefs_js")
         save_progress()
 
     # Step 5: Archive backup into $archive_dir/restored-backup and retire $pstate_dir cleanly.
     archive_dir = pathlib.Path(archive_dir_str)
-    if bak_dir.is_dir():
-        shutil.move(str(bak_dir), str(archive_dir / "restored-backup"))
+    if adoption is not None and ucnt_existed:
+        shutil.copy2(bak_ucnt, archive_dir / "adopted-userContent.css")
+    if bak_dir == pstate_dir / "backup":
+        os.replace(bak_dir, archive_dir / "restored-backup")
+        maybe_inject_fault("archived_backup")
     shutil.rmtree(pstate_dir)
 
     profs_root = state_dir / "profiles"
@@ -1541,10 +1721,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     ap = build_parser()
     args = ap.parse_args()
-    if args.cmd == "install":
-        return cmd_install(args)
-    if args.cmd == "uninstall":
-        return cmd_uninstall(args)
+    with ExitStack() as handles:
+        if args.cmd == "install":
+            return cmd_install(args, handles)
+        if args.cmd == "uninstall":
+            return cmd_uninstall(args, handles)
     return 2
 
 

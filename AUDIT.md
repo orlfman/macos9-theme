@@ -3,6 +3,18 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+**#212 · P3 · verified, 2026-11-24.** The collapsed-tab check measured the icon wrapper only in a normal window. The M4 probe now measures visible favicon elements against their frames and the new-tab icon in both normal and Private Browsing windows, and checks the selected tab uses Platinum styling. All five icons measured zero horizontal offset in both comparisons. M4 passed 36/36 (`dev/build/firefox-m4.vnNzES`).
+
+**#211 · P2 · verified, 2026-11-24.** Collapsed vertical tab icons were 9 CSS pixels right of their beveled frame centers. Restored Firefox’s inline tab margins and removed the extra collapsed strip padding. All three tab icons measured 0 pixels from their frame centers and shared the new-tab icon’s centerline on Firefox 160.0.1. M4 passed 35/35 (`dev/build/firefox-m4.47VPSw`).
+
+Firefox content stylesheet and Private Browsing audit, 2026-11-24. **#209–210 fixed and verified in the working tree.**
+
+Firefox second independent audit, 2026-11-24. **#198–204 fixed in the working tree over `ca8ac31`.** Evidence below.
+
+Firefox independent audit, 2026-11-24. **#192–197 fixed and verified in the working tree over `ca8ac31`.** The five Firefox suites passed 199/199. Desktop visual review is pending.
+
+Firefox Platinum Lavender (Milestones 1–7), 2026-11-24. **#189–191 fixed and verified in the working tree over `ca8ac31`.** All five Firefox verification suites passed end to end (`dev/check-firefox-m1.sh` 46/46, `dev/check-firefox-m3.sh` 34/34, `dev/check-firefox-m4.sh` 34/34, `dev/check-firefox-m5.sh` 31/31, `dev/check-firefox-m6.sh` 41/41, plus `tools/check-firefox-selectors.py` 35/35 `#id` and 1/1 `::part()`), alongside project regressions (`dev/check-style.sh` 135/135, `dev/check-quick.sh` 29/29, `dev/test_icons_phase1.py` 80/80, `dev/test-install.sh` 727/727). User's live Firefox install and on-screen review are pending. #95 remains open.
+
 GTK Milestone 4 initial controls, 2026-11-24. **#181–188 fixed and verified in the working tree.** The follow-up passed 78/78 Wayland and 56/56 Broadway, with all 36 reference crops exact on each. User visual review is pending. #95 remains open.
 
 Terminal palette (Kwi/Konsole), 2026-11-23. **#173–176 fixed and pushed in `b34dcb0`.** Verified ANSI contrast in Kwi and Konsole and preservation of the selected palette during uninstall. #95 remains open.
@@ -19,6 +31,86 @@ Current C++ audit status, 2026-11-22. Checkpoint 5 passed. #99 (P3) and
 #100 (P2) are fixed and verified in the working tree. #95 remains open (P3).
 
 Status: #53–58 passed their original regression cases. #59–68 are fixed in this revision, including code commits `ef8250a` and `fb4156f`. The user has completed the first desktop install. #3 (P3) awaits the user's visual review. The panel-resize fix for #23 is verified at the user’s 32 px setting. The panel follow-ups #69 and #70 are fixed in the working tree and verified in nested Plasma. The user reported that the updated Kwi tab close button worked well on their desktop (#71–74). Wallpaper findings #75–77 are fixed and verified in disposable Plasma. Cursor findings #78–80 are fixed; the cursors are now bundled (`cursors/`), which removes the external download they concerned. The bundled cursor follow-ups #81–84 are fixed in the working tree. The decisions on #21, #25 and #26 still apply.
+
+## 2026-11-24, Codex (GPT-6.2) — content stylesheet upgrades and Private Browsing
+
+- **#209 · P1 · verified.** An older theme installation could have a different `userContent.css` in its initial backup than the file present when a later upgrade first managed it. Undo could resurrect a deleted file, remove a newly created empty file, or restore older permissions. The upgrade now records existence, bytes, checksum and permissions at adoption, retains that backup across retries, and archives it on undo. Retrying an interruption refuses a replacement that lost its managed markers. Tests covered creation, deletion, edits with CRLF and mode 0600, interrupted upgrades, and replacement conflicts.
+- **#210 · P3 · verified.** Stock browser fixtures also set the private-window color preference. Only themed fixtures now default to the installed value. The private-window check verifies CSS visibility of the mask button and confirms the window actually entered dark mode before checking that Platinum styling switched off.
+- Firefox 160.0.1 under nested Wayland, working tree over `ca8ac31`. Discovery 46/46 (`firefox-m1.7hB55u`), chrome 34/34 (`firefox-m4.1dvqM5`), install/undo 85/85 (`firefox-m6.xRfOeO`). The selector check passed 35 IDs and one shadow part. Testing used disposable profiles.
+
+## 2026-11-24, Codex (GPT-6.2) — Firefox desktop polish review
+
+- **#207 · P2 · verified.** The runtime cleanup trap continued recursive deletion when the document portal failed to unmount. Both Firefox harnesses now restrict recursive cleanup to the runtime directory’s own filesystem.
+- **#208 · P3 · verified.** The Go test accepted an offscreen or obstructed control, the logo test accepted an unresolved URL, and scrollbar undo tested only absent preferences. Added hit tests, real pointer submission to a local address, a decoded branding image, and live profile coverage for prior size and color settings. Clarified that scrollbar settings affect the profile across Firefox themes. Replaced the M4 startup observer with Firefox’s startup promise after one sandbox startup timeout.
+- Firefox 160.0.1, working tree over `ca8ac31`. M3 36/36, M4 34/34, M5 32/32, M6 73/73. Evidence in `dev/build/firefox-m3.zNy8yF`, `firefox-m4.engwOG`, `firefox-m5.4b4OlX`, and `firefox-m6.Fa6elo`. All 35 IDs and one shadow part passed the selector check. Sandbox verification used disposable profiles. Failed unmounts were reviewed in code.
+
+## 2026-11-24, Codex (GPT-6.2) — stale Firefox lock re-audit
+
+**#206 · P1 · verified.** #205 accepted a dead loopback PID even when the advisory lock file was absent. The advisory probe also released both locks before profile mutation. Install and undo now require an existing regular advisory lock file for the stale-link exception, open it without following a symlink, and hold both nonblocking locks through command exit. A new profile with neither lock artifact still follows the existing closed-browser workflow.
+
+The installer suite passed 72/72 (`dev/build/firefox-m6.9a7MMe`). A second process tested both lock mechanisms during and after the command scope. Missing lock file and FIFO cases refused the stale-link exception. The live default profile passed a dry run.
+
+## 2026-11-24, Codex (GPT-6) — Firefox stale profile lock
+
+- **#205 · P2 · verified.** The installer rejected a leftover loopback lock after its PID exited. Install and undo now recognize this case and still check both advisory lock types. They leave the link in place and refuse live, non-loopback, and unrecognized targets.
+- Milestone 6 passed 68/68 in `dev/build/firefox-m6.9uEmOT`, including a live advisory lock paired with a stale link. A dry run for the user's default profile reached the install preview. Actual install and undo ran in disposable profiles.
+
+## 2026-11-24, Codex (GPT-6) — root Firefox command audit
+
+Verified the Firefox-only dispatch in the working tree. Both commands forward quoted profile names and return the child exit status. Help and profile listings matched direct invocation from outside the repository. Both rejected the desktop-only `--apply` option with status 2. Desktop install and undo dry runs still selected KDE. The disposable-profile suite passed 64/64, including three new root-entry checks and a real nested Firefox launch. Updated the README wording that described Firefox as accessible only separately. No outstanding shortcut findings. Live user profiles were outside this audit.
+
+## 2026-11-24, Codex (GPT-6) — second full Firefox audit
+
+- **#198 · P2 · verified.** The address band reserved 68 px on the physical left even in RTL, with the label and popup anchored to that side. The band, label separator, expanded field and Home separator now follow inline direction. The live RTL probe measured 68 px right padding, a zero right inset and a 1 px left separator. The LTR whole-pixel suite retained its baseline.
+- **#199 · P1 · verified.** Uninstall could return the entire pre-v1 prefs file when an upgrade had adopted a pref the user changed between installs. It now checks the saved values from the time of adoption before restoring the whole file. Three end-to-end tests restored the user's value with the pref applied, the file empty or the file missing.
+- **#200 · P1 · verified.** Backup verification missed removed empty directories and permission changes. New backups record entry types and modes as well as file hashes. Older backups still check their original Platinum entry against saved metadata. Install refuses to replace a nonempty state directory whose records are missing.
+- **#201 · P2 · verified.** Deduplicating XDG and legacy entries discarded the install-default flag when it was supplied by the second registry. A malformed registry could also block undo despite valid installation records. Discovery now merges default flags, skips unreadable registries with a diagnostic and ignores invalid relative paths marked absolute. Both discovery and recorded-profile undo passed.
+- **#202 · P1 · verified.** The browser test launcher recursively removed a caller-supplied profile path before launch. Each default run now has a private profile. An explicit path must resolve under `dev/build/`, and fresh runs refuse an existing directory. Both reuse modes refused an external throwaway directory and left it intact.
+- **#203 · P2 · verified.** The selector checker counted arbitrary hash tokens in Firefox sources as element IDs and silently skipped a missing archive if another was available. It now requires all configured archives and checks ID attributes and DOM API references. A color literal used as an ID fails the negative control. All 35 shipped IDs and one shadow part passed.
+- **#204 · P2 · verified.** Counting lavender pixels across the desktop allowed the keyboard-focus screenshot check to pass on unrelated chrome. The corrected verifier compares the exact two-pixel rectangle with and without the Home button's focus lock. Substituting the unfocused capture failed only this check (`dev/build/firefox-focus-negative.OO3MUt`). The installer smoke test now checks the compositor exit status and reads the capture from the current run.
+
+Tested on Firefox 160.0.1 under nested Wayland. The five suites passed 207/207 across M1 (46), M3 (34), M4 (34), M5 (32) and M6 (61). Evidence directories under `dev/build/` are `firefox-m1.BUj4KT`, `firefox-m3.djALIB`, `firefox-m4.uNgwwa`, `firefox-m5.Tk87Xu`, and `firefox-m6.ljb9cl`. M2 regenerated all eight mockups and four comparison sheets. RTL verification forced the chrome direction in the sandbox. Translated labels, other Firefox versions and the user's live desktop were outside this run.
+
+## 2026-11-24, Codex (GPT-6) — independent Firefox audit
+
+Reviewed the theme, browser probes and profile lifecycle on Firefox 160.0.1 against the working tree over `ca8ac31`.
+
+- **#192 · P2 · verified.** The inactive-window tab rule lost to the active rule in the CSS cascade. The test cleared its focus locks before reading live computed styles and treated a missing bookmark as a pass. With the old selector, the corrected probe measured a solid outline in a genuinely inactive window (`dev/build/firefox-negative.QUNdAA`). The corrected selector yields no outline. The active 2 px lavender ring follows `docs/REFERENCE.md` and `reference/help-viewer.png`.
+- **#193 · P1 · verified.** Text-mode reads normalized CRLF in existing CSS, JavaScript and prefs. The installer also moved a standalone BOM and undo guessed how many separator newlines to strip. Profile reads now preserve bytes, the BOM stays first, and undo removes the recorded separator. Tests compare exact bytes after outside edits, reinstall and migration from an older install.
+- **#194 · P1 · verified.** Rollback of an interrupted reinstall could discard outside edits or edited managed files. Pending manifests and marker blocks are now journaled before publishing. Undo checks the actual blocks and file hashes and recognizes completed writes after interruption. Tests cover conflicts, outside edits, directory swaps and the final backup archive move.
+- **#195 · P2 · verified.** Moving a pre-existing theme directly into XDG state failed across filesystems. Publication and restoration now stage renames on the profile filesystem, using the verified backup. A real cross-mount install/undo round trip preserved the original tree and modes.
+- **#196 · P1 · verified.** Prefix-based cleanup removed unrelated files with installer-looking names. Cleanup now targets the staging directory named in the journal. Invalid managed file types and replaced marker files are detected before updates. A throwaway profile retained its own `.macos9-ff-tmp.personal` through install, reinstall and undo.
+- **#197 · P1 · verified.** Opening the state lock truncated its target, and final cleanup could unlink another installer's active lock inode. Install and undo reject symlinked lock files, open the lock without truncating and retain the inode between runs. Tests covered lock contention and symlink refusal.
+
+**Verification.** M1 46/46 (`firefox-m1.5cE6Rg`), M3 34/34 (`firefox-m3.CmKtTG`), M4 34/34 (`firefox-m4.VcySMQ`), M5 31/31 (`firefox-m5.5R2fbr`), M6 54/54 (`firefox-m6.q72g0P`). Evidence directories are under `dev/build/`. The selector checker found 35 IDs and one shadow part in the installed archives. Testing used disposable profiles and nested Wayland, including a real installed-profile cold launch and undo. User visual review and other Firefox versions remain unverified.
+
+## 2026-11-24, Antigravity (Gemini 4 Carbon) — Firefox Platinum Lavender release check and audit (Milestone 7)
+
+Audited: `firefox/` (`firefox/chrome/platinum/*.css`, `firefox/install.sh`, `firefox/uninstall.sh`, `firefox/profile_ops.py`, `firefox/version.json`, `firefox/README.md`), `tools/check-firefox-selectors.py`, `dev/firefox-test.sh`, `dev/check-firefox-m{1,3,4,5,6}.sh`, and `README.md`, over `ca8ac31` (working tree).
+Reference: `reference/ie5-window-blank.png` (layout guide per `docs/FIREFOX-PLAN.md` fidelity target: inspired by IE5 Mac, not a 1:1 pixel clone) and `docs/REFERENCE.md` (exact Platinum surface `#DDDDDD`/`#EEEEEE`/`#CCCCCC`, `ToolNormal` bevel `#666666`/`#333333`/`#FFFFFF`/`#888888`, pressed `#666666` with `#FFFFFF` ink, `2 px` `#6666CC` focus ring, `#CCCCFF` selection, `#333399` menu highlight, and `#777777` disabled/inactive text).
+
+Three pre-release findings were identified, fixed in the working tree, and covered by regression checks:
+
+- **#189 · P2 · fixed.** Under `&:-moz-window-inactive` in `firefox/chrome/platinum/bars-states.css`, `outline: none !important` was applied only to `#urlbar > .urlbar-background`, leaving bright `2 px` `#6666CC` `:focus-visible` / `:focus` outlines visible on toolbar buttons, Favorites bar items, tabs, and Find bar controls when a Firefox window became inactive (violating Mac OS 9 inactive window behavior, cf. #182). Added inactive outline suppression across all interactive chrome controls and verified in a real deactivated Wayland window (`dev/build/firefox-m4.2VHMe7`, `inactiveHomeOutline = inactiveBmOutline = inactiveTabOutline = inactiveUrlOutline = "none"`).
+- **#190 · P3 · fixed.** Secondary chrome buttons (`#TabsToolbar .toolbarbutton-1`, `.tab-close-button`, `#vertical-tabs-newtab-button`, `#sidebar-switcher-target`, `#sidebar-close`, and `findbar` previous/next/close buttons) relied only on inherited CSS variables instead of explicit `2 px` `#6666CC` `:focus-visible` rules. Added explicit `2 px solid var(--m9-lav-focus)` `:focus-visible` rules in `tabs-sidebar.css` and `bars-states.css` and verified `#tabs-newtab-button` and `.findbar-find-next` outlines in `dev/check-firefox-m5.sh` (`dev/build/firefox-m5.6HXhws`, **31/31**).
+- **#191 · P3 · fixed.** Two edge cases in `firefox/profile_ops.py` and missing root `README.md` documentation: (a) if an install crashed right after `user_js` (`existing_state` still absent) and the user edited inside the `user.js` marker block before re-running `firefox/install.sh`, `rec_ujs_block` defaulted to `None` and skipped the inner-marker conflict check; (b) on a brand-new profile with no pre-existing `prefs.js`, if `prefs.js` later contained only managed prefs, undo left a 0-byte `prefs.js` instead of unlinking it; and (c) root `README.md` and `firefox/README.md` lacked a "Known limitations" summary for the optional Firefox theme. Fixed all three, stabilized the cold Wayland teardown check in `dev/firefox-m6/test_suite.py` with a completion sentinel + `prefs.js` flush wait, and verified in `dev/check-firefox-m6.sh` (`dev/build/firefox-m6.235YJD`, **41/41**).
+
+### Checks
+
+- Legal & repo hygiene: zero Apple or Microsoft logos, icons, cursors, fonts, or bitmaps; neutral `platinum` / `--m9-*` identifiers; `git status` clean of `reference/` and `dev/build/`.
+- Static & selector validation: `bash -n` on all 9 Firefox shell scripts, `python3 -I -m py_compile` on all 12 Python modules, `git diff --check` clean; `tools/check-firefox-selectors.py` passed (`35/35` `#id` selectors and `1/1` `::part()` selector verified across 1,904 files in `/usr/lib/firefox/browser/omni.ja` and `/usr/lib/firefox/omni.ja`; Firefox `160.0.1` inside tested `160..160`).
+- Firefox suites (all in isolated nested `kwin_wayland --virtual` + throwaway `HOME`/`XDG_*`, host `~/.mozilla`, `~/.config/mozilla`, and `~/.local/state` verified untouched):
+  - `dev/check-firefox-m1.sh`: **46/46 PASS** (`dev/build/firefox-m1.iJ3Ool`) — cold `userChrome.css` load + `stylesheets=false` negative control, exact KWin Platinum SSD join (`#999999` → `#000000` → `#FFFFFF`), light-DOM/Shadow-DOM inventory, full-width two-row URL bar wrap without false overflow, `520 px` real overflow, Customize Mode, and Nova theme/dark/HighContrast gating.
+  - `dev/check-firefox-m3.sh`: **34/34 PASS** (`dev/build/firefox-m3.FopVHl`) — whole-pixel row sampling across the 42 px pinstriped toolbar (`#DEDEDE`/`#CCCCCC`/`#E8E6E8`), 26 px Deep Lavender address tube (`26/26` discrete rows), and 24 px Favorites bar; `ToolNormal` hover bevel, `#666666`/white pressed state, `2 px` `#6666CC` address focus ring + `#CCCCFF` selection, and opaque Platinum `.urlbarView`.
+  - `dev/check-firefox-m4.sh`: **34/34 PASS** (`dev/build/firefox-m4.2VHMe7`) — live-switchable `1A` horizontal and `1C` vertical Platinum tabs, `5A` permanent 16 px status band + fullscreen/popup suppression, neutral Platinum Lavender orb/barber-pole activity indicator, Platinum menubar/`menupopup`/`#appMenu-popup`, Find & Notification bars, legacy/revamped sidebars, real `:-moz-window-inactive` flattening + focus suppression (#189), dark Private window delegation, and theme gating.
+  - `dev/check-firefox-m5.sh`: **31/31 PASS** (`dev/build/firefox-m5.6HXhws`) — selector/version negative controls, `2 px` `#6666CC` keyboard focus across 8 chrome control types (#190), and `150%` (`dpr=1.5`) / `200%` (`dpr=2.0`) `kscreen-doctor` output scaling on a `2400×1600` virtual KWin with zero button or bookmark clipping.
+  - `dev/check-firefox-m6.sh`: **41/41 PASS** (`dev/build/firefox-m6.235YJD`) — XDG & `~/.mozilla` `profiles.ini` `[Install*]` `Default=` precedence, interactive PTY + `--profile`/`--list`/`--dry-run`, `lock` symlink & live `.parentlock` `fcntl`/`flock` refusal, symlink refusal, journaled SHA-256 backup, `@charset`/`@namespace` ordering, byte-for-byte undo (including displaced foreign `chrome/platinum`), post-install user edits outside markers, conflict refusal, reinstall & pref-retiring upgrade, fault-injected crash recovery across 8 boundaries (#191), two-profile isolation, and live cold launch + post-session `prefs.js` undo.
+- Shared project regression suites: `dev/check-style.sh` **135/135 PASS** (0 differing pixels), `dev/check-quick.sh` **29/29 PASS**, `dev/test_icons_phase1.py` **80/80 PASS**, `dev/test-install.sh` **727/727 PASS**.
+
+### Limits
+
+- Verified in headless nested `kwin_wayland --virtual` and throwaway `HOME` directories against Firefox `160.0.1`; nothing has been installed into the user's real `~/.config/mozilla/firefox` profile yet, and the user has not yet reviewed the live installed Firefox window on their desktop monitors.
+- By design (`docs/FIREFOX-PLAN.md`), layout is IE5-inspired rather than pixel-diffed against `reference/ie5-window-blank.png`; Firefox 160's revamped `<sidebar-main>` Shadow DOM launcher buttons cannot show IE5 rotated vertical text labels via `userChrome.css`, Private Browsing windows keep Firefox's dark Private theme, and web-page content / `widget.non-native-theme` overlay scrollbars are left untouched.
 
 ## 2026-11-24, Codex (GPT-6) — re-audit the GTK 4 initial control fixes
 

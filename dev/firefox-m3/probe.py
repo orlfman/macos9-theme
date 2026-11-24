@@ -70,11 +70,15 @@ def main() -> int:
               const backR = back.getBoundingClientRect();
               const backCS = getComputedStyle(back);
               const homeCS = getComputedStyle(home);
+              const goBtn = urlEl.querySelector(".urlbar-go-button");
+              const goR = goBtn ? goBtn.getBoundingClientRect() : null;
+              const goCS = goBtn ? getComputedStyle(goBtn) : null;
 
               done({
                 navRect: { x: Math.round(navR.x), y: Math.round(navR.y), w: Math.round(navR.width), h: Math.round(navR.height) },
                 urlContainerRect: { x: Math.round(urlCR.x), y: Math.round(urlCR.y), w: Math.round(urlCR.width), h: Math.round(urlCR.height) },
                 urlbarRect: { x: Math.round(urlR.x), y: Math.round(urlR.y), w: Math.round(urlR.width), h: Math.round(urlR.height) },
+                goButton: goR ? { hit: document.elementFromPoint(goR.x + goR.width / 2, goR.y + goR.height / 2) === goBtn, display: goCS.display, x: Math.round(goR.x), y: Math.round(goR.y), w: Math.round(goR.width), h: Math.round(goR.height) } : null,
                 favRect: { x: Math.round(favR.x), y: Math.round(favR.y), w: Math.round(favR.width), h: Math.round(favR.height) },
                 homeRect: { x: Math.round(homeR.x), y: Math.round(homeR.y), w: Math.round(homeR.width), h: Math.round(homeR.height) },
                 backRect: { x: Math.round(backR.x), y: Math.round(backR.y), w: Math.round(backR.width), h: Math.round(backR.height) },
@@ -177,7 +181,10 @@ def main() -> int:
               const view = url.querySelector(".urlbarView");
               const vr = view ? view.getBoundingClientRect() : null;
               const ur = url.getBoundingClientRect();
+              const go = url.querySelector(".urlbar-go-button");
+              const rect = go.getBoundingClientRect();
               done({
+                goHit: document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2) === go,
                 isOpen: url.hasAttribute("open"),
                 breakoutExtend: url.getAttribute("breakout-extend"),
                 urlbarRect: { x: Math.round(ur.x), y: Math.round(ur.y), w: Math.round(ur.width), h: Math.round(ur.height) },
@@ -196,6 +203,29 @@ def main() -> int:
             gBrowser.selectedBrowser.focus();
             """
         )
+
+        # Submit an offline address with a pointer click on the actual Go control.
+        goal = m.exec_chrome('return gBrowser.currentURI.spec.split("#")[0] + "#go-check";')
+        m.exec_chrome("""
+            gURLBar.focus();
+            gURLBar.value = arguments[0];
+            gURLBar.inputField.dispatchEvent(new window.Event("input", { bubbles: true }));
+        """, [goal])
+        time.sleep(0.3)
+        x, y = m.exec_chrome("""
+            const r = document.querySelector("#urlbar .urlbar-go-button").getBoundingClientRect();
+            return [Math.floor(r.x + r.width / 2), Math.floor(r.y + r.height / 2)];
+        """)
+        m.send("WebDriver:PerformActions", {"actions": [{
+            "type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"},
+            "actions": [{"type": "pointerMove", "x": x, "y": y},
+                        {"type": "pointerDown", "button": 0}, {"type": "pointerUp", "button": 0}],
+        }]})
+        for _ in range(30):
+            if m.exec_chrome("return gBrowser.currentURI.spec;") == goal:
+                break
+            time.sleep(0.1)
+        go_navigated = m.exec_chrome("return gBrowser.currentURI.spec;") == goal
 
         # 5. Narrow-window real overflow + Customize Mode round-trip.
         narrow_and_customize = m.exec_chrome(
@@ -306,6 +336,7 @@ def main() -> int:
             "hover": hover_info,
             "pressed": pressed_info,
             "url_focus": url_focus_info,
+            "go_navigated": go_navigated,
             "url_open": url_open_info,
             "narrow_and_customize": narrow_and_customize,
             "theme_matrix": theme_matrix,

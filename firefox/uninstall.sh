@@ -100,7 +100,9 @@ fi
 
 if ((!dry_run && !list_only)); then
     [[ ! -L $state_dir ]] || die "$state_dir is a symbolic link; nothing was changed"
-    exec 9> "$state_dir/lock"
+    [[ ! -L $state_dir/lock && ( ! -e $state_dir/lock || -f $state_dir/lock ) ]] ||
+        die "invalid state lock at $state_dir/lock; nothing was changed"
+    exec 9>> "$state_dir/lock"
     flock -n 9 || die "another firefox/install.sh or firefox/uninstall.sh is running"
 fi
 
@@ -115,15 +117,5 @@ py_args=(
 ((list_only)) && py_args+=(--list)
 ((dry_run)) && py_args+=(--dry-run)
 
-rc=0
-python3 -I "$here/profile_ops.py" "${py_args[@]}" || rc=$?
-
-# If no installed profiles remain after a real uninstall, clean up the lock & empty state dir.
-if ((rc == 0 && !dry_run && !list_only)); then
-    exec 9>&-
-    if [[ -d $state_dir && ! -d $state_dir/profiles ]]; then
-        rm -f "$state_dir/lock"
-        rmdir "$state_dir" 2> /dev/null || true
-    fi
-fi
-exit "$rc"
+# Keep the lock inode stable across the last uninstall and a concurrent install.
+exec python3 -I "$here/profile_ops.py" "${py_args[@]}"

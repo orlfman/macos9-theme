@@ -14,8 +14,8 @@
 #   M9_WAIT              seconds before screenshot in standalone mode (default: 5)
 #   M9_DECORATION        KDecoration plugin id (default: platinum)
 #   M9_GTK_THEME         GTK theme in sandbox (default: Platinum)
-#   M9_FF_PROFILE        profile path (default: dev/build/firefox-profile)
-#   M9_KEEP_PROFILE      1 = reuse existing M9_FF_PROFILE instead of wiping it
+#   M9_FF_PROFILE        disposable profile under dev/build (default: per-run sandbox)
+#   M9_KEEP_PROFILE      1 = reuse existing M9_FF_PROFILE for another fixture run
 #   M9_USERCHROME        path to a userChrome.css file, a chrome/ folder, or
 #                        "none" (default: firefox/chrome if present, else none)
 #   M9_STYLESHEETS_PREF  true (default) or false (negative control)
@@ -36,6 +36,7 @@ project=$(dirname "$dev")
 name=${1:-test}
 url=${2:-about:blank}
 
+[[ $name =~ ^[A-Za-z0-9._-]+$ ]] || { echo "Invalid screenshot name" >&2; exit 2; }
 mkdir -p "$dev/build" "$dev/shots"
 out=$dev/shots/firefox-$name.png
 log=$dev/shots/firefox-$name.log
@@ -45,7 +46,7 @@ sandbox_root=$(mktemp -d "$dev/build/ff-sandbox-$name.XXXXXX")
 runtime_dir=$(mktemp -d)
 chmod 700 "$runtime_dir"
 cleanup() {
-    rm -rf "$runtime_dir" 2>/dev/null || true
+    rm -rf --one-file-system "$runtime_dir" 2>/dev/null || true
     if [[ ${M9_KEEP_SANDBOX:-0} != 1 ]]; then
         rm -rf "$sandbox_root" 2>/dev/null || true
     fi
@@ -96,11 +97,16 @@ gtk-application-prefer-dark-theme=0
 EOF
 
 # Prepare Firefox throwaway profile.
-profile=${M9_FF_PROFILE:-$dev/build/firefox-profile}
-if [[ ${M9_KEEP_PROFILE:-0} != 1 ]]; then
-    rm -rf "$profile"
+profile=$(realpath -m -- "${M9_FF_PROFILE:-$sandbox_root/profile}")
+if [[ $profile != "$dev/build/"* ]]; then
+    echo "Test profiles must be inside $dev/build" >&2
+    exit 2
 fi
-mkdir -p "$profile"
+if [[ -e $profile && ${M9_KEEP_PROFILE:-0} != 1 ]]; then
+    echo "A fresh test profile needs a new path: $profile" >&2
+    exit 2
+fi
+mkdir -p -- "$profile"
 
 # Parse window geometry WxH@X,Y
 win_spec=${M9_FF_WIN_SIZE:-1120x740@60,40}
@@ -143,6 +149,11 @@ intitlebar=${M9_INTITLEBAR:-0}
 sidebar_revamp=${M9_SIDEBAR_REVAMP:-true}
 vertical_tabs=${M9_VERTICAL_TABS:-false}
 bookmarks_bar=${M9_BOOKMARKS_BAR:-always}
+# Leave stock and standalone stylesheet fixtures on Firefox's own preference.
+dark_private=${M9_DARK_PRIVATE:-}
+if [[ -z $dark_private && ${M9_USERCHROME:-$project/firefox/chrome} == "$project/firefox/chrome" ]]; then
+    dark_private=false
+fi
 
 cat > "$profile/user.js" << EOF
 // Sandboxed deterministic Firefox profile for macos9-theme testing.
@@ -196,6 +207,10 @@ EOF
 user_pref("sidebar.old-sidebar.has-used", true);
 EOF
     fi
+fi
+
+if [[ -n $dark_private ]]; then
+    printf 'user_pref("browser.theme.dark-private-windows", %s);\n' "$dark_private" >> "$profile/user.js"
 fi
 
 if [[ -n ${M9_EXTRA_PREFS:-} ]]; then

@@ -1,0 +1,8 @@
+/* Platinum Lavender for Firefox — web content stylesheet.
+ * Used directly in sandbox runs (dev/firefox-test.sh). In a user profile,
+ * firefox/install.sh inserts this import inside a marker-delimited block so
+ * existing user rules stay intact below it.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+@import url("platinum/content.css");

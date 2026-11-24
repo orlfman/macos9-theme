@@ -57,6 +57,10 @@
       color: var(--m9-white) !important;
       fill: var(--m9-white) !important;
     }
+    findbar :is(.findbar-find-previous, .findbar-find-next, .findbar-closebutton):focus-visible {
+      outline: 2px solid var(--m9-lav-focus) !important;
+      outline-offset: -2px !important;
+    }
 
     /* =====================================================================
      * Notification Bars (#notifications-toolbar / notification-message)
@@ -118,6 +122,10 @@
         color: var(--m9-surface-light) !important;
         text-shadow: none !important;
       }
+      &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar > .urlbar-input-container > .urlbar-go-button {
+        opacity: 0.6 !important;
+        border-inline-start-color: var(--m9-shadow-dark) !important;
+      }
       &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar > .urlbar-background {
         outline: none !important;
         border-color: var(--m9-shadow-dark) !important;
@@ -140,13 +148,29 @@
         box-shadow: none !important;
         opacity: 0.55 !important;
       }
+
+      /* Suppress all active #6666CC focus outlines when the window is inactive */
+      #nav-bar .toolbarbutton-1:focus-visible,
+      #PersonalToolbar toolbarbutton.bookmark-item:not(.subviewbutton):focus-visible,
+      #TabsToolbar .toolbarbutton-1:focus-visible,
+      #tabbrowser-tabs[orient] .tabbrowser-tab:focus-visible .tab-background,
+      .tab-close-button:focus-visible,
+      #vertical-tabs-newtab-button:focus-visible,
+      #sidebar-switcher-target:focus-visible,
+      #sidebar-close:focus-visible,
+      findbar .findbar-textbox:focus,
+      findbar :is(.findbar-find-previous, .findbar-find-next, .findbar-closebutton):focus-visible {
+        outline: none !important;
+      }
     }
 
     /* =====================================================================
      * Private Browsing Windows ([privatebrowsingmode="temporary"])
-     * Firefox 160 (Nova) automatically switches Private windows into
-     * prefers-color-scheme: dark; our outer light-mode media gate intentionally
-     * leaves Firefox's native dark-purple Private theme intact and readable.
+     * With browser.theme.dark-private-windows = false (managed in user.js by
+     * firefox/install.sh and restored on undo), Private windows follow the
+     * active System light/dark scheme and inherit the full Platinum theme in
+     * light mode while keeping Firefox's Private mask icon on the tab strip
+     * and still respecting System Dark, High Contrast, and explicit themes.
      * ===================================================================== */
 
     /* =====================================================================

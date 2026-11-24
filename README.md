@@ -11,6 +11,8 @@ the application style (Qt Widgets and Qt Quick apps), and the Plasma side
 look). Still to come: icons, cursors, fonts, GTK, extras. Details in
 [PLAN.md](PLAN.md); open issues in [AUDIT.md](AUDIT.md).
 
+The optional [Firefox theme](#firefox-optional) is production-ready on Linux.
+
 ## Install
 
 Everything goes into your home; no root. It needs a C++ compiler, Qt 6 and
@@ -140,3 +142,36 @@ settings on its own.
 Uninstalling after applying Platinum restores your previous cursor setting.
 If the pack is still selected after that, or you picked it separately in
 Plasma, choose another cursor theme and rerun the uninstaller to remove it.
+
+### Firefox (optional)
+
+Platinum Lavender gives Firefox an Internet Explorer 5 for Mac layout, with a
+lavender address bar, beveled tabs, and a classic status bar. It is
+production-ready and tested on Firefox 160.0.1 on Linux. Use Firefox’s
+**System theme** with a light, normal-contrast desktop appearance. Private
+Browsing windows in the same profile use the same styling.
+
+**Install or update.** Close Firefox completely, then run this from the
+repository root and select the profile you want to theme. Reopen Firefox to
+load the changes.
+
+```bash
+./install.sh --firefox
+```
+
+**Vertical tabs.** Right-click the toolbar or tab strip and choose **Turn on
+Vertical Tabs**. Collapse the sidebar for an icon-only strip. In both regular
+and Private Browsing windows, the icons stay centered in their frames and
+line up with the new-tab button. Choose **Turn off Vertical Tabs** to return
+the tabs below the Favorites bar.
+
+**Uninstall.** Close Firefox, then run this command and select the profile to
+restore.
+
+```bash
+./uninstall.sh --firefox
+```
+
+Both commands accept `--list` to list profiles, `--profile "Profile Name"` to
+select one, and `--dry-run` to preview changes. See the [Firefox guide](firefox/README.md)
+for backup details, appearance settings, and compatibility checks.

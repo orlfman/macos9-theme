@@ -8,13 +8,18 @@ recorded in `docs/FINDINGS.md`), Milestone 2 (`dev/render-firefox-m2.sh`,
 8 live Firefox mockups + 4 comparison sheets in `dev/shots/firefox-m2-*.png`,
 user picks locked below: `1A+1C`, `2A`, `4A`, `5A`), Milestone 3 (`firefox/chrome/`, `dev/check-firefox-m3.sh`, **34/34 PASS**), Milestone 4
 (`firefox/chrome/platinum/{tabs-sidebar,status-activity,menus-panels,bars-states}.css`,
-`dev/check-firefox-m4.sh`, **34/34 PASS**), Milestone 5
-(`firefox/version.json`, `tools/check-firefox-selectors.py`,
-`dev/check-firefox-m5.sh`, **29/29 PASS**), and Milestone 6
+`dev/check-firefox-m4.sh`, **34/34 PASS**), Milestone 5 (`firefox/version.json`, `tools/check-firefox-selectors.py`,
+`dev/check-firefox-m5.sh`, **31/31 PASS**), Milestone 6
 (`firefox/install.sh`, `firefox/uninstall.sh`, `firefox/profile_ops.py`,
-`dev/check-firefox-m6.sh`, **40/40 PASS**). Ready for Milestone 7 (release check:
-run all Firefox suites + record in `AUDIT.md`, then user's on-screen review after
-an approved install).
+`dev/check-firefox-m6.sh`, **41/41 PASS**), and Milestone 7 release check &
+audit (**#189–191 fixed and verified** in `AUDIT.md`; all 5 Firefox suites
+`46/46`, `34/34`, `34/34`, `31/31`, `41/41` + selector check `35/35` `#id` /
+`1/1` `::part()` + project suites `135/135`, `29/29`, `80/80`, `727/727` PASS).
+The maintainer confirmed live installation and removal, and approved the Firefox theme for production on 2026-11-24. The tested Linux version is Firefox 160.0.1.
+
+The independent November 24 review covers findings #192–197 in AUDIT.md. The install/undo suite now includes CRLF and BOM preservation, upgrades from earlier installs, edits across interrupted reinstalls, two filesystem mounts, and interruptions between file replacement and journal updates.
+
+The second independent review covers #198–204 in AUDIT.md. It adds RTL address-band geometry, a two-screenshot focus check, preference adoption during upgrades, backup directory integrity and profile registry recovery.
 
 ## Fidelity target (user, 2026-11-23)
 

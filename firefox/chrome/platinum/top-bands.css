@@ -82,7 +82,7 @@
     &:not([customizing]) #home-button::after {
       content: "";
       position: absolute;
-      right: -4px;
+      inset-inline-end: -4px;
       top: 5px;
       bottom: 5px;
       width: 1px;
@@ -219,7 +219,8 @@
       height: 26px !important;
       min-height: 26px !important;
       margin: 0 !important;
-      padding: 2px 8px 2px 68px !important;
+      padding-block: 2px !important;
+      padding-inline: 68px 52px !important;
       box-sizing: border-box !important;
       align-items: center !important;
       background-color: var(--m9-lav-deep) !important;
@@ -233,19 +234,19 @@
     &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar-container::before {
       content: "Address:";
       position: absolute;
-      left: 0;
+      inset-inline-start: 0;
       top: 0;
       bottom: 0;
       width: 62px;
       display: flex;
       align-items: center;
       justify-content: flex-end;
-      padding-right: 6px;
+      padding-inline-end: 6px;
       font-size: 11px;
       font-weight: 600;
       color: var(--m9-white);
       text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
-      border-right: 1px solid var(--m9-address-sep);
+      border-inline-end: 1px solid var(--m9-address-sep);
       pointer-events: none;
     }
 
@@ -255,6 +256,7 @@
       top: 0 !important;
       min-height: 20px !important;
       margin: 0 !important;
+      overflow: visible !important;
       --urlbar-box-bgcolor: var(--m9-surface) !important;
       --urlbar-box-hover-bgcolor: var(--m9-surface-mid) !important;
       --urlbar-box-active-bgcolor: var(--m9-pressed-fill) !important;
@@ -272,8 +274,9 @@
     &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar:is([open], [breakout-extend]) {
       position: absolute !important;
       top: 2px !important;
-      left: 68px !important;
-      width: calc(100% - 76px) !important;
+      inset-inline-start: 68px !important;
+      inset-inline-end: auto !important;
+      width: calc(100% - 120px) !important;
       height: auto !important;
       z-index: 999 !important;
     }
@@ -311,10 +314,48 @@
     }
 
     &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar > .urlbar-input-container {
+      position: relative !important;
+      overflow: visible !important;
       height: 20px !important;
       min-height: 20px !important;
       padding: 0 3px !important;
       border: 0 !important;
+    }
+
+    /* IE5-style clickable "> go" button in the right end of the Deep Lavender tube,
+       using Firefox's real .urlbar-go-button command target. */
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar > .urlbar-input-container > .urlbar-go-button {
+      display: block !important;
+      visibility: visible !important;
+      position: absolute !important;
+      inset-inline-end: -52px !important;
+      top: -2px !important;
+      width: 48px !important;
+      height: 24px !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-sizing: border-box !important;
+      border: 0 !important;
+      border-inline-start: 1px solid var(--m9-address-sep) !important;
+      border-radius: 0 !important;
+      background-color: transparent !important;
+      transform: none !important;
+      cursor: pointer !important;
+      content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='24' viewBox='0 0 48 24'%3E%3Cpolygon points='10,9 15,12.5 10,16' fill='%23000000' fill-opacity='0.55'/%3E%3Cpolygon points='10,8 15,11.5 10,15' fill='%23FFFFFF'/%3E%3Ctext x='19' y='16.5' font-family='sans-serif' font-size='11' font-weight='700' fill='%23000000' fill-opacity='0.55'%3Ego%3C/text%3E%3Ctext x='19' y='15.5' font-family='sans-serif' font-size='11' font-weight='700' fill='%23FFFFFF'%3Ego%3C/text%3E%3C/svg%3E") !important;
+    }
+
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar > .urlbar-input-container > .urlbar-go-button:hover {
+      background-color: rgba(255, 255, 255, 0.14) !important;
+      box-shadow:
+        inset 1px 1px 0 rgba(255, 255, 255, 0.45),
+        inset -1px -1px 0 rgba(0, 0, 0, 0.45) !important;
+    }
+
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar > .urlbar-input-container > .urlbar-go-button:hover:active {
+      background-color: #1B1B52 !important;
+      box-shadow:
+        inset 1px 1px 0 rgba(0, 0, 0, 0.65),
+        inset -1px -1px 0 rgba(153, 153, 255, 0.45) !important;
     }
 
     #urlbar-input {

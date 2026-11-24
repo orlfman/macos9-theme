@@ -14,6 +14,8 @@
 # sort it out and run this again. Finished steps are never done twice.
 #
 # usage: uninstall.sh [--dry-run]
+#        uninstall.sh --firefox [--profile PROFILE] [--list] [--dry-run]
+#   --firefox  choose Firefox-only mode first, then pass Firefox options
 #   --dry-run  only show what would be done
 #   -h, --help show this help
 #
@@ -21,6 +23,11 @@
 set -euo pipefail
 program=uninstall.sh
 here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+
+if [[ ${1:-} == --firefox ]]; then
+    shift
+    exec "$here/firefox/uninstall.sh" "$@"
+fi
 
 usage() {
     sed -n '/^# usage:/,/^# *-h, --help/s/^# \{0,1\}//p' "$0"

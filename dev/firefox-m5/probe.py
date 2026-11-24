@@ -114,6 +114,8 @@ def main() -> int:
               res.shiftTabInNavBar = !!document.activeElement && !!document.activeElement.closest("#nav-bar");
               const home = document.getElementById("home-button");
               InspectorUtils.addPseudoClassLock(home, ":focus-visible");
+              const rect = home.getBoundingClientRect();
+              res.homeSize = [rect.width, rect.height];
               const hcs = getComputedStyle(home);
               res.toolbarButton = { width: hcs.outlineWidth, color: hcs.outlineColor };
 
@@ -129,7 +131,7 @@ def main() -> int:
               const tcs = getComputedStyle(tab.querySelector(".tab-background"));
               res.horizontalTab = { width: tcs.outlineWidth, color: tcs.outlineColor };
 
-              // (e) Find bar real focus
+              // (e) Find bar real focus + secondary buttons (:focus-visible)
               await gBrowser.getFindBar();
               gFindBar.open();
               gFindBar._findField.focus();
@@ -137,12 +139,27 @@ def main() -> int:
               const fcs = getComputedStyle(gFindBar._findField);
               res.findbarInput = { width: fcs.outlineWidth, color: fcs.outlineColor };
 
+              const newTabBtn = document.getElementById("tabs-newtab-button");
+              InspectorUtils.addPseudoClassLock(newTabBtn, ":focus-visible");
+              const ntcs = getComputedStyle(newTabBtn);
+              res.newTabButton = { width: ntcs.outlineWidth, color: ntcs.outlineColor };
+              InspectorUtils.clearPseudoClassLocks(newTabBtn);
+
+              const fbNext = gFindBar.querySelector(".findbar-find-next");
+              InspectorUtils.addPseudoClassLock(fbNext, ":focus-visible");
+              const fbncs = getComputedStyle(fbNext);
+              res.findbarButton = { width: fbncs.outlineWidth, color: fbncs.outlineColor };
+              InspectorUtils.clearPseudoClassLocks(fbNext);
+
               done(res);
             })();
             """,
             async_mode=True,
         )
         shoot(shots / "firefox-m5-keyboard-focus.png", settle=0.2)
+
+        m.exec_chrome('InspectorUtils.clearPseudoClassLocks(document.getElementById("home-button"));')
+        shoot(rdir / "home-without-focus.png", settle=0.2)
 
         # Also test vertical 1C tab keyboard focus!
         kb_vtab = m.exec_chrome(
@@ -231,6 +248,24 @@ def main() -> int:
                 """
             )
 
+        rtl = m.exec_chrome("""
+            const root = document.documentElement;
+            const previous = root.style.direction;
+            root.style.direction = "rtl";
+            try {
+              const band = document.getElementById("urlbar-container");
+              const label = getComputedStyle(band, "::before");
+              const go = band.querySelector(".urlbar-go-button");
+              const r = go.getBoundingClientRect();
+              const goOnLeft = r.left >= band.getBoundingClientRect().left &&
+                               r.right <= document.getElementById("urlbar").getBoundingClientRect().left;
+              return {goOnLeft, goHit: document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === go,
+                      rightPadding: getComputedStyle(band).paddingRight,
+                      labelRight: label.right, separator: label.borderLeftWidth};
+            } finally {
+              root.style.direction = previous;
+            }
+        """)
         scales = {}
         scales["100"] = {"kscreen": "", "metrics": measure_scale_metrics()}
 
@@ -254,6 +289,7 @@ def main() -> int:
             "output_name": out_name,
             "keyboard_focus": kb_focus,
             "scales": scales,
+            "rtl": rtl,
         }
         (rdir / "m5-report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
         return 0

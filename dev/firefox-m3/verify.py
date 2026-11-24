@@ -197,6 +197,16 @@ def main() -> int:
             f"back={g['backColor']}/{g['backFill']} home={g['homeColor']}/{g['homeFill']}",
         )
         s.check("geom-address-band-26px-full-width", g["urlContainerRect"]["h"] == 26 and g["urlContainerRect"]["w"] == g["navRect"]["w"] and g["overflowingWide"] is False, f"urlC={g['urlContainerRect']} nav={g['navRect']}")
+        s.check("go-click-navigates-to-entered-address", rep["go_navigated"])
+        gb = g.get("goButton") or {}
+        s.check(
+            "geom-address-band-go-button-visible",
+            gb.get("hit") is True and gb.get("display") == "block"
+            and gb.get("w") == 48
+            and gb.get("h") == 24
+            and gb.get("x", 0) >= g["urlbarRect"]["x"] + g["urlbarRect"]["w"],
+            str(gb),
+        )
         s.check("geom-favorites-bar-24px", g["favRect"]["h"] == 24, f"fav={g['favRect']}")
 
         hv = rep["hover"]
@@ -218,7 +228,7 @@ def main() -> int:
         uo = rep["url_open"]
         s.check(
             "urlbar-autocomplete-dropdown-visible",
-            uo["isOpen"] is True and uo["viewRect"] is not None and uo["viewRect"]["h"] > 40 and uo["viewRect"]["w"] >= 900,
+            uo["goHit"] is True and uo["isOpen"] is True and uo["viewRect"] is not None and uo["viewRect"]["h"] > 40 and uo["viewRect"]["w"] >= 900,
             str(uo),
         )
 

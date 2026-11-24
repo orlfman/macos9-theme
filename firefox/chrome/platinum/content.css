@@ -1,0 +1,16 @@
+/* Platinum Lavender scrollbar tint for light-mode web pages.
+ * Loaded via chrome/userContent.css. Gated on light mode without contrast or
+ * forced-colors overrides and without !important so dark-mode and
+ * custom-scrollbar web apps keep their own styling.
+ *
+ * Measured Mac OS 9.2.2 Platinum Lavender values (docs/REFERENCE.md):
+ *   scrollbar thumb fill: #9999FF
+ *   scrollbar track fill: #CCCCCC
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+@media (prefers-color-scheme: light) and (not (prefers-contrast)) and (not (forced-colors)) {
+  :root {
+    scrollbar-color: #9999FF #CCCCCC;
+  }
+}

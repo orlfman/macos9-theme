@@ -120,6 +120,10 @@
       color: var(--m9-white) !important;
       fill: var(--m9-white) !important;
     }
+    .tab-close-button:focus-visible {
+      outline: 2px solid var(--m9-lav-focus) !important;
+      outline-offset: -2px !important;
+    }
 
     #TabsToolbar #tabs-newtab-button,
     #TabsToolbar #alltabs-button {
@@ -127,6 +131,10 @@
       --toolbarbutton-padding-inner: 2px !important;
       fill: var(--m9-lav-deep) !important;
       color: var(--m9-lav-deep) !important;
+    }
+    #TabsToolbar .toolbarbutton-1:focus-visible {
+      outline: 2px solid var(--m9-lav-focus) !important;
+      outline-offset: -2px !important;
     }
     #TabsToolbar .toolbarbutton-1 > .toolbarbutton-icon {
       border-radius: 0 !important;
@@ -155,6 +163,7 @@
       box-shadow:
         inset 1px 0 0 var(--m9-white),
         inset -1px 0 0 var(--m9-shadow-bevel) !important;
+      scrollbar-color: var(--m9-lav-light) var(--m9-surface-mid) !important;
     }
 
     sidebar-main {
@@ -184,6 +193,15 @@
       min-height: 22px !important;
       margin: 0 !important;
       outline: none !important;
+    }
+
+    /* Firefox sizes the icon-only rail from the tab width and its inline
+       margins. Keep the frame and the new-tab button on that same grid. */
+    #vertical-tabs:has(#tabbrowser-tabs[orient="vertical"]:not([expanded])) {
+      padding-inline: 0 !important;
+    }
+    #tabbrowser-tabs[orient="vertical"]:not([expanded]) .tab-background {
+      margin-inline: var(--tab-margin-inline-inner) !important;
     }
 
     #tabbrowser-tabs[orient="vertical"] .tabbrowser-tab:hover:not([selected]) .tab-background {
@@ -237,6 +255,10 @@
       box-shadow:
         inset 1px 1px 0 var(--m9-white),
         inset -1px -1px 0 var(--m9-shadow-dark) !important;
+    }
+    #vertical-tabs-newtab-button:focus-visible {
+      outline: 2px solid var(--m9-lav-focus) !important;
+      outline-offset: -2px !important;
     }
 
     /* =====================================================================
@@ -298,6 +320,11 @@
       border: 1px solid var(--m9-black) !important;
       color: var(--m9-white) !important;
       fill: var(--m9-white) !important;
+    }
+    #sidebar-switcher-target:focus-visible,
+    #sidebar-close:focus-visible {
+      outline: 2px solid var(--m9-lav-focus) !important;
+      outline-offset: -2px !important;
     }
 
     .sidebar-splitter {

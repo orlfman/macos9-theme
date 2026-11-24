@@ -36,7 +36,8 @@ Covers:
          uninstall_user_js: install refuses during unfinished uninstall, and
          rerun uninstall completes byte-for-byte without redoing finished steps.
   6. Profile-in-use & concurrency locks:
-       - dangling Firefox 'lock' symlink (127.0.0.1:+pid) -> refused
+       - exited loopback PID permits install and undo, while live, remote,
+         and unrecognized lock targets are refused
        - active POSIX fcntl.lockf lock on .parentlock -> refused
        - concurrent state flock held -> refused
   7. Two profiles + [Install*] Default= precedence over [Profile*] Default=1:
@@ -59,11 +60,14 @@ import os
 import pathlib
 import pty
 import select
+import runpy
+from contextlib import ExitStack
 import shutil
 import stat
 import subprocess
 import sys
 import time
+import tempfile
 from typing import Any
 from PIL import Image
 
@@ -208,6 +212,20 @@ def main() -> int:
     s = Suite()
 
     # =========================================================================
+    shortcut_home = work / "root-shortcuts"
+    profile = make_xdg_single_profile(shortcut_home, name="Test Profile")
+    original = snapshot_tree(profile)
+    options = ["--firefox", "--profile", "Test Profile"]
+    install = [str(repo / "install.sh"), *options]
+    undo = [str(repo / "uninstall.sh"), *options]
+    preview = run_cmd([*install, "--dry-run"], shortcut_home)
+    s.check("root-firefox-preview", preview.returncode == 0 and snapshot_tree(profile) == original)
+    installed = run_cmd(install, shortcut_home)
+    s.check("root-firefox-install", installed.returncode == 0 and (profile / "chrome/platinum/platinum.css").is_file())
+    removed = run_cmd(undo, shortcut_home)
+    s.check("root-firefox-undo", removed.returncode == 0 and snapshot_tree(profile) == original
+            and not (shortcut_home / ".local/state/macos9-theme").exists())
+
     # 1. Fresh profile + unlocked 0-byte .parentlock + dry-run + PTY prompt + undo
     # =========================================================================
     h1 = work / "case1-fresh"
@@ -239,7 +257,9 @@ def main() -> int:
         "c1-pty-interactive-install-succeeds",
         rc_pty_i == 0
         and (p1 / "chrome/platinum/platinum.css").is_file()
+        and (p1 / "chrome/platinum/content.css").is_file()
         and '@import url("platinum/platinum.css");' in (p1 / "chrome/userChrome.css").read_text(encoding="utf-8")
+        and '@import url("platinum/content.css");' in (p1 / "chrome/userContent.css").read_text(encoding="utf-8")
         and 'user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);' in (p1 / "user.js").read_text(encoding="utf-8"),
     )
 
@@ -307,6 +327,7 @@ def main() -> int:
     snap2a_before = snapshot_tree(p2a)
     r2a_i = run_cmd([install_sh, "--profile", "1"], h2a)
     uc2a_txt = (p2a / "chrome/userChrome.css").read_text(encoding="utf-8")
+    ucnt2a_txt = (p2a / "chrome/userContent.css").read_text(encoding="utf-8")
     # Verify @charset stays first, @import comes BEFORE @namespace, and user rules stay after!
     s.check(
         "c2a-charset-first-import-before-namespace-and-user-rules-kept",
@@ -314,7 +335,8 @@ def main() -> int:
         and uc2a_txt.startswith('@charset "UTF-8";\n')
         and uc2a_txt.index('@import url("platinum/platinum.css");') < uc2a_txt.index("@namespace")
         and "#PersonalToolbar { border-inline: 0; }" in uc2a_txt
-        and (p2a / "chrome/userContent.css").read_bytes() == b"body { background: #fafafa; }\n"
+        and '@import url("platinum/content.css");' in ucnt2a_txt
+        and ucnt2a_txt.index('@import url("platinum/content.css");') < ucnt2a_txt.index("body { background: #fafafa; }")
         and (p2a / "chrome/img/dot.bin").is_file(),
     )
     # Simulate Firefox applying user.js into prefs.js:
@@ -337,6 +359,8 @@ def main() -> int:
     run_cmd([install_sh, "--profile", "1"], h2b)
     with (p2b / "chrome/userChrome.css").open("ab") as f:
         f.write(b"\n/* user post-install tweak */\n#statuspanel { opacity: 0.95; }\n")
+    with (p2b / "chrome/userContent.css").open("ab") as f:
+        f.write(b"\n/* user content tweak */\na { text-decoration-thickness: 2px; }\n")
     with (p2b / "user.js").open("ab") as f:
         f.write(b'\nuser_pref("my.later.user.pref", 777);\n')
     (p2b / "prefs.js").write_bytes(
@@ -352,6 +376,7 @@ def main() -> int:
 
     r2b_u = run_cmd([uninstall_sh, "--profile", "1"], h2b)
     uc2b_after = (p2b / "chrome/userChrome.css").read_text(encoding="utf-8")
+    ucnt2b_after = (p2b / "chrome/userContent.css").read_text(encoding="utf-8")
     ujs2b_after = (p2b / "user.js").read_text(encoding="utf-8")
     pjs2b_after = (p2b / "prefs.js").read_text(encoding="utf-8")
     s.check(
@@ -361,6 +386,9 @@ def main() -> int:
         and uc2b_after.startswith('@charset "UTF-8";\n@namespace')
         and "#PersonalToolbar { border-inline: 0; }" in uc2b_after
         and "#statuspanel { opacity: 0.95; }" in uc2b_after
+        and "macos9-theme-firefox" not in ucnt2b_after
+        and "body { background: #fafafa; }" in ucnt2b_after
+        and "a { text-decoration-thickness: 2px; }" in ucnt2b_after
         and "macos9-theme-firefox" not in ujs2b_after
         and 'user_pref("privacy.resistFingerprinting", false);' in ujs2b_after
         and 'user_pref("my.later.user.pref", 777);' in ujs2b_after
@@ -391,6 +419,20 @@ def main() -> int:
     )
     (p3 / "chrome/userChrome.css").write_bytes(uc_good)
 
+    # 3a2. Edit inside userContent.css marker block
+    ucnt_good = (p3 / "chrome/userContent.css").read_bytes()
+    ucnt_edited_inside = ucnt_good.replace(
+        b'@import url("platinum/content.css");',
+        b'@import url("platinum/content.css");\nbody { color: lime; }',
+    )
+    (p3 / "chrome/userContent.css").write_bytes(ucnt_edited_inside)
+    r3_ucnt = run_cmd([uninstall_sh, "--profile", "1"], h3)
+    s.check(
+        "c3a2-conflict-inside-usercontent-markers-refused-and-preserved",
+        r3_ucnt.returncode == 1 and (p3 / "chrome/userContent.css").read_bytes() == ucnt_edited_inside,
+    )
+    (p3 / "chrome/userContent.css").write_bytes(ucnt_good)
+
     # 3b. Corrupted/unclosed marker in user.js
     ujs_good = (p3 / "user.js").read_bytes()
     ujs_corrupt = ujs_good.replace(b"/* <<< macos9-theme-firefox end <<< */", b"")
@@ -401,6 +443,14 @@ def main() -> int:
         r3_ujs.returncode == 1 and (p3 / "user.js").read_bytes() == ujs_corrupt,
     )
     (p3 / "user.js").write_bytes(ujs_good)
+
+    js_file = p3 / "user.js"
+    saved = js_file.read_bytes()
+    js_file.write_bytes(b"// replacement preferences\n")
+    before = snapshot_tree(p3)
+    refused = run_cmd([install_sh, "--profile", "1"], h3)
+    s.check("reinstall-refuses-replaced-user-js", refused.returncode == 1 and snapshot_tree(p3) == before)
+    js_file.write_bytes(saved)
 
     # 3c. User added a file inside chrome/platinum/
     extra_css = p3 / "chrome/platinum/user-added.css"
@@ -474,10 +524,147 @@ def main() -> int:
         r4_u.returncode == 0 and snapshot_tree(p4) == snap4_before,
     )
 
+    # 4d. Legacy install (before userContent.css management) upgrades, rolls back mid-upgrade,
+    #     and uninstalls cleanly whether or not chrome/userContent.css existed pre-install!
+    def simulate_legacy_pre_usercontent(home: pathlib.Path, prof: pathlib.Path, orig_ucnt: bytes | None) -> None:
+        state_file = next((home / ".local/state/macos9-theme-firefox/profiles").glob("*/state.json"))
+        st = json.loads(state_file.read_text(encoding="utf-8"))
+        for k in ("installed_usercontent_block", "installed_usercontent_chunk", "untouched_usercontent_sha256"):
+            st.pop(k, None)
+        state_file.write_text(json.dumps(st, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        bak_meta_f = state_file.parent / "backup/BACKUP_META.json"
+        bm = json.loads(bak_meta_f.read_text(encoding="utf-8"))
+        bm["meta"].pop("userContent_existed", None)
+        bm["meta"].pop("userContent_mode", None)
+        bak_meta_f.write_text(json.dumps(bm, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        ucnt_f = prof / "chrome/userContent.css"
+        if orig_ucnt is None:
+            if ucnt_f.exists():
+                ucnt_f.unlink()
+        else:
+            ucnt_f.write_bytes(orig_ucnt)
+
+    h4d, p4d = setup_customized_home("case4d-legacy-usercontent-upgrade")
+    snap4d_before = snapshot_tree(p4d)
+    orig_ucnt_4d = (p4d / "chrome/userContent.css").read_bytes()
+    run_cmd([install_sh, "--profile", "1"], h4d)
+    simulate_legacy_pre_usercontent(h4d, p4d, orig_ucnt_4d)
+    # Interrupted upgrade crashing right before writing userContent.css -> immediate uninstall must roll back cleanly!
+    r4d_crash = run_cmd([install_sh, "--profile", "1"], h4d, {"M9_FF_FAULT_AFTER": "userChrome"})
+    r4d_rb = run_cmd([uninstall_sh, "--profile", "1"], h4d)
+    s.check(
+        "c4d-legacy-upgrade-interrupted-before-usercontent-rolls-back-byte-for-byte",
+        r4d_crash.returncode == 99 and r4d_rb.returncode == 0 and snapshot_tree(p4d) == snap4d_before,
+    )
+    # Full legacy upgrade -> installs userContent.css cleanly -> later undo restores byte-for-byte!
+    run_cmd([install_sh, "--profile", "1"], h4d)
+    simulate_legacy_pre_usercontent(h4d, p4d, orig_ucnt_4d)
+    r4d_up = run_cmd([install_sh, "--profile", "1"], h4d)
+    has_ucnt_imp = '@import url("platinum/content.css");' in (p4d / "chrome/userContent.css").read_text(encoding="utf-8")
+    r4d_u = run_cmd([uninstall_sh, "--profile", "1"], h4d)
+    s.check(
+        "c4e-legacy-pre-usercontent-upgrade-and-undo-byte-for-byte",
+        r4d_up.returncode == 0 and has_ucnt_imp and r4d_u.returncode == 0 and snapshot_tree(p4d) == snap4d_before,
+    )
+    # Uninstalling a legacy install directly (without upgrading first) leaves unmarked userContent.css alone!
+    run_cmd([install_sh, "--profile", "1"], h4d)
+    simulate_legacy_pre_usercontent(h4d, p4d, orig_ucnt_4d)
+    r4d_direct_u = run_cmd([uninstall_sh, "--profile", "1"], h4d)
+    s.check(
+        "c4f-legacy-pre-usercontent-direct-uninstall-byte-for-byte",
+        r4d_direct_u.returncode == 0 and snapshot_tree(p4d) == snap4d_before,
+    )
+
     # =========================================================================
+    for scenario, initial, adopted in (("created", None, b""), ("deleted", b"old", None),
+                                       ("edited", b"old", b"/* newer */\r\n")):
+        home, profile = setup_customized_home(f"content-adoption-{scenario}")
+        css = profile / "chrome/userContent.css"
+        if initial is None:
+            css.unlink()
+        else:
+            css.write_bytes(initial)
+        run_cmd([install_sh, "--profile", "1"], home)
+        simulate_legacy_pre_usercontent(home, profile, adopted)
+        if adopted is not None:
+            css.chmod(0o600)
+        crash = run_cmd([install_sh, "--profile", "1"], home, {"M9_FF_FAULT_AFTER": "userContent"})
+        resume = run_cmd([install_sh, "--profile", "1"], home)
+        undo = run_cmd([uninstall_sh, "--profile", "1"], home)
+        restored = (not css.exists() if adopted is None else
+                    css.is_file() and css.read_bytes() == adopted and stat.S_IMODE(css.stat().st_mode) == 0o600)
+        s.check(f"content-adoption-{scenario}", crash.returncode == 99 and resume.returncode == undo.returncode == 0 and restored)
+
+    home, profile = setup_customized_home("content-adoption-conflict")
+    css = profile / "chrome/userContent.css"
+    original = css.read_bytes()
+    run_cmd([install_sh, "--profile", "1"], home)
+    simulate_legacy_pre_usercontent(home, profile, original)
+    crash = run_cmd([install_sh, "--profile", "1"], home, {"M9_FF_FAULT_AFTER": "userContent"})
+    css.write_bytes(b"/* replacement after the interruption */")
+    before = snapshot_tree(profile)
+    retry = run_cmd([install_sh, "--profile", "1"], home)
+    s.check("interrupted-adoption-preserves-replacement", crash.returncode == 99
+            and retry.returncode == 1 and snapshot_tree(profile) == before)
+
+    hb, pb = setup_customized_home("case-backup-directory-integrity")
+    (pb / "chrome/platinum/empty").mkdir()
+    run_cmd([install_sh, "--profile", "1"], hb)
+    saved = next((hb / ".local/state/macos9-theme-firefox/profiles").glob("*/backup"))
+    (saved / "chrome/platinum/empty").rmdir()
+    before = snapshot_tree(pb)
+    refused = run_cmd([uninstall_sh, "--profile", "1"], hb)
+    s.check("damaged-empty-backup-directory-refused", refused.returncode == 1 and snapshot_tree(pb) == before)
+    record = saved.parent
+    (record / "journal.json").unlink()
+    (record / "state.json").unlink()
+    # Without the marker checks as a fallback, the orphan backup still survives.
+    (pb / "chrome/userChrome.css").unlink()
+    (pb / "chrome/userContent.css").unlink()
+    (pb / "user.js").unlink()
+    before_backup = snapshot_tree(saved)
+    refused = run_cmd([install_sh, "--profile", "1"], hb)
+    s.check("orphan-backup-preserved", refused.returncode == 1 and snapshot_tree(saved) == before_backup)
+
+    hd = work / "case-duplicate-store-default"
+    pa = make_xdg_single_profile(hd, "first", "first")
+    (pa.parent / "second").mkdir()
+    with (pa.parent / "profiles.ini").open("w") as ini:
+        ini.write("[Profile0]\nPath=first\nDefault=1\n[Profile1]\nPath=second\n")
+    legacy = hd / ".mozilla/firefox"
+    legacy.mkdir(parents=True)
+    second = pa.parent / "second"
+    (legacy / "profiles.ini").write_text(f"[InstallABC]\nDefault={second}\n[Profile0]\nPath={second}\nIsRelative=0\n")
+    listed = run_cmd([install_sh, "--list"], hd)
+    s.check("duplicate-profile-retains-install-default", "[1] second (xdg, default)" in listed.stdout)
+
+    installed = run_cmd([install_sh, "--profile", "second"], hd)
+    (pa.parent / "profiles.ini").write_bytes(b"[broken")
+    undone = run_cmd([uninstall_sh, "--profile", str(second)], hd)
+    s.check("undo-works-with-damaged-profile-registry", installed.returncode == 0 and undone.returncode == 0
+            and not (second / "user.js").exists())
+
+    for idx, simulated in enumerate((b'', b'user_pref("new.key", false);\n', None)):
+        hu = work / f"case-upgrade-snapshot-{idx}"
+        pu = make_xdg_single_profile(hu)
+        prefs = pu / "prefs.js"
+        prefs.write_bytes(b"")
+        first = run_cmd([install_sh, "--profile", "1"], hu)
+        mine = b'user_pref("new.key", true);\n'
+        prefs.write_bytes(mine)
+        upgrade = run_cmd([install_sh, "--profile", "1"], hu,
+                          {"M9_FF_MANAGED_PREFS_JSON": json.dumps([["new.key", "false"]])})
+        if simulated is None:
+            prefs.unlink()
+        else:
+            prefs.write_bytes(simulated)
+        undo = run_cmd([uninstall_sh, "--profile", "1"], hu)
+        s.check(f"upgrade-restores-value-at-adoption-{hu.name}",
+                all(r.returncode == 0 for r in (first, upgrade, undo)) and prefs.read_bytes() == mine)
+
     # 5. Interrupted Install & Interrupted Undo (Fault Injection at Every Step)
     # =========================================================================
-    for fault_step in ("backup", "platinum", "userChrome", "user_js"):
+    for fault_step in ("backup", "platinum_swap", "platinum", "userChrome", "userContent", "user_js"):
         # 5a. Interrupted install -> immediate uninstall rolls back byte-for-byte
         hf_a, pf_a = setup_customized_home(f"case5-int-ins-undo-{fault_step}")
         snap_fa = snapshot_tree(pf_a)
@@ -499,7 +686,16 @@ def main() -> int:
             rf_res.returncode == 0 and rf_u.returncode == 0 and snapshot_tree(pf_b) == snap_fb,
         )
 
-    for u_fault in ("uninstall_platinum", "uninstall_userChrome", "uninstall_user_js"):
+    for u_fault in (
+        "uninstall_platinum_swap",
+        "uninstall_platinum",
+        "userChrome_before_journal",
+        "uninstall_userChrome",
+        "userContent_before_journal",
+        "uninstall_userContent",
+        "uninstall_user_js",
+        "archived_backup",
+    ):
         hu, pu = setup_customized_home(f"case5-int-{u_fault}")
         snap_u = snapshot_tree(pu)
         run_cmd([install_sh, "--profile", "1"], hu)
@@ -515,21 +711,129 @@ def main() -> int:
             and snapshot_tree(pu) == snap_u,
         )
 
-    # =========================================================================
-    # 6. Firefox Running (dangling 'lock' symlink & live .parentlock fcntl lock) + state flock
-    # =========================================================================
+    # 5d. Post-crash edit inside user.js markers BEFORE resuming install MUST be caught (#191)
+    #     and a profile with no pre-existing prefs.js unlinks empty prefs.js cleanly on undo!
+    h5d = work / "case5d-no-prefsjs-and-postcrash-conflict"
+    p5d = make_xdg_single_profile(h5d)
+    run_cmd([install_sh, "--profile", "1"], h5d, {"M9_FF_FAULT_AFTER": "user_js"})
+    ujs5d_orig = (p5d / "user.js").read_bytes()
+    (p5d / "user.js").write_bytes(
+        ujs5d_orig.replace(b'user_pref("browser.tabs.inTitlebar", 0);', b'user_pref("browser.tabs.inTitlebar", 2);')
+    )
+    r5d_conflict = run_cmd([install_sh, "--profile", "1"], h5d)
+    edited = snapshot_tree(p5d)
+    rollback = run_cmd([uninstall_sh, "--profile", "1"], h5d)
+    s.check("postcrash-undo-preserves-conflicting-edit", rollback.returncode == 1 and snapshot_tree(p5d) == edited)
+    (p5d / "user.js").write_bytes(ujs5d_orig)
+    r5d_res = run_cmd([install_sh, "--profile", "1"], h5d)
+    # Simulate prefs.js created solely with managed prefs (no other lines) -> unlinked cleanly on undo:
+    (p5d / "prefs.js").write_bytes(b'user_pref("browser.tabs.inTitlebar", 0);\n')
+    r5d_u = run_cmd([uninstall_sh, "--profile", "1"], h5d)
+    s.check(
+        "c5d-postcrash-marker-edit-caught-and-empty-new-prefsjs-unlinked",
+        r5d_conflict.returncode == 1
+        and r5d_res.returncode == 0
+        and r5d_u.returncode == 0
+        and not (p5d / "prefs.js").exists(),
+    )
+    # Outside edits and installer-looking filenames belong to the user.
+    for fault in (None, "user_js"):
+        hb, pb = setup_customized_home(f"case-bytes-{fault}")
+        css = pb / "chrome/userChrome.css"
+        js = pb / "user.js"
+        prefs = pb / "prefs.js"
+        keep = pb / ".macos9-ff-tmp.personal"
+        keep.write_bytes(b"keep")
+        css_original = b"\xef\xbb\xbf/* my rules */\r\n#nav-bar { color: red; }\r\n"
+        js_original = b'// my preferences\r\nuser_pref("test.mine", true);'
+        prefs_original = b'// mine\r\nuser_pref("test.mine", true);\r\n'
+        css.write_bytes(css_original)
+        js.write_bytes(js_original)
+        prefs.write_bytes(prefs_original)
+        installed = run_cmd([install_sh, "--profile", "1"], hb)
+        css_edit = b"/* later */\r\n"
+        js_edit = b'\r\nuser_pref("test.later", 1);\r\n'
+        css.write_bytes(css.read_bytes() + css_edit)
+        js.write_bytes(js.read_bytes() + js_edit)
+        prefs.write_bytes(prefs_original + js_edit + b'user_pref("browser.tabs.inTitlebar", 0);\n')
+        updated = run_cmd([install_sh, "--profile", "1"], hb, {"M9_FF_FAULT_AFTER": fault} if fault else {})
+        has_bom = css.read_bytes().startswith(b"\xef\xbb\xbf")
+        undone = run_cmd([uninstall_sh, "--profile", "1"], hb)
+        s.check(f"profile-bytes-after-reinstall-{fault or 'complete'}",
+                installed.returncode == 0 and updated.returncode == (99 if fault else 0)
+                and undone.returncode == 0 and has_bom and css.read_bytes() == css_original + css_edit
+                and js.read_bytes() == js_original + js_edit and prefs.read_bytes() == prefs_original + js_edit
+                and keep.is_file() and keep.read_bytes() == b"keep")
+
+    # Simulate an unedited install made by the earlier LF-normalizing version.
+    hl, pl = setup_customized_home("case-legacy-newlines")
+    legacy_js = pl / "user.js"
+    legacy_original = legacy_js.read_bytes().replace(b"\n", b"\r\n")
+    legacy_js.write_bytes(legacy_original)
+    run_cmd([install_sh, "--profile", "1"], hl)
+    normalized = legacy_js.read_bytes().replace(b"\r\n", b"\n")
+    legacy_js.write_bytes(normalized)
+    state_file = next((hl / ".local/state/macos9-theme-firefox/profiles").glob("*/state.json"))
+    legacy_state = json.loads(state_file.read_text())
+    legacy_state["untouched_userjs_sha256"] = hashlib.sha256(normalized).hexdigest()
+    state_file.write_text(json.dumps(legacy_state))
+    updated = run_cmd([install_sh, "--profile", "1"], hl)
+    undone = run_cmd([uninstall_sh, "--profile", "1"], hl)
+    s.check("upgrade-of-legacy-install-restores-original-crlf",
+            updated.returncode == 0 and undone.returncode == 0 and legacy_js.read_bytes() == legacy_original)
+
+    # A pre-existing Platinum folder can live on a different mount from XDG state.
+    if pathlib.Path("/dev/shm").is_dir() and work.stat().st_dev != os.stat("/dev/shm").st_dev:
+        hx, px = setup_customized_home("case-separate-state-filesystem")
+        before = snapshot_tree(px)
+        with tempfile.TemporaryDirectory(dir="/dev/shm") as state_home:
+            env = {"XDG_STATE_HOME": state_home}
+            installed = run_cmd([install_sh, "--profile", "1"], hx, env)
+            undone = run_cmd([uninstall_sh, "--profile", "1"], hx, env)
+            s.check("separate-filesystems-restore-original-theme", installed.returncode == 0
+                    and undone.returncode == 0 and snapshot_tree(px) == before)
+
+    htypes, ptypes = setup_customized_home("case-invalid-managed-type")
+    (ptypes / "user.js").unlink()
+    (ptypes / "user.js").mkdir()
+    original = snapshot_tree(ptypes)
+    refused = run_cmd([install_sh, "--profile", "1"], htypes)
+    s.check("directory-at-user-js-refused-before-writing",
+            refused.returncode == 1 and snapshot_tree(ptypes) == original)
+
     h6 = work / "case6-locks"
     p6 = make_xdg_single_profile(h6)
     snap6 = snapshot_tree(p6)
 
-    # 6a. Dangling symlink 'lock' -> '127.0.0.1:+99999' (exact Linux Firefox lock format)
-    os.symlink("127.0.0.1:+99999", p6 / "lock")
-    r6_sym_lock = run_cmd([install_sh, "--profile", "1"], h6)
-    (p6 / "lock").unlink()
-    s.check(
-        "c6a-refuses-dangling-firefox-lock-symlink",
-        r6_sym_lock.returncode == 1 and snapshot_tree(p6) == snap6,
-    )
+    # Use a reaped child to obtain a dead PID in Firefox's loopback format.
+    exited = subprocess.Popen([sys.executable, "-I", "-c", "pass"])
+    exited.wait(timeout=5)
+    lock = p6 / "lock"
+    stale_target = f"127.0.1.1:+{exited.pid}"
+    lock.symlink_to(stale_target)
+    before = snapshot_tree(p6)
+    refused = run_cmd([install_sh, "--profile", "1"], h6)
+    s.check("stale-link-needs-advisory-lock-file", refused.returncode == 1 and snapshot_tree(p6) == before)
+    plock6 = p6 / ".parentlock"
+    os.mkfifo(plock6)
+    refused = run_cmd([install_sh, "--profile", "1"], h6)
+    s.check("stale-link-rejects-fifo", refused.returncode == 1 and not (p6 / "chrome").exists())
+    plock6.unlink()
+    plock6.touch()
+    installed = run_cmd([install_sh, "--profile", "1"], h6)
+    removed = run_cmd([uninstall_sh, "--profile", "1"], h6)
+    s.check("c6a-stale-loopback-lock-allows-install-and-undo",
+            installed.returncode == removed.returncode == 0 and os.readlink(lock) == stale_target)
+    lock.unlink()
+    plock6.unlink()
+    s.check("c6a-stale-loopback-profile-restored", snapshot_tree(p6) == snap6)
+
+    for target in (f"127.0.1.1:+{os.getpid()}", f"192.0.2.1:+{exited.pid}", "unrecognized"):
+        lock.symlink_to(target)
+        before = snapshot_tree(p6)
+        refused = run_cmd([install_sh, "--profile", "1"], h6)
+        s.check(f"c6a-blocks-lock-{target}", refused.returncode == 1 and snapshot_tree(p6) == before)
+        lock.unlink()
 
     # 6b. Separate child process holding POSIX fcntl.lockf(LOCK_EX) on .parentlock
     plock6 = p6 / ".parentlock"
@@ -550,11 +854,30 @@ def main() -> int:
     try:
         assert holder.stdout is not None
         assert holder.stdout.readline().strip() == "LOCKED"
+        lock.symlink_to(stale_target)
         r6_fcntl = run_cmd([install_sh, "--profile", "1"], h6)
+        lock.unlink()
     finally:
         holder.terminate()
         holder.wait(timeout=5)
     s.check("c6b-refuses-live-fcntl-locked-parentlock", r6_fcntl.returncode == 1 and not (p6 / "chrome").exists())
+
+    # A second process must see contention throughout the command's scope.
+    hold = runpy.run_path(str(repo / "firefox/profile_ops.py"))["hold_profile_lock"]
+    probe = """import fcntl, sys
+with open(sys.argv[1], "r+b") as lockfile:
+    try:
+        getattr(fcntl, sys.argv[2])(lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        sys.exit(3)
+"""
+    def probe_locks():
+        return [subprocess.run([sys.executable, "-I", "-c", probe, str(plock6), method]).returncode
+                for method in ("lockf", "flock")]
+
+    with ExitStack() as handles:
+        s.check("profile-locks-held-during-command", hold(p6, "test", handles) and probe_locks() == [3, 3])
+    s.check("profile-locks-released-after-command", probe_locks() == [0, 0])
 
     # 6c. Concurrent state flock held
     st_lock = h6 / ".local/state/macos9-theme-firefox/lock"
@@ -567,6 +890,11 @@ def main() -> int:
         fcntl.flock(lfd, fcntl.LOCK_UN)
         os.close(lfd)
     s.check("c6c-refuses-concurrent-state-flock", r6_flock.returncode == 1 and "another" in r6_flock.stderr)
+    st_lock.unlink()
+    st_lock.symlink_to(outside_target)
+    refused = run_cmd([install_sh, "--profile", "1"], h6)
+    s.check("refuse-symlinked-state-lock", refused.returncode == 1 and outside_target.read_bytes() == b"// outside\n")
+    st_lock.unlink()
 
     # =========================================================================
     # 7. Two Profiles + [Install*] Default= Precedence over [Profile*] Default=1
@@ -651,8 +979,15 @@ def main() -> int:
     p8 = make_xdg_single_profile(h8, "xdgonly.default-release", "default-release")
     # Seed p8 with offline test settings so live Firefox never touches network:
     page8 = work / "live-m6.html"
-    page8.write_text("<!doctype html><meta charset=utf-8><title>Milestone 6 Installed Profile</title><h1>M6 Installed</h1>\n", encoding="utf-8")
+    page8.write_text(
+        "<!doctype html><meta charset=utf-8><title>Milestone 6 Installed Profile</title>"
+        "<style>html,body{background:#fff;color:#000;min-height:2400px;margin:24px;}</style>"
+        "<h1>M6 Installed</h1>\n",
+        encoding="utf-8",
+    )
     (p8 / "prefs.js").write_text(
+        'user_pref("widget.non-native-theme.scrollbar.size.override", 21);\n'
+        'user_pref("widget.gtk.theme-scrollbar-colors.enabled", false);\n'
         'user_pref("browser.shell.checkDefaultBrowser", false);\n'
         'user_pref("browser.tabs.inTitlebar", 1);\n'
         'user_pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);\n'
@@ -678,23 +1013,9 @@ def main() -> int:
         and (p8 / "chrome/platinum/platinum.css").is_file(),
     )
 
-    # Boot real Firefox 160.0.1 in nested kwin_wayland --virtual using p8 as M9_SEED_PROFILE
-    # (without M9_CHROME_DIR or M9_USER_JS, so Firefox uses ONLY what firefox/install.sh put in p8!),
-    # and copy back Firefox's updated prefs.js to test real post-session uninstall!
-    shot8 = repo / "dev/shots/firefox-m6-installed-live.png"
-    live_env = make_env(
-        h8,
-        {
-            "M9_SEED_PROFILE": str(p8),
-            "M9_SAVE_PROFILE_TO": str(work / "post-firefox-profile"),
-            "M9_SETTLE": "3.0",
-        },
-    )
-    # Run dev/firefox-test.sh via a tiny wrapper that runs against a copy of p8 or let's invoke
-    # dev/firefox-test.sh with M9_SEED_PROFILE=p8 and M9_NO_EXTRA_PREFS? Wait: dev/firefox-test.sh
-    # appends base prefs to user.js in its scratch copy, whereas our p8 ALREADY has user.js from
-    # firefox/install.sh! Even cleaner: run a 25-line nested kwin_wayland --virtual session right
-    # against p8 itself (inside isolated HOME=h8!) so real Firefox mutates p8/prefs.js directly!
+    # Capture this run in its own evidence directory so a stale screenshot
+    # cannot satisfy the installed-profile smoke check.
+    shot8 = work / "installed-live.png"
     live_sh = work / "run-live-p8.sh"
     sess_sh = work / "sess-p8.sh"
     sess_sh.write_text(
@@ -711,6 +1032,12 @@ spectacle -b -n -f -o {str(shot8)!r}
 sleep 0.3
 kill -TERM "$ff_pid" 2>/dev/null || true
 wait "$ff_pid" 2>/dev/null || true
+for _ in $(seq 1 30); do
+  grep -q 'toolkit.legacyUserProfileCustomizations.stylesheets' {str(p8 / 'prefs.js')!r} 2>/dev/null && break
+  sleep 0.2
+done
+sleep 0.4
+echo "done" > {str(work / 'live-complete')!r}
 """,
         encoding="utf-8",
     )
@@ -720,7 +1047,7 @@ wait "$ff_pid" 2>/dev/null || true
 set -euo pipefail
 rt=$(mktemp -d /tmp/m9-ffm6-rt.XXXXXX)
 chmod 700 "$rt"
-trap 'rm -rf "$rt"' EXIT
+trap 'fusermount3 -uz "$rt/doc" 2>/dev/null || true; rm -rf --one-file-system "$rt" 2>/dev/null || true' EXIT
 mkdir -p "{h8}/.config/gtk-3.0" "{h8}/.local/share/themes" "{h8}/.local/state" "{h8}/.cache"
 cp "{repo}/colors/Platinum.colors" "{h8}/.config/kdeglobals"
 if [[ -d "{repo}/gtk/Platinum" ]]; then
@@ -769,20 +1096,43 @@ env -i \\
     os.chmod(live_sh, 0o755)
     r8_live = subprocess.run([str(live_sh)], capture_output=True, text=True)
     lav_px = 0
+    lav_scroll_px = 0
     if shot8.is_file():
         im8 = Image.open(shot8).convert("RGB")
         raw8 = im8.tobytes()
         lav_px = sum(1 for i in range(0, len(raw8), 3) if raw8[i] == 0x1B and raw8[i + 1] == 0x1B and raw8[i + 2] == 0x52)
+        # Check for #9999FF Lavender scrollbar thumb pixels inside the viewport band (y >= 220)
+        w8, h8_img = im8.size
+        crop_vp = im8.crop((w8 // 2, 220, w8, h8_img)).tobytes()
+        lav_scroll_px = sum(1 for i in range(0, len(crop_vp), 3) if crop_vp[i] == 0x99 and crop_vp[i + 1] == 0x99 and crop_vp[i + 2] == 0xFF)
+
+    if r8_live.returncode == 0 and shot8.is_file():
+        shutil.copy2(shot8, repo / "dev/shots/firefox-m6-installed-live.png")
 
     pjs8_during = (p8 / "prefs.js").read_text(encoding="utf-8", errors="replace")
     s.check(
         "c8b-real-firefox-loads-installed-profile-and-renders-lavender-band",
-        r8_live.returncode == 0
+        r8_live.returncode == 0 and (work / "live-complete").is_file()
         and shot8.is_file()
         and lav_px > 1000
+        and lav_scroll_px > 500
         and 'user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);' in pjs8_during,
-        f"#1B1B52_px={lav_px}",
+        f"rc={r8_live.returncode} #1B1B52_px={lav_px} #9999FF_scroll_px={lav_scroll_px}",
     )
+
+    user8 = (p8 / "user.js").read_text(encoding="utf-8")
+    scroll_prefs = {
+        "browser.theme.dark-private-windows": "false",
+        "widget.gtk.overlay-scrollbars.enabled": "false",
+        "widget.non-native-theme.scrollbar.style": "4",
+        "widget.non-native-theme.scrollbar.size.override": "16",
+        "widget.gtk.theme-scrollbar-colors.enabled": "true",
+    }
+    s.check("c8-scrollbar-and-private-prefs-applied", all(
+        f'user_pref("{key}", {value});' in user8 for key, value in scroll_prefs.items()
+    ) and all(f'user_pref("{key}", {value});' in pjs8_during for key, value in scroll_prefs.items()
+              if key != "widget.gtk.theme-scrollbar-colors.enabled")
+      and 'user_pref("widget.gtk.theme-scrollbar-colors.enabled", false);' not in pjs8_during)
 
     # Now run real firefox/uninstall.sh on p8 AFTER real Firefox closed!
     r8_u = run_cmd([uninstall_sh, "--profile", "default-release"], h8)
@@ -795,7 +1145,12 @@ env -i \\
         and not (h8 / ".mozilla").exists()
         and 'user_pref("browser.tabs.inTitlebar", 1);' in pjs8_after
         and "toolkit.legacyUserProfileCustomizations.stylesheets" not in pjs8_after
-        and "browser.toolbars.bookmarks.visibility" not in pjs8_after,
+        and "browser.toolbars.bookmarks.visibility" not in pjs8_after
+        and "browser.theme.dark-private-windows" not in pjs8_after
+        and "widget.gtk.overlay-scrollbars.enabled" not in pjs8_after
+        and "widget.non-native-theme.scrollbar.style" not in pjs8_after
+        and 'user_pref("widget.non-native-theme.scrollbar.size.override", 21);' in pjs8_after
+        and 'user_pref("widget.gtk.theme-scrollbar-colors.enabled", false);' in pjs8_after,
     )
 
     # =========================================================================

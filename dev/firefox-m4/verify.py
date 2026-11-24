@@ -111,12 +111,14 @@ def main() -> int:
     )
     s.check("status-5a-permanent-16px", t1a["statusBandDisplay"] == "block" and t1a["statusBandHeight"] == "16px", f"{t1a['statusBandDisplay']} {t1a['statusBandHeight']}")
 
-    # Neutral Platinum activity indicator (:has(.tabbrowser-tab[selected][busy]))
+    # Activity indicator: built-in Firefox logo when idle, animated Platinum Lavender bar when busy
     act = rep["activity"]
     s.check(
         "activity-indicator-idle-and-busy",
         act["idleW"] == "24px"
         and act["idleBg"] == "rgb(238, 238, 238)"
+        and act["logoLoaded"]
+        and "about-logo.svg" in (act.get("idleImg") or "")
         and act["busyBg"] == "rgb(51, 51, 153)"
         and "repeating-linear-gradient" in act["busyImg"],
         str(act),
@@ -134,6 +136,19 @@ def main() -> int:
         and t1c["inactBg"] == "rgb(204, 204, 204)",
         str(t1c),
     )
+
+    for mode, collapsed in (("normal", t1c["collapsed"]), ("private", rep["private"]["collapsed"])):
+        s.check(
+            f"{mode}-collapsed-tab-icons-centered",
+            (collapsed["privateMode"] == "temporary") == (mode == "private")
+            and collapsed["vertical"] and not collapsed["expanded"]
+            and collapsed["selectedBg"] == "rgb(238, 238, 238)"
+            and len(collapsed["frames"]) >= 2
+            and all(f["visible"] and f["width"] > 0 and abs(f["offset"]) <= 1 and abs(f["plusOffset"]) <= 1
+                    for f in collapsed["frames"])
+            and collapsed["plusWidth"] > 0 and abs(collapsed["plusOffset"]) <= 1,
+            str(collapsed),
+        )
 
     # Menus & panels & square urlbar popup
     mn = rep["menu"]
@@ -195,6 +210,9 @@ def main() -> int:
         and ip["inactiveNavBg"] == "rgb(221, 221, 221)"
         and ip["inactiveUrlCBg"] == "rgb(142, 142, 184)"
         and ip["inactiveUrlOutline"] == "none"
+        and ip["inactiveHomeOutline"] == "none"
+        and ip["inactiveBmOutline"] == "none"
+        and ip["inactiveTabOutline"] == "none"
         and ip["inactiveHomeColor"] == "rgb(119, 119, 119)",
         str(ip),
     )
@@ -204,15 +222,17 @@ def main() -> int:
         f"popupAttr={ip['popupHasAttr']} navH={ip['popupNavHeight']} statusContent={ip['popupStatusAfterContent']}",
     )
 
-    # Private window cleanly delegates to Firefox's built-in dark-purple Private theme,
-    # fullscreen suppresses the permanent status band, and Customize Mode stays Platinum.
+    # Private window obeys Platinum in System light mode (via browser.theme.dark-private-windows=false),
+    # keeps the Private mask badge visible, and still respects System Dark mode!
     pr = rep["private"]
     s.check(
-        "private-window-delegates-cleanly-to-dark-private-theme",
+        "private-window-obeys-platinum-in-light-mode-and-respects-dark",
         pr["privateAttr"] == "temporary"
-        and pr["prefersDark"] is True
-        and pr["privateUrlTube"] == "none"
-        and pr["privateStatusContent"] == "none",
+        and pr["prefersLight"] is True
+        and "rgb(27, 27, 82)" in (pr.get("privateUrlTube") or "")
+        and pr["privateStatusDisplay"] == "block"
+        and pr["privateIndicatorVisible"] is True
+        and pr["darkModeGatedOff"] is True,
         str(pr),
     )
 

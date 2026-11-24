@@ -70,8 +70,8 @@ def scan_omni_ja(ja_paths: list[pathlib.Path]) -> tuple[set[str], set[str], int]
     found_parts: set[str] = set()
     files_scanned = 0
 
-    id_pat = re.compile(r"""(?:id\s*=\s*["']([A-Za-z0-9_-]+)["']|getElementById\(\s*["']([A-Za-z0-9_-]+)["']\s*\)|setAttribute\(\s*["']id["']\s*,\s*["']([A-Za-z0-9_-]+)["']\s*\)|#([A-Za-z_][A-Za-z0-9_-]*))""")
-    part_pat = re.compile(r"""part\s*=\s*["']([^"']+)["']""")
+    id_pat = re.compile(r"""(?:(?<![\w:-])id\s*=\s*["']([A-Za-z0-9_-]+)["']|getElementById\(\s*["']([A-Za-z0-9_-]+)["']\s*\)|setAttribute\(\s*["']id["']\s*,\s*["']([A-Za-z0-9_-]+)["']\s*\))""")
+    part_pat = re.compile(r"""(?<![\w:-])part\s*=\s*["']([^"']+)["']""")
 
     for ja in ja_paths:
         if not ja.is_file():
@@ -102,7 +102,7 @@ def scan_omni_ja(ja_paths: list[pathlib.Path]) -> tuple[set[str], set[str], int]
             txt = ep.stdout
             files_scanned += len(batch)
             for m in id_pat.finditer(txt):
-                val = m.group(1) or m.group(2) or m.group(3) or m.group(4)
+                val = m.group(1) or m.group(2) or m.group(3)
                 if val:
                     found_ids.add(val)
             for pm in part_pat.finditer(txt):
@@ -169,8 +169,8 @@ def main() -> int:
 
     ja_paths = args.omni_ja if args.omni_ja else [pathlib.Path(p) for p in meta["omni_ja_paths"]]
     existing_jas = [p for p in ja_paths if p.is_file()]
-    if not existing_jas:
-        print(f"FAIL  No omni.ja archives found at {ja_paths}", file=sys.stderr)
+    if len(existing_jas) != len(ja_paths) or not existing_jas:
+        print(f"FAIL  Missing required omni.ja archive in {ja_paths}", file=sys.stderr)
         return 1
 
     found_ids, found_parts, files_scanned = scan_omni_ja(existing_jas)

@@ -20,6 +20,8 @@
 # everything this installed and puts back anything it moved aside.
 #
 # usage: install.sh [--apply] [--dry-run]
+#        install.sh --firefox [--profile PROFILE] [--list] [--dry-run]
+#   --firefox  choose Firefox-only mode first, then pass Firefox options
 #   (default)  install or update all theme files. If Platinum is already the
 #              active global theme, also selects WhiteSur-lavender icons once
 #              for KDE and GTK without touching panels, wallpaper, cursors, or
@@ -41,6 +43,11 @@ set -euo pipefail
 umask 022
 program=install.sh
 here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+
+if [[ ${1:-} == --firefox ]]; then
+    shift
+    exec "$here/firefox/install.sh" "$@"
+fi
 
 usage() {
     sed -n '/^# usage:/,/^# *-h, --help/s/^# \{0,1\}//p' "$0"

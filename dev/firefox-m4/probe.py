@@ -32,6 +32,39 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "firefox-m1
 from probe import Marionette, shoot  # noqa: E402
 
 
+def collapsed_tab_geometry(m: Marionette, *, private: bool = False) -> dict:
+    return m.exec_chrome(
+        """
+        const win = arguments[0] ? window._m4Priv : window;
+        const done = arguments[arguments.length - 1];
+        (async () => {
+          const tabs = win.document.getElementById("tabbrowser-tabs");
+          win.SidebarController._state.launcherExpanded = false;
+          await new Promise(r => setTimeout(r, 450));
+          const center = el => {
+            const rect = el.getBoundingClientRect();
+            return rect.x + rect.width / 2;
+          };
+          const rail = win.document.getElementById("vertical-tabs");
+          const plus = win.document.querySelector("#tabs-newtab-button .toolbarbutton-icon");
+          const frames = Array.from(win.gBrowser.tabs, tab => {
+            const frame = tab.querySelector(".tab-background");
+            const icon = tab.querySelector(".tab-icon-image");
+            return { visible: icon.checkVisibility({visibilityProperty: true, opacityProperty: true}),
+                     width: icon.getBoundingClientRect().width,
+                     offset: center(icon) - center(frame), plusOffset: center(icon) - center(plus) };
+          });
+          done({ privateMode: win.document.documentElement.getAttribute("privatebrowsingmode"),
+                 vertical: tabs.getAttribute("orient") === "vertical", expanded: tabs.hasAttribute("expanded"),
+                 selectedBg: win.getComputedStyle(win.gBrowser.selectedTab.querySelector(".tab-background")).backgroundColor,
+                 frames, plusWidth: plus.getBoundingClientRect().width, plusOffset: center(plus) - center(rail) });
+        })();
+        """,
+        [private],
+        async_mode=True,
+    )
+
+
 def main() -> int:
     port = int(os.environ["M9_MARIONETTE_PORT"])
     main_out = pathlib.Path(os.environ["M9_OUT"])
@@ -48,17 +81,7 @@ def main() -> int:
             """
             const done = arguments[arguments.length - 1];
             (async () => {
-              if (window.gBrowserInit && !gBrowserInit.delayedStartupFinished) {
-                await new Promise(r => {
-                  const obs = (s) => {
-                    if (s === window) {
-                      Services.obs.removeObserver(obs, "browser-delayed-startup-finished");
-                      r();
-                    }
-                  };
-                  Services.obs.addObserver(obs, "browser-delayed-startup-finished");
-                });
-              }
+              await window.delayedStartupPromise;
               const p1 = gBrowser.selectedTab;
               const p2 = gBrowser.addTrustedTab("about:robots");
               const p3 = gBrowser.addTrustedTab("about:support");
@@ -101,14 +124,18 @@ def main() -> int:
               const panelBtn = document.getElementById("PanelUI-button");
               const idleCS = getComputedStyle(panelBtn, "::after");
               const idleBg = idleCS.backgroundColor;
+              const idleImg = idleCS.backgroundImage;
               const idleW = idleCS.width;
+              const logo = document.createElementNS("http://www.w3.org/1999/xhtml", "img");
+              logo.src = idleImg.slice(5, -2);
+              const logoLoaded = await logo.decode().then(() => logo.naturalWidth > 0, () => false);
 
               gBrowser.selectedTab.setAttribute("busy", "");
               await new Promise(r => setTimeout(r, 200));
               const busyCS = getComputedStyle(panelBtn, "::after");
               const busyBg = busyCS.backgroundColor;
               const busyImg = busyCS.backgroundImage;
-              done({ idleBg, idleW, busyBg, busyImg });
+              done({ logoLoaded, idleBg, idleImg, idleW, busyBg, busyImg });
             })();
             """,
             async_mode=True,
@@ -142,6 +169,9 @@ def main() -> int:
             async_mode=True,
         )
         shoot(shots / "firefox-m4-vertical-1c.png", settle=0.2)
+        tabs_1c["collapsed"] = collapsed_tab_geometry(m)
+        shoot(shots / "firefox-m4-vertical-collapsed.png", settle=0.2)
+        m.exec_chrome("SidebarController._state.launcherExpanded = true;")
         m.exec_chrome('Services.prefs.setBoolPref("sidebar.verticalTabs", false);')
         time.sleep(0.35)
 
@@ -309,27 +339,44 @@ def main() -> int:
               await new Promise(r => setTimeout(r, 300));
 
               const mainInactive = window.document.documentElement.matches(":-moz-window-inactive");
+              const homeEl = document.getElementById("home-button");
+              const bmEl = document.querySelector("#PlacesToolbarItems > .bookmark-item");
+              const tabEl = gBrowser.selectedTab;
+              InspectorUtils.addPseudoClassLock(homeEl, ":focus-visible");
+              if (bmEl) InspectorUtils.addPseudoClassLock(bmEl, ":focus-visible");
+              InspectorUtils.addPseudoClassLock(tabEl, ":focus-visible");
+
               const navCS = getComputedStyle(document.getElementById("nav-bar"));
               const urlCCS = getComputedStyle(document.getElementById("urlbar-container"));
               const urlBgCS = getComputedStyle(document.querySelector("#urlbar > .urlbar-background"));
-              const homeCS = getComputedStyle(document.getElementById("home-button"));
+              const homeCS = getComputedStyle(homeEl);
+              const bmCS = bmEl ? getComputedStyle(bmEl) : null;
+              const tabBgCS = getComputedStyle(tabEl.querySelector(".tab-background"));
 
               const popRoot = pop.document.documentElement;
               const popNavH = Math.round(pop.document.getElementById("nav-bar").getBoundingClientRect().height);
               const popStatusContent = getComputedStyle(pop.document.body, "::after").content;
               window._m4Popup = pop;
 
-              done({
+              const snapshot = {
                 mainInactive,
                 inactiveNavBgImg: navCS.backgroundImage,
                 inactiveNavBg: navCS.backgroundColor,
                 inactiveUrlCBg: urlCCS.backgroundColor,
                 inactiveUrlOutline: urlBgCS.outlineStyle,
+                inactiveHomeOutline: homeCS.outlineStyle,
+                inactiveBmOutline: bmCS ? bmCS.outlineStyle : null,
+                inactiveTabOutline: tabBgCS.outlineStyle,
                 inactiveHomeColor: homeCS.color,
                 popupHasAttr: popRoot.hasAttribute("popup-window"),
                 popupNavHeight: popNavH,
                 popupStatusAfterContent: popStatusContent
-              });
+              };
+              InspectorUtils.clearPseudoClassLocks(homeEl);
+              if (bmEl) InspectorUtils.clearPseudoClassLocks(bmEl);
+              InspectorUtils.clearPseudoClassLocks(tabEl);
+
+              done(snapshot);
             })();
             """,
             async_mode=True,
@@ -344,6 +391,8 @@ def main() -> int:
         time.sleep(0.3)
 
         # 8. Private Browsing Window check!
+        # With browser.theme.dark-private-windows=false, Private windows obey
+        # Platinum in System light mode while still respecting System Dark mode!
         private_info = m.exec_chrome(
             """
             const done = arguments[arguments.length - 1];
@@ -352,21 +401,40 @@ def main() -> int:
               await new Promise(r => pwin.addEventListener("load", r, { once: true }));
               await new Promise(r => setTimeout(r, 600));
               const pRoot = pwin.document.documentElement;
-              const pPrefersDark = pwin.matchMedia("(prefers-color-scheme: dark)").matches;
+              const pPrefersLight = pwin.matchMedia("(prefers-color-scheme: light)").matches;
               const pUrlBg = getComputedStyle(pwin.document.getElementById("urlbar-container")).backgroundImage;
-              const pStatusContent = getComputedStyle(pwin.document.body, "::after").content;
+              const pStatusDisplay = getComputedStyle(pwin.document.body, "::after").display;
+              const pIndBtn = pwin.document.querySelector(".private-browsing-indicator-button");
+              const pIndVisible = !!(pIndBtn && pIndBtn.checkVisibility({ opacityProperty: true, visibilityProperty: true })
+                                    && pIndBtn.getBoundingClientRect().width >= 16);
+
+              Services.prefs.setIntPref("ui.systemUsesDarkTheme", 1);
+              await new Promise(r => setTimeout(r, 250));
+              const prefersDark = pwin.matchMedia("(prefers-color-scheme: dark)").matches;
+              const pDarkUrlBg = getComputedStyle(pwin.document.getElementById("urlbar-container")).backgroundImage;
+              Services.prefs.clearUserPref("ui.systemUsesDarkTheme");
+              await new Promise(r => setTimeout(r, 250));
+
               window._m4Priv = pwin;
               done({
                 privateAttr: pRoot.getAttribute("privatebrowsingmode"),
-                prefersDark: pPrefersDark,
+                prefersLight: pPrefersLight,
                 privateUrlTube: pUrlBg,
-                privateStatusContent: pStatusContent
+                privateStatusDisplay: pStatusDisplay,
+                privateIndicatorVisible: pIndVisible,
+                darkModeGatedOff: prefersDark && !pDarkUrlBg.includes("rgb(27, 27, 82)")
               });
             })();
             """,
             async_mode=True,
         )
         shoot(shots / "firefox-m4-private.png", settle=0.2)
+        m.exec_chrome("""
+            Services.prefs.setBoolPref("sidebar.verticalTabs", true);
+            window._m4Priv.gBrowser.addTrustedTab("about:robots");
+        """)
+        private_info["collapsed"] = collapsed_tab_geometry(m, private=True)
+        m.exec_chrome('Services.prefs.setBoolPref("sidebar.verticalTabs", false);')
         m.exec_chrome(
             """
             if (window._m4Priv && !window._m4Priv.closed) window._m4Priv.close();

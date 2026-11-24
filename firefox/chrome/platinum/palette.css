@@ -83,5 +83,6 @@
     --chrome-content-separator-color: var(--m9-black) !important;
     --urlbar-min-height: 20px !important;
     --urlbar-height: 20px !important;
+    scrollbar-color: var(--m9-lav-light) var(--m9-surface-mid);
   }
 }

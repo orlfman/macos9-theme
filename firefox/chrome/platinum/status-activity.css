@@ -13,9 +13,10 @@
 @media (-moz-native-theme) and (prefers-color-scheme: light) and (not (prefers-contrast)) and (not (forced-colors)) {
   :root:not([lwtheme]) {
     /* =====================================================================
-     * Neutral Platinum Lavender Activity Indicator (far-right of Row 1)
+     * Activity Indicator (far-right of Row 1)
      * Sits in a clean sunken Platinum well right beside #PanelUI-menu-button.
-     * Idle: calm Lavender compass diamond on #EEEEEE.
+     * Idle: Firefox's own built-in vector branding logo on #EEEEEE (referenced
+     * via chrome://branding/content/about-logo.svg; zero artwork shipped here).
      * Busy (:has(.tabbrowser-tab[selected][busy])): animated Platinum
      * Lavender barber-pole / pulse bar (steady fill under reduced motion).
      * ===================================================================== */
@@ -31,10 +32,8 @@
         inset 1px 1px 0 var(--m9-shadow-dark),
         inset -1px -1px 0 var(--m9-white);
       background-color: var(--m9-surface-light);
-      /* Pure CSS neutral Platinum Lavender orb/jewel (zero third-party logos) */
-      background-image:
-        radial-gradient(circle at 38% 35%, #FFFFFF 0px 1.5px, #CCCCFF 2px 3.5px, #9999FF 4px 5.5px, #6666CC 6px 7.5px, #333399 8px 8.5px, #000055 9px, transparent 9.5px);
-      background-size: 20px 20px;
+      background-image: url("chrome://branding/content/about-logo.svg");
+      background-size: 18px 18px;
       background-position: center center;
       background-repeat: no-repeat;
       pointer-events: none;

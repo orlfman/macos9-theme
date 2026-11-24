@@ -302,12 +302,12 @@ tools/check-firefox-selectors.py
 `dev/firefox-test.sh` runs Firefox inside a headless nested `kwin_wayland
 --virtual` with its own `env -i`, private D-Bus, isolated `HOME`, `XDG_*`, and
 `XDG_RUNTIME_DIR`, the Platinum KWin decoration (`browser.tabs.inTitlebar=0`),
-the Platinum GTK 3 theme, and a fresh profile in `dev/build/firefox-profile`
+the Platinum GTK 3 theme, and a fresh profile in the per-run sandbox under `dev/build/`
 (never touching `~/.mozilla` or `~/.config/mozilla`), screenshotting into
 `dev/shots/firefox-NAME.png`. `dev/check-firefox-m1.sh` runs the 46-check
 Milestone 1 discovery and verification suite; `dev/render-firefox-m2.sh` renders
 the Milestone 2 visual mockup variants and comparison sheets;
-`dev/check-firefox-m3.sh` runs the 34-check Milestone 3 verification suite
+`dev/check-firefox-m3.sh` runs the 36-check Milestone 3 verification suite
 (whole-pixel row sampling across the three top bands, hover/pressed states,
 urlbar focus/selection/dropdown, narrow overflow, Customize Mode, and gating);
 `dev/check-firefox-m4.sh` runs the 34-check Milestone 4 full-coverage suite
@@ -319,10 +319,10 @@ every `#id` and `::part()` selector in `firefox/chrome/` against the installed
 Firefox `omni.ja` archives and checks the major version against
 `firefox/version.json` (exiting `3` on untested major versions unless
 `--allow-untested-version` is passed); `dev/check-firefox-m5.sh` runs the
-29-check Milestone 5 robustness suite (selector checker + negative controls,
+32-check Milestone 5 robustness suite (selector checker + negative controls,
 version gate, keyboard focus across all chrome controls, and 150%/200% Wayland
 scaling crispness and zero-clipping checks in a `2400×1600` virtual KWin);
-`dev/check-firefox-m6.sh` runs the 40-check Milestone 6 throwaway-`HOME`
+`dev/check-firefox-m6.sh` runs the Milestone 6 throwaway-`HOME`
 installer and undo suite for `firefox/install.sh` and `firefox/uninstall.sh`
 (fresh and pre-customized profiles, `@charset`/`@namespace` ordering, post-install
 user edits outside markers, conflict & symlink refusal, reinstall & pref-retiring

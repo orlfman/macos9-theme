@@ -96,7 +96,9 @@ state_dir=$state_home/macos9-theme-firefox
 if ((!dry_run && !list_only)); then
     [[ ! -L $state_dir ]] || die "$state_dir is a symbolic link; nothing was changed"
     mkdir -p "$state_dir"
-    exec 9> "$state_dir/lock"
+    [[ ! -L $state_dir/lock && ( ! -e $state_dir/lock || -f $state_dir/lock ) ]] ||
+        die "invalid state lock at $state_dir/lock; nothing was changed"
+    exec 9>> "$state_dir/lock"
     flock -n 9 || die "another firefox/install.sh or firefox/uninstall.sh is running"
 fi
 
