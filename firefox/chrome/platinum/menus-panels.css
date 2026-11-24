@@ -1,0 +1,225 @@
+/* Milestone 4: Measured Platinum Menubar, Context/Dropdown Menus, AppMenu &
+ * Downloads Panels, and Square Platinum URL Bar Autocomplete Popup.
+ *
+ * Menu measurements from docs/REFERENCE.md:
+ *   Frame:     #DDDDDD fill, 1 px #000000 border, 1 px #FFFFFF top/left &
+ *              #999999 bottom/right inner bevel, 1 px #222222 drop shadow.
+ *   Highlight: #333399 fill, #6666CC left/top & #000088 right/bottom bevel,
+ *              #FFFFFF text.
+ *   Separator: #888888 above #FFFFFF (2 rows).
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+@media (-moz-native-theme) and (prefers-color-scheme: light) and (not (prefers-contrast)) and (not (forced-colors)) {
+  :root:not([lwtheme]) {
+    /* =====================================================================
+     * Classic Platinum Menubar (#toolbar-menubar / #main-menubar)
+     * ===================================================================== */
+    #toolbar-menubar:not([inactive]) {
+      background-color: var(--m9-surface) !important;
+      border-top: 1px solid var(--m9-white) !important;
+      border-bottom: 1px solid var(--m9-black) !important;
+      color: var(--m9-black) !important;
+      min-height: 20px !important;
+    }
+
+    #main-menubar > menu {
+      color: var(--m9-black) !important;
+      padding: 2px 7px !important;
+      margin: 0 !important;
+      border-radius: 0 !important;
+      appearance: none !important;
+    }
+
+    #main-menubar > menu:is([_moz-menuactive="true"], [open="true"]) {
+      background-color: var(--m9-lav-deep) !important;
+      color: var(--m9-white) !important;
+      box-shadow:
+        inset 0 1px 0 var(--m9-lav-focus),
+        inset 0 -1px 0 #000088 !important;
+    }
+
+    /* =====================================================================
+     * Measured Platinum Context & Dropdown Menus (menupopup)
+     * ===================================================================== */
+    menupopup {
+      --panel-background-color: var(--m9-surface) !important;
+      --panel-text-color: var(--m9-black) !important;
+      --panel-border-color: var(--m9-black) !important;
+      --panel-border-radius: 0px !important;
+      --panel-padding: 1px 0 !important;
+      --panel-box-shadow-margin: 2px !important;
+      --panel-box-shadow:
+        inset 1px 1px 0 var(--m9-white),
+        inset -1px -1px 0 var(--m9-shadow-edge),
+        1px 1px 0 #222222 !important;
+      --menuitem-border-radius: 0px !important;
+      --menuitem-margin: 0px !important;
+      --menuitem-padding-block: 3px !important;
+      --menuitem-padding-inline: 10px !important;
+      --menuitem-icon-fill: var(--m9-black) !important;
+    }
+
+    menupopup::part(content) {
+      background: var(--m9-surface) !important;
+      color: var(--m9-black) !important;
+      border: 1px solid var(--m9-black) !important;
+      border-radius: 0 !important;
+      padding: 1px !important;
+      box-shadow:
+        inset 1px 1px 0 var(--m9-white),
+        inset -1px -1px 0 var(--m9-shadow-edge),
+        1px 1px 0 #222222 !important;
+    }
+
+    menupopup > :is(menuitem, menu) {
+      appearance: none !important;
+      border-radius: 0 !important;
+      margin: 0 !important;
+      color: var(--m9-black) !important;
+      background: transparent !important;
+    }
+
+    menupopup > :is(menuitem, menu)[_moz-menuactive="true"]:not([disabled="true"]) {
+      background-color: var(--m9-lav-deep) !important;
+      color: var(--m9-white) !important;
+      --menuitem-icon-fill: var(--m9-white) !important;
+      box-shadow:
+        inset 1px 0 0 var(--m9-lav-focus),
+        inset -1px 0 0 #000088 !important;
+    }
+
+    menupopup > :is(menuitem, menu)[disabled="true"] {
+      color: var(--m9-disabled-text) !important;
+      background: transparent !important;
+    }
+
+    menupopup > menuseparator {
+      appearance: none !important;
+      margin: 2px 1px !important;
+      padding: 0 !important;
+      height: 2px !important;
+      border-top: 1px solid var(--m9-shadow-dark) !important;
+      border-bottom: 1px solid var(--m9-white) !important;
+      background: transparent !important;
+    }
+
+    /* =====================================================================
+     * Toolbar Panels: AppMenu (#appMenu-popup), Downloads (#downloadsPanel),
+     * Overflow (#widget-overflow), Extensions, Identity
+     * ===================================================================== */
+    panel[type="arrow"] {
+      --panel-background-color: var(--m9-surface) !important;
+      --panel-text-color: var(--m9-black) !important;
+      --panel-border-color: var(--m9-black) !important;
+      --panel-border-radius: 0px !important;
+      --panel-separator-color: var(--m9-shadow-dark) !important;
+      --arrowpanel-background: var(--m9-surface) !important;
+      --arrowpanel-color: var(--m9-black) !important;
+      --arrowpanel-border-color: var(--m9-black) !important;
+      --arrowpanel-border-radius: 0px !important;
+      --panel-item-hover-bgcolor: var(--m9-lav-deep) !important;
+      --panel-item-active-bgcolor: #000088 !important;
+      --button-border-radius: 0px !important;
+      --panel-box-shadow:
+        inset 1px 1px 0 var(--m9-white),
+        inset -1px -1px 0 var(--m9-shadow-edge),
+        1px 1px 0 #222222 !important;
+    }
+
+    panel[type="arrow"]::part(content) {
+      background: var(--m9-surface) !important;
+      color: var(--m9-black) !important;
+      border: 1px solid var(--m9-black) !important;
+      border-radius: 0 !important;
+      box-shadow:
+        inset 1px 1px 0 var(--m9-white),
+        inset -1px -1px 0 var(--m9-shadow-edge),
+        1px 1px 0 #222222 !important;
+    }
+
+    panelview,
+    .panel-subview-body {
+      background: transparent !important;
+      color: var(--m9-black) !important;
+    }
+
+    panelview toolbarbutton.subviewbutton {
+      border-radius: 0 !important;
+      color: var(--m9-black) !important;
+    }
+
+    panelview toolbarbutton.subviewbutton:not([disabled="true"]):is(:hover, [open="true"]) {
+      background-color: var(--m9-lav-deep) !important;
+      color: var(--m9-white) !important;
+      fill: var(--m9-white) !important;
+    }
+
+    panelview toolbarseparator {
+      appearance: none !important;
+      border-top: 1px solid var(--m9-shadow-dark) !important;
+      border-bottom: 1px solid var(--m9-white) !important;
+      margin-block: 3px !important;
+    }
+
+    /* Downloads Panel (#downloadsPanel) Platinum polish */
+    #downloadsPanel #downloadsListBox {
+      background: var(--m9-white) !important;
+      border: 1px solid var(--m9-black) !important;
+      margin: 4px !important;
+    }
+    #downloadsPanel #downloadsListBox > richlistitem {
+      border-radius: 0 !important;
+      border-bottom: 1px solid var(--m9-surface) !important;
+    }
+    #downloadsPanel #downloadsListBox > richlistitem:is([selected], :hover) {
+      background-color: var(--m9-lav-select) !important;
+      color: var(--m9-black) !important;
+    }
+    #downloadsPanel .downloadProgress::-moz-progress-bar {
+      background: linear-gradient(
+        to bottom,
+        #333399, #6666CC, #9999FF, #CCCCFF, #6666CC, #333399
+      ) !important;
+    }
+
+    /* =====================================================================
+     * Square Platinum URL Bar Autocomplete Popup (.urlbarView)
+     * ===================================================================== */
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar:is([open], [breakout-extend]) > .urlbar-background {
+      background: var(--m9-white) !important;
+      border: 1px solid var(--m9-black) !important;
+      border-radius: 0 !important;
+      box-shadow: 1px 1px 0 #222222 !important;
+    }
+
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar > .urlbarView {
+      margin-inline: 0 !important;
+      width: 100% !important;
+      border-radius: 0 !important;
+      background: var(--m9-white) !important;
+      border: 1px solid var(--m9-black) !important;
+      border-top: 1px solid var(--m9-shadow-dark) !important;
+      box-shadow: 1px 1px 0 #222222 !important;
+    }
+
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) .urlbarView-row-inner {
+      border-radius: 0 !important;
+    }
+
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) .urlbarView-row:hover:not([selected]) > .urlbarView-row-inner {
+      background: var(--m9-lav-select) !important;
+      color: var(--m9-black) !important;
+    }
+
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) .urlbarView-row[selected] > .urlbarView-row-inner {
+      background: var(--m9-lav-deep) !important;
+      color: var(--m9-white) !important;
+    }
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) .urlbarView-row[selected] .urlbarView-url,
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) .urlbarView-row[selected] .urlbarView-action {
+      color: var(--m9-lav-select) !important;
+    }
+  }
+}

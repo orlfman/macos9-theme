@@ -1,0 +1,14 @@
+/* Platinum Lavender for Firefox — module index.
+ *
+ * Scoped exclusively to the System theme in light, normal-contrast mode
+ * (verified in Milestone 1 / docs/FINDINGS.md: Firefox 160 Nova Compact Light
+ * and Dark omit [lwtheme], so @media (-moz-native-theme) is required).
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+@import url("palette.css");
+@import url("top-bands.css");
+@import url("tabs-sidebar.css");
+@import url("status-activity.css");
+@import url("menus-panels.css");
+@import url("bars-states.css");

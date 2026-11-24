@@ -1,0 +1,134 @@
+/* Milestone 4: Permanent 16 px IE5 Status Band (pick 5A) and Neutral
+ * Platinum Lavender Activity Indicator (zero Microsoft/Apple logos).
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+@keyframes m9-activity-pulse {
+  0%   { background-position: 0 0; border-color: #333399; }
+  50%  { background-position: 16px 0; border-color: #6666CC; }
+  100% { background-position: 32px 0; border-color: #333399; }
+}
+
+@media (-moz-native-theme) and (prefers-color-scheme: light) and (not (prefers-contrast)) and (not (forced-colors)) {
+  :root:not([lwtheme]) {
+    /* =====================================================================
+     * Neutral Platinum Lavender Activity Indicator (far-right of Row 1)
+     * Sits in a clean sunken Platinum well right beside #PanelUI-menu-button.
+     * Idle: calm Lavender compass diamond on #EEEEEE.
+     * Busy (:has(.tabbrowser-tab[selected][busy])): animated Platinum
+     * Lavender barber-pole / pulse bar (steady fill under reduced motion).
+     * ===================================================================== */
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #PanelUI-button::after {
+      content: "";
+      display: block;
+      width: 24px;
+      height: 24px;
+      margin: 0 6px 0 4px;
+      box-sizing: border-box;
+      border: 1px solid var(--m9-black);
+      box-shadow:
+        inset 1px 1px 0 var(--m9-shadow-dark),
+        inset -1px -1px 0 var(--m9-white);
+      background-color: var(--m9-surface-light);
+      /* Pure CSS neutral Platinum Lavender orb/jewel (zero third-party logos) */
+      background-image:
+        radial-gradient(circle at 38% 35%, #FFFFFF 0px 1.5px, #CCCCFF 2px 3.5px, #9999FF 4px 5.5px, #6666CC 6px 7.5px, #333399 8px 8.5px, #000055 9px, transparent 9.5px);
+      background-size: 20px 20px;
+      background-position: center center;
+      background-repeat: no-repeat;
+      pointer-events: none;
+    }
+
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]):has(.tabbrowser-tab[selected][busy]) #PanelUI-button::after {
+      border-color: var(--m9-lav-deep);
+      box-shadow:
+        inset 1px 1px 0 var(--m9-lav-select),
+        inset -1px -1px 0 #000055;
+      background-color: var(--m9-lav-deep);
+      background-image: repeating-linear-gradient(
+        135deg,
+        #333399 0px 4px,
+        #6666CC 4px 8px,
+        #9999FF 8px 12px,
+        #CCCCFF 12px 16px
+      );
+      background-size: 32px 32px;
+      background-repeat: repeat;
+      animation: m9-activity-pulse 0.8s linear infinite;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      &:has(.tabbrowser-tab[selected][busy]) #PanelUI-button::after {
+        animation: none !important;
+      }
+    }
+
+    /* =====================================================================
+     * Option 5A: Permanent 16 px IE5-inspired Pinstriped Status Band
+     * Omitted cleanly in fullscreen, popup, chromeless, and mini windows.
+     * ===================================================================== */
+    &:not([inFullscreen], [popup-window], [chromeless-window], [mini-window]) body::after {
+      content: "";
+      display: block !important;
+      flex: 0 0 16px !important;
+      height: 16px !important;
+      box-sizing: border-box !important;
+      border-top: 1px solid var(--m9-black) !important;
+      box-shadow:
+        inset 0 1px 0 var(--m9-white),
+        inset 0 -1px 0 var(--m9-shadow-bevel) !important;
+      background-color: var(--m9-surface) !important;
+      background-image:
+        linear-gradient(
+          135deg,
+          transparent 0px 5px,
+          #777777 5px 6px, #FFFFFF 6px 7px, transparent 7px 9px,
+          #777777 9px 10px, #FFFFFF 10px 11px, transparent 11px 13px,
+          #777777 13px 14px, #FFFFFF 14px 15px, transparent 15px
+        ),
+        linear-gradient(to right, var(--m9-surface-mid), var(--m9-surface-mid)),
+        var(--m9-pinstripe-bg) !important;
+      background-size: 15px 15px, 16px 15px, 100% 100% !important;
+      background-position: right bottom, right bottom, left top !important;
+      background-repeat: no-repeat, no-repeat, repeat !important;
+    }
+
+    /* Dock live Firefox #statuspanel text directly inside the 16 px bottom band */
+    &:not([inFullscreen], [popup-window], [chromeless-window], [mini-window]) #statuspanel {
+      position: fixed !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      max-width: calc(100% - 24px) !important;
+      height: 15px !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      z-index: 50 !important;
+      pointer-events: none !important;
+    }
+
+    &:not([inFullscreen], [popup-window], [chromeless-window], [mini-window]) #statuspanel-label {
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      color: var(--m9-label-text) !important;
+      font-size: 10px !important;
+      line-height: 14px !important;
+      padding: 0 8px !important;
+      margin: 0 !important;
+    }
+
+    /* In fullscreen/popup windows (no permanent status band), restyle floating #statuspanel */
+    &:is([inFullscreen], [popup-window], [chromeless-window], [mini-window]) #statuspanel-label {
+      background: var(--m9-surface) !important;
+      color: var(--m9-black) !important;
+      font-size: 11px !important;
+      border: 1px solid var(--m9-black) !important;
+      border-radius: 0 !important;
+      box-shadow:
+        inset 1px 1px 0 var(--m9-white),
+        inset -1px -1px 0 var(--m9-shadow-edge) !important;
+      padding: 2px 8px !important;
+    }
+  }
+}

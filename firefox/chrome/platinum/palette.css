@@ -1,0 +1,87 @@
+/* Measured Mac OS 9.2.2 Platinum Lavender palette & IE5-inspired band tokens.
+ * Sources: docs/REFERENCE.md and docs/FIREFOX-PLAN.md (Milestone 2 pick 2A).
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+@media (-moz-native-theme) and (prefers-color-scheme: light) and (not (prefers-contrast)) and (not (forced-colors)) {
+  :root:not([lwtheme]) {
+    /* Core Platinum surfaces and borders (docs/REFERENCE.md) */
+    --m9-black: #000000;
+    --m9-white: #FFFFFF;
+    --m9-surface: #DDDDDD;
+    --m9-surface-light: #EEEEEE;
+    --m9-surface-mid: #CCCCCC;
+    --m9-shadow-light: #BBBBBB;
+    --m9-shadow-bevel: #ADADAD;
+    --m9-shadow-mid: #AAAAAA;
+    --m9-shadow-edge: #999999;
+    --m9-shadow-dark: #888888;
+    --m9-disabled-text: #777777;
+    --m9-border-tool-tl: #666666;
+    --m9-border-tool-br: #333333;
+    --m9-label-text: #111111;
+
+    /* Pressed push/bevel button ramp (docs/REFERENCE.md) */
+    --m9-pressed-hi: #444444;
+    --m9-pressed-in: #555555;
+    --m9-pressed-fill: #666666;
+    --m9-pressed-lo: #777777;
+    --m9-pressed-br: #888888;
+
+    /* Platinum Lavender accents (docs/REFERENCE.md) */
+    --m9-lav-select: #CCCCFF;
+    --m9-lav-light: #9999FF;
+    --m9-lav-focus: #6666CC;
+    --m9-lav-deep: #333399;
+    --m9-lav-disabled-icon: #9999CC;
+
+    /* Measured 3-row IE5 toolbar / favorites horizontal pinstripe (1x whole px) */
+    --m9-pinstripe-bg: repeating-linear-gradient(
+      to bottom,
+      #DEDEDE 0px 1px,
+      #CCCCCC 1px 2px,
+      #E8E6E8 2px 3px
+    );
+
+    /* Locked Milestone 2 pick 2A: Deep Lavender 24-row discrete address tube */
+    --m9-address-tube: linear-gradient(
+      to bottom,
+      #1B1B52 0px 1px,
+      #212162 1px 2px,
+      #282874 2px 3px,
+      #2E2E85 3px 4px,
+      #333399 4px 5px,
+      #3F3FA5 5px 6px,
+      #4C4CB2 6px 7px,
+      #5959BF 7px 8px,
+      #6666CC 8px 9px,
+      #7070D6 9px 10px,
+      #7A7AE0 10px 14px,
+      #7070D6 14px 15px,
+      #6666CC 15px 16px,
+      #5959BF 16px 17px,
+      #4C4CB2 17px 18px,
+      #3F3FA5 18px 19px,
+      #333399 19px 20px,
+      #2B2B7E 20px 21px,
+      #222266 21px 22px,
+      #1A1A4F 22px 23px,
+      #111138 23px 24px
+    );
+    --m9-address-sep: #1E1E5C;
+
+    /* Map Firefox's shared toolbar tokens to Platinum */
+    --toolbox-background-color: var(--m9-surface) !important;
+    --toolbox-text-color: var(--m9-label-text) !important;
+    --toolbar-background-color: var(--m9-surface) !important;
+    --toolbar-text-color: var(--m9-label-text) !important;
+    --toolbarbutton-icon-fill: var(--m9-lav-deep) !important;
+    --toolbarbutton-border-radius: 0px !important;
+    --focus-outline-color: var(--m9-lav-focus) !important;
+    --focus-outline: 2px solid var(--m9-lav-focus) !important;
+    --chrome-content-separator-color: var(--m9-black) !important;
+    --urlbar-min-height: 20px !important;
+    --urlbar-height: 20px !important;
+  }
+}

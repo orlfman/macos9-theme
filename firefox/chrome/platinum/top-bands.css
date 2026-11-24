@@ -1,0 +1,414 @@
+/* Milestone 3 vertical slice: the three IE5-inspired Platinum top bands:
+ *   1. Pinstriped Button Toolbar (42 px, 56 px button pitch, icons + labels)
+ *   2. Full-width 26 px Deep Lavender Address Band (pick 2A) + Platinum urlbar
+ *   3. Pinstriped Favorites (Bookmarks) Bar (24 px)
+ *
+ * Keep Firefox features (overflow, Customize Mode, urlbar autocomplete popup,
+ * keyboard navigation, extensions, popup/fullscreen/mini windows) intact.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+@media (-moz-native-theme) and (prefers-color-scheme: light) and (not (prefers-contrast)) and (not (forced-colors)) {
+  :root:not([lwtheme]) {
+    /* Bar stack order (Milestone 2 pick 1A: horizontal tabs below Favorites;
+       vertical tabs mode hides #TabsToolbar automatically via [tabs-hidden]) */
+    #navigator-toolbox {
+      background-color: var(--m9-surface) !important;
+      border-bottom: 1px solid var(--m9-black) !important;
+    }
+    #toolbar-menubar { order: 0 !important; }
+    #nav-bar         { order: 1 !important; }
+    #PersonalToolbar { order: 2 !important; }
+    #TabsToolbar     { order: 3 !important; }
+
+    /* =====================================================================
+     * Band 1: Pinstriped Button Toolbar (#nav-bar Row 1, 42 px tall)
+     * ===================================================================== */
+    #nav-bar {
+      position: relative !important;
+      z-index: 5 !important;
+      padding: 0 !important;
+      border-top: 1px solid var(--m9-white) !important;
+      border-bottom: 1px solid var(--m9-shadow-bevel) !important;
+      background-color: var(--m9-surface) !important;
+      background-image: var(--m9-pinstripe-bg) !important;
+      background-position: 0 0 !important;
+      background-repeat: repeat !important;
+    }
+
+    /* Outside Customize Mode and stripped windows, reserve 26 px at the bottom
+       of #nav-bar for the full-width Lavender address band (Row 2). Clear
+       #nav-bar's own border-bottom so #urlbar-container's #000000 bottom line
+       meets #PersonalToolbar's #FFFFFF top highlight directly with zero stray row. */
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #nav-bar {
+      min-height: 68px !important;
+      padding-bottom: 26px !important;
+      border-bottom: 0 !important;
+    }
+
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #nav-bar-customization-target {
+      min-height: 41px !important;
+      height: 41px !important;
+      padding-inline: 4px !important;
+      align-items: center !important;
+    }
+
+    /* Collapse default flex springs on Row 1 so IE5 nav buttons pack left
+       while account/extensions/menu stay anchored on the right. */
+    &:not([customizing]) #nav-bar-customization-target > toolbarspring {
+      display: none !important;
+    }
+
+    /* IE5-style dotted Lavender vertical separator (1 px dot every 3 rows) */
+    #nav-bar toolbarseparator {
+      appearance: none !important;
+      width: 1px !important;
+      min-width: 1px !important;
+      height: 30px !important;
+      margin: 0 4px !important;
+      padding: 0 !important;
+      border: 0 !important;
+      background: repeating-linear-gradient(
+        to bottom,
+        var(--m9-lav-deep) 0px 1px,
+        transparent 1px 3px
+      ) !important;
+    }
+    &:not([customizing]) #home-button {
+      margin-inline-end: 7px !important;
+      position: relative !important;
+    }
+    &:not([customizing]) #home-button::after {
+      content: "";
+      position: absolute;
+      right: -4px;
+      top: 5px;
+      bottom: 5px;
+      width: 1px;
+      background: repeating-linear-gradient(
+        to bottom,
+        var(--m9-lav-deep) 0px 1px,
+        transparent 1px 3px
+      );
+      pointer-events: none;
+    }
+
+    /* Primary toolbar buttons: 56 px pitch, icon above centered label (pick 4A) */
+    &:not([popup-window], [mini-window]) #nav-bar .toolbarbutton-1 {
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      min-width: 56px !important;
+      height: 38px !important;
+      margin-block: 1px !important;
+      margin-inline: 0 !important;
+      padding: 2px 4px 1px !important;
+      border: 1px solid transparent !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      color: var(--m9-label-text) !important;
+      fill: var(--m9-lav-deep) !important;
+      -moz-context-properties: fill, fill-opacity !important;
+    }
+
+    &:not([popup-window], [mini-window]) #nav-bar .toolbarbutton-1 > .toolbarbutton-icon,
+    &:not([popup-window], [mini-window]) #nav-bar .toolbarbutton-1 > .toolbarbutton-badge-stack {
+      padding: 2px !important;
+      width: 20px !important;
+      height: 20px !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      outline: none !important;
+      box-shadow: none !important;
+    }
+
+    &:not([popup-window], [mini-window]) #nav-bar .toolbarbutton-1 > .toolbarbutton-text {
+      display: block !important;
+      width: auto !important;
+      max-width: none !important;
+      min-height: 0 !important;
+      padding: 1px 2px 0 !important;
+      font-size: 10px !important;
+      line-height: 11px !important;
+      text-align: center !important;
+      color: inherit !important;
+      background: transparent !important;
+      outline: none !important;
+      box-shadow: none !important;
+    }
+
+    /* Anchor right-side account/extensions group to the right edge of Row 1 */
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #nav-bar #fxa-toolbar-menu-button {
+      margin-inline-start: auto !important;
+    }
+
+    /* Keep overflow chevron compact with no empty text line */
+    #nav-bar-overflow-button {
+      min-width: 26px !important;
+      padding-inline: 2px !important;
+    }
+    #nav-bar-overflow-button > .toolbarbutton-text {
+      display: none !important;
+    }
+
+    /* Subtle Platinum divider before the far-right AppMenu button */
+    #PanelUI-button {
+      border-inline-start: 1px solid var(--m9-shadow-bevel) !important;
+      box-shadow: inset 1px 0 0 var(--m9-white) !important;
+      padding-inline: 2px !important;
+      align-items: center !important;
+    }
+
+    /* Button state: Disabled (washed-out Lavender icon + #777777 label) */
+    &:not([customizing], [popup-window], [mini-window]) #nav-bar .toolbarbutton-1[disabled] {
+      opacity: 1 !important;
+      color: var(--m9-disabled-text) !important;
+      fill: var(--m9-lav-disabled-icon) !important;
+      fill-opacity: 1 !important;
+    }
+
+    /* Button state: Hover (measured Platinum ToolNormal bevel, docs/REFERENCE.md) */
+    &:not([popup-window], [mini-window]) #nav-bar .toolbarbutton-1:not([disabled]):hover {
+      background: var(--m9-surface-mid) !important;
+      border-top: 1px solid var(--m9-border-tool-tl) !important;
+      border-left: 1px solid var(--m9-border-tool-tl) !important;
+      border-right: 1px solid var(--m9-border-tool-br) !important;
+      border-bottom: 1px solid var(--m9-border-tool-br) !important;
+      box-shadow:
+        inset 1px 1px 0 var(--m9-white),
+        inset -1px -1px 0 var(--m9-shadow-dark) !important;
+    }
+
+    /* Button state: Pressed / Open (measured Platinum pressed button: #666666 + white ink) */
+    &:not([popup-window], [mini-window]) #nav-bar .toolbarbutton-1:not([disabled]):is(:hover:active, [open="true"], [checked="true"]) {
+      background: var(--m9-pressed-fill) !important;
+      border: 1px solid var(--m9-black) !important;
+      box-shadow:
+        inset 1px 1px 0 var(--m9-pressed-hi),
+        inset -1px -1px 0 var(--m9-pressed-br),
+        inset 2px 2px 0 var(--m9-pressed-in),
+        inset -2px -2px 0 var(--m9-pressed-lo) !important;
+      color: var(--m9-white) !important;
+      fill: var(--m9-white) !important;
+    }
+    &:not([popup-window], [mini-window]) #nav-bar .toolbarbutton-1:not([disabled]):is(:hover:active, [open="true"], [checked="true"]) > :is(.toolbarbutton-icon, .toolbarbutton-text, .toolbarbutton-badge-stack) {
+      color: var(--m9-white) !important;
+      fill: var(--m9-white) !important;
+    }
+
+    /* Button state: Keyboard Focus (measured 2 px #6666CC ring) */
+    &:not([popup-window], [mini-window]) #nav-bar .toolbarbutton-1:focus-visible {
+      outline: 2px solid var(--m9-lav-focus) !important;
+      outline-offset: -2px !important;
+    }
+    &:not([popup-window], [mini-window]) #nav-bar .toolbarbutton-1:focus-visible > :is(.toolbarbutton-icon, .toolbarbutton-text, .toolbarbutton-badge-stack) {
+      outline: none !important;
+    }
+
+    /* =====================================================================
+     * Band 2: Full-width 26 px Deep Lavender Address Band (#urlbar-container)
+     * ===================================================================== */
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar-container {
+      position: absolute !important;
+      inset-inline: 0 !important;
+      bottom: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+      height: 26px !important;
+      min-height: 26px !important;
+      margin: 0 !important;
+      padding: 2px 8px 2px 68px !important;
+      box-sizing: border-box !important;
+      align-items: center !important;
+      background-color: var(--m9-lav-deep) !important;
+      background-image: var(--m9-address-tube) !important;
+      border-top: 1px solid var(--m9-shadow-bevel) !important;
+      border-bottom: 1px solid var(--m9-black) !important;
+      z-index: 2 !important;
+    }
+
+    /* IE5-style "Address:" label on the left of the Deep Lavender tube */
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar-container::before {
+      content: "Address:";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 62px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--m9-white);
+      text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+      border-right: 1px solid var(--m9-address-sep);
+      pointer-events: none;
+    }
+
+    /* Platinum address field: 20 px border-box (1 px black frame + 18 px white),
+       leaving 2 px top/bottom inside the 24 px tube for the exact 2 px #6666CC focus ring. */
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar {
+      top: 0 !important;
+      min-height: 20px !important;
+      margin: 0 !important;
+      --urlbar-box-bgcolor: var(--m9-surface) !important;
+      --urlbar-box-hover-bgcolor: var(--m9-surface-mid) !important;
+      --urlbar-box-active-bgcolor: var(--m9-pressed-fill) !important;
+      --urlbar-box-text-color: var(--m9-black) !important;
+      --urlbar-box-focus-bgcolor: var(--m9-lav-select) !important;
+    }
+
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar:not([open], [breakout-extend]) {
+      height: 20px !important;
+    }
+
+    /* When autocomplete results open ([open] / [breakout-extend]), anchor the
+       input cleanly in place and let .urlbar-background + .urlbarView expand
+       downward as an opaque Platinum popup above the lower bars and page. */
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar:is([open], [breakout-extend]) {
+      position: absolute !important;
+      top: 2px !important;
+      left: 68px !important;
+      width: calc(100% - 76px) !important;
+      height: auto !important;
+      z-index: 999 !important;
+    }
+
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar > .urlbar-background {
+      background: var(--m9-white) !important;
+      border: 1px solid var(--m9-black) !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      outline: none !important;
+    }
+
+    /* Measured Mac OS 9 text field focus ring: 2 px #6666CC outside 1 px black frame.
+       Firefox 160 sets boolean focused="" rather than focused="true". */
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar:is([focused], :focus-within) > .urlbar-background {
+      border: 1px solid var(--m9-black) !important;
+      outline: 2px solid var(--m9-lav-focus) !important;
+      outline-offset: 0px !important;
+    }
+
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar:is([open], [breakout-extend]) > .urlbar-background {
+      box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35) !important;
+    }
+
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar > .urlbarView {
+      margin-inline: 0 !important;
+      width: 100% !important;
+      background: var(--m9-white) !important;
+      border-top: 1px solid var(--m9-shadow-dark) !important;
+    }
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) .urlbarView-row[selected] > .urlbarView-row-inner {
+      background: var(--m9-lav-deep) !important;
+      color: var(--m9-white) !important;
+      border-radius: 0 !important;
+    }
+
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar > .urlbar-input-container {
+      height: 20px !important;
+      min-height: 20px !important;
+      padding: 0 3px !important;
+      border: 0 !important;
+    }
+
+    #urlbar-input {
+      font-size: 12px !important;
+      color: var(--m9-black) !important;
+    }
+
+    /* Measured Mac OS 9 Purple text selection (#CCCCFF with black text) */
+    #urlbar-input::selection {
+      background-color: var(--m9-lav-select) !important;
+      color: var(--m9-black) !important;
+    }
+
+    .searchmode-switcher,
+    .urlbar-page-action,
+    #identity-box,
+    #trust-icon-container,
+    #tracking-protection-icon-container {
+      height: 18px !important;
+      min-height: 18px !important;
+      padding-block: 0 !important;
+      border-radius: 0 !important;
+    }
+
+    /* =====================================================================
+     * Band 3: Pinstriped Favorites (Bookmarks) Bar (#PersonalToolbar, 24 px)
+     * ===================================================================== */
+    #PersonalToolbar {
+      min-height: 24px !important;
+      max-height: 24px !important;
+      padding: 0 6px !important;
+      background-color: var(--m9-surface) !important;
+      background-image: var(--m9-pinstripe-bg) !important;
+      background-position: 0 0 !important;
+      background-repeat: repeat !important;
+      border-top: 1px solid var(--m9-white) !important;
+      border-bottom: 1px solid var(--m9-shadow-bevel) !important;
+      color: var(--m9-label-text) !important;
+    }
+
+    #PersonalToolbar[customizing] {
+      max-height: none !important;
+    }
+
+    #PersonalToolbar toolbarbutton.bookmark-item:not(.subviewbutton) {
+      margin: 1px 2px !important;
+      padding: 1px 6px !important;
+      height: 20px !important;
+      border: 1px solid transparent !important;
+      border-radius: 0 !important;
+      color: var(--m9-label-text) !important;
+      font-size: 11px !important;
+      outline: none !important;
+      background: transparent !important;
+    }
+
+    #PersonalToolbar toolbarbutton.bookmark-item:not(.subviewbutton):not([disabled]):hover {
+      background: var(--m9-surface-mid) !important;
+      border-top: 1px solid var(--m9-border-tool-tl) !important;
+      border-left: 1px solid var(--m9-border-tool-tl) !important;
+      border-right: 1px solid var(--m9-border-tool-br) !important;
+      border-bottom: 1px solid var(--m9-border-tool-br) !important;
+      box-shadow:
+        inset 1px 1px 0 var(--m9-white),
+        inset -1px -1px 0 var(--m9-shadow-dark) !important;
+    }
+
+    #PersonalToolbar toolbarbutton.bookmark-item:not(.subviewbutton):not([disabled]):is(:hover:active, [open="true"]) {
+      background: var(--m9-pressed-fill) !important;
+      border: 1px solid var(--m9-black) !important;
+      box-shadow:
+        inset 1px 1px 0 var(--m9-pressed-hi),
+        inset -1px -1px 0 var(--m9-pressed-br) !important;
+      color: var(--m9-white) !important;
+    }
+
+    #PersonalToolbar toolbarbutton.bookmark-item:not(.subviewbutton):focus-visible {
+      outline: 2px solid var(--m9-lav-focus) !important;
+      outline-offset: -2px !important;
+    }
+
+    #PersonalToolbar .bookmark-item > .toolbarbutton-icon {
+      width: 14px !important;
+      height: 14px !important;
+      fill: var(--m9-lav-deep) !important;
+      -moz-context-properties: fill !important;
+    }
+
+    #personal-toolbar-empty-description {
+      min-height: 20px !important;
+      margin: 0 !important;
+      padding: 2px 4px !important;
+      font-size: 11px !important;
+      color: var(--m9-label-text) !important;
+    }
+  }
+}

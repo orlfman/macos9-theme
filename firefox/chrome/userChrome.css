@@ -1,0 +1,7 @@
+/* Platinum Lavender for Firefox (IE5 Mac-inspired layout).
+ * In a user profile, firefox/install.sh (Milestone 6) inserts this import
+ * inside a marker-delimited block so existing user rules stay intact below it.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+@import url("platinum/platinum.css");

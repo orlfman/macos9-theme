@@ -1,0 +1,195 @@
+/* Milestone 4: Find Bar, Notification Bars, Inactive Window Flattening,
+ * Private Browsing Accent, Popup/Mini/Fullscreen Windows, and Customize Mode.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+@media (-moz-native-theme) and (prefers-color-scheme: light) and (not (prefers-contrast)) and (not (forced-colors)) {
+  :root:not([lwtheme]) {
+    /* =====================================================================
+     * Find Bar (findbar)
+     * ===================================================================== */
+    .browserContainer > findbar {
+      background-color: var(--m9-surface) !important;
+      color: var(--m9-black) !important;
+      border-top: 1px solid var(--m9-black) !important;
+      box-shadow: inset 0 1px 0 var(--m9-white) !important;
+      padding-block: 4px !important;
+    }
+
+    findbar .findbar-textbox {
+      background: var(--m9-white) !important;
+      color: var(--m9-black) !important;
+      border: 1px solid var(--m9-black) !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      padding: 2px 6px !important;
+    }
+    findbar .findbar-textbox:focus {
+      outline: 2px solid var(--m9-lav-focus) !important;
+      outline-offset: 0px !important;
+    }
+    findbar .findbar-textbox::selection {
+      background: var(--m9-lav-select) !important;
+      color: var(--m9-black) !important;
+    }
+
+    findbar .findbar-find-previous,
+    findbar .findbar-find-next,
+    findbar .findbar-closebutton {
+      background: var(--m9-surface-mid) !important;
+      border-top: 1px solid var(--m9-border-tool-tl) !important;
+      border-left: 1px solid var(--m9-border-tool-tl) !important;
+      border-right: 1px solid var(--m9-border-tool-br) !important;
+      border-bottom: 1px solid var(--m9-border-tool-br) !important;
+      border-radius: 0 !important;
+      box-shadow:
+        inset 1px 1px 0 var(--m9-white),
+        inset -1px -1px 0 var(--m9-shadow-dark) !important;
+      color: var(--m9-black) !important;
+      fill: var(--m9-lav-deep) !important;
+    }
+    findbar .findbar-find-previous:hover:active,
+    findbar .findbar-find-next:hover:active,
+    findbar .findbar-closebutton:hover:active {
+      background: var(--m9-pressed-fill) !important;
+      border: 1px solid var(--m9-black) !important;
+      color: var(--m9-white) !important;
+      fill: var(--m9-white) !important;
+    }
+
+    /* =====================================================================
+     * Notification Bars (#notifications-toolbar / notification-message)
+     * ===================================================================== */
+    notification-message {
+      --in-content-box-background: var(--m9-surface-light) !important;
+      --border-radius-small: 0px !important;
+      --border-radius-medium: 0px !important;
+      --info-bar-margin: 0px !important;
+      background-color: var(--m9-surface-light) !important;
+      color: var(--m9-black) !important;
+      border-radius: 0 !important;
+      border-bottom: 1px solid var(--m9-black) !important;
+      box-shadow:
+        inset 0 1px 0 var(--m9-white),
+        inset 0 -1px 0 var(--m9-shadow-edge) !important;
+    }
+
+    /* =====================================================================
+     * Inactive Windows (:-moz-window-inactive)
+     * Authentic Mac OS 9 inactive flattening: pinstripes flatten to calm
+     * #DDDDDD, labels mute to #777777, Lavender tube softens, focus clears.
+     * ===================================================================== */
+    &:-moz-window-inactive {
+      #nav-bar,
+      #PersonalToolbar,
+      #sidebar-container,
+      #sidebar-header {
+        background-image: none !important;
+        background-color: var(--m9-surface) !important;
+        border-top-color: var(--m9-surface-light) !important;
+      }
+
+      &:not([inFullscreen], [popup-window], [chromeless-window], [mini-window]) body::after {
+        background-image: none !important;
+        background-color: var(--m9-surface) !important;
+        border-top-color: var(--m9-shadow-dark) !important;
+        box-shadow: none !important;
+      }
+
+      #nav-bar .toolbarbutton-1 {
+        color: var(--m9-disabled-text) !important;
+        fill: var(--m9-lav-disabled-icon) !important;
+      }
+
+      #PersonalToolbar toolbarbutton.bookmark-item:not(.subviewbutton) {
+        color: var(--m9-disabled-text) !important;
+      }
+      #PersonalToolbar .bookmark-item > .toolbarbutton-icon {
+        fill: var(--m9-lav-disabled-icon) !important;
+      }
+
+      &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar-container {
+        background-image: none !important;
+        background-color: #8E8EB8 !important;
+        border-bottom-color: var(--m9-shadow-dark) !important;
+      }
+      &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar-container::before {
+        color: var(--m9-surface-light) !important;
+        text-shadow: none !important;
+      }
+      &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar > .urlbar-background {
+        outline: none !important;
+        border-color: var(--m9-shadow-dark) !important;
+      }
+
+      .tabbrowser-tab .tab-background {
+        background: var(--m9-surface) !important;
+        border-color: var(--m9-shadow-dark) !important;
+        box-shadow: none !important;
+      }
+      .tabbrowser-tab[selected] .tab-background {
+        background: var(--m9-surface-light) !important;
+      }
+      .tabbrowser-tab .tab-label {
+        color: var(--m9-disabled-text) !important;
+      }
+
+      #PanelUI-button::after {
+        border-color: var(--m9-shadow-dark) !important;
+        box-shadow: none !important;
+        opacity: 0.55 !important;
+      }
+    }
+
+    /* =====================================================================
+     * Private Browsing Windows ([privatebrowsingmode="temporary"])
+     * Firefox 160 (Nova) automatically switches Private windows into
+     * prefers-color-scheme: dark; our outer light-mode media gate intentionally
+     * leaves Firefox's native dark-purple Private theme intact and readable.
+     * ===================================================================== */
+
+    /* =====================================================================
+     * Popup, Chromeless, and Mini Windows (compact single-row Platinum)
+     * ===================================================================== */
+    &:is([popup-window], [chromeless-window], [mini-window]) {
+      #nav-bar {
+        min-height: 30px !important;
+        padding: 3px 6px !important;
+        border-bottom: 1px solid var(--m9-black) !important;
+        background-image: none !important;
+        background-color: var(--m9-surface) !important;
+      }
+      #urlbar-container {
+        position: static !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border: 0 !important;
+      }
+      #urlbar > .urlbar-background {
+        background: var(--m9-white) !important;
+        border: 1px solid var(--m9-black) !important;
+        border-radius: 0 !important;
+      }
+    }
+
+    /* =====================================================================
+     * Customize Mode ([customizing])
+     * Clean Platinum workspace; #urlbar-container returns to static flow.
+     * ===================================================================== */
+    &[customizing] {
+      #customization-container {
+        background-color: var(--m9-surface) !important;
+        color: var(--m9-black) !important;
+      }
+      #customization-footer {
+        background-color: var(--m9-surface-mid) !important;
+        border-top: 1px solid var(--m9-black) !important;
+        box-shadow: inset 0 1px 0 var(--m9-white) !important;
+      }
+      #nav-bar {
+        padding-bottom: 4px !important;
+      }
+    }
+  }
+}

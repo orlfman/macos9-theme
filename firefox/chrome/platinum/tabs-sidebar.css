@@ -1,0 +1,312 @@
+/* Milestone 4: Live-switchable Platinum Tabs (picks 1A + 1C) and Sidebars.
+ *
+ * - Horizontal tabs (1A): slim 24 px Platinum tab strip below Favorites bar
+ *   using measured Mac OS 9 tab colors (#CCCCCC inactive, #EEEEEE active,
+ *   #666666 + white label pressed; docs/REFERENCE.md).
+ * - Vertical tabs (1C): when Firefox's built-in "Turn on Vertical Tabs"
+ *   (sidebar.verticalTabs) is toggled, styles the pinstriped left sidebar
+ *   container and light-DOM #tabbrowser-tabs[orient="vertical"] seamlessly.
+ * - Sidebars: Platinum framing for both revamped (#sidebar-box, sidebar-main
+ *   CSS variables) and legacy (sidebar.revamp=false #sidebar-header) modes.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+@media (-moz-native-theme) and (prefers-color-scheme: light) and (not (prefers-contrast)) and (not (forced-colors)) {
+  :root:not([lwtheme]) {
+    --tab-min-height: 22px !important;
+    --tab-border-radius: 2px !important;
+
+    /* =====================================================================
+     * Option 1A: Slim Horizontal Platinum Tab Strip (below Favorites bar)
+     * ===================================================================== */
+    #TabsToolbar {
+      min-height: 24px !important;
+      padding: 2px 6px 0 6px !important;
+      background-color: var(--m9-surface) !important;
+      background-image: none !important;
+      border-top: 1px solid var(--m9-white) !important;
+      border-bottom: 0 !important;
+    }
+
+    #tabbrowser-tabs[orient="horizontal"] {
+      --tab-min-height: 22px !important;
+      min-height: 22px !important;
+    }
+
+    #tabbrowser-tabs[orient="horizontal"] .tabbrowser-tab {
+      min-height: 22px !important;
+      max-height: 22px !important;
+      padding-block: 0 !important;
+      padding-inline: 1px !important;
+      overflow-clip-margin: 0px !important;
+    }
+
+    #tabbrowser-tabs[orient="horizontal"] .tab-background {
+      background: var(--m9-surface-mid) !important;
+      border: 1px solid var(--m9-black) !important;
+      border-bottom: 0 !important;
+      border-radius: 2px 2px 0 0 !important;
+      box-shadow:
+        inset 1px 1px 0 #E0E0E0,
+        inset -1px 0 0 var(--m9-shadow-edge) !important;
+      margin-block: 0 !important;
+      min-height: 21px !important;
+      outline: none !important;
+    }
+
+    #tabbrowser-tabs[orient="horizontal"] .tabbrowser-tab:hover:not([selected]) .tab-background {
+      background: #D8D8D8 !important;
+    }
+
+    /* Pressed unselected tab: measured Mac OS 9 #666666 with white label */
+    #tabbrowser-tabs[orient="horizontal"] .tabbrowser-tab:not([selected]):hover:active .tab-background {
+      background: var(--m9-pressed-fill) !important;
+      box-shadow:
+        inset 1px 1px 0 var(--m9-pressed-hi),
+        inset -1px 0 0 var(--m9-pressed-br) !important;
+    }
+    #tabbrowser-tabs[orient="horizontal"] .tabbrowser-tab:not([selected]):hover:active .tab-label,
+    #tabbrowser-tabs[orient="horizontal"] .tabbrowser-tab:not([selected]):hover:active .tab-close-button {
+      color: var(--m9-white) !important;
+      fill: var(--m9-white) !important;
+    }
+
+    /* Active tab: measured #EEEEEE joining the content boundary cleanly */
+    #tabbrowser-tabs[orient="horizontal"] .tabbrowser-tab[selected] .tab-background {
+      background: var(--m9-surface-light) !important;
+      border-color: var(--m9-black) !important;
+      box-shadow:
+        inset 1px 1px 0 var(--m9-white),
+        inset -1px 0 0 var(--m9-shadow-light) !important;
+      min-height: 22px !important;
+    }
+
+    #tabbrowser-tabs[orient="horizontal"] .tabbrowser-tab:focus-visible .tab-background {
+      outline: 2px solid var(--m9-lav-focus) !important;
+      outline-offset: -2px !important;
+    }
+
+    #tabbrowser-tabs[orient="horizontal"] .tab-content {
+      padding: 0 7px !important;
+      gap: 4px !important;
+    }
+
+    #tabbrowser-tabs[orient="horizontal"] .tab-label {
+      color: var(--m9-black) !important;
+      font-size: 11px !important;
+      line-height: 14px !important;
+    }
+
+    #tabbrowser-tabs[orient="horizontal"] .tabbrowser-tab[selected] .tab-label {
+      font-weight: 600 !important;
+    }
+
+    .tab-close-button {
+      width: 14px !important;
+      height: 14px !important;
+      padding: 2px !important;
+      border-radius: 0 !important;
+      color: var(--m9-label-text) !important;
+    }
+    .tab-close-button:hover {
+      background: var(--m9-surface-mid) !important;
+      box-shadow:
+        inset 1px 1px 0 var(--m9-white),
+        inset -1px -1px 0 var(--m9-shadow-dark) !important;
+    }
+    .tab-close-button:hover:active {
+      background: var(--m9-pressed-fill) !important;
+      color: var(--m9-white) !important;
+      fill: var(--m9-white) !important;
+    }
+
+    #TabsToolbar #tabs-newtab-button,
+    #TabsToolbar #alltabs-button {
+      padding: 0 2px !important;
+      --toolbarbutton-padding-inner: 2px !important;
+      fill: var(--m9-lav-deep) !important;
+      color: var(--m9-lav-deep) !important;
+    }
+    #TabsToolbar .toolbarbutton-1 > .toolbarbutton-icon {
+      border-radius: 0 !important;
+      width: 18px !important;
+      height: 18px !important;
+      padding: 2px !important;
+    }
+    #TabsToolbar .toolbarbutton-1:not([disabled]):hover > .toolbarbutton-icon {
+      background: var(--m9-surface-mid) !important;
+      box-shadow:
+        inset 1px 1px 0 var(--m9-white),
+        inset -1px -1px 0 var(--m9-shadow-dark) !important;
+    }
+    #TabsToolbar .toolbarbutton-1:not([disabled]):hover:active > .toolbarbutton-icon {
+      background: var(--m9-pressed-fill) !important;
+      fill: var(--m9-white) !important;
+    }
+
+    /* =====================================================================
+     * Option 1C: Vertical Platinum Tabs in Left Sidebar (sidebar.verticalTabs)
+     * ===================================================================== */
+    #sidebar-container {
+      background-color: var(--m9-surface) !important;
+      background-image: var(--m9-pinstripe-bg) !important;
+      border-inline-end: 1px solid var(--m9-black) !important;
+      box-shadow:
+        inset 1px 0 0 var(--m9-white),
+        inset -1px 0 0 var(--m9-shadow-bevel) !important;
+    }
+
+    sidebar-main {
+      background: transparent !important;
+      --tab-min-height: 24px !important;
+      --toolbarbutton-icon-fill: var(--m9-lav-deep) !important;
+      --border-radius-medium: 0px !important;
+      --focus-outline-color: var(--m9-lav-focus) !important;
+    }
+
+    #vertical-tabs {
+      padding: 4px 4px 0 4px !important;
+    }
+
+    #tabbrowser-tabs[orient="vertical"] .tabbrowser-tab {
+      padding-block: 1px !important;
+      padding-inline: 0 !important;
+    }
+
+    #tabbrowser-tabs[orient="vertical"] .tab-background {
+      background: var(--m9-surface-mid) !important;
+      border: 1px solid var(--m9-black) !important;
+      border-radius: 0 !important;
+      box-shadow:
+        inset 1px 1px 0 var(--m9-white),
+        inset -1px -1px 0 var(--m9-shadow-dark) !important;
+      min-height: 22px !important;
+      margin: 0 !important;
+      outline: none !important;
+    }
+
+    #tabbrowser-tabs[orient="vertical"] .tabbrowser-tab:hover:not([selected]) .tab-background {
+      background: #D8D8D8 !important;
+    }
+
+    #tabbrowser-tabs[orient="vertical"] .tabbrowser-tab:not([selected]):hover:active .tab-background {
+      background: var(--m9-pressed-fill) !important;
+      box-shadow:
+        inset 1px 1px 0 var(--m9-pressed-hi),
+        inset -1px -1px 0 var(--m9-pressed-br) !important;
+    }
+    #tabbrowser-tabs[orient="vertical"] .tabbrowser-tab:not([selected]):hover:active .tab-label {
+      color: var(--m9-white) !important;
+    }
+
+    #tabbrowser-tabs[orient="vertical"] .tabbrowser-tab[selected] .tab-background {
+      background: var(--m9-surface-light) !important;
+      box-shadow:
+        inset 1px 1px 0 var(--m9-white),
+        inset -1px -1px 0 var(--m9-shadow-edge) !important;
+    }
+
+    #tabbrowser-tabs[orient="vertical"] .tabbrowser-tab:focus-visible .tab-background {
+      outline: 2px solid var(--m9-lav-focus) !important;
+      outline-offset: -2px !important;
+    }
+
+    #tabbrowser-tabs[orient="vertical"] .tab-label {
+      color: var(--m9-black) !important;
+      font-size: 11px !important;
+    }
+    #tabbrowser-tabs[orient="vertical"] .tabbrowser-tab[selected] .tab-label {
+      font-weight: 600 !important;
+    }
+
+    #vertical-tabs-newtab-button {
+      margin-top: 3px !important;
+      min-height: 24px !important;
+      border: 1px solid transparent !important;
+      border-radius: 0 !important;
+      color: var(--m9-label-text) !important;
+      fill: var(--m9-lav-deep) !important;
+    }
+    #vertical-tabs-newtab-button:hover {
+      background: var(--m9-surface-mid) !important;
+      border-top: 1px solid var(--m9-border-tool-tl) !important;
+      border-left: 1px solid var(--m9-border-tool-tl) !important;
+      border-right: 1px solid var(--m9-border-tool-br) !important;
+      border-bottom: 1px solid var(--m9-border-tool-br) !important;
+      box-shadow:
+        inset 1px 1px 0 var(--m9-white),
+        inset -1px -1px 0 var(--m9-shadow-dark) !important;
+    }
+
+    /* =====================================================================
+     * Explorer-bar / Sidebar Panel (#sidebar-box, legacy #sidebar-header, splitters)
+     * ===================================================================== */
+    #sidebar-box {
+      background-color: var(--m9-surface) !important;
+      color: var(--m9-label-text) !important;
+      padding: 0 !important;
+      --sidebar-background-color: var(--m9-surface-light) !important;
+      --sidebar-text-color: var(--m9-black) !important;
+      --sidebar-border-color: var(--m9-black) !important;
+    }
+
+    #sidebar {
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      outline: none !important;
+      border: 1px solid var(--m9-black) !important;
+      border-left: 0 !important;
+      border-bottom: 0 !important;
+      background-color: var(--m9-surface-light) !important;
+    }
+
+    /* Legacy sidebar header (sidebar.revamp=false) */
+    #sidebar-header {
+      background-color: var(--m9-surface) !important;
+      background-image: var(--m9-pinstripe-bg) !important;
+      border-top: 1px solid var(--m9-white) !important;
+      border-bottom: 1px solid var(--m9-black) !important;
+      padding: 3px 6px !important;
+      font-size: 11px !important;
+      font-weight: 600 !important;
+      color: var(--m9-black) !important;
+    }
+
+    #sidebar-switcher-target,
+    #sidebar-close {
+      border-radius: 0 !important;
+      border: 1px solid transparent !important;
+      color: var(--m9-black) !important;
+      fill: var(--m9-lav-deep) !important;
+    }
+    #sidebar-switcher-target:hover,
+    #sidebar-close:hover {
+      background: var(--m9-surface-mid) !important;
+      border-top: 1px solid var(--m9-border-tool-tl) !important;
+      border-left: 1px solid var(--m9-border-tool-tl) !important;
+      border-right: 1px solid var(--m9-border-tool-br) !important;
+      border-bottom: 1px solid var(--m9-border-tool-br) !important;
+      box-shadow:
+        inset 1px 1px 0 var(--m9-white),
+        inset -1px -1px 0 var(--m9-shadow-dark) !important;
+    }
+    #sidebar-switcher-target:hover:active,
+    #sidebar-switcher-target[open="true"],
+    #sidebar-close:hover:active {
+      background: var(--m9-pressed-fill) !important;
+      border: 1px solid var(--m9-black) !important;
+      color: var(--m9-white) !important;
+      fill: var(--m9-white) !important;
+    }
+
+    .sidebar-splitter {
+      width: 4px !important;
+      min-width: 4px !important;
+      border-radius: 0 !important;
+      background: var(--m9-surface-mid) !important;
+      border-inline-start: 1px solid var(--m9-white) !important;
+      border-inline-end: 1px solid var(--m9-black) !important;
+    }
+  }
+}
