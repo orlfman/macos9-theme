@@ -14,6 +14,25 @@ cleanup() {
 }
 trap cleanup EXIT
 
+capture_app() {
+    local probe=$1 theme=$2 app_id=$3
+    shift 3
+    "$@" > "$probe-$theme.log" 2>&1 &
+    child=$!
+    printf '%s\n' "$child" > "$probe-$theme.pid"
+    local witness="GTK4_WINDOW pid=$child app=$app_id "
+    for _ in {1..80}; do
+        kill -0 "$child"
+        rg -Fq "$witness" session.log && break
+        sleep 0.1
+    done
+    rg -Fq "$witness" session.log
+    timeout 12 spectacle -b -n -a -o "$ROOT/$probe-$theme.png"
+    [[ -s $probe-$theme.png ]]
+    cleanup
+    child=
+}
+
 if [[ $mode == broadway ]]; then
     export GDK_BACKEND=broadway BROADWAY_DISPLAY=:4 GSK_RENDERER=cairo
     gtk4-broadwayd -u "$XDG_RUNTIME_DIR/http4" :4 > broadway.log 2>&1 &
@@ -33,14 +52,15 @@ fi
 
 ./fixture chrome > chrome.txt
 ./fixture gallery > dialog.txt
+./fixture menus > menus.txt
 
 if [[ $mode == plasma ]]; then
     # KWin confirms that the screenshot is of the launched app's active window.
     cat > factory.js <<'JS'
 function report() {
     var w = workspace.activeWindow;
-    if (w && w.resourceClass.toString().includes("WidgetFactory"))
-        console.warn("GTK4_FACTORY pid=" + w.pid + " app=" + w.resourceClass);
+    if (w)
+        console.warn("GTK4_WINDOW pid=" + w.pid + " app=" + w.resourceClass + " title=" + w.caption);
 }
 workspace.windowActivated.connect(report);
 report();
@@ -72,21 +92,9 @@ JS
             wait "$child"
             child=
         )
-        gtk4-widget-factory > "factory-$theme.log" 2>&1 &
-        child=$!
-        printf '%s\n' "$child" > "factory-$theme.pid"
-        for _ in {1..50}; do
-            kill -0 "$child"
-            if rg -q "GTK4_FACTORY pid=$child app=" session.log; then
-                break
-            fi
-            sleep 0.1
-        done
-        rg -q "GTK4_FACTORY pid=$child app=" session.log
-        timeout 12 spectacle -b -n -a -o "$ROOT/factory-$theme.png"
-        [[ -s factory-$theme.png ]]
-        cleanup
-        child=
+        capture_app factory "$theme" org.gtk.WidgetFactory4 gtk4-widget-factory
+        capture_app settings "$theme" gtk4-demo gtk4-demo --run=listview_settings
+
     done
 
     gsettings set org.gnome.desktop.interface gtk-theme Platinum
@@ -99,6 +107,7 @@ JS
         (
             cd "scale-$scale"
             GTK4_CHECK_OUTPUT="$PWD/output.png" ../fixture gallery > dialog.txt
+            GTK4_CHECK_OUTPUT="$PWD/lists-output.png" ../fixture menus > menus.txt
         )
     done
 fi

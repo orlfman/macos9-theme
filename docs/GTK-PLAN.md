@@ -60,11 +60,27 @@ Compositor captures cover layout at 150% and 200%, plus exact indicator artwork
 at 200%. Each run prints its disposable evidence
 directory.
 
-Next, inspect GTK 4 popover menus, dropdowns and list/column views, then port
-the remaining GTK 3 batches. Verify native list and scroll behavior, including
-overlay scrolling and the toolkit's lack of scrollbar steppers. Review narrow
-and maximized GTK 4 header bars and test an ordinary application after each
-batch. Installation is scheduled for Milestone 6.
+## Milestone 4 menus, dropdowns and lists
+
+The named GTK 4 theme now styles GtkPopoverMenuBar, model-backed popover menus,
+GtkDropDown, GtkListView and GtkColumnView in light mode. It reuses the measured
+GTK 3 menu sprites and generates filtered frame slices for dropdowns and column
+headers. GTK controls row height, search, focus, sorting, scrolling and submenu
+navigation. Sorted columns retain GTK’s direction indicator. GTK 4.24.1 exposes
+the sort class on that child only, so the header keeps its normal face after a
+sort. GTK’s native popover pointer and submenu page navigation are retained.
+
+The same `dev/check-gtk4.sh` commands now cover this batch. Wayland checks
+43-item dropdown overflow, filtering and selection, checked and radio menu
+actions, submenu navigation, native sorting, list scrolling and actual backdrop
+selection. The GTK Settings demo renders the measured header corner and Lavender
+row under normal named-theme selection. The 150% and 200% compositor captures
+cover the additional gallery. The 200% dropdown arrow matches the doubled 1×
+reference exactly. The audit records the virtual compositor's buffer limitation.
+
+Next are GTK 4 notebook tabs, scales, progress bars and scrollbars, including
+overlay and classic scrolling and GTK 4’s lack of steppers. Header bars,
+tooltips and dialogs follow. Installation is scheduled for Milestone 6.
 
 ## Installer contract for milestone 6
 

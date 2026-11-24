@@ -78,6 +78,12 @@ The root install and uninstall scripts accept `--firefox` as the first argument 
 - Fixed profile byte preservation, temporary directory ownership, state locking, cross-filesystem installs and interrupted install/undo recovery. Added regression coverage through the shell entry points.
 - All five Firefox suites passed (199/199) on Firefox 160.0.1. See AUDIT.md #192–197. Changes are uncommitted. User visual review is pending.
 
+## 2026-11-24, Codex (GPT-6) — port GTK 4 menus, dropdowns and lists
+
+- Added light-mode GTK 4 menubar, popover menu, dropdown, list view and column header styling in `gtk/Platinum/gtk-4.0/menus-lists.css`. Generated filtered dropdown and header frames in both pixel densities and mirrored the dropdown cap for RTL.
+- Extended the GTK 4 fixture and verifier to cover native actions, search, scrolling, sorting, inactive selections, the GTK Settings demo and both display scales. Passed 109/109 nested Wayland, 74/74 Broadway and 74/74 Broadway under ASan/UBSan. All five mandatory project suites and the icon suite passed. Details and the virtual compositor limitation are recorded in AUDIT.md.
+- GTK changes are uncommitted. Next are notebook tabs, scales, progress bars and scrollbars. User visual review is pending.
+
 ## 2026-11-24, Antigravity (Gemini 4 Carbon) — Firefox Milestone 7 release check and audit (#189–191)
 
 - Audited `firefox/`, `tools/check-firefox-selectors.py`, `dev/check-firefox-m*.sh`, and `README.md` over `ca8ac31`, fixing three pre-release findings before recording the Milestone 7 release check in `AUDIT.md`:

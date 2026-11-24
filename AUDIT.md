@@ -13,6 +13,8 @@ Firefox second independent audit, 2026-11-24. **#198–204 fixed in the working 
 
 Firefox independent audit, 2026-11-24. **#192–197 fixed and verified in the working tree over `ca8ac31`.** The five Firefox suites passed 199/199. Desktop visual review is pending.
 
+GTK 4 menus, dropdowns and lists, 2026-11-24. **Verified in the working tree over `ca8ac31`.** 109/109 Wayland and 74/74 Broadway. User visual review is pending.
+
 Firefox Platinum Lavender (Milestones 1–7), 2026-11-24. **#189–191 fixed and verified in the working tree over `ca8ac31`.** All five Firefox verification suites passed end to end (`dev/check-firefox-m1.sh` 46/46, `dev/check-firefox-m3.sh` 34/34, `dev/check-firefox-m4.sh` 34/34, `dev/check-firefox-m5.sh` 31/31, `dev/check-firefox-m6.sh` 41/41, plus `tools/check-firefox-selectors.py` 35/35 `#id` and 1/1 `::part()`), alongside project regressions (`dev/check-style.sh` 135/135, `dev/check-quick.sh` 29/29, `dev/test_icons_phase1.py` 80/80, `dev/test-install.sh` 727/727). User's live Firefox install and on-screen review are pending. #95 remains open.
 
 GTK Milestone 4 initial controls, 2026-11-24. **#181–188 fixed and verified in the working tree.** The follow-up passed 78/78 Wayland and 56/56 Broadway, with all 36 reference crops exact on each. User visual review is pending. #95 remains open.
@@ -83,6 +85,45 @@ Reviewed the theme, browser probes and profile lifecycle on Firefox 160.0.1 agai
 - **#197 · P1 · verified.** Opening the state lock truncated its target, and final cleanup could unlink another installer's active lock inode. Install and undo reject symlinked lock files, open the lock without truncating and retain the inode between runs. Tests covered lock contention and symlink refusal.
 
 **Verification.** M1 46/46 (`firefox-m1.5cE6Rg`), M3 34/34 (`firefox-m3.CmKtTG`), M4 34/34 (`firefox-m4.VcySMQ`), M5 31/31 (`firefox-m5.5R2fbr`), M6 54/54 (`firefox-m6.q72g0P`). Evidence directories are under `dev/build/`. The selector checker found 35 IDs and one shadow part in the installed archives. Testing used disposable profiles and nested Wayland, including a real installed-profile cold launch and undo. User visual review and other Firefox versions remain unverified.
+
+## 2026-11-24, Codex (GPT-6) — GTK 4 menus, dropdowns and lists
+
+Verified the new light-mode GTK 4 batch in the working tree over `ca8ac31`.
+No open theme findings in the tested controls. Normal, disabled and open dropdown
+arrow crops, menubar and header bands, submenu arrow and separator match the
+Mac OS 9 captures used by the GTK 3 batch. Measured a 1 px horizontal arrow
+offset and half-pixel sampling at odd heights during development and corrected
+both. The theme uses the project’s original check and radio sprites.
+
+- Native Wayland/Vulkan passed **109/109** in `dev/build/gtk4-m4-plasma.qFPCLQ`,
+  including **53 exact 1× crops**. Broadway Cairo passed **74/74** in
+  `dev/build/gtk4-m4-broadway.0fgbik`, including **50 exact crops**. The
+  Broadway ASan/UBSan run passed 74/74 (`gtk4-m4-broadway.q9UzMB`, leaks
+  excluded). GTK 3 Batch 1 passed 38/38 on Broadway. Regenerating all 220
+  PNGs reproduced their bytes and left the 200 GTK 3 assets unchanged.
+- The mapped 43-item dropdown overflowed its viewport, filtered to a single
+  result, selected the original model’s item 2 and closed. GTK action activation
+  changed a check and radio choice and navigated into a submenu. The list
+  scrolled and selected item 40. The sorted column model placed Alder first.
+  Selected list and column rows were Lavender in the active window and muted
+  after KWin activated a second window. The fixture drives GTK APIs.
+- KWin identified the separate GTK Settings demo and Widget Factory windows for
+  both named themes. The Settings demo’s selected row and measured header corner
+  appeared under Platinum. The Adwaita control had neither. Selection and
+  unclipped output passed at 150% and 200%, including an exact 2× arrow crop.
+  Independent Broadway captures of the closed gallery were identical between
+  Platinum and Adwaita for both dark mode and high contrast.
+- The verifier rejected four deliberately altered results (arrow, checked menu
+  artwork, app capture and search result) in `dev/build/gtk4-menu.0pr5Up/negative.log`.
+  Qt Widgets passed 135/135, Qt Quick 29/29, Plasma 19/19, icons 80/80,
+  installer/undo 727/727 and nested live install 40/40.
+- GTK retains natural row heights, native submenu navigation and the column
+  sort indicator. Both stock Adwaita and Platinum hit a DMA-BUF stride error
+  at some popup sizes in virtual KWin with Vulkan. The Wayland fixture uses
+  a fixed 231 px dropdown scroll viewport. An unrestricted Platinum GL run
+  passed search, selection and submenu navigation. Intermittent GDK frame-timing
+  diagnostics were observed in exploratory popup runs; the final suites kept
+  diagnostics enabled and passed. User visual review is pending.
 
 ## 2026-11-24, Antigravity (Gemini 4 Carbon) — Firefox Platinum Lavender release check and audit (Milestone 7)
 

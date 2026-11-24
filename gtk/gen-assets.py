@@ -719,12 +719,12 @@ def make_titlebutton_box(glyph: str, pressed: bool = False, backdrop: bool = Fal
     return im
 
 
-def pad_slice_center(image: Image.Image) -> Image.Image:
-    """Guard both sides of a one-pixel stretch strip from GTK 4 texture filtering."""
-    center = image.width // 2
-    coords = (*range(center), center, center, center, *range(center + 1, image.width))
-    padded = Image.new(image.mode, (len(coords), len(coords)))
-    padded.putdata([image.getpixel((x, y)) for y in coords for x in coords])
+def pad_slice_center(image: Image.Image, stretch_x: int, stretch_y: int) -> Image.Image:
+    """Guard both sides of one-pixel stretch strips from GTK 4 texture filtering."""
+    xs = (*range(stretch_x), stretch_x, stretch_x, *range(stretch_x, image.width))
+    ys = (*range(stretch_y), stretch_y, stretch_y, *range(stretch_y, image.height))
+    padded = Image.new(image.mode, (len(xs), len(ys)))
+    padded.putdata([image.getpixel((x, y)) for y in ys for x in xs])
     return padded
 
 
@@ -871,9 +871,18 @@ def main() -> int:
         save_asset(OUT_GTK3, name, im)
 
     for name in ("push-normal", "push-pressed"):
-        save_asset(OUT_GTK4, name, pad_slice_center(assets[name]))
+        save_asset(OUT_GTK4, name, pad_slice_center(assets[name], 4, 4))
 
-    print(f"Generated four filtered-slice variants in {OUT_GTK4}")
+    for state in ("normal", "pressed", "disabled"):
+        name = f"popup-frame-{state}"
+        frame = pad_slice_center(assets[name], 4, 4)
+        save_asset(OUT_GTK4, name, frame)
+        save_asset(OUT_GTK4, name + "-rtl", frame.transpose(Image.Transpose.FLIP_LEFT_RIGHT))
+
+    for name in ("header-normal", "header-sorted"):
+        save_asset(OUT_GTK4, name, pad_slice_center(assets[name], 2, 2))
+
+    print(f"Generated GTK 4 button, dropdown and column-header slices in {OUT_GTK4}")
     print(f"Generated {len(assets)} assets (1x + @2x = {len(assets) * 2} PNGs) in {OUT_GTK3}")
     return 0
 

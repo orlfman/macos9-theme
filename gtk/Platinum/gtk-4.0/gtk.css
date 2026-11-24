@@ -1,5 +1,5 @@
 /*
- * Platinum GTK 4 theme — initial control slice
+ * Platinum GTK 4 theme
  * Measured palette and original artwork shared with GTK 3.
  *
  * SPDX-License-Identifier: BSD-2-Clause
@@ -12,4 +12,5 @@
 
 @media (prefers-color-scheme: light) and (not (prefers-contrast: more)) {
   @import url("controls.css");
+  @import url("menus-lists.css");
 }

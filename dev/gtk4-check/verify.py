@@ -129,6 +129,136 @@ def verify_scale(root, scale):
     return lavender > 200 and focus > 100, f"surface={scale} dialog={actual} {lavender=} {focus=}"
 
 
+def contains_artwork(image, artwork):
+    """Locate an exact RGB crop, including its position within each scanline."""
+    pixels = image.tobytes()
+    first = artwork.crop((0, 0, artwork.width, 1)).tobytes()
+    start = 0
+    while (offset := pixels.find(first, start)) >= 0:
+        start = offset + 1
+        y, x = divmod(offset // 3, image.width)
+        if offset % 3 or x + artwork.width > image.width or y + artwork.height > image.height:
+            continue
+        region = image.crop((x, y, x + artwork.width, y + artwork.height))
+        if ImageChops.difference(artwork, region).getbbox() is None:
+            return True
+    return False
+
+
+def verify_scaled_lists(root, scale):
+    directory = root / f"scale-{scale}"
+    props, controls = read_report(directory / "menus.txt")
+    window = Image.open(directory / "menus-lists.png").convert("RGB")
+    screen = Image.open(directory / "lists-output.png").convert("RGB")
+    bounds = screen.getbbox()
+    if not bounds or props.get("surface_scale") != str(scale) or props.get("renderer_override") != "none":
+        return False
+    left, top, right, bottom = bounds
+    if (min(left, top) <= 0 or right >= screen.width or bottom >= screen.height
+            or abs(right - left - window.width * scale) > 1 or abs(bottom - top - window.height * scale) > 1):
+        return False
+    for name in ("list-row", "column-row"):
+        x, y, w, h = controls[name][:4]
+        row = crop(screen, (left + round(x * scale), top + round(y * scale), round(w * scale), round(h * scale)))
+        if color_count(row, ACTIVE_SELECTION) < row.width * row.height / 2:
+            return False
+    if scale == 2:
+        x, y, w, h = controls["dropdown"][:4]
+        glyph = crop(screen, (left + (x + w - 18) * 2, top + (y + (h - 10) // 2) * 2, 28, 20))
+        reference = Image.open(PROJECT / "reference/appearance-2-appearance.png").convert("RGB")
+        expected = reference.crop((753, 262, 767, 272)).resize(glyph.size, Image.Resampling.NEAREST)
+        return ImageChops.difference(glyph, expected).getbbox() is None
+    return True
+
+
+def verify_menus(root, wayland, record, compare):
+    props, controls = read_report(root / "menus.txt")
+    backend = "GdkWaylandDisplay" if wayland else "GdkBroadwayDisplay"
+    record(props.get("backend") == backend and props.get("theme") == "Platinum"
+           and props.get("theme_override") == "none" and props.get("surface_scale") == "1"
+           and (not wayland or props.get("renderer_override") == "none"), "menus-named-theme")
+    record(props.get("interactions") == props.get("sorted") == props.get("scrolled") == "1"
+           and props.get("position") == "40", "list-scroll-selection-and-column-sort")
+    active = Image.open(root / "menus-lists.png").convert("RGB")
+    bx, by, *_ = controls["bar"]
+    compare("ref-native-menubar", "menu-file-open.png", 72, 0, bx + 100, by, 7, 20, "menus-lists.png")
+    for name, ref, rx, ry, rw in (
+        ("dropdown", "appearance-2-appearance.png", 591, 257, 180),
+        ("dropdown-disabled", "appearance-4-desktop.png", 710, 451, 194),
+    ):
+        x, y, w, h = controls[name][:4]
+        for side, u, v, dx, dy, width, height in (
+            ("top", 8, 0, 8, 0, 36, 3),
+            ("bottom", 8, 17, 8, h - 3, 36, 3),
+            ("left", 0, 4, 0, 4, 4, 8),
+            ("cap", rw - 22, 0, w - 22, 0, 18, 4),
+            ("arrows", rw - 18, 5, w - 18, (h - 10) // 2, 14, 10),
+        ):
+            compare(f"ref-{name}-{side}", ref, rx + u, ry + v, x + dx, y + dy, width, height,
+                    "menus-lists.png")
+    x, y, w, h = controls["dropdown-rtl"][:4]
+    compare("ref-rtl-dropdown-arrows", "appearance-2-appearance.png", 753, 262,
+            x + 4, y + (h - 10) // 2, 14, 10, "menus-lists.png")
+    x, y, w, h = controls["header"][:4]
+    compare("ref-column-header-top", "disclosure-triangles.png", 351, 154,
+            x + 8, y, 36, 3, "menus-lists.png")
+    compare("ref-column-header-bottom", "disclosure-triangles.png", 351, 172,
+            x + 8, y + h - 3, 36, 3, "menus-lists.png")
+
+    for name in ("list-row", "column-row"):
+        row = crop(active, controls[name])
+        selected = color_count(row, ACTIVE_SELECTION)
+        record(selected > row.width * row.height / 2 and color_count(row, (0, 0, 0)) > 0,
+               name + "-active", f"{selected} lavender pixels")
+        if wayland:
+            background = Image.open(root / "lists-backdrop.png").convert("RGB")
+            inactive = crop(background, controls[name])
+            record(color_count(inactive, INACTIVE_SELECTION) > row.width * row.height / 2
+                   and color_count(inactive, ACTIVE_SELECTION) == 0, name + "-backdrop")
+
+    if wayland:
+        x, y, w, h = controls["dropdown"][:4]
+        compare("ref-open-dropdown-arrows", "popup-open.png", 753, 303, x + w - 18,
+                y + (h - 10) // 2, 14, 10, "dropdown-pressed.png")
+        menu = Image.open(root / "action-menu.png").convert("RGB")
+        selected = crop(menu, controls["menu-item"])
+        disabled = crop(menu, controls["menu-disabled"])
+        record(color_count(selected, (51, 51, 153)) > selected.width * selected.height / 2
+               and color_count(selected, (255, 255, 255)) > 10
+               and color_count(disabled, (119, 119, 119)) > 5 and props.get("toggled") == "1"
+               and props.get("menu_closed") == "1", "popover-menu-activation-and-colors")
+        mark = crop(menu, controls["menu-check"])
+        with Image.open(PROJECT / "gtk/Platinum/gtk-3.0/assets/menu-check-hover.png") as ink:
+            expected = Image.new("RGB", ink.size, (51, 51, 153))
+            expected.paste(ink, mask=ink.getchannel("A"))
+        record(mark.size == expected.size and ImageChops.difference(mark, expected).getbbox() is None,
+               "popover-menu-checked-artwork")
+        radio = crop(menu, controls["menu-radio"])
+        with Image.open(PROJECT / "gtk/Platinum/gtk-3.0/assets/menu-radio-normal.png") as ink:
+            expected = Image.new("RGB", ink.size, (221, 221, 221))
+            expected.paste(ink, mask=ink.getchannel("A"))
+        record(radio.size == expected.size and ImageChops.difference(radio, expected).getbbox() is None
+               and props.get("radio_changed") == "1", "popover-radio-artwork-and-choice")
+        x, y, w, h = controls["menu-separator"][:4]
+        compare("ref-menu-separator", "menu-file-open.png", 60, 102, x + 16, y, 20, 2, "action-menu.png")
+        x, y, w, h = controls["submenu-arrow"][:4]
+        compare("ref-submenu-arrow", "menu-view-checked.png", 275, 130, x + (w - 6) // 2,
+                y + (h - 11) // 2, 6, 11, "action-menu.png")
+        record(props.get("submenu_open") == "1", "popover-submenu-navigation")
+        corner = Image.open(PROJECT / "reference/disclosure-triangles.png").convert("RGB").crop((343, 154, 349, 160))
+        app = Image.open(root / "settings-Platinum.png").convert("RGB")
+        stock = Image.open(root / "settings-Adwaita.png").convert("RGB")
+        record(contains_artwork(app, corner) and not contains_artwork(stock, corner)
+               and color_count(app, ACTIVE_SELECTION) > 200 and color_count(stock, ACTIVE_SELECTION) == 0,
+               "settings-app-column-header-and-selection")
+        for scale in (1.5, 2):
+            record(verify_scaled_lists(root, scale), f"list-and-dropdown-output-{scale * 100:g}pct")
+        popup = Image.open(root / "dropdown-open.png").convert("RGB")
+        record(color_count(popup, (51, 51, 153)) > 100 and props.get("chosen") == "2"
+               and props.get("dropdown_closed") == props.get("overflow") == props.get("filtered") == "1",
+               "dropdown-search-overflow-and-selection")
+
+
 def main(root, wayland):
     checks = []
 
@@ -136,12 +266,12 @@ def main(root, wayland):
         checks.append(bool(passed))
         print(f"{'ok' if passed else 'FAIL':<5} {name:<34} {detail}")
 
-    def compare(name, reference, rx, ry, ox, oy, width, height):
+    def compare(name, reference, rx, ry, ox, oy, width, height, shot="chrome.png"):
         size = f"{width},{height}"
         args = [
             sys.executable, "-I", str(PROJECT / "tools/compare.py"), "diff",
             f"{PROJECT / 'reference' / reference}@{rx},{ry},{size}",
-            f"{root / 'chrome.png'}@{ox},{oy},{size}", "--tolerance", "0",
+            f"{root / shot}@{ox},{oy},{size}", "--tolerance", "0",
             "--out", str(root / (name + ".png")),
         ]
         proc = subprocess.run(args, capture_output=True, text=True, check=False)
@@ -161,7 +291,7 @@ def main(root, wayland):
                and report.get("theme_override") == "none",
                state + "-named-theme", f"{report.get('theme')} / {report.get('backend')}")
     session_log = (root / "session.log").read_text()
-    app_logs = [path.read_text() for path in root.glob("factory-*.log")]
+    app_logs = [path.read_text() for pattern in ("factory-*.log", "settings-*.log") for path in root.glob(pattern)]
     diagnostics = [line.strip() for log in [session_log, *app_logs]
                    for line in log.splitlines() if PARSER_DIAGNOSTIC.search(line)]
     record(not diagnostics, "gtk-css-and-runtime-diagnostics", " | ".join(diagnostics) or "0")
@@ -234,6 +364,8 @@ def main(root, wayland):
                    and remaining == after_reassignment == 0,
                    f"dialog-{state}-backdrop-focus",
                    f"{remaining=} {after_reassignment=} focus_flags={dialog.get(f'backdrop-focus-flags-{state}')}")
+
+    verify_menus(root, wayland, record, compare)
 
     if wayland:
         backdrop = Image.open(root / "dialog-backdrop.png").convert("RGB")

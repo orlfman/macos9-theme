@@ -1,0 +1,282 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+
+menubar {
+  min-height: 19px;
+  padding: 0;
+  margin: 0;
+  color: @platinum_fg;
+  background-color: @platinum_bg;
+  background-image: none;
+  border: none;
+  border-bottom: 1px solid @platinum_border;
+  box-shadow: inset 0 1px 0 0 @platinum_highlight, inset 0 -1px 0 0 #999999;
+}
+
+menubar > item {
+  min-height: 19px;
+  padding: 0 7px;
+  margin: 0;
+  color: @platinum_fg;
+  background-color: transparent;
+  background-image: none;
+  border: none;
+  box-shadow: none;
+}
+
+menubar > item > label {
+  color: inherit;
+}
+
+menubar > item:selected,
+menubar > item:hover {
+  color: #ffffff;
+  background-color: @platinum_accent_dark;
+  box-shadow: inset 0 1px 0 0 @platinum_focus, inset 0 -1px 0 0 #000088;
+}
+
+menubar > item:disabled {
+  color: @platinum_fg_disabled;
+}
+
+/* GtkPopoverMenu and GtkDropDown both use a native popover surface. */
+popover.menu.background > contents,
+menubar > item popover.menu.background > contents,
+menubar > item popover.menu.background popover.menu.background > contents {
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 0;
+  border-image: -gtk-scaled(url("../gtk-3.0/assets/menu-frame.png"), url("../gtk-3.0/assets/menu-frame@2.png")) 2 / 2px stretch;
+  background: @platinum_bg;
+  color: @platinum_fg;
+  box-shadow: 1px 1px #222222;
+}
+
+popover.menu > arrow {
+  background: @platinum_bg;
+  border-color: @platinum_border;
+}
+
+popover.menu modelbutton {
+  min-height: 16px;
+  padding: 1px 4px;
+  border-radius: 0;
+  color: @platinum_fg;
+}
+
+popover.menu modelbutton:selected,
+popover.menu modelbutton:hover,
+popover.menu modelbutton:selected:active,
+dropdown popover.menu listview > row.activatable:selected,
+dropdown popover.menu listview > row.activatable:hover,
+dropdown popover.menu listview > row.activatable:selected:hover {
+  background-color: @platinum_accent_dark;
+  color: white;
+  box-shadow: inset 1px 0 @platinum_focus, inset -1px 0 #000088;
+}
+
+popover.menu modelbutton:disabled {
+  background: transparent;
+  color: @platinum_fg_disabled;
+  box-shadow: none;
+}
+
+popover.menu modelbutton:disabled label {
+  color: inherit;
+}
+
+popover.menu.background separator.horizontal {
+  min-height: 2px;
+  margin: 2px 0;
+  background: linear-gradient(to bottom, #888888 50%, white 50%);
+}
+
+popover.menu modelbutton check {
+  transform: none;
+  border-radius: 0;
+  -gtk-icon-size: 8px;
+  min-width: 9px;
+  min-height: 8px;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  -gtk-icon-source: none;
+  background: transparent none no-repeat center / 9px 8px;
+}
+
+popover.menu modelbutton check:checked {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/menu-check-normal.png"), url("../gtk-3.0/assets/menu-check-normal@2.png"));
+}
+
+popover.menu modelbutton:selected check:checked,
+popover.menu modelbutton:hover check:checked {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/menu-check-hover.png"), url("../gtk-3.0/assets/menu-check-hover@2.png"));
+}
+
+popover.menu modelbutton:disabled check:checked {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/menu-check-disabled.png"), url("../gtk-3.0/assets/menu-check-disabled@2.png"));
+}
+
+popover.menu modelbutton radio {
+  transform: none;
+  border-radius: 0;
+  -gtk-icon-size: 6px;
+  min-width: 6px;
+  min-height: 6px;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  -gtk-icon-source: none;
+  background: transparent none no-repeat round(down, calc(50% + 0px), 1px) center / 6px 6px;
+}
+
+popover.menu modelbutton radio:checked {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/menu-radio-normal.png"), url("../gtk-3.0/assets/menu-radio-normal@2.png"));
+}
+
+popover.menu modelbutton:selected radio:checked,
+popover.menu modelbutton:hover radio:checked {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/menu-radio-hover.png"), url("../gtk-3.0/assets/menu-radio-hover@2.png"));
+}
+
+popover.menu modelbutton:disabled radio:checked {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/menu-radio-disabled.png"), url("../gtk-3.0/assets/menu-radio-disabled@2.png"));
+}
+
+dropdown > button {
+  min-height: 14px;
+  min-width: 28px;
+  padding: 0 0 0 4px;
+  margin: 0;
+  color: @platinum_fg;
+  background-color: @platinum_bg;
+  background-image: none;
+  border-style: solid;
+  border-width: 3px 4px;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  border-image: -gtk-scaled(url("assets/popup-frame-normal.png"), url("assets/popup-frame-normal@2.png")) 5 23 5 5 / 5px 23px 5px 5px stretch;
+}
+
+dropdown > button:hover,
+dropdown > button:backdrop {
+  color: @platinum_fg;
+  background-color: @platinum_bg;
+  border-image: -gtk-scaled(url("assets/popup-frame-normal.png"), url("assets/popup-frame-normal@2.png")) 5 23 5 5 / 5px 23px 5px 5px stretch;
+}
+
+dropdown > button:active,
+dropdown > button:checked {
+  color: #ffffff;
+  background-color: #666666;
+  border-image: -gtk-scaled(url("assets/popup-frame-pressed.png"), url("assets/popup-frame-pressed@2.png")) 5 23 5 5 / 5px 23px 5px 5px stretch;
+}
+
+dropdown > button:disabled,
+dropdown > button:disabled:backdrop {
+  color: @platinum_fg_disabled;
+  background-color: @platinum_bg;
+  border-image: -gtk-scaled(url("assets/popup-frame-disabled.png"), url("assets/popup-frame-disabled@2.png")) 5 23 5 5 / 5px 23px 5px 5px stretch;
+}
+
+dropdown > button > box > arrow {
+  -gtk-icon-size: 10px;
+  -gtk-icon-source: none;
+  min-width: 14px;
+  min-height: 10px;
+  margin: 0 0 0 4px;
+  padding: 0;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center round(down, calc(50% + 0px), 1px);
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/popup-arrows-normal.png"), url("../gtk-3.0/assets/popup-arrows-normal@2.png"));
+}
+
+dropdown > button:active > box > arrow,
+dropdown > button:checked > box > arrow {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/popup-arrows-pressed.png"), url("../gtk-3.0/assets/popup-arrows-pressed@2.png"));
+}
+
+dropdown > button:disabled > box > arrow {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/popup-arrows-disabled.png"), url("../gtk-3.0/assets/popup-arrows-disabled@2.png"));
+}
+
+/* Keep the split compartment behind the arrow in right-to-left layouts. */
+dropdown > button:dir(rtl) {
+  padding: 0 4px 0 0;
+  border-image: -gtk-scaled(url("assets/popup-frame-normal-rtl.png"), url("assets/popup-frame-normal-rtl@2.png")) 5 5 5 23 / 5px 5px 5px 23px stretch;
+}
+dropdown > button:dir(rtl):active,
+dropdown > button:dir(rtl):checked {
+  border-image-source: -gtk-scaled(url("assets/popup-frame-pressed-rtl.png"), url("assets/popup-frame-pressed-rtl@2.png"));
+}
+dropdown > button:dir(rtl):disabled {
+  border-image-source: -gtk-scaled(url("assets/popup-frame-disabled-rtl.png"), url("assets/popup-frame-disabled-rtl@2.png"));
+}
+dropdown > button:dir(rtl) > box > arrow {
+  margin: 0 4px 0 0;
+}
+
+dropdown popover.menu listview {
+  margin: 0;
+  background: @platinum_bg;
+}
+
+dropdown popover.menu listview > row.activatable {
+  min-height: 16px;
+  border-radius: 0;
+  padding: 1px 6px;
+}
+
+listview.view, columnview.view {
+  background-color: @platinum_base;
+  color: @platinum_fg;
+}
+listview.view > row:selected,
+listview.view:not(:focus-within) > row:selected,
+columnview.view > listview > row:selected {
+  background-color: @platinum_selection;
+  color: @platinum_fg;
+}
+listview.view > row:selected:backdrop,
+listview.view:not(:focus-within) > row:selected:backdrop,
+columnview.view > listview > row:selected:backdrop {
+  background-color: @platinum_selection_backdrop;
+  color: @platinum_fg;
+}
+columnview.view > header > button,
+columnview.view > header > button:hover,
+columnview.view > header > button:last-child {
+  min-height: 17px;
+  padding: 0 6px;
+  background: @platinum_bg_alt;
+  color: @platinum_fg;
+  font-weight: normal;
+  border: 2px solid transparent;
+  border-image: -gtk-scaled(url("assets/header-normal.png"), url("assets/header-normal@2.png")) 3 / 3px stretch;
+}
+columnview.view > header > button:active {
+  background-color: #888888;
+  border-image-source: -gtk-scaled(url("assets/header-sorted.png"), url("assets/header-sorted@2.png"));
+}
+
+
+/* Submenu arrows retain GTK's navigation direction. */
+popover.menu modelbutton > arrow {
+  opacity: 1;
+  -gtk-icon-source: none;
+  -gtk-icon-size: 6px;
+  min-width: 6px;
+  min-height: 11px;
+  background: transparent -gtk-scaled(url("../gtk-3.0/assets/menu-arrow-normal.png"), url("../gtk-3.0/assets/menu-arrow-normal@2.png")) no-repeat center;
+}
+popover.menu modelbutton:selected > arrow,
+popover.menu modelbutton:hover > arrow {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/menu-arrow-hover.png"), url("../gtk-3.0/assets/menu-arrow-hover@2.png"));
+}
+popover.menu modelbutton:disabled > arrow {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/menu-arrow-disabled.png"), url("../gtk-3.0/assets/menu-arrow-disabled@2.png"));
+}
+popover.menu modelbutton > arrow.left {
+  transform: scaleX(-1);
+}

@@ -21,22 +21,10 @@ painted(GdkFrameClock *clock, gpointer data)
     *ready = TRUE;
 }
 
+/* Read the last painted frame without scheduling another surface commit. */
 static gboolean
-snapshot(GtkWidget *window, const char *path)
+save_frame(GtkWidget *window, const char *path)
 {
-    /* Broadway can throttle paints for one second without a browser. */
-    GdkFrameClock *clock = gtk_widget_get_frame_clock(window);
-    gboolean ready = FALSE;
-    gulong handler = g_signal_connect_after(clock, "after-paint", G_CALLBACK(painted), &ready);
-    gtk_widget_queue_draw(window);
-    gint64 deadline = g_get_monotonic_time() + 3 * G_TIME_SPAN_SECOND;
-    while (!ready && g_get_monotonic_time() < deadline)
-        settle(20);
-    g_signal_handler_disconnect(clock, handler);
-    if (!ready) {
-        fprintf(stderr, "No frame for %s\n", path);
-        return FALSE;
-    }
     GdkPaintable *paintable = gtk_widget_paintable_new(window);
     GtkSnapshot *snapshot = gtk_snapshot_new();
     gdk_paintable_snapshot(paintable, snapshot, gtk_widget_get_width(window),
@@ -56,6 +44,25 @@ snapshot(GtkWidget *window, const char *path)
     g_clear_object(&texture);
     gsk_render_node_unref(node);
     return saved;
+}
+
+static gboolean
+snapshot(GtkWidget *window, const char *path)
+{
+    /* Broadway can throttle paints for one second without a browser. */
+    GdkFrameClock *clock = gtk_widget_get_frame_clock(window);
+    gboolean ready = FALSE;
+    gulong handler = g_signal_connect_after(clock, "after-paint", G_CALLBACK(painted), &ready);
+    gtk_widget_queue_draw(window);
+    gint64 deadline = g_get_monotonic_time() + 3 * G_TIME_SPAN_SECOND;
+    while (!ready && g_get_monotonic_time() < deadline)
+        settle(20);
+    g_signal_handler_disconnect(clock, handler);
+    if (!ready) {
+        fprintf(stderr, "No frame for %s\n", path);
+        return FALSE;
+    }
+    return save_frame(window, path);
 }
 
 static void
@@ -99,9 +106,10 @@ report_widget(const char *name, GtkWidget *widget, GtkWidget *window)
         !gtk_widget_get_mapped(widget))
         return FALSE;
 
-    int width, height;
-    gtk_widget_measure(widget, GTK_ORIENTATION_HORIZONTAL, -1, NULL, &width, NULL, NULL);
-    gtk_widget_measure(widget, GTK_ORIENTATION_VERTICAL, (int)bounds.size.width,
+    int minimum, width, height;
+    gtk_widget_measure(widget, GTK_ORIENTATION_HORIZONTAL, -1, &minimum, &width, NULL, NULL);
+    /* compute_bounds() excludes CSS margins, whereas measure() includes them. */
+    gtk_widget_measure(widget, GTK_ORIENTATION_VERTICAL, MAX(minimum, (int)bounds.size.width),
                        NULL, &height, NULL, NULL);
     printf("%s %.0f %.0f %.0f %.0f %d %d\n", name,
            bounds.origin.x, bounds.origin.y, bounds.size.width, bounds.size.height,
@@ -564,11 +572,289 @@ contrast(void)
     return ok;
 }
 
+static GtkWidget *
+find_node(GtkWidget *root, const char *name)
+{
+    if (!root)
+        return NULL;
+    if (g_str_equal(gtk_widget_get_css_name(root), name))
+        return root;
+    for (GtkWidget *child = gtk_widget_get_first_child(root); child; child = gtk_widget_get_next_sibling(child)) {
+        GtkWidget *found = find_node(child, name);
+        if (found)
+            return found;
+    }
+    return NULL;
+}
+
+static GtkWidget *
+menu_row(GtkWidget *node, const char *text)
+{
+    if (GTK_IS_LABEL(node) && g_str_equal(gtk_label_get_text(GTK_LABEL(node)), text)) {
+        for (GtkWidget *row = node; row; row = gtk_widget_get_parent(row))
+            if (g_str_equal(gtk_widget_get_css_name(row), "modelbutton"))
+                return row;
+    }
+    for (GtkWidget *child = gtk_widget_get_first_child(node); child; child = gtk_widget_get_next_sibling(child)) {
+        GtkWidget *row = menu_row(child, text);
+        if (row)
+            return row;
+    }
+    return NULL;
+}
+
+static void
+setup_string(GtkSignalListItemFactory *factory, GtkListItem *item, gpointer data)
+{
+    (void)factory;
+    (void)data;
+    gtk_list_item_set_child(item, gtk_label_new(NULL));
+}
+
+static void
+bind_string(GtkSignalListItemFactory *factory, GtkListItem *item, gpointer data)
+{
+    (void)factory;
+    (void)data;
+    GtkStringObject *value = gtk_list_item_get_item(item);
+    gtk_label_set_text(GTK_LABEL(gtk_list_item_get_child(item)), gtk_string_object_get_string(value));
+}
+
+static GtkListItemFactory *
+string_factory(void)
+{
+    GtkListItemFactory *factory = gtk_signal_list_item_factory_new();
+    g_signal_connect(factory, "setup", G_CALLBACK(setup_string), NULL);
+    g_signal_connect(factory, "bind", G_CALLBACK(bind_string), NULL);
+    return factory;
+}
+
+static void
+toggle_action(GSimpleAction *action, GVariant *parameter, gpointer data)
+{
+    (void)parameter;
+    (void)data;
+    g_autoptr(GVariant) value = g_action_get_state(G_ACTION(action));
+    g_simple_action_set_state(action, g_variant_new_boolean(!g_variant_get_boolean(value)));
+}
+
+static gboolean
+menus_lists(gboolean wayland)
+{
+    GtkWidget *window = window_new("Platinum menus and lists");
+    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+    gtk_window_set_child(GTK_WINDOW(window), box);
+
+    g_autoptr(GMenu) menu = g_menu_new();
+    g_menu_append(menu, "Show details", "view.details");
+    g_menu_append(menu, "Unavailable", "view.unavailable");
+    g_autoptr(GMenu) modes = g_menu_new();
+    g_menu_append(modes, "List", "view.mode::list");
+    g_menu_append(modes, "Icons", "view.mode::icons");
+    g_menu_append_section(menu, NULL, G_MENU_MODEL(modes));
+    g_autoptr(GMenu) more = g_menu_new();
+    g_menu_append(more, "Details", "view.details");
+    g_menu_append_submenu(menu, "More", G_MENU_MODEL(more));
+    g_autoptr(GSimpleActionGroup) actions = g_simple_action_group_new();
+    g_autoptr(GSimpleAction) details = g_simple_action_new_stateful("details", NULL, g_variant_new_boolean(TRUE));
+    g_autoptr(GSimpleAction) mode = g_simple_action_new_stateful("mode", G_VARIANT_TYPE_STRING,
+                                                                g_variant_new_string("list"));
+    g_action_map_add_action(G_ACTION_MAP(actions), G_ACTION(mode));
+    g_signal_connect(details, "activate", G_CALLBACK(toggle_action), NULL);
+    g_action_map_add_action(G_ACTION_MAP(actions), G_ACTION(details));
+    gtk_widget_insert_action_group(window, "view", G_ACTION_GROUP(actions));
+    g_autoptr(GMenu) titles = g_menu_new();
+    g_menu_append_submenu(titles, "File", G_MENU_MODEL(menu));
+    GtkWidget *bar = gtk_popover_menu_bar_new_from_model(G_MENU_MODEL(titles));
+    gtk_box_append(GTK_BOX(box), bar);
+    GtkWidget *menu_button = gtk_menu_button_new();
+    gtk_menu_button_set_label(GTK_MENU_BUTTON(menu_button), "Options");
+    gtk_menu_button_set_menu_model(GTK_MENU_BUTTON(menu_button), G_MENU_MODEL(menu));
+    gtk_box_append(GTK_BOX(box), menu_button);
+
+    const char *values[] = {"Birch", "Alder", "Cedar", NULL};
+    GtkWidget *drop = gtk_drop_down_new_from_strings(values);
+    gtk_drop_down_set_enable_search(GTK_DROP_DOWN(drop), TRUE);
+    gtk_box_append(GTK_BOX(box), drop);
+    GtkWidget *disabled = gtk_drop_down_new_from_strings(values);
+    gtk_widget_set_sensitive(disabled, FALSE);
+    gtk_box_append(GTK_BOX(box), disabled);
+    GtkWidget *rtl = gtk_drop_down_new_from_strings(values);
+    gtk_widget_set_direction(rtl, GTK_TEXT_DIR_RTL);
+    gtk_widget_set_direction(gtk_widget_get_first_child(rtl), GTK_TEXT_DIR_RTL);
+    gtk_widget_set_direction(find_node(rtl, "box"), GTK_TEXT_DIR_RTL);
+    gtk_box_append(GTK_BOX(box), rtl);
+    GtkStringList *strings = gtk_string_list_new(values);
+    for (int i = 0; i < 40; i++) {
+        g_autofree char *name = g_strdup_printf("Tree %02d", i);
+        gtk_string_list_append(strings, name);
+    }
+    g_autoptr(GtkExpression) dropdown_text = gtk_property_expression_new(GTK_TYPE_STRING_OBJECT, NULL, "string");
+    gtk_drop_down_set_expression(GTK_DROP_DOWN(drop), dropdown_text);
+    gtk_drop_down_set_model(GTK_DROP_DOWN(drop), G_LIST_MODEL(strings));
+    GtkSingleSelection *selection = gtk_single_selection_new(G_LIST_MODEL(g_object_ref(strings)));
+    GtkWidget *view = gtk_list_view_new(GTK_SELECTION_MODEL(selection), string_factory());
+    GtkWidget *scroller = gtk_scrolled_window_new();
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroller), view);
+    gtk_widget_set_size_request(scroller, 270, 100);
+    gtk_box_append(GTK_BOX(box), scroller);
+
+    GtkSortListModel *sorted = gtk_sort_list_model_new(G_LIST_MODEL(strings), NULL);
+    GtkSingleSelection *columns = gtk_single_selection_new(G_LIST_MODEL(sorted));
+    GtkWidget *table = gtk_column_view_new(GTK_SELECTION_MODEL(columns));
+    g_autoptr(GtkColumnViewColumn) col = gtk_column_view_column_new("Name", string_factory());
+    GtkExpression *key = gtk_property_expression_new(GTK_TYPE_STRING_OBJECT, NULL, "string");
+    g_autoptr(GtkStringSorter) sorter = gtk_string_sorter_new(key);
+    gtk_column_view_column_set_sorter(col, GTK_SORTER(sorter));
+    gtk_column_view_append_column(GTK_COLUMN_VIEW(table), col);
+    gtk_sort_list_model_set_sorter(sorted, gtk_column_view_get_sorter(GTK_COLUMN_VIEW(table)));
+    GtkWidget *table_scroll = gtk_scrolled_window_new();
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(table_scroll), table);
+    gtk_widget_set_size_request(table_scroll, 270, 100);
+    gtk_box_append(GTK_BOX(box), table_scroll);
+    gtk_column_view_sort_by_column(GTK_COLUMN_VIEW(table), col, GTK_SORT_ASCENDING);
+    gtk_single_selection_set_selected(columns, 1);
+    gtk_window_present(GTK_WINDOW(window));
+    gtk_widget_grab_focus(view);
+    settle(400);
+    GtkWidget *header = find_node(table, "header");
+    GtkWidget *listrow = find_node(view, "row");
+    GtkWidget *table_list = find_node(table, "listview");
+    if (!header || !listrow || !table_list)
+        return FALSE;
+    GtkWidget *columnrow = gtk_widget_get_first_child(table_list);
+    while (columnrow && !(gtk_widget_get_state_flags(columnrow) & GTK_STATE_FLAG_SELECTED))
+        columnrow = gtk_widget_get_next_sibling(columnrow);
+    gboolean ok = snapshot(window, "menus-lists.png");
+    report_renderer(window);
+    ok &= report_widget("bar", bar, window);
+    ok &= report_widget("dropdown", drop, window);
+    ok &= report_widget("dropdown-disabled", disabled, window);
+    ok &= report_widget("dropdown-rtl", rtl, window);
+    ok &= report_widget("list-row", listrow, window);
+    ok &= columnrow && report_widget("column-row", columnrow, window);
+    ok &= report_widget("header", gtk_widget_get_first_child(header), window);
+    g_autoptr(GtkStringObject) first = g_list_model_get_item(G_LIST_MODEL(sorted), 0);
+    gboolean ordered = g_str_equal(gtk_string_object_get_string(first), "Alder");
+    printf("sorted=%d\n", ordered);
+    ok &= ordered;
+
+    const char *output = g_getenv("GTK4_CHECK_OUTPUT");
+    if (output) {
+        ok &= wayland && gtk_window_is_active(GTK_WINDOW(window)) && capture_output(output);
+        gtk_window_destroy(GTK_WINDOW(window));
+        return ok;
+    }
+    if (wayland) {
+        GtkWidget *other = window_new("Inactive list witness");
+        gtk_window_present(GTK_WINDOW(other));
+        settle(350);
+        ok &= gtk_window_is_active(GTK_WINDOW(other)) && !gtk_window_is_active(GTK_WINDOW(window));
+        ok &= snapshot(window, "lists-backdrop.png");
+        gtk_window_destroy(GTK_WINDOW(other));
+        gtk_window_present(GTK_WINDOW(window));
+        settle(250);
+    }
+
+    gtk_list_view_scroll_to(GTK_LIST_VIEW(view), 40, GTK_LIST_SCROLL_FOCUS | GTK_LIST_SCROLL_SELECT, NULL);
+    settle(wayland ? 350 : 1500);
+    GtkAdjustment *scroll = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(scroller));
+    printf("position=%u scrolled=%d\n", gtk_single_selection_get_selected(selection), gtk_adjustment_get_value(scroll) > 0);
+    ok &= gtk_single_selection_get_selected(selection) == 40 && gtk_adjustment_get_value(scroll) > 0;
+
+    /* Exercise popup grabs and focus transitions in the nested Wayland session. */
+    if (!wayland) {
+        printf("interactions=%d\n", ok);
+        gtk_window_destroy(GTK_WINDOW(window));
+        return ok;
+    }
+
+    GtkWidget *drop_button = gtk_widget_get_first_child(drop);
+    GtkWidget *popup = find_node(drop, "popover");
+    GtkWidget *choices = find_node(popup, "listview");
+    if (!popup || !choices)
+        return FALSE;
+    GtkWidget *choice_scroll = gtk_widget_get_ancestor(choices, GTK_TYPE_SCROLLED_WINDOW);
+    if (!choice_scroll)
+        return FALSE;
+    /* Set a reproducible overflow viewport for the 43-item search test. */
+    gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(choice_scroll), 231);
+    gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(choice_scroll), 231);
+    gtk_widget_activate(drop_button);
+    settle(400);
+    if (!gtk_widget_get_mapped(popup))
+        return FALSE;
+    ok &= save_frame(popup, "dropdown-open.png");
+    ok &= save_frame(window, "dropdown-pressed.png");
+    GtkAdjustment *range = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(choice_scroll));
+    gboolean overflow = gtk_adjustment_get_upper(range) > gtk_adjustment_get_page_size(range);
+    GtkWidget *search = find_node(popup, "entry");
+    if (!GTK_IS_EDITABLE(search))
+        return FALSE;
+    gtk_editable_set_text(GTK_EDITABLE(search), "Cedar");
+    settle(450);
+    GtkSelectionModel *filtered = gtk_list_view_get_model(GTK_LIST_VIEW(choices));
+    gboolean filtered_one = g_list_model_get_n_items(G_LIST_MODEL(filtered)) == 1;
+    printf("overflow=%d filtered=%d\n", overflow, filtered_one);
+    ok &= overflow && filtered_one;
+    gtk_selection_model_select_item(filtered, 0, TRUE);
+    g_signal_emit_by_name(choices, "activate", 0u);
+    settle(300);
+    printf("chosen=%u dropdown_closed=%d\n", gtk_drop_down_get_selected(GTK_DROP_DOWN(drop)), !gtk_widget_get_mapped(popup));
+    ok &= gtk_drop_down_get_selected(GTK_DROP_DOWN(drop)) == 2 && !gtk_widget_get_mapped(popup);
+
+    gtk_menu_button_popup(GTK_MENU_BUTTON(menu_button));
+    settle(350);
+    GtkWidget *popover = GTK_WIDGET(gtk_menu_button_get_popover(GTK_MENU_BUTTON(menu_button)));
+    GtkWidget *item = find_node(popover, "modelbutton");
+    if (!item || !gtk_widget_get_mapped(popover))
+        return FALSE;
+    gtk_widget_grab_focus(item);
+    settle(200);
+    ok &= save_frame(popover, "action-menu.png");
+    ok &= report_widget("menu-item", item, popover);
+    GtkWidget *checkmark = find_node(item, "check");
+    ok &= checkmark && report_widget("menu-check", checkmark, popover);
+    GtkWidget *radio = find_node(popover, "radio");
+    GtkWidget *separator = find_node(popover, "separator");
+    ok &= radio && report_widget("menu-radio", radio, popover);
+    ok &= separator && report_widget("menu-separator", separator, popover);
+    GtkWidget *more_row = menu_row(popover, "More");
+    GtkWidget *arrow = more_row ? find_node(more_row, "arrow") : NULL;
+    ok &= arrow && report_widget("submenu-arrow", arrow, popover);
+    GtkWidget *next = gtk_widget_get_next_sibling(item);
+    ok &= next && !gtk_widget_is_sensitive(next) && report_widget("menu-disabled", next, popover);
+    ok &= gtk_widget_activate(item);
+    settle(250);
+    g_autoptr(GVariant) state = g_action_get_state(G_ACTION(details));
+    printf("toggled=%d menu_closed=%d\n", !g_variant_get_boolean(state), !gtk_widget_get_mapped(popover));
+    ok &= !g_variant_get_boolean(state) && !gtk_widget_get_mapped(popover);
+    gtk_menu_button_popup(GTK_MENU_BUTTON(menu_button));
+    settle(300);
+    GtkWidget *icons_row = menu_row(popover, "Icons");
+    ok &= icons_row && gtk_widget_activate(icons_row);
+    settle(250);
+    g_autoptr(GVariant) choice = g_action_get_state(G_ACTION(mode));
+    ok &= g_str_equal(g_variant_get_string(choice, NULL), "icons");
+    gtk_menu_button_popup(GTK_MENU_BUTTON(menu_button));
+    settle(300);
+    ok &= more_row && gtk_widget_activate(more_row);
+    settle(250);
+    GtkWidget *subitem = menu_row(popover, "Details");
+    gboolean submenu_open = subitem && gtk_widget_get_mapped(subitem);
+    printf("radio_changed=%d submenu_open=%d\n", g_str_equal(g_variant_get_string(choice, NULL), "icons"), submenu_open);
+    ok &= submenu_open;
+    gtk_menu_button_popdown(GTK_MENU_BUTTON(menu_button));
+    printf("interactions=%d\n", ok);
+    gtk_window_destroy(GTK_WINDOW(window));
+    return ok;
+}
+
 int
 main(int argc, char **argv)
 {
     if (argc != 2) {
-        fprintf(stderr, "usage: %s chrome|gallery|contrast|composites\n", argv[0]);
+        fprintf(stderr, "usage: %s chrome|gallery|contrast|composites|menus\n", argv[0]);
         return 2;
     }
 
@@ -587,6 +873,8 @@ main(int argc, char **argv)
         return contrast() ? 0 : 1;
     if (!g_str_equal(theme, "Platinum"))
         return 1;
+    if (g_str_equal(argv[1], "menus"))
+        return menus_lists(g_str_equal(backend, "GdkWaylandDisplay")) ? 0 : 1;
     if (g_str_equal(argv[1], "chrome"))
         return chrome() ? 0 : 1;
     if (g_str_equal(argv[1], "gallery"))
