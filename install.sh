@@ -8,6 +8,7 @@
 #   - a Plasma login script that lets Qt and KWin find them
 #     (~/.config/plasma-workspace/env/macos9-theme.sh)
 #   - the Platinum color scheme, Plasma style, menu bar piece widget,
+#     the Platinum Lavender terminal palette for Kwi and Konsole,
 #     WhiteSur Lavender icon themes, bundled cursors, and the Platinum
 #     global theme (menu bar, dock, and wallpaper)
 # Run it again to update. When Platinum is not your active global theme,
@@ -110,6 +111,10 @@ for wallpaper_id in "${wallpaper_ids[@]}"; do
     [[ -r $wallpaper_source/metadata.json && -r $wallpaper_source/contents/images/3840x2160.jxl ]] ||
         die "couldn't find the Platinum wallpaper package in $wallpaper_source"
 done
+
+terminal_scheme_source=$here/extras/terminal/$terminal_scheme
+[[ -r $terminal_scheme_source && -f $terminal_scheme_source ]] ||
+    die "couldn't find the Platinum Lavender terminal palette at $terminal_scheme_source; nothing was installed"
 
 # Verify WhiteSur Lavender builder, custom icon layer, and upstream source
 # before touching anything, even on a dry run (AUDIT.md #110).
@@ -370,6 +375,8 @@ place_dir "$build/cursors/$black_cursor_id" "$cursor_theme_dir"
 say "Installed the cursors into $cursor_theme_dir"
 place_file "$here/colors/$scheme_name.colors" "$data/color-schemes/$scheme_name.colors" 644
 say "Installed the color scheme \"Platinum\""
+place_file "$terminal_scheme_source" "$terminal_scheme_path" 644
+say "Installed the Platinum Lavender terminal palette for Kwi and Konsole"
 place_dir "$here/plasma/platinum" "$data/plasma/desktoptheme/$plasma_theme"
 drop_plasma_caches
 say "Installed the Plasma style \"Platinum\""

@@ -172,7 +172,7 @@ theme_files_gone() {
     next_login
     local p
     shopt -s nullglob
-    for p in "$home/.local/lib/macos9-theme" "$data"/plasma/*/platinum* "$data/color-schemes/Platinum.colors" \
+    for p in "$home/.local/lib/macos9-theme" "$data"/plasma/*/platinum* "$data/color-schemes/Platinum.colors" "$data/konsole/PlatinumLavender.colorscheme" \
         "$data/wallpapers/platinum-ribbon" "$data/wallpapers/platinum-lavender" \
         "$data/icons/WhiteSur-lavender" "$data/icons/WhiteSur-lavender-light" "$data/icons/WhiteSur-lavender-dark" \
         "$config/plasma-workspace/env/macos9-theme.sh" "$config"/plasma-workspace/env/macos9-theme-cleanup*.sh; do
@@ -194,6 +194,9 @@ clean_snapshot() {
 
 # --------------------------------------------------------------------------
 fresh "dry runs, install, apply twice, uninstall"
+terminal_palette=$data/konsole/PlatinumLavender.colorscheme
+printf '[Appearance]\nColorScheme=konsole:Vapor.colorscheme\n' > "$config/kwiterminalrc"
+seed=$(config_state)
 before=$(snapshot)
 run dry "$project/install.sh" --dry-run
 check "install --dry-run changes nothing" same "$before" "$(snapshot)"
@@ -201,6 +204,7 @@ check "install --dry-run says what it would do" grep -q "would copy your config 
 for id in platinum-ribbon platinum-lavender; do
     check "install --dry-run lists $id" grep -Fq "would install $data/wallpapers/$id/" "$root/$n-dry.log"
 done
+check "install --dry-run lists the terminal palette" grep -Fq "would install $terminal_palette" "$root/$n-dry.log"
 check "  and prints no errors (finding 42)" bash -c "! grep -qiE 'no such file|error' '$root/$n-dry.log'"
 run dry-apply "$project/install.sh" --apply --dry-run
 check "install --apply --dry-run changes nothing" same "$before" "$(snapshot)"
@@ -219,7 +223,9 @@ for id in platinum-ribbon platinum-lavender; do
         "$project/wallpapers/$id/contents/images/3840x2160.jxl" \
         "$data/wallpapers/$id/contents/images/3840x2160.jxl"
 done
-check "the record lists the 15 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 15
+check "the Kwi and Konsole palette is installed byte for byte" cmp \
+    "$project/extras/terminal/PlatinumLavender.colorscheme" "$terminal_palette"
+check "the record lists the 16 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 16
 check "Kirigami's plugin link for the Qt Quick style points at KDE's" \
     bash -c "[[ \$(readlink '$home/.local/lib/macos9-theme/style/kf6/kirigami/platform/Platinum.so') == */kf6/kirigami/platform/org.kde.desktop.so ]]"
 check "install alone leaves the config files alone" same "$seed" "$(config_state)"
@@ -245,13 +251,14 @@ else
     echo "skip    the installed style plugin loads (build dev/build/styleshot first: dev/check-style.sh)"
 fi
 check "a second plain install exits 0" run install-2 "$project/install.sh"
-check "the record still lists 15 targets, nothing moved aside" \
-    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 15 ]] && ! grep -q '^displaced' '$state/installed'"
+check "the record still lists 16 targets, nothing moved aside" \
+    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 16 ]] && ! grep -q '^displaced' '$state/installed'"
 
 check "--apply exits 0" run apply env QT_PLUGIN_PATH="$plugins/style:$plugins/decoration" "$project/install.sh" --apply
 check "--apply explains the next login for Qt Quick apps" grep -Fq 'Log out and back in for Qt Quick apps' "$root/$n-apply.log"
 check "--apply refreshed the copy (taken: apply)" grep -qx apply "$state/backup/TAKEN"
 check "--apply noted the absent ones" grep -qxP 'config\tkdedefaults' "$state/backup/ABSENT"
+check "--apply preserves the chosen Kwi color scheme" grep -qx 'ColorScheme=konsole:Vapor.colorscheme' "$config/kwiterminalrc"
 check "--apply switched the global theme" grep -q "LookAndFeelPackage=platinum.desktop" "$config/kdeglobals"
 check "--apply set the widget style" grep -q "widgetStyle=Platinum" "$config/kdedefaults/kdeglobals"
 check "--apply set the button order" bash -c "grep -q '^ButtonsOnLeft=X' '$config/kwinrc' && grep -q '^ButtonsOnRight=AI' '$config/kwinrc'"
@@ -283,6 +290,7 @@ check "uninstall left only the pass-through for the session's running apps" \
     bash -c "[[ \$(find '$home/.local/lib' '$config/plasma-workspace' ! -type d | sort | tr '\n' ' ') == '$config/plasma-workspace/env/macos9-theme-cleanup.sh $home/.local/lib/macos9-theme/qml/Platinum/qmldir $home/.local/lib/macos9-theme/style/kf6/kirigami/platform/Platinum.so ' ]]"
 next_login
 check "uninstall removed the theme's files" theme_files_gone
+check "uninstall removed the empty terminal palette directory" test ! -e "$data/konsole"
 check "after the next login, the folders it made are gone too" bash -c "[[ ! -e '$home/.local/lib' && ! -e '$config/plasma-workspace' && ! -e '$data/plasma' ]]"
 check "uninstall removed the record" no_record_left
 kept=$(kept_dir)
@@ -298,15 +306,17 @@ check "  and puts the seed back" same "$seed" "$(config_state)"
 
 # --------------------------------------------------------------------------
 fresh "finding 4: things in the way of an install target are kept"
-mkdir -p "$data/color-schemes" "$data/plasma/desktoptheme/platinum"
+mkdir -p "$data/color-schemes" "$data/plasma/desktoptheme/platinum" "$data/konsole"
 printf 'mine' > "$data/color-schemes/Platinum.colors"
+printf '[General]\nDescription=My Platinum Lavender\n' > "$terminal_palette"
 printf 'extra' > "$data/plasma/desktoptheme/platinum/extra.txt"
 before=$(snapshot)
 check "install exits 0" run install "$project/install.sh"
+check "the existing terminal palette was moved aside" grep -Fq $'displaced\t'"$terminal_palette"$'\t' "$state/installed"
 check "the existing color scheme was moved aside" grep -q "^displaced	$data/color-schemes/Platinum.colors	" "$state/installed"
 check "ours is in place" grep -q '^\[General\]' "$data/color-schemes/Platinum.colors"
 check "uninstall exits 0" run uninstall "$project/uninstall.sh"
-check "uninstall put both earlier ones back, nothing else changed" same "$before" "$(clean_snapshot)"
+check "uninstall put the earlier files back, nothing else changed" same "$before" "$(clean_snapshot)"
 
 # --------------------------------------------------------------------------
 fresh "finding 6: a linked config entry is refused before any change"
@@ -534,9 +544,11 @@ printf 'mine' > "$data/plasma/desktoptheme/platinum/my-variant.svg"
 printf '\n' >> "$data/plasma/look-and-feel/platinum.desktop/metadata.json"
 edited=$(sha256sum < "$data/plasma/look-and-feel/platinum.desktop/metadata.json")
 printf '# my own Platinum\n' > "$data/color-schemes/Platinum.colors"
+printf '[General]\nDescription=My edited terminal palette\n' > "$terminal_palette"
 check "uninstall exits 0" run uninstall "$project/uninstall.sh"
 check "  the added file is still there" grep -qx mine "$data/plasma/desktoptheme/platinum/my-variant.svg"
 check "  the changed file is still there, as changed" bash -c "[[ \$(sha256sum < '$data/plasma/look-and-feel/platinum.desktop/metadata.json') == '$edited' ]]"
+check "  the edited terminal palette is still the user's" grep -qx 'Description=My edited terminal palette' "$terminal_palette"
 check "  the replaced color scheme is still the user's" grep -qx '# my own Platinum' "$data/color-schemes/Platinum.colors"
 check "  the installed files around them are gone" \
     bash -c "[[ ! -e '$data/plasma/desktoptheme/platinum/metadata.json' && ! -e '$data/plasma/plasmoids' && \$(ls '$data/plasma/desktoptheme/platinum') == my-variant.svg ]]"
@@ -2486,6 +2498,50 @@ check "  #143 foreign-owned (/etc) ~/.cache symlink refused" bash -c '
     ln -s /etc "$2/.cache"
     ! env -u XDG_CACHE_HOME M9_PREBUILT="$3" M9_WHITESUR_REMOTE="$4" "$5/install.sh" > "$1/err-143-etc.log" 2>&1
 ' _ "$root" "$home" "$no_icon_prebuilt" "$M9_TEST_REMOTE" "$project"
+
+fresh "terminal palette upgrade and selected profiles"
+palette_source=$project/extras/terminal/PlatinumLavender.colorscheme
+legacy=$root/pre-terminal-project
+mkdir -p "$legacy/scripts"
+for name in install.sh scripts/common.sh; do
+    git -C "$project" show "f1d6045:$name" > "$legacy/$name"
+done
+for name in scripts/icon_prefs.py scripts/manifest_ops.py colors cursors icons plasma wallpapers; do
+    ln -sfn "$project/$name" "$legacy/$name"
+done
+check "pre-palette install exits 0" run pre-palette bash "$legacy/install.sh"
+check "pre-palette install has 15 recorded targets" test "$(grep -cE '^(file|dir|link)' "$state/installed")" -eq 15
+check "upgrade installs the terminal palette" run palette-upgrade "$project/install.sh"
+check "upgraded palette matches its source" cmp "$palette_source" "$terminal_palette"
+mkdir -p "$data/konsole"
+printf '[Appearance]\nColorScheme=konsole:PlatinumLavender.colorscheme\n' > "$config/kwiterminalrc"
+printf '[Appearance]\nColorScheme=PlatinumLavender\n' > "$data/konsole/Personal.profile"
+before=$(snapshot)
+check "dry run warns about Kwi" run terminal-dry "$project/uninstall.sh" --dry-run
+check "dry run names Kwi's selected scheme" grep -Fq 'still selected in Kwi' "$root/$n-terminal-dry.log"
+check "terminal dry run changes nothing" same "$before" "$(snapshot)"
+check "uninstall waits while Kwi selects the palette" bash -c '! "$1"' _ "$project/uninstall.sh"
+check "selected terminal palette is kept" cmp "$palette_source" "$terminal_palette"
+check "Kwi's selection persists" grep -qx 'ColorScheme=konsole:PlatinumLavender.colorscheme' "$config/kwiterminalrc"
+kwriteconfig6 --file "$config/kwiterminalrc" --group Appearance --key ColorScheme system
+check "retry waits while Konsole selects the palette" bash -c '! "$1"' _ "$project/uninstall.sh"
+check "Konsole profile's selection persists" grep -qx 'ColorScheme=PlatinumLavender' "$data/konsole/Personal.profile"
+kwriteconfig6 --file "$data/konsole/Personal.profile" --group Appearance --key ColorScheme Breeze
+check "retry removes the unselected palette" run terminal-retry "$project/uninstall.sh"
+check "unselected palette is gone" test ! -e "$terminal_palette"
+check "Konsole profile is preserved" grep -qx 'ColorScheme=Breeze' "$data/konsole/Personal.profile"
+check "terminal retry removes the install record" no_record_left
+
+fresh "terminal palette selection with a restorable original"
+mkdir -p "$data/konsole"
+cp "$palette_source" "$terminal_palette"
+printf '\n# pre-existing copy\n' >> "$terminal_palette"
+original_palette=$(sha256sum "$terminal_palette")
+printf '[Appearance]\nColorScheme=konsole:PlatinumLavender.colorscheme\n' > "$config/kwiterminalrc"
+check "install displaces the previous terminal palette" run terminal-install "$project/install.sh"
+check "uninstall restores a selected compatible original" run terminal-restore "$project/uninstall.sh"
+check "original palette restored byte for byte" same "$original_palette" "$(sha256sum "$terminal_palette")"
+
 
 echo
 if ((failed)); then

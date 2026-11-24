@@ -33,6 +33,13 @@ GTK icon preferences first so `./uninstall.sh` restores them cleanly). Later
 plain updates preserve whatever icon theme you pick afterwards; when Platinum
 is not active, a plain `./install.sh` never changes your icon selection.
 
+The installer also makes **Platinum Lavender** available as a terminal color
+scheme. Select it under **Settings → Appearance → Terminal Color Scheme** in
+Kwi, or in the **Appearance** tab of a Konsole profile. If a terminal still
+selects the installed palette when you uninstall, the uninstaller keeps it
+until you choose another scheme and rerun `./uninstall.sh` or a usable copy
+is already available through the same scheme name.
+
 Then log out and back in once (a Plasma login script lets Qt find the
 style and the window decoration), and switch:
 

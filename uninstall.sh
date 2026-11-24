@@ -526,6 +526,82 @@ if ((${#managed_icon_ids[@]})); then
     fi
 fi
 
+# A terminal profile can select the palette independently of the global theme.
+# Check the configuration which survives uninstall, including inactive profiles.
+terminal_palette_selection() {
+    local file value
+    file=$config_home/kwiterminalrc
+    if [[ -e $file || -L $file ]]; then
+        [[ -f $file && -r $file ]] || return 1
+    fi
+    value=$(kreadconfig6 --file kwiterminalrc --group Appearance --key ColorScheme) || return 1
+    if [[ $value == "konsole:$terminal_scheme" ]]; then
+        printf '%s\n' Kwi
+        return 0
+    fi
+    if [[ -d $data/konsole && ! (-r $data/konsole && -x $data/konsole) ]]; then
+        return 1
+    fi
+    for file in "$data"/konsole/*.profile; do
+        [[ -e $file || -L $file ]] || continue
+        [[ -f $file && -r $file ]] || return 1
+        value=$(kreadconfig6 --file "$file" --group Appearance --key ColorScheme) || return 1
+        if [[ $value == "${terminal_scheme%.colorscheme}" ]]; then
+            printf '%s\n' "Konsole profile ${file##*/}"
+            return 0
+        fi
+    done
+}
+
+readable_terminal_palette() {
+    local file=$1 entry rgb red green blue
+    [[ -f $file && -r $file ]] || return 1
+    for entry in Background Foreground; do
+        rgb=$(kreadconfig6 --file "$file" --group "$entry" --key Color) || return 1
+        [[ $rgb =~ ^([0-9]{1,3}),([0-9]{1,3}),([0-9]{1,3})$ ]] || return 1
+        red=${BASH_REMATCH[1]} green=${BASH_REMATCH[2]} blue=${BASH_REMATCH[3]}
+        ((10#$red <= 255 && 10#$green <= 255 && 10#$blue <= 255)) || return 1
+    done
+}
+
+terminal_palette_has_replacement() {
+    local saved candidate parent resolved installed
+    local -a search_paths
+    installed=$(realpath -e -- "$terminal_scheme_path") || return 1
+    if [[ -n ${first_aside[$terminal_scheme_path]:-} ]]; then
+        IFS=$'\t' read -r _ _ saved _ <<< "${first_aside[$terminal_scheme_path]}"
+        if [[ $saved == "$displaced"/* && (-e $saved || -L $saved) ]]; then
+            # The restored file takes precedence over any system copy.
+            [[ ! -L $saved ]] && readable_terminal_palette "$saved"
+            return
+        fi
+    fi
+    IFS=: read -r -a search_paths <<< "${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+    for parent in "${search_paths[@]}"; do
+        [[ $parent == /* ]] || continue
+        candidate=$parent/konsole/$terminal_scheme
+        [[ -f $candidate && -r $candidate ]] || continue
+        resolved=$(realpath -e -- "$candidate") || continue
+        # A higher-priority copy can shadow the rest of the search path.
+        [[ $resolved != "$installed" ]] && readable_terminal_palette "$resolved"
+        return
+    done
+    return 1
+}
+
+if manifest_lists file "$terminal_scheme_path" && is_kind file "$terminal_scheme_path" &&
+    installed_unchanged file "$terminal_scheme_path" && ! terminal_palette_has_replacement; then
+    if selection=$(terminal_palette_selection); then
+        if [[ -n $selection ]]; then
+            kept_packages[$terminal_scheme_path]=selected
+            warn "Platinum Lavender is still selected in $selection. Choose another terminal color scheme and run uninstall.sh again."
+        fi
+    else
+        kept_packages[$terminal_scheme_path]=unknown
+        warn "Couldn't read the terminal color scheme settings. Keeping $terminal_scheme_path. Run uninstall.sh again when the settings can be read."
+    fi
+fi
+
 # --- 2. Installed files, newest first ---------------------------------------
 #
 # Each entry leaves the record as soon as it's done, so a second run after
@@ -700,7 +776,7 @@ if ((!dry_run)); then
 else
     plan "remove the install record $manifest"
 fi
-say "Removed the Platinum style (widgets and Qt Quick), decoration, color scheme, Plasma style, global theme, wallpapers, cursors, icons and login script"
+say "Removed the Platinum style (widgets and Qt Quick), decoration, color scheme, Plasma style, global theme, wallpapers, cursors, icons, terminal palette and login script"
 if ((shell_failed)); then
     warn "$shell_failed_message"
     exit 1

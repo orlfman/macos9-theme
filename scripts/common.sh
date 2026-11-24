@@ -161,6 +161,8 @@ find_kde_quick() {
 env_script=$config_home/plasma-workspace/env/macos9-theme.sh
 
 scheme_name=Platinum
+terminal_scheme=PlatinumLavender.colorscheme
+terminal_scheme_path=$data/konsole/$terminal_scheme
 plasma_theme=platinum
 piece_id=platinum.menubarpiece
 lnf_id=platinum.desktop
@@ -175,6 +177,7 @@ targets=(
     "file	$deco_plugins/org.kde.kdecoration3/platinum.so"
     "file	$env_script"
     "file	$data/color-schemes/$scheme_name.colors"
+    "file	$terminal_scheme_path"
     "dir	$data/plasma/desktoptheme/$plasma_theme"
     "dir	$data/plasma/plasmoids/$piece_id"
     "dir	$data/plasma/look-and-feel/$lnf_id"

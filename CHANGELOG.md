@@ -2,6 +2,29 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-23, Codex (GPT-6.2 Sol) — fix terminal palette audit findings
+
+Fixed #173–176 in the terminal palette, uninstaller, README and installer tests. Restored light ANSI whites, increased normal-to-bright color separation, and protected palette files still selected by Kwi or a Konsole profile. Verified rendered ANSI samples in both apps. Install and undo passed 727/727, focused checks 26/26 and nested live install 40/40. Qt Widgets, Qt Quick and Plasma passed 135/135, 29/29 and 19/19. Changes remain uncommitted and user visual review is pending. Claims released.
+
+## 2026-11-23, Antigravity (Gemini 4 Neon) — independent audit of Kwi/Konsole terminal palette and install/undo
+
+- Independently audited Codex's uncommitted Platinum Lavender terminal palette and packaging (`extras/terminal/PlatinumLavender.colorscheme`, `scripts/common.sh`, `install.sh`, `uninstall.sh`, `dev/test-install.sh`) over `f1d6045` plus saved logs and Kwi previews (`dev/build/terminal-palette-*.log`, `dev/build/kwi-platinum.x77L3H/preview.png`, `dev/build/kwi-palette-missing.FZaJ5O/preview.png`).
+- Recorded 4 open findings in `AUDIT.md` (`#173–174` P2, `#175–176` P3):
+  - **#173 (P2):** ANSI `Color7` (`#555555`) and `Color7Intense` (`#676767`) are dark grays with nearly identical luminance to `Color1`–`Color6`, yielding `1.00:1–1.36:1` (`Color7`) and `1.29:1–1.79:1` (`Color7Intense`) contrast on colored ANSI backgrounds and `2.08:1` for `Color0` on `Color7` (making white-on-color and black-on-white TUI chrome unreadable).
+  - **#174 (P2):** `uninstall.sh` silently deletes `PlatinumLavender.colorscheme` even while actively selected in Kwi (`kwiterminalrc`) or Konsole (`$data/konsole/*.profile`), leaving dangling config references (violating the `#75`/`#81`/`#110` `kept_packages` contract).
+  - **#175 (P3):** Narrow normal-vs-bright separation across `Color1`–`Color6` (`ΔRGB` `14.0–30.6`) and `[ForegroundIntense]` duplicating `[Foreground]` without `Bold=true`.
+  - **#176 (P3):** `uninstall.sh:703` summary omits the terminal palette, `README.md` does not document it, and `dev/test-install.sh` omits explicit displacement/empty-konsole-dir/upgrade/selected-scheme assertions.
+- Checks: `bash -n`, `configparser` (31 sections), `kreadconfig6`, `git diff --check`, contrast/luminance audit, pixel verification of `kwi-platinum.x77L3H/preview.png` and `kwi-palette-missing.FZaJ5O/preview.png`, and 7 disposable-home `install.sh`/`uninstall.sh` edge-case runs using `M9_PREBUILT=$PWD/dev/build/test-home-live/prebuilt` (fresh install/undo + empty `konsole/` removal, active Kwi/Konsole selection reproduction of `#174`, blocking regular file at `$data/konsole`, pre-existing symlink displacement/restore, retargeted `$data/konsole` symlink refusal, displaced+edited+reinstalled history, and 15-target upgrade).
+- Limits: full `dev/test-install.sh` (needs `../WhiteSur-icon-theme`) and virtual KWin (`dev/test-install-live.sh` / live Kwi/Konsole) cannot run inside this sandbox. Review edits only (`AUDIT.md`, `CHANGELOG.md`); no implementation files modified, no claims held, no live install/commit/push. Next: fix `#173–176` under `extras`/`packaging` claims and re-verify in Kwi/Konsole (including ANSI backgrounds) and `dev/test-install.sh`.
+
+## 2026-11-23, Codex (GPT-6.2 Sol) — package the Platinum Lavender terminal palette
+
+Install and upgrade copy the palette to the Konsole data directory used by Kwi and Konsole. The shared install record lets uninstall remove the installed copy, restore a displaced file and preserve user edits. Tests cover dry run, installation, reapplication, chosen Kwi scheme preservation and undo. Install/undo passed 706/706 and nested live install passed 40/40. Qt Widgets passed 135/135, Qt Quick 29/29 and Plasma 19/19. Changes are uncommitted. Claims released.
+
+## 2026-11-23, Codex (GPT-6.2 Sol) — add Platinum Lavender for Kwi
+
+Added `extras/terminal/PlatinumLavender.colorscheme` with a measured Platinum pane background, Lavender blue and an original ANSI palette tuned for the light canvas. Kwi loaded the scheme from the disposable Konsole data directory and rendered all 16 normal and bright ANSI colors in nested KWin. The foreground entries have at least 4.80:1 contrast against the default canvas. The palette is a standalone file and user visual review is pending.
+
 ## 2026-11-23, Codex (GPT-6.2 Sol) — audit and fix GTK 3 Milestone 3 Batch 1
 
 Fixed #168–172 in the GTK 3 CSS and Batch 1 harness. TreeView has a visible keyboard cursor, GTK menu overflow arrows have usable dimensions, and the fixtures exercise native sorting, mapping, ListBox selection, clipping and scale. Meld's window identity and rendered style are verified in virtual KWin. Wayland passed 39/39 and Broadway passed 38/38, with 27 pixel-exact reference crops on each. Milestone 1, Milestone 2 and all project regression suites passed. Batch 2 and user visual review remain pending. GTK changes are uncommitted. Claims released.
