@@ -1,5 +1,5 @@
 /*
- * Platinum GTK 3 theme — Milestone 2 + Milestone 3 Batch 1
+ * Platinum GTK 3 theme — Milestone 2 + Milestone 3 (Batches 1 & 2)
  * Measured from Mac OS 9.2.2 default Platinum appearance (docs/REFERENCE.md).
  * Original CSS and procedurally generated geometry (gtk/gen-assets.py).
  *
@@ -787,6 +787,17 @@ list > row:focus {
 }
 
 /* --- ScrolledWindow frame & Etched Group Box / Frame --- */
+scrolledwindow junction {
+  background-color: @platinum_bg;
+  border-top: 1px solid @platinum_border;
+  border-left: 1px solid @platinum_border;
+}
+
+scrolledwindow junction:backdrop {
+  background-color: @platinum_pane;
+  border-color: #555555;
+}
+
 scrolledwindow.frame {
   border-style: solid;
   border-width: 2px;
@@ -824,4 +835,952 @@ separator {
 
 separator.vertical {
   background-image: linear-gradient(to right, #888888 0, #888888 1px, #ffffff 1px, #ffffff 2px);
+}
+
+/* ==========================================================================
+ * Milestone 3 Batch 2: Notebook tabs, Scales, Scrollbars (classic Smart
+ * Scrolling + overlay), Progress bars, Tooltips, Dialogs, and CSD HeaderBars
+ * ========================================================================== */
+
+/* --- Notebook tabs & pane (measured tabs.h + slices.h::TabPane) --- */
+notebook,
+notebook.frame {
+  margin: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background-color: transparent;
+}
+
+notebook > stack {
+  background-color: @platinum_pane;
+  color: @platinum_fg;
+  border-style: solid;
+  border-width: 3px;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  border-image: -gtk-scaled(url("assets/tab-pane.png"), url("assets/tab-pane@2.png")) 4 / 4px stretch;
+}
+
+notebook > header {
+  margin: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background-color: transparent;
+  background-image: none;
+}
+
+notebook > header.top {
+  margin-bottom: -3px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+notebook > header.bottom {
+  margin-top: -3px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+notebook > header > tabs {
+  margin: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background-color: transparent;
+}
+
+notebook > header.top > tabs > tab {
+  min-height: 18px;
+  min-width: 24px;
+  padding: 3px 12px;
+  margin: 0;
+  color: @platinum_fg;
+  background-color: @platinum_bg_alt;
+  background-clip: content-box;
+  background-image: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  border-image: -gtk-scaled(url("assets/tab-top-normal.png"), url("assets/tab-top-normal@2.png")) 12 / 12px stretch;
+}
+
+notebook > header.top > tabs > tab:active {
+  color: #ffffff;
+  background-color: #666666;
+  border-image: -gtk-scaled(url("assets/tab-top-pressed.png"), url("assets/tab-top-pressed@2.png")) 12 / 12px stretch;
+}
+
+notebook > header.top > tabs > tab:checked,
+notebook > header.top > tabs > tab:checked:active {
+  color: @platinum_fg;
+  background-color: @platinum_pane;
+  border-image: -gtk-scaled(url("assets/tab-top-active.png"), url("assets/tab-top-active@2.png")) 12 / 12px stretch;
+}
+
+notebook > header.bottom > tabs > tab {
+  min-height: 18px;
+  min-width: 24px;
+  padding: 3px 12px;
+  margin: 0;
+  color: @platinum_fg;
+  background-color: @platinum_bg_alt;
+  background-clip: content-box;
+  background-image: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  border-image: -gtk-scaled(url("assets/tab-bottom-normal.png"), url("assets/tab-bottom-normal@2.png")) 12 / 12px stretch;
+}
+
+notebook > header.bottom > tabs > tab:active {
+  color: #ffffff;
+  background-color: #666666;
+  border-image: -gtk-scaled(url("assets/tab-bottom-pressed.png"), url("assets/tab-bottom-pressed@2.png")) 12 / 12px stretch;
+}
+
+notebook > header.bottom > tabs > tab:checked,
+notebook > header.bottom > tabs > tab:checked:active {
+  color: @platinum_fg;
+  background-color: @platinum_pane;
+  border-image: -gtk-scaled(url("assets/tab-bottom-active.png"), url("assets/tab-bottom-active@2.png")) 12 / 12px stretch;
+}
+
+notebook > header.left > tabs > tab,
+notebook > header.right > tabs > tab {
+  min-height: 18px;
+  padding: 2px 8px;
+  margin: 1px 0;
+  color: @platinum_fg;
+  background-color: @platinum_bg_alt;
+  border-style: solid;
+  border-width: 2px;
+  border-color: transparent;
+  border-image: -gtk-scaled(url("assets/header-normal.png"), url("assets/header-normal@2.png")) 2 / 2px stretch;
+}
+
+notebook > header.left > tabs > tab:checked,
+notebook > header.right > tabs > tab:checked {
+  background-color: @platinum_pane;
+  border-image: -gtk-scaled(url("assets/tab-pane.png"), url("assets/tab-pane@2.png")) 4 / 4px stretch;
+}
+
+notebook > header > tabs > tab:disabled {
+  color: @platinum_fg_disabled;
+}
+
+notebook > header > tabs > tab label {
+  color: inherit;
+}
+
+notebook > header > tabs > tab:focus:not(:backdrop) {
+  outline: 1px solid @platinum_focus;
+  outline-offset: -4px;
+}
+
+notebook > header > tabs > arrow {
+  min-width: 14px;
+  min-height: 14px;
+  padding: 2px;
+  color: @platinum_fg;
+  background-color: @platinum_bg;
+}
+
+notebook > header > tabs > arrow.down {
+  -gtk-icon-source: -gtk-icontheme("pan-left-symbolic");
+}
+
+notebook > header > tabs > arrow.up {
+  -gtk-icon-source: -gtk-icontheme("pan-right-symbolic");
+}
+
+/* --- Scales / Sliders (measured controls-general-controls.png & controls-memory.png) --- */
+scale {
+  min-height: 16px;
+  min-width: 16px;
+  padding: 0;
+  margin: 0;
+  color: @platinum_fg;
+}
+
+scale value {
+  color: @platinum_fg;
+}
+
+scale:disabled value {
+  color: @platinum_fg_disabled;
+}
+
+scale highlight {
+  background-color: transparent;
+  background-image: none;
+  border: none;
+  box-shadow: none;
+}
+
+scale:focus:not(:backdrop) trough {
+  outline: 1px solid @platinum_focus;
+  outline-offset: 2px;
+}
+
+scale.horizontal trough {
+  min-height: 7px;
+  padding: 0 10px;
+  margin: 3px 0 6px 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: transparent;
+  background-image: none;
+  border-image: -gtk-scaled(url("assets/scale-trough-h.png"), url("assets/scale-trough-h@2.png")) 3 3 4 3 / 3px 3px 4px 3px stretch;
+}
+
+scale.horizontal:disabled trough {
+  border-image: -gtk-scaled(url("assets/scale-trough-h-disabled.png"), url("assets/scale-trough-h-disabled@2.png")) 3 3 4 3 / 3px 3px 4px 3px stretch;
+}
+
+scale.horizontal slider {
+  min-width: 15px;
+  min-height: 16px;
+  margin: -3px -7px -6px -7px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: transparent;
+  border-image: none;
+  -gtk-icon-source: none;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 15px 16px;
+  background-image: -gtk-scaled(url("assets/slider-thumb-h.png"), url("assets/slider-thumb-h@2.png"));
+}
+
+scale.horizontal slider:active {
+  background-image: -gtk-scaled(url("assets/slider-thumb-h-pressed.png"), url("assets/slider-thumb-h-pressed@2.png"));
+}
+
+scale.horizontal slider:disabled,
+scale.horizontal:disabled slider {
+  background-image: -gtk-scaled(url("assets/slider-thumb-h-disabled.png"), url("assets/slider-thumb-h-disabled@2.png"));
+}
+
+scale.horizontal marks {
+  margin: 0;
+  padding: 0;
+}
+
+scale.horizontal marks mark {
+  margin: 0;
+  padding: 0;
+}
+
+scale.horizontal marks mark indicator {
+  min-width: 3px;
+  min-height: 7px;
+  margin: 0;
+  padding: 0;
+  color: transparent;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: -gtk-scaled(url("assets/scale-tick-h.png"), url("assets/scale-tick-h@2.png"));
+}
+
+scale.horizontal:disabled marks mark indicator {
+  background-image: none;
+}
+
+scale.vertical trough {
+  min-width: 7px;
+  padding: 10px 0;
+  margin: 0 6px 0 3px;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: transparent;
+  background-image: none;
+  border-image: -gtk-scaled(url("assets/scale-trough-v.png"), url("assets/scale-trough-v@2.png")) 3 4 3 3 / 3px 4px 3px 3px stretch;
+}
+
+scale.vertical:disabled trough {
+  border-image: -gtk-scaled(url("assets/scale-trough-v-disabled.png"), url("assets/scale-trough-v-disabled@2.png")) 3 4 3 3 / 3px 4px 3px 3px stretch;
+}
+
+scale.vertical slider {
+  min-width: 16px;
+  min-height: 15px;
+  margin: -7px -6px -7px -3px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: transparent;
+  border-image: none;
+  -gtk-icon-source: none;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 16px 15px;
+  background-image: -gtk-scaled(url("assets/slider-thumb-v.png"), url("assets/slider-thumb-v@2.png"));
+}
+
+scale.vertical slider:active {
+  background-image: -gtk-scaled(url("assets/slider-thumb-v-pressed.png"), url("assets/slider-thumb-v-pressed@2.png"));
+}
+
+scale.vertical slider:disabled,
+scale.vertical:disabled slider {
+  background-image: -gtk-scaled(url("assets/slider-thumb-v-disabled.png"), url("assets/slider-thumb-v-disabled@2.png"));
+}
+
+scale.vertical marks mark indicator {
+  min-width: 7px;
+  min-height: 3px;
+  margin: 0;
+  padding: 0;
+  color: transparent;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: -gtk-scaled(url("assets/scale-tick-v.png"), url("assets/scale-tick-v@2.png"));
+}
+
+scale.vertical:disabled marks mark indicator {
+  background-image: none;
+}
+
+/* --- Scrollbars: Mac OS 9 Smart Scrolling (both steppers at bottom/right) + Overlay --- */
+scrollbar {
+  -GtkScrollbar-has-backward-stepper: false;
+  -GtkScrollbar-has-secondary-backward-stepper: true;
+  -GtkScrollbar-has-forward-stepper: true;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background-color: @platinum_pane;
+}
+
+scrollbar contents {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+scrollbar.vertical {
+  min-width: 16px;
+  border-top: 1px solid @platinum_border;
+}
+
+scrollbar.horizontal {
+  min-height: 16px;
+  border-left: 1px solid @platinum_border;
+}
+
+scrollbar.vertical trough {
+  min-width: 16px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background-color: #aaaaaa;
+  border-image: -gtk-scaled(url("assets/vscroll-trough.png"), url("assets/vscroll-trough@2.png")) 2 8 2 8 / 2px 8px 2px 8px stretch;
+}
+
+scrollbar.horizontal trough {
+  min-height: 16px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background-color: #aaaaaa;
+  border-image: -gtk-scaled(url("assets/hscroll-trough.png"), url("assets/hscroll-trough@2.png")) 8 2 8 2 / 8px 2px 8px 2px stretch;
+}
+
+scrollbar.vertical slider {
+  min-width: 12px;
+  min-height: 12px;
+  margin: -1px 0 0 0;
+  padding: 0;
+  border-style: solid;
+  border-width: 2px;
+  border-color: transparent;
+  border-radius: 0;
+  background-color: @platinum_accent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: -gtk-scaled(url("assets/vscroll-grip.png"), url("assets/vscroll-grip@2.png"));
+  border-image: -gtk-scaled(url("assets/scroll-thumb-frame.png"), url("assets/scroll-thumb-frame@2.png")) 2 / 2px stretch;
+  box-shadow: 0 5px 0 -3px #888888, 0 3px 0 -2px #777777;
+}
+
+scrollbar.horizontal slider {
+  min-width: 12px;
+  min-height: 12px;
+  margin: 0 0 0 -1px;
+  padding: 0;
+  border-style: solid;
+  border-width: 2px;
+  border-color: transparent;
+  border-radius: 0;
+  background-color: @platinum_accent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: -gtk-scaled(url("assets/hscroll-grip.png"), url("assets/hscroll-grip@2.png"));
+  border-image: -gtk-scaled(url("assets/scroll-thumb-frame.png"), url("assets/scroll-thumb-frame@2.png")) 2 / 2px stretch;
+  box-shadow: 5px 0 0 -3px #888888, 3px 0 0 -2px #777777;
+}
+
+scrollbar.vertical slider:active,
+scrollbar.horizontal slider:active {
+  background-color: @platinum_focus;
+  border-image: -gtk-scaled(url("assets/scroll-thumb-frame-pressed.png"), url("assets/scroll-thumb-frame-pressed@2.png")) 2 / 2px stretch;
+}
+
+scrollbar button,
+scrollbar button:hover,
+scrollbar button:disabled {
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  border-image: none;
+  box-shadow: none;
+  color: transparent;
+  -gtk-icon-source: none;
+  background-color: @platinum_bg;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+scrollbar.vertical button.up,
+scrollbar.vertical button.up:disabled {
+  min-width: 16px;
+  min-height: 15px;
+  background-image: -gtk-scaled(url("assets/vscroll-up.png"), url("assets/vscroll-up@2.png"));
+}
+
+scrollbar.vertical button.up:active {
+  background-image: -gtk-scaled(url("assets/vscroll-up-pressed.png"), url("assets/vscroll-up-pressed@2.png"));
+}
+
+scrollbar.vertical button.down,
+scrollbar.vertical button.down:disabled {
+  min-width: 16px;
+  min-height: 16px;
+  background-image: -gtk-scaled(url("assets/vscroll-down.png"), url("assets/vscroll-down@2.png"));
+}
+
+scrollbar.vertical button.down:active {
+  background-image: -gtk-scaled(url("assets/vscroll-down-pressed.png"), url("assets/vscroll-down-pressed@2.png"));
+}
+
+scrollbar.horizontal button.up,
+scrollbar.horizontal button.up:disabled,
+scrollbar.horizontal button.left,
+scrollbar.horizontal button.left:disabled {
+  min-width: 15px;
+  min-height: 16px;
+  background-image: -gtk-scaled(url("assets/hscroll-left.png"), url("assets/hscroll-left@2.png"));
+}
+
+scrollbar.horizontal button.up:active,
+scrollbar.horizontal button.left:active {
+  background-image: -gtk-scaled(url("assets/hscroll-left-pressed.png"), url("assets/hscroll-left-pressed@2.png"));
+}
+
+scrollbar.horizontal button.down,
+scrollbar.horizontal button.down:disabled,
+scrollbar.horizontal button.right,
+scrollbar.horizontal button.right:disabled {
+  min-width: 16px;
+  min-height: 16px;
+  background-image: -gtk-scaled(url("assets/hscroll-right.png"), url("assets/hscroll-right@2.png"));
+}
+
+scrollbar.horizontal button.down:active,
+scrollbar.horizontal button.right:active {
+  background-image: -gtk-scaled(url("assets/hscroll-right-pressed.png"), url("assets/hscroll-right-pressed@2.png"));
+}
+
+/* Inactive / backdrop & disabled classic scrollbars (measured #EEEEEE + #555555 frame) */
+scrollbar:backdrop,
+scrollbar:disabled {
+  border-color: #555555;
+  background-color: @platinum_pane;
+}
+
+scrollbar:backdrop trough,
+scrollbar:disabled trough {
+  background-color: @platinum_pane;
+  border-image: none;
+  border-left: 1px solid #555555;
+  border-right: 1px solid #555555;
+}
+
+scrollbar.horizontal:backdrop trough,
+scrollbar.horizontal:disabled trough {
+  border-left: none;
+  border-right: none;
+  border-top: 1px solid #555555;
+  border-bottom: 1px solid #555555;
+}
+
+scrollbar:backdrop slider,
+scrollbar:disabled slider {
+  background-color: @platinum_bg;
+  background-image: none;
+  border-image: none;
+  border: 1px solid #888888;
+  box-shadow: none;
+}
+
+scrollbar:backdrop button,
+scrollbar:disabled button,
+scrollbar.vertical:backdrop button.up,
+scrollbar.vertical:backdrop button.up:disabled,
+scrollbar.vertical:backdrop button.down,
+scrollbar.vertical:backdrop button.down:disabled,
+scrollbar.horizontal:backdrop button.up,
+scrollbar.horizontal:backdrop button.up:disabled,
+scrollbar.horizontal:backdrop button.left,
+scrollbar.horizontal:backdrop button.left:disabled,
+scrollbar.horizontal:backdrop button.down,
+scrollbar.horizontal:backdrop button.down:disabled,
+scrollbar.horizontal:backdrop button.right,
+scrollbar.horizontal:backdrop button.right:disabled,
+scrollbar.vertical:disabled button.up,
+scrollbar.vertical:disabled button.down,
+scrollbar.horizontal:disabled button.up,
+scrollbar.horizontal:disabled button.left,
+scrollbar.horizontal:disabled button.down,
+scrollbar.horizontal:disabled button.right {
+  background-color: @platinum_pane;
+  background-image: none;
+  border: 1px solid #555555;
+}
+
+scrollbar.vertical:backdrop button.up,
+scrollbar.vertical:disabled button.up {
+  min-width: 14px;
+  min-height: 13px;
+}
+
+scrollbar.vertical:backdrop button.down,
+scrollbar.vertical:disabled button.down,
+scrollbar.horizontal:backdrop button.down,
+scrollbar.horizontal:disabled button.down,
+scrollbar.horizontal:backdrop button.right,
+scrollbar.horizontal:disabled button.right {
+  min-width: 14px;
+  min-height: 14px;
+}
+
+scrollbar.horizontal:backdrop button.up,
+scrollbar.horizontal:disabled button.up,
+scrollbar.horizontal:backdrop button.left,
+scrollbar.horizontal:disabled button.left {
+  min-width: 13px;
+  min-height: 14px;
+}
+
+/* Overlay scrolling indicator mode (compact translucent Lavender bar until hovered/dragged) */
+scrollbar.overlay-indicator:not(.dragging):not(.hovering) {
+  min-width: 8px;
+  min-height: 8px;
+  border: none;
+  background-color: transparent;
+  opacity: 0.85;
+}
+
+scrollbar.overlay-indicator.vertical:not(.dragging):not(.hovering) trough {
+  min-width: 8px;
+  border: none;
+  border-image: none;
+  background-color: transparent;
+}
+
+scrollbar.overlay-indicator.horizontal:not(.dragging):not(.hovering) trough {
+  min-height: 8px;
+  border: none;
+  border-image: none;
+  background-color: transparent;
+}
+
+scrollbar.overlay-indicator:not(.dragging):not(.hovering) button {
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  -gtk-icon-source: none;
+}
+
+scrollbar.overlay-indicator.vertical:not(.dragging):not(.hovering) slider {
+  min-width: 6px;
+  min-height: 24px;
+  margin: 2px;
+  border-image: none;
+  background-image: none;
+  background-color: @platinum_accent;
+  border: 1px solid @platinum_accent_dark;
+  box-shadow: none;
+}
+
+scrollbar.overlay-indicator.horizontal:not(.dragging):not(.hovering) slider {
+  min-width: 24px;
+  min-height: 6px;
+  margin: 2px;
+  border-image: none;
+  background-image: none;
+  background-color: @platinum_accent;
+  border: 1px solid @platinum_accent_dark;
+  box-shadow: none;
+}
+
+/* --- Progress bars (measured progress.h: determinate Lavender tube + barber pole) --- */
+progressbar {
+  padding: 0;
+  margin: 0;
+  color: @platinum_fg;
+  font-size: smaller;
+}
+
+progressbar text {
+  color: @platinum_fg;
+}
+
+progressbar.horizontal trough {
+  min-height: 10px;
+  min-width: 12px;
+  padding: 2px;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: #bbbbbb;
+  border-image: -gtk-scaled(url("assets/progress-trough-h.png"), url("assets/progress-trough-h@2.png")) 7 3 7 5 / 7px 3px 7px 5px stretch;
+}
+
+progressbar.horizontal progress {
+  min-height: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background-color: @platinum_accent;
+  border-image: -gtk-scaled(url("assets/progress-fill-full-h.png"), url("assets/progress-fill-full-h@2.png")) 5 3 5 2 / 5px 3px 5px 2px stretch;
+  box-shadow: 3px 0 0 0 #888888, 2px 0 0 0 #555555, 1px 0 0 0 #000000;
+}
+
+/* GTK truncates fractional allocations to pixels, even for nonzero progress. */
+progressbar.horizontal trough:not(.empty) progress:not(.pulse) {
+  min-width: 1px;
+}
+
+progressbar.horizontal progress.right {
+  box-shadow: none;
+}
+
+progressbar.horizontal trough:not(.empty) progress.right:not(.left):not(.pulse) {
+  border-image: -gtk-scaled(url("assets/progress-fill-reversed-h.png"), url("assets/progress-fill-reversed-h@2.png")) 5 2 5 3 / 5px 2px 5px 3px stretch;
+  box-shadow: -3px 0 0 0 #888888, -2px 0 0 0 #555555, -1px 0 0 0 #000000;
+}
+
+/* Prevent 0px border-image Gtk-CRITICAL when fraction == 0 */
+progressbar trough.empty progress {
+  border-image: none;
+  background-image: none;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+progressbar.horizontal progress.pulse {
+  min-width: 16px;
+  margin: 0;
+  box-shadow: none;
+  border-image: none;
+  background-color: transparent;
+  background-repeat: repeat-x;
+  background-position: left top;
+  background-image: -gtk-scaled(url("assets/progress-pulse-h.png"), url("assets/progress-pulse-h@2.png"));
+}
+
+progressbar.vertical trough {
+  min-width: 10px;
+  min-height: 12px;
+  padding: 2px;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: #bbbbbb;
+  border-image: -gtk-scaled(url("assets/progress-trough-v.png"), url("assets/progress-trough-v@2.png")) 5 7 3 7 / 5px 7px 3px 7px stretch;
+}
+
+progressbar.vertical progress {
+  min-width: 10px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background-color: @platinum_accent;
+  border-image: -gtk-scaled(url("assets/progress-fill-full-v.png"), url("assets/progress-fill-full-v@2.png")) 2 5 3 5 / 2px 5px 3px 5px stretch;
+  box-shadow: 0 3px 0 0 #888888, 0 2px 0 0 #555555, 0 1px 0 0 #000000;
+}
+
+progressbar.vertical trough:not(.empty) progress:not(.pulse) {
+  min-height: 1px;
+}
+
+progressbar.vertical progress.bottom {
+  box-shadow: none;
+}
+
+progressbar.vertical trough:not(.empty) progress.bottom:not(.top):not(.pulse) {
+  border-image: -gtk-scaled(url("assets/progress-fill-reversed-v.png"), url("assets/progress-fill-reversed-v@2.png")) 3 5 2 5 / 3px 5px 2px 5px stretch;
+  box-shadow: 0 -3px 0 0 #888888, 0 -2px 0 0 #555555, 0 -1px 0 0 #000000;
+}
+
+progressbar.vertical progress.pulse {
+  min-height: 16px;
+  margin: 0;
+  box-shadow: none;
+  border-image: none;
+  background-color: transparent;
+  background-repeat: repeat-y;
+  background-position: left top;
+  background-image: -gtk-scaled(url("assets/progress-pulse-v.png"), url("assets/progress-pulse-v@2.png"));
+}
+
+/* --- Tooltips (measured Mac OS 9 Help Balloon, help-balloon.png) --- */
+tooltip,
+.tooltip,
+tooltip.background,
+window.tooltip.background {
+  color: @platinum_fg;
+  background-color: @platinum_base;
+  background-clip: padding-box;
+  border-style: solid;
+  border-width: 7px;
+  border-color: transparent;
+  border-radius: 0;
+  padding: 3px 5px;
+  box-shadow: none;
+  border-image: -gtk-scaled(url("assets/tooltip-balloon.png"), url("assets/tooltip-balloon@2.png")) 7 / 7px stretch;
+}
+
+tooltip decoration,
+window.tooltip decoration {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+tooltip label,
+.tooltip label {
+  color: @platinum_fg;
+  padding: 2px 5px;
+}
+
+/* --- Dialogs & Modal frame (measured dialog-modal-plain.png) --- */
+dialog,
+messagedialog {
+  background-color: @platinum_bg;
+  color: @platinum_fg;
+}
+
+.platinum-modal-frame {
+  background-color: @platinum_base;
+  background-clip: padding-box;
+  border-style: solid;
+  border-width: 4px;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  border-image: -gtk-scaled(url("assets/modal-frame.png"), url("assets/modal-frame@2.png")) 4 / 4px stretch;
+}
+
+.dialog-vbox {
+  padding: 6px;
+}
+
+.dialog-action-area {
+  padding: 4px 0 0 0;
+}
+
+.dialog-action-area.linked > button + button {
+  margin-left: 8px;
+}
+
+/* --- CSD Decoration & HeaderBars (active pinstripes + boxes, flat backdrop, maximized) --- */
+decoration {
+  border: 1px solid @platinum_border;
+  border-radius: 0;
+  box-shadow: 1px 1px 0 0 #000000;
+  margin: 0;
+}
+
+decoration:backdrop {
+  border-color: #555555;
+  box-shadow: 1px 1px 0 0 #555555;
+}
+
+.maximized decoration,
+.fullscreen decoration,
+.tiled decoration,
+window.popup decoration {
+  border: none;
+  box-shadow: none;
+}
+
+headerbar,
+.titlebar:not(headerbar) {
+  min-height: 24px;
+  padding: 2px 6px;
+  margin: 0;
+  color: @platinum_fg;
+  background-color: @platinum_bg_alt;
+  background-image: -gtk-scaled(url("assets/headerbar-stripes.png"), url("assets/headerbar-stripes@2.png"));
+  background-repeat: repeat-x;
+  background-position: left center;
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px solid @platinum_border;
+  box-shadow: inset 0 1px 0 0 @platinum_highlight, inset 0 -1px 0 0 #999999;
+}
+
+headerbar:backdrop,
+.titlebar:not(headerbar):backdrop {
+  color: @platinum_fg_backdrop;
+  background-color: @platinum_bg;
+  background-image: none;
+  border-bottom: 1px solid #555555;
+  box-shadow: none;
+}
+
+.maximized headerbar,
+headerbar.maximized {
+  border-radius: 0;
+}
+
+headerbar > box.left,
+headerbar > box.right {
+  background-color: @platinum_bg_alt;
+  padding: 0 3px;
+}
+
+headerbar:backdrop > box.left,
+headerbar:backdrop > box.right {
+  background-color: transparent;
+}
+
+headerbar label.title,
+.titlebar label.title {
+  color: @platinum_fg;
+  font-weight: bold;
+  background-color: @platinum_bg_alt;
+  padding: 0 6px;
+}
+
+headerbar:backdrop label.title,
+.titlebar:backdrop label.title {
+  color: @platinum_fg_backdrop;
+  background-color: transparent;
+}
+
+headerbar label.subtitle,
+.titlebar label.subtitle {
+  color: #444444;
+  font-size: smaller;
+  background-color: @platinum_bg_alt;
+  padding: 0 6px;
+}
+
+headerbar:backdrop label.subtitle,
+.titlebar:backdrop label.subtitle {
+  color: @platinum_fg_backdrop;
+  background-color: transparent;
+}
+
+headerbar separator.titlebutton {
+  min-width: 0;
+  min-height: 0;
+  background: none;
+  border: none;
+}
+
+headerbar button.titlebutton.close,
+headerbar button.titlebutton.maximize,
+headerbar button.titlebutton.minimize {
+  min-width: 13px;
+  min-height: 13px;
+  padding: 0;
+  margin: 0 2px;
+  border: none;
+  border-radius: 0;
+  border-image: none;
+  box-shadow: none;
+  color: transparent;
+  -gtk-icon-source: none;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 13px 13px;
+}
+
+headerbar button.titlebutton.close > image,
+headerbar button.titlebutton.maximize > image,
+headerbar button.titlebutton.minimize > image {
+  opacity: 0;
+  min-width: 13px;
+  min-height: 13px;
+}
+
+headerbar button.titlebutton.close {
+  background-image: -gtk-scaled(url("assets/titlebutton-close.png"), url("assets/titlebutton-close@2.png"));
+}
+
+headerbar button.titlebutton.close:active {
+  background-image: -gtk-scaled(url("assets/titlebutton-close-pressed.png"), url("assets/titlebutton-close-pressed@2.png"));
+}
+
+headerbar button.titlebutton.maximize {
+  background-image: -gtk-scaled(url("assets/titlebutton-maximize.png"), url("assets/titlebutton-maximize@2.png"));
+}
+
+headerbar button.titlebutton.maximize:active {
+  background-image: -gtk-scaled(url("assets/titlebutton-maximize-pressed.png"), url("assets/titlebutton-maximize-pressed@2.png"));
+}
+
+headerbar button.titlebutton.minimize {
+  background-image: -gtk-scaled(url("assets/titlebutton-minimize.png"), url("assets/titlebutton-minimize@2.png"));
+}
+
+headerbar button.titlebutton.minimize:active {
+  background-image: -gtk-scaled(url("assets/titlebutton-minimize-pressed.png"), url("assets/titlebutton-minimize-pressed@2.png"));
+}
+
+headerbar:backdrop button.titlebutton.close,
+headerbar:backdrop button.titlebutton.maximize,
+headerbar:backdrop button.titlebutton.minimize {
+  background-image: -gtk-scaled(url("assets/titlebutton-backdrop.png"), url("assets/titlebutton-backdrop@2.png"));
+}
+
+/* Toolbar & linked button polish for GTK 3 apps (e.g. Meld) */
+toolbar,
+.primary-toolbar,
+.inline-toolbar {
+  background-color: @platinum_bg;
+  color: @platinum_fg;
+  border: none;
+  padding: 2px;
+}
+
+.linked:not(.dialog-action-area):not(.vertical) > button + button {
+  margin-left: 1px;
 }
