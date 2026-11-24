@@ -286,6 +286,24 @@ gets the Platinum Qt Quick style, that a launcher holding the session's
 environment across the uninstall still starts Qt Quick apps, and that the
 next login leaves nothing behind and Qt Quick apps get KDE's style again.
 
+## Firefox (`userChrome.css` sandbox)
+
+```bash
+dev/firefox-test.sh [NAME] [URL]
+dev/check-firefox-m1.sh
+```
+
+`dev/firefox-test.sh` runs Firefox inside a headless nested `kwin_wayland
+--virtual` with its own `env -i`, private D-Bus, isolated `HOME`, `XDG_*`, and
+`XDG_RUNTIME_DIR`, the Platinum KWin decoration (`browser.tabs.inTitlebar=0`),
+the Platinum GTK 3 theme, and a fresh profile in `dev/build/firefox-profile`
+(never touching `~/.mozilla` or `~/.config/mozilla`), screenshotting into
+`dev/shots/firefox-NAME.png`. `dev/check-firefox-m1.sh` runs the 46-check
+Milestone 1 discovery and verification suite (cold `userChrome.css` load +
+negative control, KWin SSD join, two-row URL bar wrap + labels + overflow +
+Customize Mode + keyboard focus, legacy vs revamped sidebars, GTK 3
+inheritance, and built-in theme / dark-mode / HighContrast gating).
+
 ## Measure and compare
 
 `tools/compare.py` works on reference captures and sandbox renders alike.

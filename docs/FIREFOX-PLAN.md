@@ -2,8 +2,9 @@
 
 Plan for PLAN.md decision 14: an optional Firefox theme that gives Firefox a
 Mac OS 9 Platinum look and feel, using Internet Explorer 5 for Mac as the
-layout inspiration, with IE's teal replaced by Platinum Lavender. Written
-2026-11-23 by Antigravity (Claude Opus 5.5). Nothing is implemented yet.
+layout inspiration, with IE's teal replaced by Platinum Lavender. Written 2026-11-23 by Antigravity (Claude Opus 5.5); updated 2026-11-24 after
+Milestone 1 (`dev/firefox-test.sh`, `dev/check-firefox-m1.sh`, **46/46 PASS**,
+recorded in `docs/FINDINGS.md`).
 
 ## Fidelity target (user, 2026-11-23)
 
@@ -164,7 +165,11 @@ Not required (see fidelity target). Useful if a detail is unclear, through
 ## Installer contract for milestone 6
 
 - Find profiles through `profiles.ini` in both `~/.mozilla/firefox/` and the
-  XDG path `~/.config/mozilla/firefox/`; list them and require the user to pick
+  XDG path `~/.config/mozilla/firefox/` (verified on this host: Firefox 160.0.1
+  uses `~/.config/mozilla/firefox/profiles.ini`, where `[Install*]` `Default=`
+  selects `*.default-release` while `[Profile1]` still carries legacy
+  `Default=1` — prioritize `[Install*]` `Default=` over `[Profile*]`
+  `Default=1`); list them and require the user to pick
   one (default: the profile marked as default for the installed Firefox).
   Never touch more than the chosen profile.
 - Refuse while that profile is in use (its `lock`/`.parentlock`).
