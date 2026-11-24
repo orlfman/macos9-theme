@@ -1,0 +1,300 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+
+window.background {
+  background-color: @platinum_bg;
+  color: @platinum_fg;
+}
+
+label > selection,
+label > selection:focus-within {
+  background-color: @platinum_selection;
+  color: @platinum_fg;
+}
+
+label > selection:backdrop,
+label > selection:focus-within:backdrop {
+  background-color: @platinum_selection_backdrop;
+}
+
+/* State variables are private to the theme. Only framed push buttons below
+ * consume them. GTK also uses button nodes for stock navigation and tools. */
+button {
+  --platinum-push-min: 12px;
+  --platinum-push-padding: 0 8px;
+  --platinum-push-border: 4px;
+  --platinum-push-normal: -gtk-scaled(url("assets/push-normal.png"), url("assets/push-normal@2.png")) 5 / 5px stretch;
+  --platinum-push-pressed: -gtk-scaled(url("assets/push-pressed.png"), url("assets/push-pressed@2.png")) 5 / 5px stretch;
+  --platinum-push-disabled: -gtk-scaled(url("../gtk-3.0/assets/push-disabled.png"), url("../gtk-3.0/assets/push-disabled@2.png")) 4 / 4px stretch;
+  --platinum-push-image: var(--platinum-push-normal);
+  --platinum-push-fg: @platinum_fg;
+  --platinum-push-bg: @platinum_bg;
+  --platinum-push-outline: none;
+}
+
+button.default,
+button.suggested-action {
+  --platinum-push-min: 10px;
+  --platinum-push-padding: 0 5px;
+  --platinum-push-border: 6px 8px;
+  --platinum-push-normal: -gtk-scaled(url("../gtk-3.0/assets/push-default.png"), url("../gtk-3.0/assets/push-default@2.png")) 8 / 8px stretch;
+  --platinum-push-pressed: -gtk-scaled(url("../gtk-3.0/assets/push-default-pressed.png"), url("../gtk-3.0/assets/push-default-pressed@2.png")) 8 / 8px stretch;
+  --platinum-push-disabled: -gtk-scaled(url("../gtk-3.0/assets/push-default-disabled.png"), url("../gtk-3.0/assets/push-default-disabled@2.png")) 8 / 8px stretch;
+}
+
+button:active,
+button.keyboard-activating,
+button:checked {
+  --platinum-push-image: var(--platinum-push-pressed);
+  --platinum-push-fg: #ffffff;
+  --platinum-push-bg: #666666;
+}
+
+button:disabled {
+  --platinum-push-image: var(--platinum-push-disabled);
+  --platinum-push-fg: @platinum_fg_disabled;
+  --platinum-push-bg: @platinum_bg;
+}
+
+button:focus-visible:not(:backdrop) {
+  --platinum-push-outline: 1px solid @platinum_focus;
+}
+
+/* Include direct window children. GTK's toolbar also flattens buttons one
+ * box down. Keep linked groups, stack switchers and composite internals stock. */
+window:root:not(.osd):not(.toolbar):not(.linked) >
+  button:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font),
+:not(.toolbar):not(.osd) >
+  :not(.toolbar):not(.osd):not(.linked):not(stackswitcher):not(menubutton):not(dropdown):not(spinbutton):not(windowcontrols):not(header) >
+  button:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font) {
+  min-height: var(--platinum-push-min);
+  min-width: var(--platinum-push-min);
+  padding: var(--platinum-push-padding);
+  font-weight: normal;
+  margin: 0;
+  color: var(--platinum-push-fg);
+  background-color: var(--platinum-push-bg);
+  background-clip: padding-box;
+  background-image: none;
+  border: solid transparent;
+  border-width: var(--platinum-push-border);
+  border-radius: 0;
+  border-image: var(--platinum-push-image);
+  box-shadow: none;
+  outline: var(--platinum-push-outline);
+  outline-offset: -1px;
+  transition: none;
+}
+
+window:root:not(.osd):not(.toolbar):not(.linked) >
+  button:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):disabled label:disabled,
+:not(.toolbar):not(.osd) >
+  :not(.toolbar):not(.osd):not(.linked):not(stackswitcher):not(menubutton):not(dropdown):not(spinbutton):not(windowcontrols):not(header) >
+  button:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):disabled label:disabled {
+  color: inherit;
+}
+
+/* --- Text entry (measured appearance-3-fonts-clean.png unfocused & focused) --- */
+entry:not(.flat) {
+  min-height: 20px;
+  min-width: 18px;
+  padding: 0 3px;
+  margin: 0;
+  color: @platinum_fg;
+  caret-color: @platinum_fg;
+  background-color: @platinum_base;
+  background-clip: padding-box;
+  background-image: none;
+  border-style: solid;
+  border-width: 3px;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  transition: none;
+  border-image: -gtk-scaled(url("../gtk-3.0/assets/entry-normal.png"), url("../gtk-3.0/assets/entry-normal@2.png")) 4 / 4px stretch;
+}
+
+entry:not(.flat):focus-within {
+  outline: none;
+  box-shadow: none;
+  border-image: -gtk-scaled(url("../gtk-3.0/assets/entry-focused.png"), url("../gtk-3.0/assets/entry-focused@2.png")) 4 / 4px stretch;
+}
+
+entry:not(.flat):focus-within:backdrop {
+  border-image: -gtk-scaled(url("../gtk-3.0/assets/entry-normal.png"), url("../gtk-3.0/assets/entry-normal@2.png")) 4 / 4px stretch;
+}
+
+/* Disabled entry (derived/TBD) */
+entry:not(.flat):disabled {
+  color: @platinum_fg_disabled;
+  background-color: @platinum_bg;
+  border-image: -gtk-scaled(url("../gtk-3.0/assets/entry-disabled.png"), url("../gtk-3.0/assets/entry-disabled@2.png")) 4 / 4px stretch;
+}
+
+/* Active selection: measured #CCCCFF solid fill with black text */
+entry > text > selection,
+entry > text > selection:focus-within {
+  background-color: @platinum_selection;
+  color: @platinum_fg;
+}
+
+/* Backdrop selection: muted readable fill (GTK text selection uses a solid fill) */
+entry > text > selection:backdrop,
+entry > text > selection:focus-within:backdrop {
+  background-color: @platinum_selection_backdrop;
+  color: @platinum_fg;
+}
+
+/* --- Check buttons (measured 14x12 sprites including 2px checkmark overhang) --- */
+checkbutton,
+checkbutton.text-button {
+  border-spacing: 4px;
+  min-height: 18px;
+  padding: 1px 2px;
+  margin: 0;
+  color: @platinum_fg;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  transition: none;
+}
+
+checkbutton:disabled {
+  color: @platinum_fg_disabled;
+}
+
+checkbutton:disabled label:disabled {
+  color: inherit;
+}
+
+checkbutton:focus:focus-visible {
+  outline-style: solid;
+  outline-width: 1px;
+  outline-color: @platinum_focus;
+  outline-offset: -1px;
+}
+
+checkbutton:focus:focus-visible:backdrop {
+  outline: none;
+}
+
+checkbutton > check,
+checkbutton > radio {
+  min-height: 12px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: transparent;
+  -gtk-icon-source: none;
+  -gtk-icon-size: 12px;
+  background-repeat: no-repeat;
+  background-position: center;
+  transition: none;
+}
+
+checkbutton > check,
+checkbutton > check:hover {
+  min-width: 14px;
+  background-size: 14px 12px;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-off.png"), url("../gtk-3.0/assets/check-off@2.png"));
+}
+
+checkbutton > check:active,
+checkbutton:active > check {
+  box-shadow: none;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-off-pressed.png"), url("../gtk-3.0/assets/check-off-pressed@2.png"));
+}
+
+checkbutton > check:checked,
+checkbutton > check:checked:hover {
+  -gtk-icon-source: none;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-on.png"), url("../gtk-3.0/assets/check-on@2.png"));
+}
+
+checkbutton > check:checked:active,
+checkbutton:active > check:checked {
+  box-shadow: none;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-on-pressed.png"), url("../gtk-3.0/assets/check-on-pressed@2.png"));
+}
+
+checkbutton > check:indeterminate,
+checkbutton > check:indeterminate:hover {
+  -gtk-icon-source: none;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-mixed.png"), url("../gtk-3.0/assets/check-mixed@2.png"));
+}
+
+checkbutton > check:indeterminate:active,
+checkbutton:active > check:indeterminate {
+  box-shadow: none;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-mixed-pressed.png"), url("../gtk-3.0/assets/check-mixed-pressed@2.png"));
+}
+
+checkbutton > check:disabled {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-off-disabled.png"), url("../gtk-3.0/assets/check-off-disabled@2.png"));
+}
+
+checkbutton > check:checked:disabled {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-on-disabled.png"), url("../gtk-3.0/assets/check-on-disabled@2.png"));
+}
+
+checkbutton > check:indeterminate:disabled {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-mixed-disabled.png"), url("../gtk-3.0/assets/check-mixed-disabled@2.png"));
+}
+
+/* --- Radio buttons (measured 12x12 sprites) --- */
+checkbutton > radio,
+checkbutton > radio:hover {
+  min-width: 12px;
+  background-size: 12px 12px;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/radio-off.png"), url("../gtk-3.0/assets/radio-off@2.png"));
+}
+
+checkbutton > radio:active,
+checkbutton:active > radio {
+  box-shadow: none;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/radio-off-pressed.png"), url("../gtk-3.0/assets/radio-off-pressed@2.png"));
+}
+
+checkbutton > radio:checked,
+checkbutton > radio:checked:hover {
+  -gtk-icon-source: none;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/radio-on.png"), url("../gtk-3.0/assets/radio-on@2.png"));
+}
+
+checkbutton > radio:checked:active,
+checkbutton:active > radio:checked {
+  box-shadow: none;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/radio-on-pressed.png"), url("../gtk-3.0/assets/radio-on-pressed@2.png"));
+}
+
+checkbutton > radio:disabled {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/radio-off-disabled.png"), url("../gtk-3.0/assets/radio-off-disabled@2.png"));
+}
+
+checkbutton > radio:checked:disabled {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/radio-on-disabled.png"), url("../gtk-3.0/assets/radio-on-disabled@2.png"));
+}
+
+/* Grouped GtkCheckButtons can also expose an inconsistent state. */
+checkbutton > radio:indeterminate,
+checkbutton > radio:indeterminate:hover {
+  -gtk-icon-source: none;
+  box-shadow: none;
+  background-size: 6px 2px, 12px 12px;
+  background-image: linear-gradient(@platinum_fg, @platinum_fg),
+    -gtk-scaled(url("../gtk-3.0/assets/radio-off.png"), url("../gtk-3.0/assets/radio-off@2.png"));
+}
+
+checkbutton > radio:indeterminate:active,
+checkbutton:active > radio:indeterminate {
+  box-shadow: none;
+  background-image: linear-gradient(@platinum_fg, @platinum_fg),
+    -gtk-scaled(url("../gtk-3.0/assets/radio-off-pressed.png"), url("../gtk-3.0/assets/radio-off-pressed@2.png"));
+}
+
+checkbutton > radio:indeterminate:disabled {
+  background-image: linear-gradient(@platinum_border_disabled, @platinum_border_disabled),
+    -gtk-scaled(url("../gtk-3.0/assets/radio-off-disabled.png"), url("../gtk-3.0/assets/radio-off-disabled@2.png"));
+}

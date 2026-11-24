@@ -9,6 +9,7 @@ the same rules as style/platinum/platinumstyle.cpp.
 Output:
   gtk/Platinum/gtk-3.0/assets/<name>.png      (1x exact pixel art)
   gtk/Platinum/gtk-3.0/assets/<name>@2.png    (2x nearest-neighbor integer scale)
+  gtk/Platinum/gtk-4.0/assets/<name>{,@2}.png (GTK 4 filtered-slice variants)
 
 SPDX-License-Identifier: BSD-2-Clause
 """
@@ -26,6 +27,7 @@ SPRITES_H = ROOT / "style" / "platinum" / "sprites.h"
 PROGRESS_H = ROOT / "style" / "platinum" / "progress.h"
 TABS_H = ROOT / "style" / "platinum" / "tabs.h"
 OUT_GTK3 = ROOT / "gtk" / "Platinum" / "gtk-3.0" / "assets"
+OUT_GTK4 = ROOT / "gtk" / "Platinum" / "gtk-4.0" / "assets"
 
 
 def rgba(val: int) -> tuple[int, int, int, int]:
@@ -717,6 +719,15 @@ def make_titlebutton_box(glyph: str, pressed: bool = False, backdrop: bool = Fal
     return im
 
 
+def pad_slice_center(image: Image.Image) -> Image.Image:
+    """Guard both sides of a one-pixel stretch strip from GTK 4 texture filtering."""
+    center = image.width // 2
+    coords = (*range(center), center, center, center, *range(center + 1, image.width))
+    padded = Image.new(image.mode, (len(coords), len(coords)))
+    padded.putdata([image.getpixel((x, y)) for y in coords for x in coords])
+    return padded
+
+
 def save_asset(out_dir: Path, name: str, im: Image.Image) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     im.save(out_dir / f"{name}.png")
@@ -859,6 +870,10 @@ def main() -> int:
     for name, im in assets.items():
         save_asset(OUT_GTK3, name, im)
 
+    for name in ("push-normal", "push-pressed"):
+        save_asset(OUT_GTK4, name, pad_slice_center(assets[name]))
+
+    print(f"Generated four filtered-slice variants in {OUT_GTK4}")
     print(f"Generated {len(assets)} assets (1x + @2x = {len(assets) * 2} PNGs) in {OUT_GTK3}")
     return 0
 

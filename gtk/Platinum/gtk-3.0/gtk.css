@@ -6,25 +6,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-/* --- Measured palette tokens (docs/REFERENCE.md & colors/Platinum.colors) --- */
-@define-color platinum_bg #dddddd;
-@define-color platinum_bg_alt #cccccc;
-@define-color platinum_pane #eeeeee;
-@define-color platinum_base #ffffff;
-@define-color platinum_fg #000000;
-@define-color platinum_fg_disabled #777777;
-@define-color platinum_fg_backdrop #777777;
-@define-color platinum_border #000000;
-@define-color platinum_border_disabled #888888;
-@define-color platinum_highlight #ffffff;
-@define-color platinum_shadow #888888;
-@define-color platinum_focus #6666cc;
-@define-color platinum_selection #ccccff;
-@define-color platinum_selection_backdrop #dcdcef;
-@define-color platinum_accent #9999ff;
-@define-color platinum_accent_dark #333399;
-@define-color platinum_link #0000ff;
-@define-color platinum_error #cc0000;
+@import url("../palette.css");
 
 /* Standard GTK semantic exports for apps querying theme colors */
 @define-color theme_bg_color @platinum_bg;

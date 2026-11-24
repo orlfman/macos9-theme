@@ -1,0 +1,15 @@
+/*
+ * Platinum GTK 4 theme — initial control slice
+ * Measured palette and original artwork shared with GTK 3.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+@import url("../palette.css");
+
+/* Use GTK's own styles for widgets outside this slice and its accessibility variants. */
+@import url("resource:///org/gtk/libgtk/theme/Default/gtk.css");
+
+@media (prefers-color-scheme: light) and (not (prefers-contrast: more)) {
+  @import url("controls.css");
+}

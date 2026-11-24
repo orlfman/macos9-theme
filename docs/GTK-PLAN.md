@@ -41,6 +41,31 @@ Test active selection fill against the measured #CCCCFF. On real window deactiva
 
 GTK 4 scrollbars lack steppers. Preserve scrolling and keyboard operation. GTK 3 overlay scrolling cannot guarantee a permanent classic gutter. Exercise HighContrast theme switching on GTK 3 and prefers-contrast rules on GTK 4. For client-side header bars preserve app controls, button layout and natural height. Test narrow widths and maximization. Record the resulting title-bar differences. Set 150% and 200% on the virtual output with kscreen-doctor and verify its reported scale. Inspect compositor output at both scales, including GTK 3 downsampling at 150%. Log the GTK 4 surface scale and actual render result. Keep pixel-exact comparisons at 1×.
 
+## Milestone 4 initial slice
+
+Platinum's named GTK 4 stylesheet shares the GTK 3 palette and measured artwork.
+The first slice covers framed buttons with labels or custom children, default
+buttons, entries, checkboxes and grouped check buttons. The named theme
+imports GTK's default resources for widgets outside the slice. GTK's dark and high-contrast styles take over when
+their corresponding preference is active. The stylesheet targets GTK 4.20+
+for CSS media queries and was tested with GTK 4.24.1. [GTK CSS media queries](https://docs.gtk.org/gtk4/css-properties.html#media-queries).
+
+Run `dev/check-gtk4.sh broadway` for the 1× reference crops and control checks
+using Cairo and `settings.ini`. Run `dev/check-gtk4.sh plasma` for the same
+checks in nested Wayland using the default GTK renderer and GSettings theme
+selection. Wayland also verifies actual window deactivation, focus reassignment
+while inactive, a live high-contrast round trip in one window, Widget Factory
+against Adwaita, and exact comparisons with stock button groups and toolbars.
+Compositor captures cover layout at 150% and 200%, plus exact indicator artwork
+at 200%. Each run prints its disposable evidence
+directory.
+
+Next, inspect GTK 4 popover menus, dropdowns and list/column views, then port
+the remaining GTK 3 batches. Verify native list and scroll behavior, including
+overlay scrolling and the toolkit's lack of scrollbar steppers. Review narrow
+and maximized GTK 4 header bars and test an ordinary application after each
+batch. Installation is scheduled for Milestone 6.
+
 ## Installer contract for milestone 6
 
 Claim packaging before changing the scripts. A plain upgrade installs the named theme files and preserves the current GTK widget-theme choice. Enable selection on explicit apply only after milestone 1 demonstrates a viable route and the following recovery tests pass.
