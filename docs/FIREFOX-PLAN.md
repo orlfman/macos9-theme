@@ -4,7 +4,17 @@ Plan for PLAN.md decision 14: an optional Firefox theme that gives Firefox a
 Mac OS 9 Platinum look and feel, using Internet Explorer 5 for Mac as the
 layout inspiration, with IE's teal replaced by Platinum Lavender. Written 2026-11-23 by Antigravity (Claude Opus 5.5); updated 2026-11-24 after
 Milestone 1 (`dev/firefox-test.sh`, `dev/check-firefox-m1.sh`, **46/46 PASS**,
-recorded in `docs/FINDINGS.md`).
+recorded in `docs/FINDINGS.md`), Milestone 2 (`dev/render-firefox-m2.sh`,
+8 live Firefox mockups + 4 comparison sheets in `dev/shots/firefox-m2-*.png`,
+user picks locked below: `1A+1C`, `2A`, `4A`, `5A`), Milestone 3 (`firefox/chrome/`, `dev/check-firefox-m3.sh`, **34/34 PASS**), Milestone 4
+(`firefox/chrome/platinum/{tabs-sidebar,status-activity,menus-panels,bars-states}.css`,
+`dev/check-firefox-m4.sh`, **34/34 PASS**), Milestone 5
+(`firefox/version.json`, `tools/check-firefox-selectors.py`,
+`dev/check-firefox-m5.sh`, **29/29 PASS**), and Milestone 6
+(`firefox/install.sh`, `firefox/uninstall.sh`, `firefox/profile_ops.py`,
+`dev/check-firefox-m6.sh`, **40/40 PASS**). Ready for Milestone 7 (release check:
+run all Firefox suites + record in `AUDIT.md`, then user's on-screen review after
+an approved install).
 
 ## Fidelity target (user, 2026-11-23)
 
@@ -188,19 +198,31 @@ Not required (see fidelity target). Useful if a detail is unclear, through
   reinstall, upgrade, interrupted install and undo, Firefox running, two
   profiles, and an XDG-path-only profile.
 
-## Open questions for the user
+## Settled design decisions (user, 2026-11-24)
 
-1. **Tabs**: a slim Platinum tab row below the favorites bar, a row above the
-   button toolbar, or vertical tabs in the left sidebar (closest to IE's
-   Explorer bar)?
-2. **Address band color**: which Lavender ramp replaces the teal tube (pick
-   from mockups in milestone 2)?
-3. **Which Firefox and profile** you use day to day. System Firefox is 160.0.1;
-   no profile folder was visible from the agent's sandbox (`~/.mozilla`,
-   `~/.config/mozilla`), so this may be a sandbox limit.
-4. **Toolbar labels**: icons with labels as IE's default, or icons only?
-5. **Status band**: a permanent IE-style band at the bottom (costs ~14 px of
-   page) or only Firefox's floating status text restyled?
+Picked from the Milestone 2 sandbox mockups (`dev/shots/firefox-m2-*.png`):
+
+1. **Tabs (`1A` + `1C`, live-switchable):** Support **both** in the same
+   stylesheet via Firefox's built-in `sidebar.verticalTabs` toggle (right-click
+   toolbar/tab strip → *Turn on/off Vertical Tabs*, live with no restart):
+   - Horizontal mode (`1A`): slim Platinum tab row **below** the Favorites bar.
+   - Vertical mode (`1C`): Platinum pinstriped left sidebar with beveled
+     vertical tabs inside light-DOM `#vertical-tabs`.
+2. **Address band color (`2A`):** **Deep Lavender Tube** (IE5 luminance
+   contrast translated to Platinum Lavender `#1B1B52` → `#7A7AE0` → `#111138`
+   using discrete whole-pixel stops, crisp white `"Address:"` label).
+3. **Toolbar labels (`4A`):** **Icons + Text Labels** beneath icons (42 px
+   IE5-inspired pinstriped toolbar).
+4. **Status band (`5A`):** **Permanent 16 px IE5 pinstriped status band** across
+   the bottom with diagonal `#777777`/`#FFFFFF` corner size grip and live
+   `#statuspanel` text rendered inside it (omitted in fullscreen and popup
+   windows).
+
+### Remaining open item (for Milestone 6 installer)
+
+- **Profile selection (Q3):** Observed on host at `~/.config/mozilla/firefox/profiles.ini`
+  (`[Install4F96D1932A9F858E]` → `*.default-release`); confirm during Milestone 6
+  (installer lists all discovered profiles and asks the user to pick one anyway).
 
 ## References
 

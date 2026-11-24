@@ -291,6 +291,12 @@ next login leaves nothing behind and Qt Quick apps get KDE's style again.
 ```bash
 dev/firefox-test.sh [NAME] [URL]
 dev/check-firefox-m1.sh
+dev/render-firefox-m2.sh
+dev/check-firefox-m3.sh
+dev/check-firefox-m4.sh
+dev/check-firefox-m5.sh
+dev/check-firefox-m6.sh
+tools/check-firefox-selectors.py
 ```
 
 `dev/firefox-test.sh` runs Firefox inside a headless nested `kwin_wayland
@@ -299,10 +305,31 @@ dev/check-firefox-m1.sh
 the Platinum GTK 3 theme, and a fresh profile in `dev/build/firefox-profile`
 (never touching `~/.mozilla` or `~/.config/mozilla`), screenshotting into
 `dev/shots/firefox-NAME.png`. `dev/check-firefox-m1.sh` runs the 46-check
-Milestone 1 discovery and verification suite (cold `userChrome.css` load +
-negative control, KWin SSD join, two-row URL bar wrap + labels + overflow +
-Customize Mode + keyboard focus, legacy vs revamped sidebars, GTK 3
-inheritance, and built-in theme / dark-mode / HighContrast gating).
+Milestone 1 discovery and verification suite; `dev/render-firefox-m2.sh` renders
+the Milestone 2 visual mockup variants and comparison sheets;
+`dev/check-firefox-m3.sh` runs the 34-check Milestone 3 verification suite
+(whole-pixel row sampling across the three top bands, hover/pressed states,
+urlbar focus/selection/dropdown, narrow overflow, Customize Mode, and gating);
+`dev/check-firefox-m4.sh` runs the 34-check Milestone 4 full-coverage suite
+(live-switchable `1A`+`1C` tabs, `5A` permanent status band, busy activity
+indicator, Platinum menus/panels/urlbar popup, find & notification bars,
+sidebar, real inactive window flattening, Private/popup/fullscreen windows,
+Customize Mode, and theme gating); `tools/check-firefox-selectors.py` validates
+every `#id` and `::part()` selector in `firefox/chrome/` against the installed
+Firefox `omni.ja` archives and checks the major version against
+`firefox/version.json` (exiting `3` on untested major versions unless
+`--allow-untested-version` is passed); `dev/check-firefox-m5.sh` runs the
+29-check Milestone 5 robustness suite (selector checker + negative controls,
+version gate, keyboard focus across all chrome controls, and 150%/200% Wayland
+scaling crispness and zero-clipping checks in a `2400×1600` virtual KWin);
+`dev/check-firefox-m6.sh` runs the 40-check Milestone 6 throwaway-`HOME`
+installer and undo suite for `firefox/install.sh` and `firefox/uninstall.sh`
+(fresh and pre-customized profiles, `@charset`/`@namespace` ordering, post-install
+user edits outside markers, conflict & symlink refusal, reinstall & pref-retiring
+upgrade, fault-injected mid-install and mid-uninstall recovery, `lock` symlink
+and live `.parentlock` `fcntl` lock refusal, two-profile `[Install*]` `Default=`
+precedence, XDG-only profile + untested version warning, and a live nested
+Wayland Firefox 160.0.1 cold-launch + full undo check).
 
 ## Measure and compare
 
