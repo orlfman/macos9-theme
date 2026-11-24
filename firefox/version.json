@@ -1,0 +1,13 @@
+{
+  "tested_version": "160.0.1",
+  "tested_major_min": 160,
+  "tested_major_max": 160,
+  "application_ini_paths": [
+    "/usr/lib/firefox/application.ini",
+    "/usr/lib64/firefox/application.ini"
+  ],
+  "omni_ja_paths": [
+    "/usr/lib/firefox/browser/omni.ja",
+    "/usr/lib/firefox/omni.ja"
+  ]
+}
