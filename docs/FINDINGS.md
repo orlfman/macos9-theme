@@ -360,3 +360,156 @@ switches", steps 2-5 and 7):
   run counts what the real run will remove as free, unless something is put
   back there.
 
+## GTK 3, GTK 4 and libadwaita discovery (2026-11-23, Antigravity / Gemini 4 Neon)
+
+Verified in disposable `HOME` + `XDG_*` + private `dbus-run-session` runs via
+`dev/gtk-discovery.sh broadway` (`dev/build/gtk-discovery-broadway.bT4yG8`) on
+GTK 3.24.52, GTK 4.24.1, libadwaita 1.10.0, and `kde-gtk-config` 6.8.3.
+
+- **Disposable isolation & `dconf`:** `HOME` and all `XDG_*` directories must
+  be exported **before** launching `dbus-run-session` so `dconf-service` writes
+  to `$XDG_CONFIG_HOME/dconf/user` instead of the user's real home. Verified
+  write/readback (`DiscoveryDconf` -> reset `'Adwaita'`) inside the disposable
+  home (`isolation.log`).
+- **Named theme lookup & CSS precedence:**
+  - Both GTK 3.24.52 and plain GTK 4.24.1 load named themes from
+    `$XDG_DATA_HOME/themes/<Name>/gtk-{3,4}.0/gtk.css` via `gtk-theme-name` in
+    `$XDG_CONFIG_HOME/gtk-{3,4}.0/settings.ini` (`DiscoveryIni` -> `#112233` /
+    `#11aa33`), with zero CSS errors. (`$HOME/.themes/` also loads, though GTK
+    4 logs a deprecation message.)
+  - Unmodified libadwaita 1.10.0 (`AdwApplication`) forces `gtk-theme-name` to
+    `Adwaita-empty` and ignores named themes completely (`#probe` and
+    `#ind-theme` stay stock `#000006`).
+  - Layer precedence verified on all three stacks with independent indicators
+    (`#ind-theme`, `#ind-app`, `#ind-user`) and a competing `#probe` color:
+    `user gtk.css` (`PRIORITY_USER` 800, `#abcdef`) > diagnostic app provider
+    (`PRIORITY_APPLICATION` 600, `#654321`) > named theme (`PRIORITY_THEME`
+    200, `#112233` on GTK 3 and plain GTK 4; not loaded on libadwaita).
+  - Under `GdkBroadwayDisplay`, `settings.ini` drives named themes while
+    GSettings `org.gnome.desktop.interface gtk-theme` and X11-only
+    `xsettingsd.conf` are ignored on cold launch.
+- **What `kded6` (`gtkconfig` 6.8.3) writes on select & global-theme reapply:**
+  - `org.kde.GtkConfig.setGtkTheme` writes `gtk-theme-name` to five stores:
+    `gtk-3.0/settings.ini` (`0600`), `gtk-4.0/settings.ini` (`0600`),
+    `~/.gtkrc-2.0`, `xsettingsd/xsettingsd.conf`, and GSettings
+    `org.gnome.desktop.interface gtk-theme` (in `$XDG_CONFIG_HOME/dconf/user`).
+  - `kded6` creates regular files (no symlinks) for `gtk-3.0/{gtk.css,colors.css}`
+    and `gtk-4.0/{gtk.css,colors.css}` containing `@import 'colors.css';` and 84
+    `@define-color *_breeze` definitions (no generic selector or libadwaita
+    `@window_*` overrides). Both GTK 3 and plain GTK 4 load `DiscoveryKde`
+    cleanly while unmodified `AdwApplication` remains unaffected (`Adwaita-empty`,
+    stock `#000006`).
+  - Reapplying `platinum.desktop` (`plasma-apply-lookandfeel -a platinum.desktop`,
+    with no synthetic `KGlobalSettings.notifyChange` signal) updates `colors.css`
+    directly to Platinum colors (`#b1b1b1`, `#cc0000`, `#dddddd`) while
+    preserving `gtk-theme-name=DiscoveryKde` in all five stores. When a user
+    `gtk-4.0/gtk.css` already exists, `kded6` preserves its existing rules and
+    appends `@import 'colors.css';` (and syncs `WhiteSur-lavender` /
+    `macOS-cursors` across GTK 3/4/2/`xsettingsd` on the second reapply once
+    `kdedefaults/` exists).
+- **Live preference delivery & toolkit CSS limits:**
+  - Even on `GdkBroadwayDisplay` without a Wayland portal, a running
+    `AdwApplication` receives live `org.gnome.desktop.a11y.interface high-contrast`
+    GSettings changes (`adw_hc` and `gtk-interface-contrast` toggled `0 -> 1 -> 0`
+    with immediate `notify` callbacks), while `adw_sys_cs=0` and `adw_sys_acc=0`
+    (accent stayed `blue` / `rgb(53,132,228)`).
+  - Verified CSS boundaries on installed toolkits: GTK 3 `GtkEntry`/`GtkTextView`
+    and GTK 4 `GtkTextView` ignore `border`/`outline`/`box-shadow` on `selection`
+    (no hollow Mac OS 9 inactive selection outline via CSS); GTK 4 removed
+    scrollbar steppers (`-GtkScrollbar-has-backward-stepper` is a parser error);
+    GTK 3 rejects `@media (prefers-contrast: more)` (`unknown @ rule`);
+    `AdwAccentColor` is fixed to 9 discrete enum values.
+- **Native Wayland (`GdkWaylandDisplay`), dual Settings portals & live updates (verified in user terminal via `dev/gtk-discovery.sh plasma`, `dev/build/gtk-discovery-plasma.Qn9Pwd` — 38/38 PASS, 0 FAIL, 0 BLOCKED; initial discovery in `dxtZOy`):**
+  - **Primary theme store on Wayland is GSettings, NOT `settings.ini`:** On
+    `GdkWaylandDisplay`, GTK 3.24.52 and plain GTK 4.24.1 read
+    `org.gnome.desktop.interface gtk-theme` from GSettings (whose schema default
+    is `'Adwaita'`), completely overriding `gtk-{3,4}.0/settings.ini` when only
+    `settings.ini` is edited (`theme=Adwaita` for `DiscoveryIni` in
+    `settings.ini` alone; `theme=DiscoveryGSettings` -> `#223344`/`#22bb44` when
+    set via GSettings alone). Under `GdkBroadwayDisplay` the reverse holds
+    (`settings.ini` wins, GSettings is ignored). `kded6`'s
+    `org.kde.GtkConfig.setGtkTheme` writes **both** GSettings and
+    `settings.ini`/`.gtkrc-2.0`/`xsettingsd.conf`, so both GTK 3 and plain GTK 4
+    load `DiscoveryKde` (`#123456`/`#1188ee`) on Wayland and survive
+    `plasma-apply-lookandfeel -a platinum.desktop`. (Critical for Milestone 6:
+    `uninstall.sh` MUST restore GSettings `org.gnome.desktop.interface gtk-theme`,
+    not only `settings.ini`!)
+  - **Dual Settings portal backends (`kde;gtk;`):** With
+    `dbus-update-activation-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP QT_QPA_PLATFORM`,
+    both `org.freedesktop.impl.portal.desktop.kde` and
+    `org.freedesktop.impl.portal.desktop.gtk` activate cleanly and own their bus
+    names. `kde` supplies `org.freedesktop.appearance` `color-scheme` (`2` light
+    for Platinum, `1` dark for BreezeDark), `accent-color` (`(0.8, 0.8, 1.0)` =
+    `#CCCCFF` from `Platinum.colors` `[Colors:Selection] BackgroundNormal`), and
+    `reduced-motion` (`0`), with no `contrast` key. `gtk` supplies `contrast`
+    (`0` / `1` from GSettings `org.gnome.desktop.a11y.interface high-contrast`)
+    plus `org.gnome.desktop.interface` and `org.gnome.desktop.a11y.interface`.
+    The frontend `org.freedesktop.portal.Desktop` merges all four
+    `org.freedesktop.appearance` keys cleanly (`portal.log`).
+  - **Live preference delivery on already-running Wayland apps:**
+    - `AdwApplication` (`watch-plasma-adw.log`): reports `adw_sys_cs=1`,
+      `adw_sys_acc=1`. Under Platinum, `xdg-desktop-portal-kde`'s `(0.8, 0.8, 1.0)`
+      maps to **`ADW_ACCENT_COLOR_PURPLE` (enum `7`, `rgb(145,65,172)` / `#9141AC`)**.
+      Switching KDE color scheme `BreezeDark` ↔ `Platinum` (`plasma-apply-colorscheme`)
+      flips `adw_dark` `0 → 1 → 0` and accent `purple(7) → blue(0) → purple(7)` live;
+      toggling GSettings `high-contrast` flips `adw_hc` `0 → 1 → 0` live; calling
+      `setGtkTheme` leaves `AdwApplication` untouched (`Adwaita-empty`).
+    - Plain GTK 4 (`watch-plasma-gtk4.log`): receives live
+      `gtk-interface-color-scheme` (`3 → 2 → 3`), `gtk-interface-contrast`
+      (`1 → 2 → 1`), and `gtk-theme-name` (`DiscoveryKde → DiscoveryGSettingsLive`,
+      `#123456 → #334455`) without restarting.
+    - GTK 3 (`watch-plasma-gtk3.log`): `prefer_dark` remained `0` across all
+      poll rows including `BreezeDark` (measured GTK 3 limitation: GTK 3.24.52
+      does not map `org.freedesktop.appearance color-scheme` to
+      `gtk-application-prefer-dark-theme`). Toggling GSettings `high-contrast`
+      automatically switches a running GTK 3 app live to `HighContrast`
+      (`#probe=#272c2e` in `Qn9Pwd`; `#929595` when `:backdrop` in `dxtZOy`)
+      and back to `DiscoveryKde` (`#123456`); calling `setGtkTheme` switches
+      live to `DiscoveryGSettingsLive` (`#334455`/`#33cc55`) and back to
+      `DiscoveryKde` (`#123456`/`#1188ee`).
+  - **FFmpeg Converter GTK (`dev/shots/gtk-discovery-ffmpeg-plasma.png`):**
+    Launched cleanly on Wayland in light mode with zero breakage from KDE's
+    `gtk-4.0/{gtk,colors}.css`. Distinguish the manager accent from rendered
+    button pixels and active theme: `AdwStyleManager` reported
+    `ADW_ACCENT_COLOR_PURPLE` (`enum=7`, `rgb(145,65,172)` / `#9141AC`), while
+    the insensitive "Convert" button fill at `(900, 620)` rendered as
+    `#C69ED3` (alpha-blended over the light `#FAFAFB` surface). In `Qn9Pwd`,
+    FFmpeg launched after Step 5 had switched GSettings `gtk-theme` to
+    `DiscoveryGSettingsLive` (which stock libadwaita ignores via
+    `Adwaita-empty`); post-fix `session.sh` adds Step 6 to restore
+    `DiscoveryKde` before launch, logs exact active settings, and records KWin
+    window identity (`ffmpeg-window.log`). Note: FFmpeg's log contains an
+    AT-SPI registry critical in the minimal virtual session, so accessibility
+    behavior remains unverified.
+  - **Virtual KWin renderer note:** Under `kwin_wayland --virtual`
+    (`kwin_scene_opengl`), `AdwApplicationWindow` hit Wayland `Error 71` with
+    GTK 4's default `radv` Vulkan renderer before running via `g_application_run()`
+    + `GSK_RENDERER=cairo`; running `AdwApplication` through `g_application_run()`
+    with `GSK_RENDERER=cairo` ran all trials cleanly.
+
+In the 2026-11-23 re-test after the GTK discovery repairs, the second
+Platinum reapply preserved the existing GTK 4 user rule and imported
+KDE's generated colors. Cold launches of plain GTK 4 and Adw with the
+resulting CSS both rendered the user marker as `#AA4499` and the marker
+using `@error_color_breeze` as `#CC0000`. See the `kde-reapplied-user`
+rows in `dev/build/gtk-discovery-plasma.celTLF/results.log` and
+`dev/build/gtk-discovery-broadway.5RQc7I/results.log`.
+
+## GTK 3.24 CSS engine behaviors (2026-11-23, Antigravity Gemini 4 Neon)
+
+Verified during Milestone 2 and Milestone 3 Batch 1 (`gtk/Platinum/gtk-3.0/gtk.css`):
+
+- **`border-image` ignores CSS `fill` and paints over `background-image`:** GTK 3.24.52 does not fill the center region of a `border-image` even when `fill` is specified; fill interiors with `background-color` + `background-clip: padding-box` while keeping outer corner cut-outs transparent. Because `border-image` paints *above* `background-image` on the same node, an opaque right-cap `border-image` (such as Platinum's pop-up button) hides any `background-image` on `button.combo`; placing the non-stretched 14×10 double-arrow PNG on the child `combobox button.combo arrow` node paints it cleanly on top at any natural height.
+- **`GtkTreeView` `:selected:backdrop` requires a property change on `treeview.view:backdrop`:** In GTK 3.24.52, if `treeview.view:backdrop` computes the exact same style values as `treeview.view` (or is absent), GTK treats the `:backdrop` transition on `treeview.view` as a no-op and does not invalidate the cached transient row style for `treeview.view:selected:backdrop`, leaving selected rows in their active `#CCCCFF` color. Changing a non-intrusive property on `treeview.view:backdrop` (e.g., `border-color: #999999;` vs `@platinum_shadow` `#888888`, while the visible frame belongs to `scrolledwindow.frame`) forces invalidation so `treeview.view:selected:backdrop` renders `#DCDCEF` while keeping the pure `#FFFFFF` view background.
+- **Global `label { color: ... }` specificity:** A top-level `label` rule overrides inherited `color` inside `menubar > menuitem:hover` and `menu > menuitem:hover` unless `menubar > menuitem label` and `menu > menuitem label` explicitly set `color: inherit;`.
+- **Internal `GtkComboBox` children:** `gtk_container_get_children()` skips `GtkComboBox`'s internal `GtkToggleButton`; test harnesses must traverse with `gtk_container_forall()`.
+
+The Batch 1 audit tested native GtkTreeView column sorting on GTK 3.24.52.
+The header button's CSS node retains its ordinary class when the sort
+indicator is enabled, and GTK displays the indicator in its child image
+node. Platinum keeps that native glyph and offers the measured sorted
+header through the explicit `.sorted` class. The natural gallery tests
+the native indicator, while the reference crop exercises the explicit
+class. GtkTreeMenu overflow arrows are direct `menu > arrow.top` and
+`menu > arrow.bottom` nodes. Giving them explicit minima prevented the
+Wayland popup's negative-dimension warnings.

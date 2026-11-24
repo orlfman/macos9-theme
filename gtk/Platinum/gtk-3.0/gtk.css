@@ -1,0 +1,827 @@
+/*
+ * Platinum GTK 3 theme — Milestone 2 + Milestone 3 Batch 1
+ * Measured from Mac OS 9.2.2 default Platinum appearance (docs/REFERENCE.md).
+ * Original CSS and procedurally generated geometry (gtk/gen-assets.py).
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+/* --- Measured palette tokens (docs/REFERENCE.md & colors/Platinum.colors) --- */
+@define-color platinum_bg #dddddd;
+@define-color platinum_bg_alt #cccccc;
+@define-color platinum_pane #eeeeee;
+@define-color platinum_base #ffffff;
+@define-color platinum_fg #000000;
+@define-color platinum_fg_disabled #777777;
+@define-color platinum_fg_backdrop #777777;
+@define-color platinum_border #000000;
+@define-color platinum_border_disabled #888888;
+@define-color platinum_highlight #ffffff;
+@define-color platinum_shadow #888888;
+@define-color platinum_focus #6666cc;
+@define-color platinum_selection #ccccff;
+@define-color platinum_selection_backdrop #dcdcef;
+@define-color platinum_accent #9999ff;
+@define-color platinum_accent_dark #333399;
+@define-color platinum_link #0000ff;
+@define-color platinum_error #cc0000;
+
+/* Standard GTK semantic exports for apps querying theme colors */
+@define-color theme_bg_color @platinum_bg;
+@define-color theme_fg_color @platinum_fg;
+@define-color theme_base_color @platinum_base;
+@define-color theme_text_color @platinum_fg;
+@define-color theme_selected_bg_color @platinum_selection;
+@define-color theme_selected_fg_color @platinum_fg;
+@define-color insensitive_bg_color @platinum_bg;
+@define-color insensitive_fg_color @platinum_fg_disabled;
+@define-color insensitive_base_color @platinum_bg;
+@define-color theme_unfocused_bg_color @platinum_bg;
+@define-color theme_unfocused_fg_color @platinum_fg_backdrop;
+@define-color theme_unfocused_base_color @platinum_base;
+@define-color theme_unfocused_text_color @platinum_fg;
+@define-color theme_unfocused_selected_bg_color @platinum_selection_backdrop;
+@define-color theme_unfocused_selected_fg_color @platinum_fg;
+@define-color borders @platinum_border;
+@define-color unfocused_borders #555555;
+@define-color error_color @platinum_error;
+@define-color warning_color #cc6600;
+@define-color success_color #008800;
+
+/* --- Reset / base window & dialog surface --- */
+* {
+  outline-style: none;
+  outline-width: 0;
+  outline-offset: 0;
+  background-clip: padding-box;
+  -gtk-icon-shadow: none;
+  text-shadow: none;
+}
+
+window,
+.background {
+  background-color: @platinum_bg;
+  color: @platinum_fg;
+}
+
+window:backdrop,
+.background:backdrop {
+  background-color: @platinum_bg;
+  color: @platinum_fg;
+}
+
+label {
+  color: @platinum_fg;
+  background-color: transparent;
+}
+
+label:disabled {
+  color: @platinum_fg_disabled;
+}
+
+label selection {
+  background-color: @platinum_selection;
+  color: @platinum_fg;
+}
+
+label selection:backdrop {
+  background-color: @platinum_selection_backdrop;
+  color: @platinum_fg;
+}
+
+/* --- Push buttons (measured PushNormal / PushPressed / PushDisabled) --- */
+button {
+  min-height: 12px;
+  min-width: 12px;
+  padding: 0 8px;
+  margin: 0;
+  color: @platinum_fg;
+  background-color: @platinum_bg;
+  background-image: none;
+  border-style: solid;
+  border-width: 4px;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  border-image: -gtk-scaled(url("assets/push-normal.png"), url("assets/push-normal@2.png")) 4 / 4px stretch;
+}
+
+button > label {
+  color: inherit;
+}
+
+/* Mac OS 9 push buttons do not glow on hover */
+button:hover {
+  color: @platinum_fg;
+  background-color: @platinum_bg;
+  border-image: -gtk-scaled(url("assets/push-normal.png"), url("assets/push-normal@2.png")) 4 / 4px stretch;
+}
+
+button:active,
+button:checked {
+  color: #ffffff;
+  background-color: #666666;
+  border-image: -gtk-scaled(url("assets/push-pressed.png"), url("assets/push-pressed@2.png")) 4 / 4px stretch;
+}
+
+button:disabled {
+  color: @platinum_fg_disabled;
+  background-color: @platinum_bg;
+  border-image: -gtk-scaled(url("assets/push-disabled.png"), url("assets/push-disabled@2.png")) 4 / 4px stretch;
+}
+
+/* Keyboard focus indicator (derived per style/platinum AUDIT #16: 1 px #6666CC) */
+button:focus {
+  outline-style: solid;
+  outline-width: 1px;
+  outline-color: @platinum_focus;
+  outline-offset: -1px;
+}
+
+/* --- Default push button (measured PushDefault / PushDefaultPressed, K=8) --- */
+button.default,
+button.suggested-action {
+  min-height: 10px;
+  min-width: 10px;
+  padding: 0 5px;
+  color: @platinum_fg;
+  background-color: @platinum_bg;
+  border-style: solid;
+  border-width: 6px 8px;
+  border-color: transparent;
+  border-image: -gtk-scaled(url("assets/push-default.png"), url("assets/push-default@2.png")) 8 / 8px stretch;
+}
+
+button.default:hover,
+button.suggested-action:hover {
+  color: @platinum_fg;
+  background-color: @platinum_bg;
+  border-image: -gtk-scaled(url("assets/push-default.png"), url("assets/push-default@2.png")) 8 / 8px stretch;
+}
+
+button.default:active,
+button.default:checked,
+button.suggested-action:active,
+button.suggested-action:checked {
+  color: #ffffff;
+  background-color: #666666;
+  border-image: -gtk-scaled(url("assets/push-default-pressed.png"), url("assets/push-default-pressed@2.png")) 8 / 8px stretch;
+}
+
+/* Disabled default button (derived/TBD: drops active ring, preserves outer slot) */
+button.default:disabled,
+button.suggested-action:disabled {
+  color: @platinum_fg_disabled;
+  background-color: @platinum_bg;
+  border-image: -gtk-scaled(url("assets/push-default-disabled.png"), url("assets/push-default-disabled@2.png")) 8 / 8px stretch;
+}
+
+button.default:focus,
+button.suggested-action:focus {
+  outline-style: solid;
+  outline-width: 1px;
+  outline-color: @platinum_focus;
+  outline-offset: -1px;
+}
+
+/* --- Text entry (measured appearance-3-fonts-clean.png unfocused & focused) --- */
+entry {
+  min-height: 20px;
+  min-width: 18px;
+  padding: 0 3px;
+  margin: 0;
+  color: @platinum_fg;
+  caret-color: @platinum_fg;
+  background-color: @platinum_base;
+  background-image: none;
+  border-style: solid;
+  border-width: 3px;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  border-image: -gtk-scaled(url("assets/entry-normal.png"), url("assets/entry-normal@2.png")) 4 / 4px stretch;
+}
+
+entry:focus {
+  border-image: -gtk-scaled(url("assets/entry-focused.png"), url("assets/entry-focused@2.png")) 4 / 4px stretch;
+}
+
+entry:focus:backdrop {
+  border-image: -gtk-scaled(url("assets/entry-normal.png"), url("assets/entry-normal@2.png")) 4 / 4px stretch;
+}
+
+/* Disabled entry (derived/TBD) */
+entry:disabled {
+  color: @platinum_fg_disabled;
+  background-color: @platinum_bg;
+  border-image: -gtk-scaled(url("assets/entry-disabled.png"), url("assets/entry-disabled@2.png")) 4 / 4px stretch;
+}
+
+/* Active selection: measured #CCCCFF solid fill with black text */
+entry selection,
+entry selection:focus {
+  background-color: @platinum_selection;
+  color: @platinum_fg;
+}
+
+/* Backdrop selection: muted readable fill (GTK 3 CSS cannot draw Mac OS 9 hollow outline) */
+entry selection:backdrop,
+entry selection:focus:backdrop {
+  background-color: @platinum_selection_backdrop;
+  color: @platinum_fg;
+}
+
+/* --- Check buttons (measured 14x12 sprites including 2px checkmark overhang) --- */
+checkbutton {
+  min-height: 18px;
+  padding: 1px 2px;
+  margin: 0;
+  color: @platinum_fg;
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+checkbutton:disabled {
+  color: @platinum_fg_disabled;
+}
+
+checkbutton:focus {
+  outline-style: solid;
+  outline-width: 1px;
+  outline-color: @platinum_focus;
+  outline-offset: -1px;
+}
+
+checkbutton > label {
+  padding-left: 4px;
+}
+
+checkbutton > check {
+  min-width: 14px;
+  min-height: 12px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: transparent;
+  -gtk-icon-source: none;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 14px 12px;
+  background-image: -gtk-scaled(url("assets/check-off.png"), url("assets/check-off@2.png"));
+}
+
+checkbutton > check:active,
+checkbutton:active > check {
+  background-image: -gtk-scaled(url("assets/check-off-pressed.png"), url("assets/check-off-pressed@2.png"));
+}
+
+checkbutton > check:checked {
+  background-image: -gtk-scaled(url("assets/check-on.png"), url("assets/check-on@2.png"));
+}
+
+checkbutton > check:checked:active,
+checkbutton:active > check:checked {
+  background-image: -gtk-scaled(url("assets/check-on-pressed.png"), url("assets/check-on-pressed@2.png"));
+}
+
+checkbutton > check:indeterminate {
+  background-image: -gtk-scaled(url("assets/check-mixed.png"), url("assets/check-mixed@2.png"));
+}
+
+checkbutton > check:indeterminate:active,
+checkbutton:active > check:indeterminate {
+  background-image: -gtk-scaled(url("assets/check-mixed-pressed.png"), url("assets/check-mixed-pressed@2.png"));
+}
+
+checkbutton > check:disabled {
+  background-image: -gtk-scaled(url("assets/check-off-disabled.png"), url("assets/check-off-disabled@2.png"));
+}
+
+checkbutton > check:checked:disabled {
+  background-image: -gtk-scaled(url("assets/check-on-disabled.png"), url("assets/check-on-disabled@2.png"));
+}
+
+checkbutton > check:indeterminate:disabled {
+  background-image: -gtk-scaled(url("assets/check-mixed-disabled.png"), url("assets/check-mixed-disabled@2.png"));
+}
+
+/* --- Radio buttons (measured 12x12 sprites) --- */
+radiobutton {
+  min-height: 18px;
+  padding: 1px 2px;
+  margin: 0;
+  color: @platinum_fg;
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+radiobutton:disabled {
+  color: @platinum_fg_disabled;
+}
+
+radiobutton:focus {
+  outline-style: solid;
+  outline-width: 1px;
+  outline-color: @platinum_focus;
+  outline-offset: -1px;
+}
+
+radiobutton > label {
+  padding-left: 6px;
+}
+
+radiobutton > radio {
+  min-width: 12px;
+  min-height: 12px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: transparent;
+  -gtk-icon-source: none;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 12px 12px;
+  background-image: -gtk-scaled(url("assets/radio-off.png"), url("assets/radio-off@2.png"));
+}
+
+radiobutton > radio:active,
+radiobutton:active > radio {
+  background-image: -gtk-scaled(url("assets/radio-off-pressed.png"), url("assets/radio-off-pressed@2.png"));
+}
+
+radiobutton > radio:checked {
+  background-image: -gtk-scaled(url("assets/radio-on.png"), url("assets/radio-on@2.png"));
+}
+
+radiobutton > radio:checked:active,
+radiobutton:active > radio:checked {
+  background-image: -gtk-scaled(url("assets/radio-on-pressed.png"), url("assets/radio-on-pressed@2.png"));
+}
+
+radiobutton > radio:disabled {
+  background-image: -gtk-scaled(url("assets/radio-off-disabled.png"), url("assets/radio-off-disabled@2.png"));
+}
+
+radiobutton > radio:checked:disabled {
+  background-image: -gtk-scaled(url("assets/radio-on-disabled.png"), url("assets/radio-on-disabled@2.png"));
+}
+
+/* ==========================================================================
+ * Milestone 3 Batch 1: Menu bar, Menus, Pop-ups/ComboBoxes, Lists/TreeViews,
+ * Frames/Group boxes, and Separators (measured from docs/REFERENCE.md)
+ * ========================================================================== */
+
+/* --- Menu bar (measured 20 px: #FFFFFF, #DDDDDD x17, #999999, #000000) --- */
+menubar,
+.menubar {
+  min-height: 19px;
+  padding: 0;
+  margin: 0;
+  color: @platinum_fg;
+  background-color: @platinum_bg;
+  background-image: none;
+  border: none;
+  border-bottom: 1px solid @platinum_border;
+  box-shadow: inset 0 1px 0 0 @platinum_highlight, inset 0 -1px 0 0 #999999;
+}
+
+menubar > menuitem,
+.menubar > menuitem {
+  min-height: 19px;
+  padding: 0 7px;
+  margin: 0;
+  color: @platinum_fg;
+  background-color: transparent;
+  background-image: none;
+  border: none;
+  box-shadow: none;
+}
+
+menubar > menuitem label,
+.menubar > menuitem label {
+  color: inherit;
+}
+
+menubar > menuitem:hover,
+.menubar > menuitem:hover {
+  color: #ffffff;
+  background-color: @platinum_accent_dark;
+  box-shadow: inset 0 1px 0 0 @platinum_focus, inset 0 -1px 0 0 #000088;
+}
+
+menubar > menuitem:disabled,
+.menubar > menuitem:disabled {
+  color: @platinum_fg_disabled;
+}
+
+/* --- Menus (measured menu-file-open.png / menu-view-checked.png / popup-open.png) --- */
+menu,
+.menu,
+.context-menu {
+  margin: 0;
+  padding: 0;
+  color: @platinum_fg;
+  background-color: @platinum_bg;
+  background-image: none;
+  border-style: solid;
+  border-width: 1px;
+  border-color: transparent;
+  border-radius: 0;
+  border-image: -gtk-scaled(url("assets/menu-frame.png"), url("assets/menu-frame@2.png")) 2 / 2px stretch;
+  box-shadow: 1px 1px 0 0 #222222;
+}
+
+menu > menuitem,
+.menu > menuitem,
+.context-menu > menuitem {
+  min-height: 16px;
+  min-width: 48px;
+  padding: 1px 8px 1px 4px;
+  margin: 0;
+  color: @platinum_fg;
+  background-color: transparent;
+  background-image: none;
+  border: none;
+  box-shadow: none;
+}
+
+menu > menuitem:hover,
+.menu > menuitem:hover,
+.context-menu > menuitem:hover {
+  color: #ffffff;
+  background-color: @platinum_accent_dark;
+  box-shadow: inset 1px 0 0 0 @platinum_focus, inset -1px 0 0 0 #000088;
+}
+
+menu > menuitem:first-child:hover,
+.menu > menuitem:first-child:hover,
+.context-menu > menuitem:first-child:hover {
+  box-shadow: inset 1px 1px 0 0 @platinum_focus, inset -1px 0 0 0 #000088;
+}
+
+menu > menuitem:disabled,
+.menu > menuitem:disabled,
+.context-menu > menuitem:disabled {
+  color: @platinum_fg_disabled;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+menu > menuitem label,
+.menu > menuitem label {
+  color: inherit;
+}
+
+menu > menuitem accelerator,
+.menu > menuitem accelerator {
+  color: inherit;
+  margin-left: 16px;
+}
+
+menu > menuitem check,
+.menu > menuitem check {
+  min-width: 9px;
+  min-height: 8px;
+  margin-right: 6px;
+  padding: 0;
+  border: none;
+  background-color: transparent;
+  background-image: none;
+  -gtk-icon-source: none;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+menu > menuitem check:checked,
+.menu > menuitem check:checked {
+  background-image: -gtk-scaled(url("assets/menu-check-normal.png"), url("assets/menu-check-normal@2.png"));
+}
+
+menu > menuitem:hover check:checked,
+.menu > menuitem:hover check:checked {
+  background-image: -gtk-scaled(url("assets/menu-check-hover.png"), url("assets/menu-check-hover@2.png"));
+}
+
+menu > menuitem:disabled check:checked,
+.menu > menuitem:disabled check:checked {
+  background-image: -gtk-scaled(url("assets/menu-check-disabled.png"), url("assets/menu-check-disabled@2.png"));
+}
+
+menu > menuitem radio,
+.menu > menuitem radio {
+  min-width: 9px;
+  min-height: 8px;
+  margin-right: 6px;
+  padding: 0;
+  border: none;
+  background-color: transparent;
+  background-image: none;
+  -gtk-icon-source: none;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+menu > menuitem radio:checked,
+.menu > menuitem radio:checked {
+  background-image: -gtk-scaled(url("assets/menu-radio-normal.png"), url("assets/menu-radio-normal@2.png"));
+}
+
+menu > menuitem:hover radio:checked,
+.menu > menuitem:hover radio:checked {
+  background-image: -gtk-scaled(url("assets/menu-radio-hover.png"), url("assets/menu-radio-hover@2.png"));
+}
+
+menu > menuitem:disabled radio:checked,
+.menu > menuitem:disabled radio:checked {
+  background-image: -gtk-scaled(url("assets/menu-radio-disabled.png"), url("assets/menu-radio-disabled@2.png"));
+}
+
+menu > menuitem arrow,
+.menu > menuitem arrow {
+  min-width: 6px;
+  min-height: 11px;
+  margin-left: 8px;
+  border: none;
+  background-color: transparent;
+  -gtk-icon-source: none;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: -gtk-scaled(url("assets/menu-arrow-normal.png"), url("assets/menu-arrow-normal@2.png"));
+}
+
+menu > menuitem:hover arrow,
+.menu > menuitem:hover arrow {
+  background-image: -gtk-scaled(url("assets/menu-arrow-hover.png"), url("assets/menu-arrow-hover@2.png"));
+}
+
+menu > menuitem:disabled arrow,
+.menu > menuitem:disabled arrow {
+  background-image: -gtk-scaled(url("assets/menu-arrow-disabled.png"), url("assets/menu-arrow-disabled@2.png"));
+}
+
+/* GtkMenu's overflow arrows are direct children, unlike submenu arrows. */
+menu > arrow.top,
+menu > arrow.bottom {
+  min-height: 12px;
+  min-width: 12px;
+  color: @platinum_fg;
+  background-color: @platinum_bg;
+}
+
+menu > arrow.top {
+  -gtk-icon-source: -gtk-icontheme("pan-up-symbolic");
+}
+
+menu > arrow.bottom {
+  -gtk-icon-source: -gtk-icontheme("pan-down-symbolic");
+}
+
+menu > separator,
+.menu > separator,
+.context-menu > separator {
+  min-height: 2px;
+  min-width: 1px;
+  margin: 2px 0;
+  padding: 0;
+  border: none;
+  background-color: transparent;
+  background-image: linear-gradient(to bottom, #888888 0, #888888 1px, #ffffff 1px, #ffffff 2px);
+}
+
+/* --- Pop-up menus / ComboBox (measured PopupBody + PopupArrow) --- */
+combobox > box.linked > button.combo,
+combobox button.combo {
+  min-height: 14px;
+  min-width: 28px;
+  padding: 0 0 0 4px;
+  margin: 0;
+  color: @platinum_fg;
+  background-color: @platinum_bg;
+  background-image: none;
+  border-style: solid;
+  border-width: 3px 4px;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  border-image: -gtk-scaled(url("assets/popup-frame-normal.png"), url("assets/popup-frame-normal@2.png")) 4 22 4 4 / 4px 22px 4px 4px stretch;
+}
+
+combobox > box.linked > button.combo:hover,
+combobox button.combo:hover {
+  color: @platinum_fg;
+  background-color: @platinum_bg;
+  border-image: -gtk-scaled(url("assets/popup-frame-normal.png"), url("assets/popup-frame-normal@2.png")) 4 22 4 4 / 4px 22px 4px 4px stretch;
+}
+
+combobox > box.linked > button.combo:active,
+combobox > box.linked > button.combo:checked,
+combobox button.combo:active,
+combobox button.combo:checked {
+  color: #ffffff;
+  background-color: #666666;
+  border-image: -gtk-scaled(url("assets/popup-frame-pressed.png"), url("assets/popup-frame-pressed@2.png")) 4 22 4 4 / 4px 22px 4px 4px stretch;
+}
+
+combobox > box.linked > button.combo:disabled,
+combobox button.combo:disabled {
+  color: @platinum_fg_disabled;
+  background-color: @platinum_bg;
+  border-image: -gtk-scaled(url("assets/popup-frame-disabled.png"), url("assets/popup-frame-disabled@2.png")) 4 22 4 4 / 4px 22px 4px 4px stretch;
+}
+
+combobox button.combo arrow {
+  -gtk-icon-source: none;
+  min-width: 14px;
+  min-height: 10px;
+  margin: 0 0 0 4px;
+  padding: 0;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: -gtk-scaled(url("assets/popup-arrows-normal.png"), url("assets/popup-arrows-normal@2.png"));
+}
+
+combobox button.combo:active arrow,
+combobox button.combo:checked arrow {
+  background-image: -gtk-scaled(url("assets/popup-arrows-pressed.png"), url("assets/popup-arrows-pressed@2.png"));
+}
+
+combobox button.combo:disabled arrow {
+  background-image: -gtk-scaled(url("assets/popup-arrows-disabled.png"), url("assets/popup-arrows-disabled@2.png"));
+}
+
+/* Editable combobox: keep entry + compact arrow button */
+combobox entry.combo + button.combo {
+  min-width: 14px;
+  padding: 0;
+  border-width: 3px 4px;
+}
+
+/* --- Lists & TreeViews (measured dialog-file-open.png & disclosure-triangles.png) --- */
+treeview.view {
+  background-color: @platinum_base;
+  color: @platinum_fg;
+  border-color: @platinum_shadow;
+}
+
+/* Required in GTK 3.24: at least one property must differ on treeview.view:backdrop
+ * or GTK skips invalidating transient :selected row styles on backdrop transitions. */
+treeview.view:backdrop {
+  background-color: @platinum_base;
+  color: @platinum_fg;
+  border-color: #999999;
+}
+
+treeview.view:selected,
+treeview.view:selected:focus {
+  background-color: @platinum_selection;
+  color: @platinum_fg;
+}
+
+treeview.view:selected:backdrop,
+treeview.view:selected:focus:backdrop {
+  background-color: @platinum_selection_backdrop;
+  color: @platinum_fg;
+}
+
+/* GTK paints this outline around the keyboard cursor row. */
+treeview.view:focus:not(:backdrop) {
+  outline: 1px solid @platinum_focus;
+  outline-offset: -1px;
+}
+
+treeview.view:disabled {
+  color: @platinum_fg_disabled;
+}
+
+treeview.view.expander {
+  min-width: 17px;
+  min-height: 17px;
+  color: transparent;
+  -gtk-icon-source: -gtk-scaled(url("assets/triangle-closed.png"), url("assets/triangle-closed@2.png"));
+}
+
+treeview.view.expander:checked {
+  -gtk-icon-source: -gtk-scaled(url("assets/triangle-open.png"), url("assets/triangle-open@2.png"));
+}
+
+treeview.view.expander:active {
+  -gtk-icon-source: -gtk-scaled(url("assets/triangle-pressed.png"), url("assets/triangle-pressed@2.png"));
+}
+
+treeview.view header button {
+  min-height: 17px;
+  min-width: 16px;
+  padding: 0 8px;
+  margin: 0;
+  color: @platinum_fg;
+  background-color: @platinum_bg_alt;
+  background-image: none;
+  border-style: solid;
+  border-width: 2px;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  border-image: -gtk-scaled(url("assets/header-normal.png"), url("assets/header-normal@2.png")) 2 / 2px stretch;
+}
+
+treeview.view header button:hover {
+  color: @platinum_fg;
+  background-color: @platinum_bg_alt;
+  border-image: -gtk-scaled(url("assets/header-normal.png"), url("assets/header-normal@2.png")) 2 / 2px stretch;
+}
+
+treeview.view header button:active,
+treeview.view header button.sorted {
+  color: @platinum_fg;
+  background-color: #888888;
+  border-image: -gtk-scaled(url("assets/header-sorted.png"), url("assets/header-sorted@2.png")) 2 / 2px stretch;
+}
+
+treeview.view header button:focus {
+  outline-style: solid;
+  outline-width: 1px;
+  outline-color: @platinum_focus;
+  outline-offset: -1px;
+}
+
+list {
+  background-color: @platinum_base;
+  color: @platinum_fg;
+}
+
+list:backdrop {
+  background-color: @platinum_base;
+  color: @platinum_fg;
+}
+
+list > row {
+  padding: 2px 6px;
+  color: @platinum_fg;
+  background-color: transparent;
+}
+
+list > row:selected,
+list > row:selected:focus {
+  background-color: @platinum_selection;
+  color: @platinum_fg;
+}
+
+list > row:selected:backdrop,
+list > row:selected:focus:backdrop {
+  background-color: @platinum_selection_backdrop;
+  color: @platinum_fg;
+}
+
+list > row:focus {
+  outline-style: solid;
+  outline-width: 1px;
+  outline-color: @platinum_focus;
+  outline-offset: -1px;
+}
+
+/* --- ScrolledWindow frame & Etched Group Box / Frame --- */
+scrolledwindow.frame {
+  border-style: solid;
+  border-width: 2px;
+  border-color: transparent;
+  border-radius: 0;
+  background-color: @platinum_base;
+  border-image: -gtk-scaled(url("assets/sunken-frame.png"), url("assets/sunken-frame@2.png")) 2 / 2px stretch;
+}
+
+frame > border,
+.frame {
+  border-style: solid;
+  border-width: 2px;
+  border-color: transparent;
+  border-radius: 0;
+  background-color: transparent;
+  border-image: -gtk-scaled(url("assets/groupbox-frame.png"), url("assets/groupbox-frame@2.png")) 2 / 2px stretch;
+}
+
+frame > label {
+  padding: 0 4px;
+  margin-left: 9px;
+}
+
+/* --- Separators (measured appearance-3-fonts-clean.png: #888888 + #FFFFFF) --- */
+separator {
+  min-width: 2px;
+  min-height: 2px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background-color: transparent;
+  background-image: linear-gradient(to bottom, #888888 0, #888888 1px, #ffffff 1px, #ffffff 2px);
+}
+
+separator.vertical {
+  background-image: linear-gradient(to right, #888888 0, #888888 1px, #ffffff 1px, #ffffff 2px);
+}

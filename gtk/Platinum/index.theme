@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=X-GNOME-Metatheme
+Name=Platinum
+Comment=Mac OS 9.2.2 Platinum appearance for GTK
+Encoding=UTF-8
+
+[X-GNOME-Metatheme]
+GtkTheme=Platinum

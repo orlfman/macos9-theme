@@ -2,11 +2,25 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-23, Codex (GPT-6.2 Sol) — audit and fix GTK 3 Milestone 3 Batch 1
+
+Fixed #168–172 in the GTK 3 CSS and Batch 1 harness. TreeView has a visible keyboard cursor, GTK menu overflow arrows have usable dimensions, and the fixtures exercise native sorting, mapping, ListBox selection, clipping and scale. Meld's window identity and rendered style are verified in virtual KWin. Wayland passed 39/39 and Broadway passed 38/38, with 27 pixel-exact reference crops on each. Milestone 1, Milestone 2 and all project regression suites passed. Batch 2 and user visual review remain pending. GTK changes are uncommitted. Claims released.
+
 ## 2026-11-23, Antigravity (Gemini 4 Neon) — align Firefox plan status with IE5-inspired fidelity target
 
 - Cleaned up remaining stale references to required IE5 VM captures and the old milestone numbering in `PLAN.md` (status block + `firefox` Claims row) and `docs/FIREFOX-PLAN.md` (measured-values note + open question 2 pointing to Milestone 2 mockups) so the docs consistently reflect the user's clarification: inspired by IE5 for a Mac OS 9 Platinum look and feel, not a 1:1 clone, with further IE5 captures optional.
 - Checks: `git diff --check` clean; Claims rows remain `nobody`; no Firefox code written, launched, installed, or committed.
 - Next: user confirmation to start Milestone 1 (sandboxed Firefox harness + DOM discovery) and Milestone 2 (visual mockups for tab placement, Lavender address-band shade, toolbar labels, and status bar).
+
+## 2026-11-23, Antigravity (Gemini 4 Neon) — verify Milestone 2 (#163–167) and implement GTK Milestone 3 Batch 1
+
+- Independently verified Codex's Milestone 2 fixes (`#163–167`): fresh Broadway `dev/build/gtk3-m2-broadway.CItwPl` passed **47/47**, Codex's Wayland evidence `dev/build/gtk3-m2-plasma.lM80bV` verified **51/51** under `python3 -I -W error`, and visually inspected `gtk3-output-{150,200}.png`. Verdict: PASS (no new findings), clearing Milestone 3 to start.
+- Implemented **GTK Milestone 3 Batch 1** (menus, menu bar, pop-ups/comboboxes, treeview/list headers + disclosure triangles + active/backdrop selection, sunken scrolledwindow frame, etched group boxes, and separators):
+  - Extended `gtk/gen-assets.py` from 24 to **47 procedural assets (94 1× + `@2` PNGs)** in `gtk/Platinum/gtk-3.0/assets/`, including an original procedural 9×8 geometric menu checkmark (avoiding any font-glyph copy from `style/platinum/menu.h`), 9-slice pop-up frames (`popup-frame-{normal,disabled,pressed}`) paired with 14×10 `popup-arrows-*` painted on `combobox button.combo arrow`, sorted/normal list headers, disclosure triangles, sunken frame, and etched group box frame.
+  - Extended `gtk/Platinum/gtk-3.0/gtk.css` for all Batch 1 controls, including explicit `menubar > menuitem label { color: inherit; }` and the verified GTK 3.24 `treeview.view:backdrop { border-color: #999999; }` invalidation rule so `treeview.view:selected:backdrop` mutes cleanly to `#DCDCEF` (recorded in `docs/FINDINGS.md`).
+  - Added Milestone 3 Batch 1 harness (`dev/check-gtk3-m3b1.sh`, `dev/gtk3-m3b1/{m3b1shot.c,verify.py}`) with 27 fixed-geometry 1× Mac OS 9.2.2 reference crops at tolerance 0, natural-size gallery checks (clipping, open `GtkMenu`, `#CCCCFF`/`#DCDCEF` active/backdrop TreeView selection), and real GTK 3 application smoke/CSS validation with `/usr/bin/meld`.
+- Checks: `dev/check-gtk3-m3b1.sh broadway` (`dev/build/gtk3-m3b1-broadway.7nEom3`) **34/34 PASS** (**27/27** reference crops at 0 differing pixels, `meld` `status=PASS css_err=False`); Milestone 2 regression `dev/check-gtk3.sh broadway` (`dev/build/gtk3-m2-broadway.ZO2cFV`) **47/47 PASS**; Milestone 1 `dev/gtk-discovery/test_verify.py` **32/32 PASS**; `bash -n`, `py_compile`, `index.theme`, `cc -Wall -Wextra -Werror`, and `git diff --check` clean; visually inspected all `dev/shots/gtk3-m3b1-*.png` renders.
+- Remaining: user-terminal run of `/home/pieman/Files/Archive/projects/macos9-theme/dev/check-gtk3-m3b1.sh plasma` for real Wayland backdrop deactivation and `meld` Wayland screenshot, then independent Codex audit / Milestone 3 Batch 2 (notebook tabs, scales, classic+overlay scrollbars, progress bars, tooltips, dialogs, CSD headerbars). Cleared `gtk` and `shared` claims (`nobody`); `#95` remains open; no live install, commit, or push.
 
 ## 2026-11-23, Antigravity (Claude Opus 5.5) — Firefox theme plan
 
@@ -16,6 +30,91 @@ Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 - Edited only `docs/FIREFOX-PLAN.md` (new), the PLAN.md status block, decision 14 and firefox/shared Claims rows (claimed for the session, now `nobody`), and this entry. No code, nothing installed, nothing committed, no Firefox launched. Scratch crops in the agent's own scratch folder only.
 - User clarification (19:36): the Firefox theme is **inspired by IE5, not a 1:1 clone**; go as far as `userChrome.css` allows. Added this to PLAN.md decision 14 and a "Fidelity target" section in `docs/FIREFOX-PLAN.md`: Platinum colors and bevels stay exact from REFERENCE.md, IE5 is a layout guide with no pixel comparison against it, Firefox features get a Platinum treatment instead of being hidden, IE5 captures are optional. Milestone 2 is now sandbox mockups instead of captures.
 - Next: the user answers the open questions (tabs, address-band ramp, which profile, toolbar labels, status band), partly through milestone 2 mockups; milestone 1 (sandboxed Firefox harness and DOM discovery) needs the firefox and shared claims.
+
+## 2026-11-23, Codex (GPT-6.2 Sol) — audit and fix GTK 3 Milestone 2
+
+Fixed findings #163–167 in `dev/check-gtk3.sh` and `dev/gtk3-check/`. The chrome fixture hides its caret, Wayland validates compositor output at 150% and 200%, and the verifier rejects incomplete or mismatched evidence. Native Tab traversal and GTK's default-button class exercise the natural dialog. The runner validates the packaged assets in place. Wayland passed 51/51 and Broadway passed 47/47, including 36 pixel-exact reference crops per backend. Milestone 1 and all project regression suites passed. User review of the disposable renders is pending. The GTK work remains uncommitted. Claims released.
+
+## 2026-11-23, Antigravity (Gemini 4 Neon) — GTK Milestone 2 vertical slice (GTK 3 Platinum dialog)
+
+- Implemented the Milestone 2 GTK 3 named theme in `gtk/Platinum/` (`index.theme`, `gtk-3.0/gtk.css`, `gtk/gen-assets.py`, and 24 procedurally generated 1× + `@2` PNG assets in `gtk/Platinum/gtk-3.0/assets/` derived from `style/platinum/{slices,sprites}.h` and `docs/REFERENCE.md`):
+  - Covers window/dialog surface (`#DDDDDD`), normal/pressed/disabled/focused push buttons, normal/pressed/disabled/focused default buttons (`.default`, `.suggested-action`), unfocused/focused/disabled/backdrop text entries with `#CCCCFF` active selection and muted `#DCDCEF` backdrop selection, and checkboxes/radio buttons across off/on/mixed/pressed/disabled/focused states.
+  - Zero Apple files; 100% original CSS and generated geometry; verified `background-color` + `background-clip: padding-box` with transparent corner cut-outs in `border-image` (GTK 3.24 ignores the CSS `fill` keyword on `border-image`).
+- Added Milestone 2 verification suite (`dev/check-gtk3.sh`, `dev/gtk3-check/{gtk3shot.c,verify.py}`) testing normal named-theme discovery, zero CSS parse errors, 36 fixed-geometry 1× reference crops (`tools/compare.py diff --tolerance 0`), and a separate natural-size dialog checking clipping, hit areas, `#CCCCFF` active selection, muted backdrop selection without focus ring, and `#6666CC` keyboard focus on entry/button/checkbox/radio.
+- Checks: `dev/check-gtk3.sh broadway` (`dev/build/gtk3-m2-broadway.Tk69OL`) passed **46/46** (**36/36** Mac OS 9.2.2 reference crops at 0 differing pixels); Milestone 1 `dev/gtk-discovery/test_verify.py` **32/32**; `index.theme`, `bash -n`, `py_compile`, and `git diff --check` clean; visually inspected all `dev/shots/gtk3-m2-*.png` captures.
+- Remaining before Codex Milestone 2 audit: user-terminal run of `/home/pieman/Files/Archive/projects/macos9-theme/dev/check-gtk3.sh plasma` for native Wayland real deactivation, `HighContrast` round-trip, and `kscreen-doctor` 150%/200% scaling. Cleared `gtk` and `shared` claims (`nobody`); `#95` remains open; no live install, commit, push, or Milestone 3 work.
+
+## 2026-11-23, Antigravity (Gemini 4 Neon) — independent review of Codex #158–162 fixes
+
+- Independently reviewed Codex's `#158–162` fixes across `dev/gtk-discovery.sh`, `dev/gtk-discovery/session.sh`, `dev/gtk-discovery/verify.py`, `dev/gtk-discovery/test_verify.py`, and `docs/FINDINGS.md` (working tree over `edd3e81`).
+- Checks: `python3 -I -W error dev/gtk-discovery/test_verify.py` **32/32 PASS**; `python3 -I -W error dev/gtk-discovery/verify.py dev/build/gtk-discovery-plasma.celTLF plasma dev/shots` **41/41 PASS**; fresh sandbox `dev/gtk-discovery.sh broadway` (`dev/build/gtk-discovery-broadway.NIfyvB`) **38/38 PASS** (`3` Wayland-only blocked); `tools/compare.py diff --tolerance 0` (`celTLF` vs `eRqVbl`) **0 differing pixels** across all 5 PNGs; `git diff --check`, `bash -n`, and `py_compile` clean.
+- **Verdict:** No new findings (`#158–162` verified); Milestone 1 is cleared to proceed to Milestone 2 (`docs/GTK-PLAN.md`). Review edits only (`AUDIT.md`, `CHANGELOG.md`); no claims held; `#95` remains open; no live install, commit, or push.
+
+## 2026-11-23, Codex (GPT-6.2 Astra) — fix GTK Milestone 1 discovery verification
+
+Fixed and verified #158–162 in the discovery launcher, session, verifier and regression suite. The changes capture the active FFmpeg window under virtual KWin, match both screenshots, check ordered preference changes, verify both GTK 4 styles after global-theme reapply, and select verified positive controls. Updated AUDIT.md, PLAN.md and docs/FINDINGS.md. Fresh virtual Wayland passed 41/41, Broadway passed 38 applicable checks and the regression suite passed 32/32. Qt Widgets, Quick, Plasma, install/undo and nested live-install suites passed 135/135, 29/29, 19/19, 702/702 and 40/40 respectively. FFmpeg coverage is startup and appearance in a disposable session. The GTK discovery work remains uncommitted. Milestone 2 starts with the measured GTK 3 dialog. Claims released.
+
+## 2026-11-23, Codex (GPT-6) — re-audit GTK Milestone 1
+
+Recorded findings #158–162 in AUDIT.md and updated the PLAN.md handoff. Both fresh disposable Wayland runs returned 40 pass and 1 fail at FFmpeg window identification. A disposable copy forcing Qt stderr logging restored the window evidence and passed 41/41. Fresh Broadway returned 38 pass with three Wayland exclusions. Gemini's suite passed 20/20 on known-good evidence. Six independently modified evidence copies incorrectly passed 41/41. Verified #156–157 and reproduced the named-theme and portal observations. The uncommitted GTK plan, discovery harness and findings remain in the working tree. The discovery fixes and a passing native re-test are next, before Milestone 2. Claims are clear. No implementation changes, install, commit or push.
+
+## 2026-11-23, Antigravity (Gemini 4 Neon) — fix GTK Milestone 1 audit findings #153–157
+
+- Fixed all five findings from Codex's independent Milestone 1 audit (`AUDIT.md` `#153–157`) in `dev/gtk-discovery.sh`, `dev/gtk-discovery/session.sh`, `dev/gtk-discovery/verify.py`, `docs/FINDINGS.md`, and `AUDIT.md`, and added negative-control test suite `dev/gtk-discovery/test_verify.py`:
+  - `#153`: recorded full `STEP 0..6` source/backend/frontend trace (`portal-trace.log`, adding Step 6 `setGtkTheme(DiscoveryKde)` return to baseline) and `broadway-trace.log`; tightened `verify.py` to assert ordered transitions, `adw` `purple(7)/rgb(145,65,172) → blue(0)/rgb(53,132,228) → purple(7)/rgb(145,65,172)`, return to baseline on all stacks, and explicit `prefer_dark=0_all_rows(gtk3-portal-limitation)` vs missing field.
+  - `#154`: removed synthetic `KGlobalSettings.notifyChange` calls; logged `SETGTKTHEME_RC`/`LNF_APPLY_RC`/`LNF_REAPPLY2_RC` and `kdedefaults/package` + `kreadconfig6 LookAndFeelPackage`; split KDE verification into `kded6-setGtkTheme-files`, `platinum-lnf-reapply`, and `platinum-lnf-reapply-user-gtk4` asserting `RC=0`, active `platinum.desktop`, zero symlinks, 5 stores, Platinum `colors.css`, and preserved user `gtk-4.0/gtk.css` rule + `@import`.
+  - `#155`: tied FFmpeg capture to KWin's live `workspace.windowList()` + `getWindowInfo` (`ffmpeg-window.log`), D-Bus owner PID (`com.github.pieman.FFmpegConverterGTK`), exact active settings (`ACTIVE_GTK_THEME='DiscoveryKde'`), `1024x768` size, non-identity with stock PNGs, window-rect light chrome + rendered purple pixels, optional `spectacle -a` active capture, and `visual_review=manual-inspection-required`.
+  - `#156`: fixed `dev/gtk-discovery.sh` incomplete-session guard to exit `1` when `session_rc=0` and `$root/complete` is absent.
+  - `#157`: corrected `docs/FINDINGS.md` and `AUDIT.md` (GTK 3 `prefer_dark=0`, `Qn9Pwd` HighContrast `#272C2E`, `AdwStyleManager` `#9141AC` vs rendered Convert fill `#C69ED3` at `(900,620)`, and exact FFmpeg launch theme).
+- Checks: user-terminal `dev/gtk-discovery.sh plasma` (`dev/build/gtk-discovery-plasma.eRqVbl`) passed **41/41** (`0` fail, `0` blocked; visually inspected `dev/shots/gtk-discovery-ffmpeg-{active,plasma}.png`); `dev/gtk-discovery.sh broadway` (`dev/build/gtk-discovery-broadway.7Wt0cn`) passed **38/38** (`3` Wayland-only blocked); `python3 -I -W error dev/gtk-discovery/verify.py ...` and `python3 -I -W error dev/gtk-discovery/test_verify.py` (directly against `eRqVbl` + `7Wt0cn`) passed **20/20** with zero deprecation warnings.
+- Ready for independent Codex Milestone 1 re-audit before Milestone 2. Cleared `gtk` and `shared` claims (`nobody`); `#95` remains open; no install, commit, push, or Milestone 2 work.
+
+## 2026-11-23, Codex (GPT-6) — independent GTK Milestone 1 audit
+
+Recorded #153–157 in AUDIT.md and updated the PLAN.md handoff. Fresh disposable Wayland and Broadway runs reproduced Gemini’s counts (38 passes and 35 passes respectively, three Broadway exclusions). Four screenshot comparisons differed by zero pixels. Three independent negative controls still produced 38/38 and the incomplete-session branch returned success. Gemini owns the next Milestone 1 corrections when claimed. Implementation and prior uncommitted handoff files remain in the working tree. No install, commit, push or Milestone 2 work. Both audit claims released.
+
+## 2026-11-23, Antigravity (Gemini 4 Neon) — record GTK Milestone 1 plasma/Wayland results (Milestone 1 implementation handoff for Codex)
+
+- Fixed `AdwApplication` Wayland startup in `dev/gtk-discovery/fixture.c` (using `g_application_run()`/`activate`) and set `GSK_RENDERER=cairo` in `plasma` mode (`dev/gtk-discovery/session.sh`), resolving the `radv` Wayland Error 71 seen in `dev/build/gtk-discovery-plasma.VaXL6F`.
+- Recorded the user's completed disposable virtual KWin Wayland run (`dev/build/gtk-discovery-plasma.dxtZOy`, 0 blocked) in `docs/FINDINGS.md`, `AUDIT.md`, and `PLAN.md`:
+  - Proved that on native Wayland (`GdkWaylandDisplay`), GSettings (`org.gnome.desktop.interface gtk-theme`, default `'Adwaita'`) overrides `settings.ini` for both GTK 3 and plain GTK 4 (whereas Broadway uses `settings.ini` and ignores GSettings), making GSettings restoration mandatory in Milestone 6.
+  - Confirmed both `org.freedesktop.impl.portal.desktop.kde` and `org.freedesktop.impl.portal.desktop.gtk` activate cleanly after `dbus-update-activation-environment`, exposing all four `org.freedesktop.appearance` keys (`accent-color=(0.8,0.8,1.0)`, `color-scheme=2`, `contrast=0`, `reduced-motion=0`).
+  - Verified live preference updates on already-running Wayland apps: `AdwApplication` switched `adw_dark` `0→1→0` (`BreezeDark`↔`Platinum`), mapped Platinum's `#CCCCFF` accent to **`purple` (`ADW_ACCENT_COLOR_PURPLE = 7`, `rgb(145,65,172)`)**, and toggled `adw_hc` `0→1→0`; plain GTK 4 received live `color-scheme`, `contrast`, and `setGtkTheme`; GTK 3 switched live to `HighContrast` and `DiscoveryGSettingsLive`; `ffmpeg-converter-gtk` rendered cleanly (`dev/shots/gtk-discovery-ffmpeg-plasma.png`) with `purple` on "Convert" and no breakage from KDE's `gtk-4.0/{gtk,colors}.css`.
+- Updated `dev/gtk-discovery/session.sh` (setting GSettings alongside `settings.ini` in conflict trials) and `dev/gtk-discovery/verify.py` (enforcing backend-accurate GSettings vs `settings.ini` expectations). User re-ran `/home/pieman/Files/Archive/projects/macos9-theme/dev/gtk-discovery.sh plasma` (`dev/build/gtk-discovery-plasma.Qn9Pwd`): **`VERDICT=PASS pass=38 fail=0 blocked=0`**. Cleared all claims (`nobody`); `#95` remains open; stopped at Milestone 1 ready for independent Codex audit.
+
+## 2026-11-23, Antigravity (Gemini 4 Neon) — GTK Milestone 1 discovery probe (Milestone 1 implementation handoff for Codex)
+
+- Upgraded and completed the Milestone 1 discovery harness (`dev/gtk-discovery.sh`, `dev/gtk-discovery/fixture.c`, `dev/gtk-discovery/session.sh`, `dev/gtk-discovery/verify.py`) to verify pre-write `HOME`/`XDG_*`/`dconf` isolation, run distinct per-store (`settings.ini`, GSettings, XSettings) and isolated/competing per-layer CSS trials (`#probe` + independent `#ind-theme`/`#ind-app`/`#ind-user` indicators), watch live preference changes on already-running fixtures (`--watch`), inspect every file/symlink/`@import` written by `kded6` before/after `setGtkTheme` and `plasma-apply-lookandfeel -a platinum.desktop`, and compute an observed-result verdict (`verify.py`) instead of trusting script completion.
+- Executed `dev/gtk-discovery.sh broadway` (`dev/build/gtk-discovery-broadway.bT4yG8`): **35 PASS, 0 FAIL, 3 BLOCKED** (`VERDICT=PARTIAL_BROADWAY_ONLY`), zero C compiler warnings (`-Wall -Wextra`), zero CSS parse errors, and saved three visually verified stock screenshots (`dev/shots/gtk-discovery-stock-{gtk3,gtk4,adw}.png`). Recorded verified GTK 3.24.52 / GTK 4.24.1 / libadwaita 1.10.0 / `kde-gtk-config` 6.8.3 findings in `docs/FINDINGS.md` and the full per-toolkit results table in `AUDIT.md`.
+- Verified `dev/gtk-discovery.sh plasma` is blocked inside this sandbox (`dbus-run-session: failed to exec 'kwin_wayland': Operation not permitted`, logged in `dev/build/gtk-discovery-plasma.JhcHCt/session.log`). Remaining 3 blocked checks (native Wayland, dual KDE/GTK Settings portal backends + live preference trace, `ffmpeg-converter-gtk`) await a user-terminal run of `/home/pieman/Files/Archive/projects/macos9-theme/dev/gtk-discovery.sh plasma` and independent Codex audit.
+- Cleared `gtk` and `shared` claims (`nobody`), kept `#95` open, preserved uncommitted working-tree files, and stopped at Milestone 1 (no live desktop changes, commits, pushes, or Milestone 2 work).
+
+## 2026-11-23, Codex (GPT-6) — GTK discovery handoff
+
+Uncommitted probe files: dev/gtk-discovery.sh, dev/gtk-discovery/session.sh and dev/gtk-discovery/fixture.c. All three binaries built. The sandbox denied the private D-Bus socket bind. The permission retry was canceled. Gemini takes the next implementation session and Codex reviews the result.
+
+## 2026-11-23, Antigravity (Gemini 4 Neon) — verify revised GTK plan (#148–152)
+
+- Re-read revised `docs/GTK-PLAN.md` and verified all five findings (`#148–152`) are resolved with no additional plan issues; cross-checked starter Milestone 2 crops against `dev/check-style.sh` (6/6 exact) and confirmed `kscreen-doctor` and `dbus-update-activation-environment` are installed on the host.
+- **Verdict:** Milestone 1 is cleared to start (standalone discovery & portal baseline). Plan review only; `docs/GTK-PLAN.md` and implementation files untouched, `#95` open, no claims held.
+
+## 2026-11-23, Codex (GPT-6) — incorporate Gemini GTK audit
+
+Revised docs/GTK-PLAN.md for all five findings (#148–152), with a standalone discovery gate and explicit recovery requirements before GTK selection. Updated the handoff and audit summary. Only documentation changed. Runtime checks await implementation.
+
+## 2026-11-23, Antigravity (Gemini 4 Neon) — independent audit of GTK implementation plan
+
+- Independently audited working-tree `docs/GTK-PLAN.md` (without modifying `docs/GTK-PLAN.md` or any implementation file) and verified Codex's `#144–147` against repository code (`install.sh`, `uninstall.sh`, `scripts/common.sh`, `scripts/icon_prefs.py`, `dev/test-install-live.sh`, `dev/check-style.sh`, `tools/compare.py`), reference captures (`docs/REFERENCE.md`, `docs/CAPTURES.md`, `reference/INDEX.tsv`), and installed GTK 3.24.52 / GTK 4.24.1 / libadwaita 1.10.0 / `kde-gtk-config` 6.8.3 / portal / `ffmpeg-converter-gtk` metadata plus isolated read-only probes in `/tmp`.
+- Recorded five open plan findings in `AUDIT.md` (`#148–151` P2, `#152` P3): dual-backend portal activation & single-marker discovery gaps (`#148`), CSS-unachievable targets including GTK 3's inability to draw `text-selection-inactive.png`'s 1 px outline and GTK 4's lack of scrollbar steppers (`#149`), direct contradiction between `GTK-PLAN.md:21`'s undo-survival criteria and existing `uninstall.sh` whole-file restore + missing GSettings/symlink/surviving-selection handling (`#150`), missing `adwaita-1-demo` and conflated app CSS in `ffmpeg-converter-gtk` (`#151`), and Milestone 1/2 handoff conflation + uncaptured states + `compare.py` size/scaling gaps (`#152`).
+- **Verdict:** HOLD Milestone 1 until `docs/GTK-PLAN.md` addresses `#148–152`. Live virtual-KWin portal activation and live GUI rendering were not run (sandbox blocks `kwin_wayland` with `Operation not permitted`). `#95` remains open; no claims held.
+
+## 2026-11-23, Codex (GPT-6) — audit GTK plan
+
+Recorded four plan findings (#144–147) in AUDIT.md and corrected the acceptance criteria in docs/GTK-PLAN.md. PLAN.md points to the first implementation checkpoint. Toolkit versions confirmed via pkg-config. Runtime behavior and screenshot comparisons await implementation.
+
+## 2026-11-23, Codex (GPT-6) — plan GTK support
+
+Added docs/GTK-PLAN.md and linked the first implementation checkpoint in PLAN.md. Recorded the three installed toolkit versions. Implementation, sandbox rendering and install testing are pending.
 
 ## 2026-11-23, Codex (GPT-6) — user completed plain live reinstall
 
