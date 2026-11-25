@@ -63,3 +63,6 @@ var apps = dock.addWidget("org.kde.plasma.icontasks");
 apps.currentConfigGroup = ["General"];
 apps.writeConfig("launchers", "applications:org.kde.dolphin.desktop,applications:org.kde.kate.desktop,applications:systemsettings.desktop");
 apps.writeConfig("iconSpacing", 0);
+// The Trash at the dock's end, as on Mac OS X (user, 2026-11-24). Our own
+// widget: Plasma's forces a symbolic icon and fills the panel's thickness.
+dock.addWidget("platinum.trash");

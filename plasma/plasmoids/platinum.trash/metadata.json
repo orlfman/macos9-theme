@@ -1,0 +1,18 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "orlfman"
+            }
+        ],
+        "Category": "File System",
+        "Description": "The Platinum dock's Trash: full-color empty and full icons, sized like the dock's apps.",
+        "Icon": "user-trash",
+        "Id": "platinum.trash",
+        "License": "BSD-2-Clause",
+        "Name": "Platinum Trash",
+        "Version": "0.1"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}
