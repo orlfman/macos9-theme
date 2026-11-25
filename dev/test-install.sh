@@ -212,7 +212,7 @@ check "install --apply --dry-run shows the switch" grep -q "would run plasma-app
 
 check "install exits 0" run install "$project/install.sh"
 for f in .local/lib/macos9-theme/style/styles/platinumstyle.so .local/lib/macos9-theme/decoration/org.kde.kdecoration3/platinum.so \
-    .local/share/themes/Platinum/{index.theme,gtk-3.0/palette.css,gtk-3.0/gtk.css} \
+    .local/share/themes/Platinum/{index.theme,gtk-3.0/palette.css,gtk-3.0/gtk.css,gtk-4.0/palette.css,gtk-4.0/gtk.css} \
     .config/plasma-workspace/env/macos9-theme.sh .local/share/color-schemes/Platinum.colors \
     .local/share/plasma/desktoptheme/platinum/metadata.json .local/share/plasma/plasmoids/platinum.menubarpiece/metadata.json .local/share/plasma/plasmoids/platinum.trash/metadata.json \
     .local/share/plasma/plasmoids/platinum.trash/contents/ui/main.qml \
@@ -226,9 +226,22 @@ for id in platinum-ribbon platinum-lavender platinum-waves platinum-glass platin
         "$data/wallpapers/$id/contents/images/3840x2160.jxl"
 done
 check "all GTK 3 artwork is installed" diff -qr "$project/gtk/Platinum/gtk-3.0/assets" "$data/themes/Platinum/gtk-3.0/assets"
+check "all GTK 4 artwork is installed" diff -qr --exclude=gtk3 "$project/gtk/Platinum/gtk-4.0/assets" "$data/themes/Platinum/gtk-4.0/assets"
+# GTK 4 carries its own copy of the GTK 3 artwork and palette it uses.
+check "the installed GTK 4 theme stands alone" python3 -I -c '
+import re, sys
+from pathlib import Path
+root = Path(sys.argv[1]).resolve()
+for css in root.glob("*.css"):
+    for url in re.findall(r"url\(\"([^\"]+)\"\)", css.read_text()):
+        if url.startswith("resource://"):
+            continue
+        path = (root / url).resolve()
+        assert path.is_relative_to(root) and path.is_file() and path.stat().st_size, url
+' "$data/themes/Platinum/gtk-4.0"
 check "the Kwi and Konsole palette is installed byte for byte" cmp \
     "$project/extras/terminal/PlatinumLavender.colorscheme" "$terminal_palette"
-check "the record lists the 24 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 24
+check "the record lists the 25 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 25
 check "Kirigami's plugin link for the Qt Quick style points at KDE's" \
     bash -c "[[ \$(readlink '$home/.local/lib/macos9-theme/style/kf6/kirigami/platform/Platinum.so') == */kf6/kirigami/platform/org.kde.desktop.so ]]"
 check "install alone leaves the config files alone" same "$seed" "$(config_state)"
@@ -254,8 +267,8 @@ else
     echo "skip    the installed style plugin loads (build dev/build/styleshot first: dev/check-style.sh)"
 fi
 check "a second plain install exits 0" run install-2 "$project/install.sh"
-check "the record still lists 24 targets, nothing moved aside" \
-    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 24 ]] && ! grep -q '^displaced' '$state/installed'"
+check "the record still lists 25 targets, nothing moved aside" \
+    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 25 ]] && ! grep -q '^displaced' '$state/installed'"
 
 check "--apply exits 0" run apply env QT_PLUGIN_PATH="$plugins/style:$plugins/decoration" "$project/install.sh" --apply
 check "--apply explains the next login for Qt Quick apps" grep -Fq 'Log out and back in for Qt Quick apps' "$root/$n-apply.log"
@@ -325,27 +338,43 @@ check "uninstall exits 0" run uninstall "$project/uninstall.sh"
 check "uninstall put the earlier files back, nothing else changed" same "$before" "$(clean_snapshot)"
 
 # --------------------------------------------------------------------------
-fresh "GTK 3 selection and coexisting toolkit resources"
+fresh "GTK selection and another theme's resources under the same name"
 gtk_theme=$data/themes/Platinum
 mkdir -p "$gtk_theme/gtk-4.0"
 printf 'existing GTK 4 rules' > "$gtk_theme/gtk-4.0/gtk.css"
 printf 'existing shared colors' > "$gtk_theme/palette.css"
 printf 'existing metadata' > "$gtk_theme/index.theme"
-check "install GTK 3 alongside GTK 4" run gtk-install "$project/install.sh"
-check "reinstall GTK 3 alongside GTK 4" run gtk-update "$project/install.sh"
+check "install GTK 3 and GTK 4 over another theme's GTK 4 folder" run gtk-install "$project/install.sh"
+check "reinstall GTK 3 and GTK 4" run gtk-update "$project/install.sh"
 check "installed GTK 3 palette matches the source" cmp "$project/gtk/Platinum/palette.css" "$gtk_theme/gtk-3.0/palette.css"
-check "existing GTK 4 still available" grep -qx 'existing GTK 4 rules' "$gtk_theme/gtk-4.0/gtk.css"
+check "installed GTK 4 palette matches the source" cmp "$project/gtk/Platinum/palette.css" "$gtk_theme/gtk-4.0/palette.css"
+check "the other GTK 4 folder is set aside while installed" grep -q 'Platinum GTK 4 theme' "$gtk_theme/gtk-4.0/gtk.css"
 check "existing palette still available" grep -qx 'existing shared colors' "$gtk_theme/palette.css"
 check "existing metadata still available" grep -qx 'existing metadata' "$gtk_theme/index.theme"
 printf '[Settings]\ngtk-theme-name=Platinum\n' > "$config/gtk-3.0/settings.ini"
 check "preview selected GTK theme removal" run gtk-preview "$project/uninstall.sh" --dry-run
-check "preview explains selected GTK theme" grep -Fq 'Keeping the Platinum GTK 3 theme' "$root/$n-gtk-preview.log"
-check "uninstall defers removal while GTK 3 selects Platinum" bash -c '! "$1" > "$2" 2>&1' _ "$project/uninstall.sh" "$root/gtk-selected.log"
+check "preview explains selected GTK theme" grep -Fq 'Keeping the Platinum GTK theme' "$root/$n-gtk-preview.log"
+check "uninstall defers removal while GTK selects Platinum" bash -c '! "$1" > "$2" 2>&1' _ "$project/uninstall.sh" "$root/gtk-selected.log"
 check "selected GTK 3 artwork stays installed" test -s "$gtk_theme/gtk-3.0/gtk.css"
+# The other theme's GTK 4 folder is restored at once: the name stays usable.
+check "the other theme's GTK 4 folder is back" grep -qx 'existing GTK 4 rules' "$gtk_theme/gtk-4.0/gtk.css"
 printf '[Settings]\ngtk-theme-name=Adwaita\n' > "$config/gtk-3.0/settings.ini"
 check "retry removes GTK 3" run gtk-retry "$project/uninstall.sh"
 check "GTK 3 is gone" test ! -e "$gtk_theme/gtk-3.0"
-check "GTK 4 survives undo" grep -qx 'existing GTK 4 rules' "$gtk_theme/gtk-4.0/gtk.css"
+check "the other theme's GTK 4 folder stays" grep -qx 'existing GTK 4 rules' "$gtk_theme/gtk-4.0/gtk.css"
+
+fresh "a GTK 4 selection keeps both toolkits"
+gtk_theme=$data/themes/Platinum
+check "install GTK 3 and GTK 4" run gtk4-install "$project/install.sh"
+printf '[Settings]\ngtk-theme-name=Platinum\n' > "$config/gtk-4.0/settings.ini"
+check "uninstall defers removal while GTK 4 selects Platinum" bash -c '! "$1" > "$2" 2>&1' _ "$project/uninstall.sh" "$root/gtk4-selected.log"
+check "  and says so" grep -Fq 'Keeping the Platinum GTK theme' "$root/gtk4-selected.log"
+check "  GTK 3 stays installed" test -s "$gtk_theme/gtk-3.0/gtk.css"
+check "  GTK 4 stays installed" grep -q 'Platinum GTK 4 theme' "$gtk_theme/gtk-4.0/gtk.css"
+check "  and still stands alone" test -s "$gtk_theme/gtk-4.0/assets/gtk3/push-disabled.png"
+rm "$config/gtk-4.0/settings.ini"
+check "retry removes both" run gtk4-retry "$project/uninstall.sh"
+check "the GTK theme is gone" test ! -e "$gtk_theme"
 
 fresh "finding 6: a linked config entry is refused before any change"
 mkdir -p "$root/elsewhere/kdedefaults"

@@ -182,6 +182,7 @@ targets=(
     "file	$terminal_scheme_path"
     "dir	$gtk_theme_dir" # legacy whole-theme installs
     "dir	$gtk_theme_dir/gtk-3.0"
+    "dir	$gtk_theme_dir/gtk-4.0"
     "file	$gtk_theme_dir/index.theme"
     "dir	$data/plasma/desktoptheme/$plasma_theme"
     "dir	$data/plasma/plasmoids/$piece_id"

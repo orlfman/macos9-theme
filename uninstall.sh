@@ -534,31 +534,43 @@ if ((${#managed_icon_ids[@]})); then
 fi
 
 # A manually selected GTK theme must remain usable after any config restore.
-gtk_target=$gtk_theme_dir/gtk-3.0
-gtk_css=gtk.css
+# The same name serves GTK 3 and GTK 4, so a selection keeps both folders.
+gtk_targets=("$gtk_theme_dir/gtk-3.0	gtk.css" "$gtk_theme_dir/gtk-4.0	gtk.css")
 if manifest_lists dir "$gtk_theme_dir"; then
-    gtk_target=$gtk_theme_dir
-    gtk_css=gtk-3.0/gtk.css
+    gtk_targets=("$gtk_theme_dir	gtk-3.0/gtk.css")
 fi
-if manifest_lists dir "$gtk_target" && is_kind dir "$gtk_target"; then
+gtk_selection=""
+gtk_selection_read=0
+gtk_kept=()
+for gtk_entry in "${gtk_targets[@]}"; do
+    IFS=$'\t' read -r gtk_target gtk_css <<< "$gtk_entry"
+    if ! manifest_lists dir "$gtk_target" || ! is_kind dir "$gtk_target"; then
+        continue
+    fi
     saved=""
     if [[ -n ${first_aside[$gtk_target]:-} ]]; then
-        IFS=$'	' read -r _ _ saved _ <<< "${first_aside[$gtk_target]}"
+        IFS=$'\t' read -r _ _ saved _ <<< "${first_aside[$gtk_target]}"
     fi
     if [[ -z $saved || -L $saved || ! -f $saved/$gtk_css || ! -s $saved/$gtk_css ]] || ! installed_unchanged dir "$gtk_target"; then
-        gtk_args=("$config_home" "$home")
-        if ((dry_run && restored)); then
-            gtk_args+=("$backup")
-        fi
-        if ! gtk_selection=$(python3 -I "$here/scripts/gtk_theme.py" selected "${gtk_args[@]}"); then
-            gtk_selection="unreadable GTK settings"
+        if ((!gtk_selection_read)); then
+            gtk_args=("$config_home" "$home")
+            if ((dry_run && restored)); then
+                gtk_args+=("$backup")
+            fi
+            if ! gtk_selection=$(python3 -I "$here/scripts/gtk_theme.py" selected "${gtk_args[@]}"); then
+                gtk_selection="unreadable GTK settings"
+            fi
+            gtk_selection_read=1
         fi
         if [[ -n $gtk_selection ]]; then
             kept_packages[$gtk_target]=selected
             kept_packages[$gtk_theme_dir/index.theme]=selected
-            warn "Keeping the Platinum GTK 3 theme ($gtk_selection). Choose another GTK style or resolve the unreadable settings, then rerun uninstall.sh."
+            gtk_kept+=("$gtk_target")
         fi
     fi
+done
+if ((${#gtk_kept[@]})); then
+    warn "Keeping the Platinum GTK theme ($gtk_selection). Choose another GTK style or resolve the unreadable settings, then rerun uninstall.sh."
 fi
 
 # A terminal profile can select the palette independently of the global theme.
@@ -811,7 +823,7 @@ if ((!dry_run)); then
 else
     plan "remove the install record $manifest"
 fi
-say "Removed the Platinum style (widgets and Qt Quick), decoration, color scheme, Plasma style, global theme, wallpapers, cursors, icons, GTK 3 theme, terminal palette and login script"
+say "Removed the Platinum style (widgets and Qt Quick), decoration, color scheme, Plasma style, global theme, wallpapers, cursors, icons, GTK 3 and GTK 4 theme, terminal palette and login script"
 if ((shell_failed)); then
     warn "$shell_failed_message"
     exit 1
