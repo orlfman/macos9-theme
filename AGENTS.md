@@ -214,18 +214,30 @@ auditing doesn't give you the right to edit a component you haven't claimed.
 
 ## Legal rules (from day one)
 
-- **No Apple material in the repo**: no icons, pixmaps, fonts (Chicago,
-  Charcoal, Geneva), sounds, cursors, desktop pictures, or ROM/system files,
-  not even "temporarily". Everything shipped is redrawn or generated here, or
-  comes from a third party with a license that allows it (license recorded in
-  the component's folder).
+- **Personal use only.** This is a personal recreation of the Mac OS 9 look
+  for the user's own desktop. Nothing here may be sold, bundled into a paid
+  product, or presented as an official or Apple-endorsed theme.
+- **Recreations, not Apple's files.** Artwork is redrawn, measured, or
+  generated here, supplied by the user as their own recreation, or comes from
+  a third party with a license that allows it (license recorded in the
+  component's folder). Don't copy Apple's original files into the repo, not
+  even "temporarily": icon resources, pixmaps, fonts (Chicago, Charcoal,
+  Geneva), sounds, cursors, desktop pictures, or ROM/system files extracted
+  from Mac OS.
+- **No blatant trademark violations.** Recreated period motifs, such as a
+  Finder face in a wallpaper or icon, are fine for this personal theme.
+  Descriptive names are fine too: "Mac OS 9", "Platinum", or `macOS-cursors`
+  say what is being recreated, not who made it. What's not allowed is
+  passing the work off as Apple's: Apple's logo as the theme's own branding,
+  or wording that claims or implies the theme comes from or is endorsed by
+  Apple.
 - Reference screenshots live only in `reference/`, i.e. in the private
   reference repo, never in this one.
 - Mac OS install media and ROMs come from the user. Don't download them from
   abandonware sites or other unofficial sources.
 - Measured facts (hex colors, pixel sizes, layout) are fine to record and use.
-- Use neutral names in anything installable (theme IDs, package names) until
-  the user picks a name; "Apple" and "Mac OS" stay out of IDs.
+- The user picks the theme's installable names (theme IDs, package names).
+  Descriptive names are fine (see above).
 
 ## General rules
 
