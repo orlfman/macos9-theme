@@ -341,11 +341,36 @@ bool isNorth(QTabBar::Shape shape)
     return shape == QTabBar::RoundedNorth || shape == QTabBar::TriangularNorth;
 }
 
-// The pane under a north tab bar: from the tab bar's last 3 rows down.
+bool isSouth(QTabBar::Shape shape)
+{
+    return shape == QTabBar::RoundedSouth || shape == QTabBar::TriangularSouth;
+}
+
+// Tabs along the top or the bottom. Mac OS 9 had only top tabs; bottom
+// tabs (Konsole, Kwi) are the measured top tabs upside down, with their
+// pane and seam mirrored the same way (derived, docs/REFERENCE.md).
+bool isPlatinumTab(QTabBar::Shape shape)
+{
+    return isNorth(shape) || isSouth(shape);
+}
+
+// Mirrors what's drawn next upside down within r's rows.
+void flipVertically(QPainter *p, const QRect &r)
+{
+    p->translate(0, r.top() + r.bottom() + 1);
+    p->scale(1, -1);
+}
+
+// The pane next to the tab bar: from the tab bar's 3 rows nearest the pane
+// to the far side (top tabs: down from them; bottom tabs: up to them).
 QRect tabPane(const QStyleOptionTabWidgetFrame *tw)
 {
     QRect r = tw->rect;
-    r.setTop(r.top() + tw->tabBarSize.height() - TabPaneOverlap);
+    if (isSouth(tw->shape)) {
+        r.setBottom(r.bottom() - tw->tabBarSize.height() + TabPaneOverlap);
+    } else {
+        r.setTop(r.top() + tw->tabBarSize.height() - TabPaneOverlap);
+    }
     return r;
 }
 
@@ -835,7 +860,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption *option, con
         return QSize(size.width(), MenuBarHeight);
     }
     if (type == CT_TabBarTab) {
-        if (const auto *tab = qstyleoption_cast<const QStyleOptionTab *>(option); tab && isNorth(tab->shape)) {
+        if (const auto *tab = qstyleoption_cast<const QStyleOptionTab *>(option); tab && isPlatinumTab(tab->shape)) {
             // QTabBar passes text width + PM_TabBarTabHSpace (+ icon and
             // button room); the height is fixed.
             return QSize(size.width(), TabHeight);
@@ -854,7 +879,7 @@ QRect Style::subElementRect(SubElement element, const QStyleOption *option, cons
     switch (element) {
     case SE_TabWidgetTabBar:
         if (const auto *tw = qstyleoption_cast<const QStyleOptionTabWidgetFrame *>(option);
-            tw && isNorth(tw->shape) && tw->leftCornerWidgetSize.isEmpty()) {
+            tw && isPlatinumTab(tw->shape) && tw->leftCornerWidgetSize.isEmpty()) {
             // The first tab starts 5 px inside the pane's left edge.
             QRect r = QProxyStyle::subElementRect(element, option, widget);
             r.translate(TabInset, 0);
@@ -875,7 +900,7 @@ QRect Style::subElementRect(SubElement element, const QStyleOption *option, cons
     case SE_TabWidgetTabPane:
         // Also in document mode, where Qt would leave out the overlap: the
         // pane is drawn there too (eventFilter).
-        if (const auto *tw = qstyleoption_cast<const QStyleOptionTabWidgetFrame *>(option); tw && isNorth(tw->shape)) {
+        if (const auto *tw = qstyleoption_cast<const QStyleOptionTabWidgetFrame *>(option); tw && isPlatinumTab(tw->shape)) {
             return tabPane(tw);
         }
         break;
@@ -1603,9 +1628,12 @@ void Style::drawControl(ControlElement element, const QStyleOption *option, QPai
         }
         break;
     case CE_TabBarTabShape:
-        if (const auto *tab = qstyleoption_cast<const QStyleOptionTab *>(option); tab && isNorth(tab->shape)) {
+        if (const auto *tab = qstyleoption_cast<const QStyleOptionTab *>(option); tab && isPlatinumTab(tab->shape)) {
             painter->save();
             painter->setRenderHint(QPainter::Antialiasing, false);
+            if (isSouth(tab->shape)) {
+                flipVertically(painter, tab->rect);
+            }
             // Not captured: pressing the current tab (it keeps its look) and
             // disabled tabs (normal shape, gray label).
             const bool current = tab->state & State_Selected;
@@ -1616,26 +1644,33 @@ void Style::drawControl(ControlElement element, const QStyleOption *option, QPai
         }
         break;
     case CE_TabBarTabLabel:
-        if (const auto *tab = qstyleoption_cast<const QStyleOptionTab *>(option); tab && isNorth(tab->shape)) {
-            // Centered in the tab's 20 rows below its top line; black, white
-            // on the pressed tab.
+        if (const auto *tab = qstyleoption_cast<const QStyleOptionTab *>(option); tab && isPlatinumTab(tab->shape)) {
+            // Centered in the tab's 20 rows below its top line (above its
+            // bottom line on a bottom tab); upright; black, white on the
+            // pressed tab.
             const bool enabled = tab->state & State_Enabled;
             const bool pressed = enabled && (tab->state & State_Sunken) && !(tab->state & State_Selected);
             const QColor color = !enabled ? DisabledText : pressed ? White : Black;
-            const QRect area(tab->rect.x(), tab->rect.y() + 1, tab->rect.width(), TabHeight - TabPaneOverlap - 1);
+            const QRect area(tab->rect.x(), tab->rect.y() + (isSouth(tab->shape) ? TabPaneOverlap : 1), tab->rect.width(),
+                             TabHeight - TabPaneOverlap - 1);
             if (tab->icon.isNull()) {
+                // Across: the space Qt leaves for the text beside any close
+                // or other tab buttons (AUDIT.md #236). (Qt's icon layout
+                // below already makes room for them.)
+                const QRect textSpace = proxy()->subElementRect(SE_TabBarTabText, tab, widget);
+                const QRect textArea(textSpace.x(), area.y(), textSpace.width(), area.height());
                 QPalette pal = tab->palette;
                 pal.setColor(QPalette::WindowText, color);
                 int flags = Qt::AlignCenter | Qt::TextShowMnemonic;
                 if (!proxy()->styleHint(SH_UnderlineShortcut, option, widget)) {
                     flags |= Qt::TextHideMnemonic;
                 }
-                proxy()->drawItemText(painter, area, flags, pal, true, tab->text, QPalette::WindowText);
+                proxy()->drawItemText(painter, textArea, flags, pal, true, tab->text, QPalette::WindowText);
                 if (tab->state & State_HasFocus) {
                     QStyleOptionFocusRect focus;
                     focus.QStyleOption::operator=(*tab);
-                    const QRect text = proxy()->itemTextRect(tab->fontMetrics, area, flags, true, tab->text);
-                    focus.rect = text.adjusted(-3, -1, 3, 1).intersected(area);
+                    const QRect textRect = proxy()->itemTextRect(tab->fontMetrics, textArea, flags, true, tab->text);
+                    focus.rect = textRect.adjusted(-3, -1, 3, 1).intersected(textArea);
                     proxy()->drawPrimitive(PE_FrameFocusRect, &focus, painter, widget);
                 }
             } else {
@@ -1797,17 +1832,26 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption *option, 
     case PE_FrameTabWidget:
         painter->save();
         painter->setRenderHint(QPainter::Antialiasing, false);
+        if (const auto *tw = qstyleoption_cast<const QStyleOptionTabWidgetFrame *>(option); tw && isSouth(tw->shape)) {
+            flipVertically(painter, option->rect);
+        }
         drawNineSlice(painter, option->rect, Slices::TabPane);
         painter->restore();
         return;
     case PE_FrameTabBarBase:
-        if (const auto *base = qstyleoption_cast<const QStyleOptionTabBarBase *>(option); base && isNorth(base->shape)) {
-            // A tab bar without a QTabWidget: the pane's top 3 rows under it.
+        if (const auto *base = qstyleoption_cast<const QStyleOptionTabBarBase *>(option); base && isPlatinumTab(base->shape)) {
+            // A tab bar without a QTabWidget: the pane's 3 rows next to it.
             const QRect &r = base->rect;
+            painter->save();
+            painter->setRenderHint(QPainter::Antialiasing, false); // AUDIT.md #238
+            if (isSouth(base->shape)) {
+                flipVertically(painter, r);
+            }
             const int y = r.bottom() - TabPaneOverlap + 1;
             painter->fillRect(QRect(r.x(), y, r.width(), 1), Black);
             painter->fillRect(QRect(r.x(), y + 1, r.width(), 1), gray(0xCC));
             painter->fillRect(QRect(r.x(), y + 2, r.width(), 1), White);
+            painter->restore();
             return;
         }
         break;
@@ -1938,10 +1982,14 @@ bool Style::eventFilter(QObject *object, QEvent *event)
             drawMenuPanel(&p, w->rect());
             return true;
         }
-        if (auto *tw = qobject_cast<QTabWidget *>(object); tw && tw->documentMode() && tw->tabPosition() == QTabWidget::North) {
+        if (auto *tw = qobject_cast<QTabWidget *>(object);
+            tw && tw->documentMode() && (tw->tabPosition() == QTabWidget::North || tw->tabPosition() == QTabWidget::South)) {
+            const bool south = tw->tabPosition() == QTabWidget::South;
+            const bool triangular = tw->tabShape() == QTabWidget::Triangular;
             QStyleOptionTabWidgetFrame o;
             o.initFrom(tw);
-            o.shape = tw->tabShape() == QTabWidget::Triangular ? QTabBar::TriangularNorth : QTabBar::RoundedNorth;
+            o.shape = south ? (triangular ? QTabBar::TriangularSouth : QTabBar::RoundedSouth)
+                            : (triangular ? QTabBar::TriangularNorth : QTabBar::RoundedNorth);
             o.tabBarSize = tw->tabBar()->isVisibleTo(tw) ? tw->tabBar()->sizeHint() : QSize();
             o.tabBarSize.setHeight(tw->tabBar()->isVisibleTo(tw) ? tw->tabBar()->height() : TabPaneOverlap);
             o.rect = tw->rect();
