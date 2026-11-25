@@ -1010,6 +1010,33 @@ ranges(gboolean wayland)
     PUT("progress-vertical-reversed", progress(101.0 / 184.0, TRUE, TRUE), 475, 160, 14, 188);
     PUT("progress-vertical-tiny", progress(0.001, TRUE, FALSE), 505, 160, 14, 188);
     PUT("progress-vertical-busy", progress(-1, TRUE, FALSE), 530, 160, 14, 188);
+    /* Level bars share the progress tube: the same fraction must look the same. */
+    GtkWidget *level = gtk_level_bar_new_for_interval(0, 184);
+    gtk_level_bar_set_value(GTK_LEVEL_BAR(level), 101);
+    PUT("level-55", level, 10, 165, 188, 14);
+    GtkWidget *level_low = gtk_level_bar_new_for_interval(0, 1);
+    gtk_level_bar_set_value(GTK_LEVEL_BAR(level_low), 0.1);
+    PUT("level-low", level_low, 10, 185, 188, 14);
+    GtkWidget *level_discrete = gtk_level_bar_new_for_interval(0, 5);
+    gtk_level_bar_set_mode(GTK_LEVEL_BAR(level_discrete), GTK_LEVEL_BAR_MODE_DISCRETE);
+    gtk_level_bar_set_value(GTK_LEVEL_BAR(level_discrete), 3);
+    PUT("level-discrete", level_discrete, 10, 205, 188, 14);
+    GtkWidget *level_vertical = gtk_level_bar_new_for_interval(0, 184);
+    gtk_orientable_set_orientation(GTK_ORIENTABLE(level_vertical), GTK_ORIENTATION_VERTICAL);
+    gtk_level_bar_set_value(GTK_LEVEL_BAR(level_vertical), 101);
+    PUT("level-vertical", level_vertical, 450, 160, 14, 188);
+    /* A menu button without a menu is insensitive; give both one. */
+    g_autoptr(GMenu) view_menu = g_menu_new();
+    g_menu_append(view_menu, "As List", "win.unused");
+    GtkWidget *menu_button = gtk_menu_button_new();
+    gtk_menu_button_set_menu_model(GTK_MENU_BUTTON(menu_button), G_MENU_MODEL(view_menu));
+    gtk_menu_button_set_label(GTK_MENU_BUTTON(menu_button), "View");
+    gtk_menu_button_set_always_show_arrow(GTK_MENU_BUTTON(menu_button), TRUE);
+    PUT("menu-button", menu_button, 220, 170, -1, -1);
+    GtkWidget *menu_open = gtk_menu_button_new();
+    gtk_menu_button_set_menu_model(GTK_MENU_BUTTON(menu_open), G_MENU_MODEL(view_menu));
+    gtk_widget_set_state_flags(gtk_widget_get_first_child(menu_open), GTK_STATE_FLAG_CHECKED, FALSE);
+    PUT("menu-button-open", menu_open, 300, 170, -1, -1);
 
     GtkWidget *themes = notebook_6tabs(466, 280, 0, GTK_POS_TOP);
     GtkWidget *appearance = notebook_6tabs(466, 40, 1, GTK_POS_TOP);
@@ -1053,6 +1080,8 @@ ranges(gboolean wayland)
     ok &= report_widget("overlay-vbar", overlay_bar, window);
     report_node("overlay-thumb", overlay_bar, "slider", window, &ok);
     report_node("vscale-thumb", vertical_scale, "slider", window, &ok);
+    report_node("menu-arrow", menu_button, "arrow", window, &ok);
+    report_node("menu-open-arrow", menu_open, "arrow", window, &ok);
     printf("overlay_indicator=%d\n", gtk_widget_has_css_class(overlay_bar, "overlay-indicator"));
 
     /* Native behavior: the styled nodes must still drive GTK's own ranges. */
@@ -1146,6 +1175,11 @@ titled_window(const char *title, gboolean app_widgets)
     if (app_widgets) {
         gtk_header_bar_pack_start(GTK_HEADER_BAR(bar), gtk_button_new_with_label("Open"));
         gtk_header_bar_pack_end(GTK_HEADER_BAR(bar), gtk_button_new_with_label("Share"));
+        GtkWidget *menu = gtk_menu_button_new();
+        g_autoptr(GMenu) app_menu = g_menu_new();
+        g_menu_append(app_menu, "Preferences", "win.unused");
+        gtk_menu_button_set_menu_model(GTK_MENU_BUTTON(menu), G_MENU_MODEL(app_menu));
+        gtk_header_bar_pack_end(GTK_HEADER_BAR(bar), menu);
     }
     gtk_window_set_titlebar(GTK_WINDOW(window), bar);
     gtk_window_set_title(GTK_WINDOW(window), title);

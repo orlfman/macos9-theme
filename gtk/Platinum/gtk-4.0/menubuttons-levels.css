@@ -1,0 +1,158 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+
+/* Menu buttons: the measured push-button frame (pressed while the menu is
+ * open) with the menu triangle pointing down. Flat, circular and OSD menu
+ * buttons keep GTK's look, as plain buttons do. */
+menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd),
+headerbar menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd) {
+  min-height: var(--platinum-push-min);
+  min-width: var(--platinum-push-min);
+  padding: var(--platinum-push-padding);
+  margin: 0;
+  font-weight: normal;
+  color: var(--platinum-push-fg);
+  background-color: var(--platinum-push-bg);
+  background-clip: padding-box;
+  background-image: none;
+  border: solid transparent;
+  border-width: var(--platinum-push-border);
+  border-radius: 0;
+  border-image: var(--platinum-push-image);
+  box-shadow: none;
+  outline: var(--platinum-push-outline);
+  outline-offset: -1px;
+  transition: none;
+}
+
+menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd) label {
+  color: inherit;
+}
+
+/* GTK's arrow is a 16 px symbolic icon; the triangle is 11 x 6, centered on
+ * whole pixels. */
+menubutton arrow,
+menubutton arrow.down,
+menubutton > button arrow.down {
+  -gtk-icon-source: none;
+  -gtk-icon-size: 6px;
+  min-width: 11px;
+  min-height: 6px;
+  margin: 0;
+  background-repeat: no-repeat;
+  background-position: center round(down, calc(50% + 0px), 1px);
+  background-image: -gtk-scaled(url("assets/menu-arrow-down-normal.png"), url("assets/menu-arrow-down-normal@2.png"));
+}
+
+menubutton > button:checked arrow,
+menubutton > button:active arrow {
+  background-image: -gtk-scaled(url("assets/menu-arrow-down-pressed.png"), url("assets/menu-arrow-down-pressed@2.png"));
+}
+
+menubutton > button:disabled arrow {
+  background-image: -gtk-scaled(url("assets/menu-arrow-down-disabled.png"), url("assets/menu-arrow-down-disabled@2.png"));
+}
+
+menubutton > button > box {
+  border-spacing: 5px;
+}
+
+/* Level bars: the measured progress tube (progress.h). Mac OS 9 has no level
+ * colors, so low, high and full levels all fill with Lavender. GTK's own
+ * rules use child selectors; these match them. */
+levelbar > trough {
+  padding: 2px;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: #bbbbbb;
+}
+
+levelbar.horizontal > trough {
+  min-height: 10px;
+  min-width: 12px;
+  border-image: -gtk-scaled(url("assets/progress-trough-h.png"), url("assets/progress-trough-h@2.png")) 7 4 7 6 / 7px 4px 7px 6px stretch;
+}
+
+levelbar.vertical > trough {
+  min-width: 10px;
+  min-height: 12px;
+  border-image: -gtk-scaled(url("assets/progress-trough-v.png"), url("assets/progress-trough-v@2.png")) 6 7 4 7 / 6px 7px 4px 7px stretch;
+}
+
+levelbar.horizontal > trough > block,
+levelbar.vertical > trough > block,
+levelbar.horizontal > trough > block.empty,
+levelbar.vertical > trough > block.empty,
+levelbar.horizontal > trough > block:dir(ltr),
+levelbar.horizontal > trough > block:dir(rtl) {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  border-image: none;
+  background-color: transparent;
+}
+
+/* GTK rounds the end segments; only the radius is reset here so the filled
+ * and empty rules below still apply to them. */
+levelbar.horizontal.discrete > trough > block:first-child,
+levelbar.horizontal.discrete > trough > block:last-child {
+  border-radius: 0;
+}
+
+levelbar.horizontal.continuous > trough > block {
+  min-height: 10px;
+  min-width: 1px;
+}
+
+levelbar.vertical.continuous > trough > block {
+  min-width: 10px;
+  min-height: 1px;
+}
+
+levelbar.horizontal > trough > block.filled,
+levelbar.horizontal > trough > block.filled.low,
+levelbar.horizontal > trough > block.filled.high,
+levelbar.horizontal > trough > block.filled.full {
+  background-color: @platinum_accent;
+  border-image: -gtk-scaled(url("assets/progress-fill-full-h.png"), url("assets/progress-fill-full-h@2.png")) 5 4 5 3 / 5px 4px 5px 3px stretch;
+  box-shadow: 3px 0 0 0 #888888, 2px 0 0 0 #555555, 1px 0 0 0 #000000;
+}
+
+levelbar.vertical > trough > block.filled,
+levelbar.vertical > trough > block.filled.low,
+levelbar.vertical > trough > block.filled.high,
+levelbar.vertical > trough > block.filled.full {
+  background-color: @platinum_accent;
+  border-image: -gtk-scaled(url("assets/progress-fill-full-v.png"), url("assets/progress-fill-full-v@2.png")) 3 5 4 5 / 3px 5px 4px 5px stretch;
+  box-shadow: 0 3px 0 0 #888888, 0 2px 0 0 #555555, 0 1px 0 0 #000000;
+}
+
+/* Discrete levels: separate tube segments with a trough gap between them. */
+levelbar.horizontal.discrete > trough > block,
+levelbar.horizontal.discrete > trough > block:first-child,
+levelbar.horizontal.discrete > trough > block:last-child {
+  min-width: 12px;
+  min-height: 10px;
+  margin: 0 1px;
+}
+
+levelbar.vertical.discrete > trough > block {
+  min-width: 10px;
+  min-height: 12px;
+  margin: 1px 0;
+}
+
+levelbar.discrete > trough > block.filled,
+levelbar.discrete > trough > block.filled.low,
+levelbar.discrete > trough > block.filled.high,
+levelbar.discrete > trough > block.filled.full {
+  box-shadow: none;
+}
+
+levelbar:disabled > trough > block.filled {
+  background-color: @platinum_bg;
+  border-image: none;
+  box-shadow: none;
+}

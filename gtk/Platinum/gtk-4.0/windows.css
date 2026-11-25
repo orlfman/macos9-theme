@@ -308,20 +308,22 @@ tooltip label {
   color: @platinum_fg;
 }
 
-/* Alerts: the measured plain modal frame (dialog-modal-plain.png), with
- * its shadow inside the border image, around the dialog face. */
+/* Alerts: the movable alert (dialog-save-changes.png). The 22-row pinstriped
+ * strip, the #DDDDDD ring and the bevels are the window's border; the body
+ * is white. The strip cannot be dragged: GTK gives alerts no drag area. */
 window.dialog.message,
 window.dialog.message.csd,
 window.dialog.message.csd.background {
   margin: 0;
   border-style: solid;
   border-color: transparent;
-  border-width: 4px;
+  border-width: 23px 4px 4px 2px;
   border-radius: 0;
   box-shadow: none;
-  background-color: @platinum_bg;
+  color: @platinum_fg;
+  background-color: @platinum_base;
   background-clip: padding-box;
-  border-image: -gtk-scaled(url("assets/modal-frame.png"), url("assets/modal-frame@2.png")) 5 / 5px stretch;
+  border-image: -gtk-scaled(url("assets/alert-frame.png"), url("assets/alert-frame@2.png")) 25 8 5 8 / 25px 8px 5px 8px stretch;
 }
 
 window.dialog.message > .titlebar,

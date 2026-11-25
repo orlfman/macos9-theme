@@ -823,6 +823,56 @@ def pick(image: Image.Image, xs: tuple[int, ...], ys: tuple[int, ...]) -> Image.
     return out
 
 
+def render_movable_alert(width: int, height: int) -> Image.Image:
+    """Movable alert frame, measured from dialog-save-changes.png.
+
+    (width + 1) x (height + 1) with the hard shadow. Rows 0-21 are the
+    pinstriped drag strip, row 22 and column 1 a #DDDDDD ring; the body is
+    white. See docs/REFERENCE.md "Dialog bodies".
+    """
+    r, b = width - 1, height - 1
+    im = Image.new("RGBA", (width + 1, height + 1), (0, 0, 0, 0))
+    px = im.load()
+    black, white = rgba(0x000000), rgba(0xFFFFFF)
+    face, ring, gray99, gray77, gray55 = (rgba(v) for v in (0xCCCCCC, 0xDDDDDD, 0x999999, 0x777777, 0x555555))
+
+    def hline(x0: int, x1: int, y: int, c: tuple[int, int, int, int]) -> None:
+        for x in range(x0, x1 + 1):
+            px[x, y] = c
+
+    for y in range(height):
+        px[0, y] = px[r, y] = black
+    hline(0, r, 0, black)
+    hline(1, r - 2, 1, white)
+    px[r - 1, 1] = face
+    for y in range(2, 20):
+        px[1, y] = white
+        hline(2, r - 2, y, face)
+        px[r - 1, y] = gray99
+    for y in range(4, 16, 2):
+        hline(5, r - 6, y, white)
+        hline(6, r - 5, y + 1, gray77)
+    px[1, 20] = face
+    hline(2, r - 1, 20, gray99)
+    hline(0, r, 21, black)
+    hline(1, r - 1, 22, ring)
+    for y in range(23, b - 2):
+        px[1, y] = ring
+        hline(2, r - 3, y, white)
+        px[r - 2, y] = ring if y == 23 else gray99
+        px[r - 1, y] = gray55
+    hline(1, 2, b - 2, ring)
+    hline(3, r - 2, b - 2, gray99)
+    px[r - 1, b - 2] = gray55
+    px[1, b - 1] = ring
+    hline(2, r - 1, b - 1, gray55)
+    hline(0, r, b, black)
+    for y in range(2, height + 1):
+        px[width, y] = black
+    hline(2, width, height, black)
+    return im
+
+
 def make_csd_assets() -> dict[str, Image.Image]:
     """GTK 4 client-side windows drawn as the KWin Platinum decoration.
 
@@ -841,6 +891,11 @@ def make_csd_assets() -> dict[str, Image.Image]:
         assets[f"titlebar-{state}"] = guard_strip(title, 2, 2)
         flat = render_platinum_window(w, h, active, sides=False, bottom=False)
         assets[f"titlebar-max-{state}"] = guard_strip(pick(flat, (0, 6, w - 1), (0, 1, 2, 10, 20, 21)), 1, 3)
+    # The movable alert: top 24 rows (strip, ring, first body row), left 7
+    # columns, right 8 with the shadow, bottom 4 with the shadow.
+    w, h = 20, 40
+    alert = render_movable_alert(w, h)
+    assets["alert-frame"] = guard_strip(pick(alert, (*range(7), 7, *range(w - 6, w + 1)), (*range(24), 24, *range(h - 3, h + 1))), 7, 24)
     return assets
 
 
@@ -1021,13 +1076,16 @@ def main() -> int:
         "progress-fill-reversed-h": (3, None),
         "progress-fill-full-v": (None, 2),
         "progress-fill-reversed-v": (None, 3),
-        "modal-frame": (4, 4),
     }.items():
         save_asset(OUT_GTK4, name, guard_strip(assets[name], *strip))
 
     # The Help Balloon's 6 px straight center, reduced to one guarded strip.
     balloon = pick(assets["tooltip-balloon"], (*range(7), 7, *range(13, 20)), (*range(7), 7, *range(13, 20)))
     save_asset(OUT_GTK4, "tooltip-balloon", guard_strip(balloon, 7, 7))
+
+    # Menu buttons: the measured submenu triangle, pointing down.
+    for state, source in (("normal", "normal"), ("pressed", "hover"), ("disabled", "disabled")):
+        save_asset(OUT_GTK4, f"menu-arrow-down-{state}", assets[f"menu-arrow-{source}"].transpose(tr))
 
     for name, image in make_csd_assets().items():
         save_asset(OUT_GTK4, name, image)

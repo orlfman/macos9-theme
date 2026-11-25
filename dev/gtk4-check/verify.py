@@ -378,7 +378,21 @@ def verify_ranges(root, wayland, record, compare):
     compare("ref-gtk4-pane-right", "appearance-1-themes.png", 931, 235, x + 462, y, 4, 280, "ranges.png")
     compare("ref-gtk4-pane-bottom", "appearance-1-themes.png", 469, 511, x, y + 276, 466, 4, "ranges.png")
 
+    compare("ref-gtk4-level-55", "progress-determinate-55.png", 590, 276, *at("level-55"), 188, 14, "ranges.png")
+
     image = Image.open(root / "ranges.png").convert("RGB")
+    stock = ((0xF5, 0x79, 0x00), (0x35, 0x84, 0xE4), (0x33, 0xD1, 0x7A), (0xEB, 0xE8, 0xE6))
+    for name in ("level-low", "level-discrete", "level-vertical"):
+        region = crop(image, controls[name])
+        record(color_count(region, LAVENDER) > 20 and color_count(region, (187, 187, 187)) > 100
+               and sum(color_count(region, c) for c in stock) == 0, name + "-platinum-tube")
+    for name, art, face in (("menu-arrow", "normal", (221, 221, 221)), ("menu-open-arrow", "pressed", (102, 102, 102))):
+        with Image.open(PROJECT / f"gtk/Platinum/gtk-4.0/assets/menu-arrow-down-{art}.png") as ink:
+            expected = Image.new("RGB", ink.size, face)
+            expected.paste(ink.convert("RGBA"), mask=ink.convert("RGBA").getchannel("A"))
+        x, y, w, h = controls[name][:4]
+        observed = crop(image, (x, y + (h - 6) // 2, 11, 6))
+        record(ImageChops.difference(observed, expected).getbbox() is None, name + "-artwork")
     # Bottom tabs are the measured top tabs flipped; compare above the pane line.
     tx, ty = at("pane-appearance", 0, -24)
     bx, by = at("pane-bottom", 0, 43)
@@ -569,34 +583,37 @@ def verify_windows(root, wayland, record, compare):
     else:
         record(False, "csd-app-bar-aligned", "window not found")
 
-    # GtkAlertDialog: the plain modal frame, shadow included.
+    # GtkAlertDialog: the movable alert (dialog-save-changes.png, frame
+    # x=536-901, y=195-344 plus the shadow), with a white body.
     alert = Image.open(root / "alert.png").convert("RGB")
     _, _, aw, ah = geometry["alert-frame"]
-    # The frame's top-left corner: black outline with #BBBBBB inside it.
+    width, height = aw - 1, ah - 1
     pixels = alert.load()
-    hit = next(((x, y) for y in range(alert.height - 2) for x in range(alert.width - 2)
-                if pixels[x, y] == (0, 0, 0) and pixels[x + 1, y + 1] == (187, 187, 187)
-                and pixels[x + 2, y + 1] == (187, 187, 187) and pixels[x + 1, y + 2] == (187, 187, 187)), None)
-    ok = False
+    hit = next(((x, y) for y in range(alert.height - 24) for x in range(alert.width - 3)
+                if pixels[x, y] == (0, 0, 0) and pixels[x + 1, y + 1] == (255, 255, 255)
+                and pixels[x + 2, y + 2] == (204, 204, 204) and pixels[x + 1, y + 20] == (204, 204, 204)
+                and pixels[x + 2, y + 20] == (153, 153, 153) and pixels[x + 1, y + 22] == (221, 221, 221)), None)
     if hit:
         x0, y0 = hit
-        ok = True
-        ref_l, ref_t, ref_r, ref_b = 766, 194, 1151, 382
-        our_r, our_b = x0 + aw - 2, y0 + ah - 2
-        for name, ax, ay, bx2, by2, w, h in (
-            ("top-left", ref_l, ref_t, x0, y0, 5, 5),
-            # Frame pixels only: the shadow starts 2 px in, and the body is
-            # #DDDDDD here where the About box is white.
-            ("top-right", ref_r - 3, ref_t, our_r - 3, y0, 4, 6),
-            ("bottom-left", ref_l, ref_b - 4, x0, our_b - 4, 4, 5),
-            ("bottom-right", ref_r - 3, ref_b - 4, our_r - 3, our_b - 4, 5, 6),
-            ("top-edge", ref_l + 20, ref_t, x0 + 20, y0, 60, 4),
-            ("left-edge", ref_l, ref_t + 20, x0, y0 + 20, 4, 60),
-            ("right-edge", ref_r - 3, ref_t + 20, our_r - 3, y0 + 20, 5, 60),
-            ("bottom-edge", ref_l + 20, ref_b - 3, x0 + 20, our_b - 3, 60, 5),
+        rl, rt, rw2, rh2 = 536, 195, 366, 150
+        for name, ax, ay, w, h in (
+            ("strip-left", 0, 0, 40, 24),
+            ("strip-right", -40, 0, 40, 24),
+            ("left-edge", 0, 30, 3, 50),
+            ("right-edge", -4, 30, 5, 50),
+            ("bottom-left", 2, -3, 38, 4),
+            ("bottom-right", -4, -3, 5, 4),
         ):
-            compare(f"ref-gtk4-alert-{name}", "dialog-modal-plain.png", ax, ay, bx2, by2, w, h, "alert.png")
-    record(ok, "alert-window-found")
+            rx2 = rl + (ax if ax >= 0 else rw2 + ax)
+            ox2 = x0 + (ax if ax >= 0 else width + ax)
+            ry2 = rt + (ay if ay >= 0 else rh2 + ay)
+            oy2 = y0 + (ay if ay >= 0 else height + ay)
+            compare(f"ref-gtk4-alert-{name}", "dialog-save-changes.png", rx2, ry2, ox2, oy2, w, h, "alert.png")
+        body = alert.crop((x0 + 2, y0 + 23, x0 + width - 3, y0 + height - 3))
+        white = color_count(body, (255, 255, 255))
+        record(white > body.width * body.height / 2, "alert-white-body", f"{white} white pixels")
+    else:
+        record(False, "alert-window-found")
 
     # Maximized: no side frame, the boxes 4 px in from the screen's edges.
     maxed = "csd-max.png"
