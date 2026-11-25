@@ -5,6 +5,12 @@ the whole project and are never reused.
 
 **Bottom tabs independent audit, 2026-11-25.** #236–239 all verified fixed (`dev/check-tabs.sh` 50/50, `PE_FrameTabBarBase` AA diffs 0/10, `-Wall -Wextra -Wshadow` 0 warnings, `dev/check-quick.sh` 29/29, ASan/UBSan clean). No open tab findings. User desktop review is pending.
 
+## 2026-11-25, Claude (Opus 5.5) — two new wallpapers
+
+- Added `wallpapers/platinum-waves` (Platinum Waves) and `wallpapers/platinum-glass` (Platinum Glass) from the user's 3840x2160 lossless JPEG XL images, copied byte for byte. `--apply` still selects Lavender Desktop Pattern. Installed, validated, kept while selected and removed through the existing wallpaper list (`scripts/common.sh`). Install record targets are now 21.
+- Platinum Waves contains a recreated embossed Finder face. That is allowed under the revised AGENTS.md legal rules (user, 2026-11-25): personal use only, recreated motifs fine, descriptive names fine, nothing passed off as Apple's.
+- Checks: `test-install` 751/751, `test-install-live` 44/44 (Lavender still rendered on both screens; the new packages install, are removed on uninstall, and unselected ones are removed in the picker-only case).
+
 ## 2026-11-25, Claude (Opus 5.5) — fixes for Gemini's tab findings #238–239
 
 - **#238 fixed.** `PE_FrameTabBarBase` now turns antialiasing off like the other tab parts. This also applied to top tabs before. `dev/tabcheck.cpp` now draws the base, a face, and the pane with and without an antialiasing painter at 1.25x, 1.5x and 1.75x, top and bottom (18 checks); without the fix exactly the 6 base cases Gemini reported fail.
