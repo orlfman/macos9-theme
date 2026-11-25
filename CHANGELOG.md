@@ -2,6 +2,13 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-25, Claude (Opus 5.5) — fix Gemini's GTK 4 findings #240–243 and #244
+
+- Verified and fixed #240–243 (`menubuttons-levels.css`, `tabs-ranges.css`): disabled level bars and disabled reversed/pulsing progress bars are flat; full level bars drop their trailing shadow and inverted ones use the reversed tube; menu buttons draw a triangle for each direction (new `menu-arrow-{up,left,right}-*` assets) and keep GTK's icon when they have none.
+- New #244, fixed in GTK 3 and GTK 4: a 100% progress bar's shadow covered the trough edge (and in GTK 3 a pixel outside the widget).
+- Harness: GTK 4 fixture and verifier cover all five; GTK 3 Batch 2 gains a 100% bar. Each new check fails on the committed CSS.
+- Results: GTK 4 216/216 Wayland, 144/144 Broadway, ASan/UBSan clean; GTK 3 Batch 2 63/63 and 62/62, Milestone 2 47/47, Batch 1 38/38. Nothing committed. Claims released.
+
 ## 2026-11-25, Claude (Opus 5.5) — GTK 4 movable alert, menu buttons and level bars
 
 - Alerts (`windows.css`): the movable alert from `dialog-save-changes.png` replaces the plain modal frame: 22-row pinstriped strip, `#DDDDDD` ring, bevels and shadow as the window border, white body (user's choice). `gen-assets.py` `render_movable_alert()`; the GTK 4 `modal-frame` asset is removed.
