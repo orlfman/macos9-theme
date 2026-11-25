@@ -1,10 +1,11 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 /* Menu buttons: the measured push-button frame (pressed while the menu is
- * open) with the menu triangle pointing down. Flat, circular and OSD menu
- * buttons keep GTK's look, as plain buttons do. */
-menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd),
-headerbar menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd) {
+ * open) with the menu triangle pointing down. As for plain buttons
+ * (controls.css), flat, circular and OSD menu buttons, and those in linked
+ * groups, toolbars and OSD boxes, keep GTK's look and its own arrow. */
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd),
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd) {
   min-height: var(--platinum-push-min);
   min-width: var(--platinum-push-min);
   padding: var(--platinum-push-padding);
@@ -24,15 +25,17 @@ headerbar menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not
   transition: none;
 }
 
-menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd) label {
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd) label,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd) label {
   color: inherit;
 }
 
 /* GTK's arrow is a 16 px symbolic icon; the triangle is 11 x 6 (6 x 11 for
  * left and right), centered on whole pixels, pointing where the menu opens.
- * A menu button with no direction keeps GTK's menu icon. Each rule matches
- * GTK's own per-direction selector. */
-menubutton arrow.down {
+ * A menu button with no direction keeps GTK's menu icon. These selectors
+ * outrank GTK's own per-direction rules. */
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd) arrow.down,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd) arrow.down {
   -gtk-icon-source: none;
   -gtk-icon-size: 6px;
   min-width: 11px;
@@ -43,16 +46,20 @@ menubutton arrow.down {
   background-image: -gtk-scaled(url("assets/menu-arrow-down-normal.png"), url("assets/menu-arrow-down-normal@2.png"));
 }
 
-menubutton > button:checked arrow.down,
-menubutton > button:active arrow.down {
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):checked arrow.down,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):checked arrow.down,
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):active arrow.down,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):active arrow.down {
   background-image: -gtk-scaled(url("assets/menu-arrow-down-pressed.png"), url("assets/menu-arrow-down-pressed@2.png"));
 }
 
-menubutton > button:disabled arrow.down {
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):disabled arrow.down,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):disabled arrow.down {
   background-image: -gtk-scaled(url("assets/menu-arrow-down-disabled.png"), url("assets/menu-arrow-down-disabled@2.png"));
 }
 
-menubutton arrow.up {
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd) arrow.up,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd) arrow.up {
   -gtk-icon-source: none;
   -gtk-icon-size: 6px;
   min-width: 11px;
@@ -63,16 +70,20 @@ menubutton arrow.up {
   background-image: -gtk-scaled(url("assets/menu-arrow-up-normal.png"), url("assets/menu-arrow-up-normal@2.png"));
 }
 
-menubutton > button:checked arrow.up,
-menubutton > button:active arrow.up {
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):checked arrow.up,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):checked arrow.up,
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):active arrow.up,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):active arrow.up {
   background-image: -gtk-scaled(url("assets/menu-arrow-up-pressed.png"), url("assets/menu-arrow-up-pressed@2.png"));
 }
 
-menubutton > button:disabled arrow.up {
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):disabled arrow.up,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):disabled arrow.up {
   background-image: -gtk-scaled(url("assets/menu-arrow-up-disabled.png"), url("assets/menu-arrow-up-disabled@2.png"));
 }
 
-menubutton arrow.left {
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd) arrow.left,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd) arrow.left {
   -gtk-icon-source: none;
   -gtk-icon-size: 6px;
   min-width: 6px;
@@ -83,16 +94,20 @@ menubutton arrow.left {
   background-image: -gtk-scaled(url("assets/menu-arrow-left-normal.png"), url("assets/menu-arrow-left-normal@2.png"));
 }
 
-menubutton > button:checked arrow.left,
-menubutton > button:active arrow.left {
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):checked arrow.left,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):checked arrow.left,
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):active arrow.left,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):active arrow.left {
   background-image: -gtk-scaled(url("assets/menu-arrow-left-pressed.png"), url("assets/menu-arrow-left-pressed@2.png"));
 }
 
-menubutton > button:disabled arrow.left {
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):disabled arrow.left,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):disabled arrow.left {
   background-image: -gtk-scaled(url("assets/menu-arrow-left-disabled.png"), url("assets/menu-arrow-left-disabled@2.png"));
 }
 
-menubutton arrow.right {
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd) arrow.right,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd) arrow.right {
   -gtk-icon-source: none;
   -gtk-icon-size: 6px;
   min-width: 6px;
@@ -103,12 +118,15 @@ menubutton arrow.right {
   background-image: -gtk-scaled(url("assets/menu-arrow-right-normal.png"), url("assets/menu-arrow-right-normal@2.png"));
 }
 
-menubutton > button:checked arrow.right,
-menubutton > button:active arrow.right {
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):checked arrow.right,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):checked arrow.right,
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):active arrow.right,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):active arrow.right {
   background-image: -gtk-scaled(url("assets/menu-arrow-right-pressed.png"), url("assets/menu-arrow-right-pressed@2.png"));
 }
 
-menubutton > button:disabled arrow.right {
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):disabled arrow.right,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):disabled arrow.right {
   background-image: -gtk-scaled(url("assets/menu-arrow-right-disabled.png"), url("assets/menu-arrow-right-disabled@2.png"));
 }
 
@@ -163,12 +181,12 @@ levelbar.horizontal.discrete > trough > block:last-child {
 
 levelbar.horizontal.continuous > trough > block {
   min-height: 10px;
-  min-width: 1px;
+  min-width: 0;
 }
 
 levelbar.vertical.continuous > trough > block {
   min-width: 10px;
-  min-height: 1px;
+  min-height: 0;
 }
 
 levelbar.horizontal > trough > block.filled,
@@ -202,12 +220,26 @@ levelbar.vertical.continuous > trough > block.empty + block.filled {
   box-shadow: 0 -3px 0 0 #888888, 0 -2px 0 0 #555555, 0 -1px 0 0 #000000;
 }
 
-/* A full bar has no unfilled trough for the shadow to fall on. GTK marks it
- * .full with its default levels; with custom levels, a bar at its maximum
- * still shows the shadow over the trough's inner bevel. */
-levelbar.continuous > trough > block.filled.full,
-levelbar.continuous > trough > block.empty + block.filled.full {
-  box-shadow: none;
+/* The 3 px shadow must always land inside the trough, and GTK cannot clip it
+ * or tell a full bar with custom levels from a partial one. So every
+ * continuous fill stops 3 px short at its shadow end (user's choice,
+ * audit #248): a full bar ends in its shadow, like a progress bar at 98%. */
+levelbar.horizontal.continuous > trough > block.filled {
+  margin-right: 3px;
+}
+
+levelbar.horizontal.continuous > trough > block.empty + block.filled {
+  margin-right: 0;
+  margin-left: 3px;
+}
+
+levelbar.vertical.continuous > trough > block.filled {
+  margin-bottom: 3px;
+}
+
+levelbar.vertical.continuous > trough > block.empty + block.filled {
+  margin-bottom: 0;
+  margin-top: 3px;
 }
 
 /* Discrete levels: separate tube segments with a trough gap between them. */

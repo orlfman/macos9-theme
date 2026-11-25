@@ -577,10 +577,13 @@ progressbar.vertical > trough > progress.pulse {
   background-image: -gtk-scaled(url("../gtk-3.0/assets/progress-pulse-v.png"), url("../gtk-3.0/assets/progress-pulse-v@2.png"));
 }
 
-/* A full bar has no unfilled trough for the shadow to fall on; GTK marks its
- * trough .full but gives a non-inverted fill only .left (or .top). */
+/* A full bar has no unfilled trough for the shadow to fall on. GTK marks its
+ * trough .full but gives the fill only .left (or .top), or only .right (or
+ * .bottom) when inverted; the last two selectors outrank the reversed rules. */
 progressbar.horizontal > trough.full > progress,
-progressbar.vertical > trough.full > progress {
+progressbar.vertical > trough.full > progress,
+progressbar.horizontal > trough.full:not(.empty) > progress.right:not(.left):not(.pulse),
+progressbar.vertical > trough.full:not(.empty) > progress.bottom:not(.top):not(.pulse) {
   box-shadow: none;
 }
 

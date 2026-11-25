@@ -484,7 +484,7 @@ composites(void)
     GtkWidget *window = window_new("GTK 4 button roles");
     GtkWidget *fixed = gtk_fixed_new();
     gtk_window_set_child(GTK_WINDOW(window), fixed);
-    gtk_window_set_default_size(GTK_WINDOW(window), 372, 317);
+    gtk_window_set_default_size(GTK_WINDOW(window), 372, 377);
 
     g_autoptr(GtkCssProvider) canvas = gtk_css_provider_new();
     gtk_css_provider_load_from_string(canvas, "window.background { background-color: white; color: black; }");
@@ -500,8 +500,12 @@ composites(void)
     gtk_fixed_put(GTK_FIXED(fixed), stack, 300, 8);
     gtk_fixed_put(GTK_FIXED(fixed), switcher, 12, 8);
 
-    const char *roles[] = {"linked", "toolbar", "toolbar", "osd"};
-    const char *names[] = {"linked", "toolbar", "nested-toolbar", "osd"};
+    /* Each group also holds a menu button (audit #245-246); the last one is
+     * an OSD menu button in a plain box. */
+    g_autoptr(GMenu) menu = g_menu_new();
+    g_menu_append(menu, "Item", "win.unused");
+    const char *roles[] = {"linked", "toolbar", "toolbar", "osd", "horizontal"};
+    const char *names[] = {"linked", "toolbar", "nested-toolbar", "osd", "osd-menu-button"};
     GtkWidget *groups[G_N_ELEMENTS(roles)];
     for (guint i = 0; i < G_N_ELEMENTS(roles); i++) {
         GtkWidget *group = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
@@ -513,9 +517,17 @@ composites(void)
             gtk_box_append(GTK_BOX(group), inner);
             group = inner;
         }
+        GtkWidget *menu_button = gtk_menu_button_new();
+        gtk_menu_button_set_menu_model(GTK_MENU_BUTTON(menu_button), G_MENU_MODEL(menu));
+        if (i == 4) {
+            gtk_widget_add_css_class(menu_button, "osd");
+            gtk_box_append(GTK_BOX(group), menu_button);
+            continue;
+        }
         gtk_box_append(GTK_BOX(group), gtk_button_new_with_label("A"));
         if (i == 0)
             gtk_box_append(GTK_BOX(group), gtk_button_new_with_label("B"));
+        gtk_box_append(GTK_BOX(group), menu_button);
     }
     gtk_window_present(GTK_WINDOW(window));
     gtk_window_set_focus(GTK_WINDOW(window), NULL);
@@ -968,7 +980,7 @@ ranges(gboolean wayland)
     gtk_window_set_child(GTK_WINDOW(window), fixed);
     gtk_window_set_default_size(GTK_WINDOW(window), 1000, 730);
 
-    struct { const char *name; GtkWidget *widget; } items[48];
+    struct { const char *name; GtkWidget *widget; } items[64];
     guint count = 0;
 #define PUT(label, widget, x, y, w, h) do { \
         GtkWidget *put_widget = (widget); \
@@ -1050,6 +1062,23 @@ ranges(gboolean wayland)
         gtk_widget_set_sensitive(bar, FALSE);
         PUT(disabled_names[i], bar, 10, 290 + 20 * i, 188, 14);
     }
+    PUT("progress-full-reversed", progress(1, FALSE, TRUE), 220, 210, 188, 14);
+    PUT("progress-vertical-full", progress(1, TRUE, FALSE), 420, 230, 14, 60);
+    PUT("progress-vertical-full-reversed", progress(1, TRUE, TRUE), 440, 230, 14, 60);
+    /* Audit #248: level fills stop 3 px short; these progress bars carry the
+     * same fill, and a custom-range bar at its maximum matches the full one. */
+    PUT("progress-level-55", progress(98.0 / 184.0, FALSE, FALSE), 640, 200, 188, 14);
+    PUT("progress-level-full", progress(181.0 / 184.0, FALSE, FALSE), 640, 220, 188, 14);
+    PUT("progress-level-inverted", progress(98.0 / 184.0, FALSE, TRUE), 640, 240, 188, 14);
+    GtkWidget *level_custom = gtk_level_bar_new_for_interval(0, 100);
+    gtk_level_bar_set_value(GTK_LEVEL_BAR(level_custom), 100);
+    PUT("level-custom-full", level_custom, 640, 260, 188, 14);
+    GtkWidget *level_zero = gtk_level_bar_new_for_interval(0, 1);
+    gtk_level_bar_set_value(GTK_LEVEL_BAR(level_zero), 0);
+    PUT("level-zero", level_zero, 640, 280, 188, 14);
+    GtkWidget *level_tiny = gtk_level_bar_new_for_interval(0, 1);
+    gtk_level_bar_set_value(GTK_LEVEL_BAR(level_tiny), 0.01);
+    PUT("level-tiny", level_tiny, 640, 300, 188, 14);
     GtkWidget *progress_off_reversed = progress(101.0 / 184.0, FALSE, TRUE);
     gtk_widget_set_sensitive(progress_off_reversed, FALSE);
     PUT("progress-disabled-reversed", progress_off_reversed, 220, 230, 188, 14);

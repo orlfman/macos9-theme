@@ -378,7 +378,6 @@ def verify_ranges(root, wayland, record, compare):
     compare("ref-gtk4-pane-right", "appearance-1-themes.png", 931, 235, x + 462, y, 4, 280, "ranges.png")
     compare("ref-gtk4-pane-bottom", "appearance-1-themes.png", 469, 511, x, y + 276, 466, 4, "ranges.png")
 
-    compare("ref-gtk4-level-55", "progress-determinate-55.png", 590, 276, *at("level-55"), 188, 14, "ranges.png")
 
     image = Image.open(root / "ranges.png").convert("RGB")
     stock = ((0xF5, 0x79, 0x00), (0x35, 0x84, 0xE4), (0x33, 0xD1, 0x7A), (0xEB, 0xE8, 0xE6))
@@ -397,11 +396,39 @@ def verify_ranges(root, wayland, record, compare):
     # with the same fill, and nothing lands outside the widget.
     def same_as(a, b):
         return ImageChops.difference(crop(image, controls[a]), crop(image, controls[b])).getbbox() is None
-    fx, fy, fw, fh = controls["level-full"][:4]
-    outside = image.crop((fx + fw, fy, fx + fw + 2, fy + fh))
-    record(same_as("level-full", "progress-full")
-           and color_count(outside, (221, 221, 221)) == outside.width * outside.height, "level-full-matches-progress")
-    record(same_as("level-inverted", "progress-reversed"), "level-inverted-matches-progress")
+    # Level fills stop 3 px short of their value so the shadow stays inside
+    # the trough (audit #248): each equals a progress bar filled 3 px less.
+    def clear_outside(name):
+        x, y, w, h = controls[name][:4]
+        band = image.crop((x - 2, y - 2, x + w + 2, y + h + 2))
+        inside = (2 * (w + 4) + 2 * h) * 2
+        return color_count(band, (221, 221, 221)) >= inside
+    for level, bar in (("level-55", "progress-level-55"), ("level-full", "progress-level-full"),
+                       ("level-inverted", "progress-level-inverted"), ("level-custom-full", "level-full")):
+        record(same_as(level, bar) and clear_outside(level), f"{level}-matches-{bar}")
+    # An empty level bar is the empty trough, like an empty progress bar.
+    record(same_as("level-zero", "progress-0") and clear_outside("level-zero"), "level-zero-matches-progress-0")
+    tiny = crop(image, controls["level-tiny"])
+    record(clear_outside("level-tiny") and blue_count(tiny) == 0, "level-tiny-inside-trough",
+           f"{blue_count(tiny)} blue pixels")
+
+    # Audit #247: a full inverted bar keeps the trough's outer edge at its far
+    # end, as a full bar does at its own.
+    def columns(name, xs):
+        x, y, w, h = controls[name][:4]
+        return [image.getpixel((x + c, y + r)) for c in xs for r in range(2, h - 2)]
+    def rows(name, ys):
+        x, y, w, h = controls[name][:4]
+        return [image.getpixel((x + c, y + r)) for r in ys for c in range(2, w - 2)]
+    w_full = controls["progress-full"][2]
+    record(columns("progress-full-reversed", (0, 1)) == columns("progress-0", (0, 1))
+           and columns("progress-full", (w_full - 2, w_full - 1)) == columns("progress-0", (w_full - 2, w_full - 1)),
+           "progress-full-edges", "both directions keep the trough's outer columns")
+    h_full = controls["progress-vertical-full"][3]
+    record(rows("progress-vertical-full-reversed", (0, 1)) == rows("progress-vertical-tiny", (0, 1))
+           and rows("progress-vertical-full", (h_full - 2, h_full - 1))
+           == rows("progress-vertical-full-reversed", (h_full - 2, h_full - 1)),
+           "progress-vertical-full-edges")
 
     # Audit #240 and #243: disabled bars are flat at every level and mode.
     for name in ("level-disabled-low", "level-disabled-high", "level-disabled-full",
@@ -836,7 +863,7 @@ def main(root, wayland):
 
         p = captures["Platinum", "composites"]
         stock = captures["Adwaita", "composites"]
-        for role in ("switcher", "linked", "toolbar", "nested-toolbar", "osd"):
+        for role in ("switcher", "linked", "toolbar", "nested-toolbar", "osd", "osd-menu-button"):
             expected = crop(stock, geometry["Adwaita"][role])
             observed = crop(p, geometry["Platinum"][role])
             ink = expected.width * expected.height - color_count(expected, (255, 255, 255))
