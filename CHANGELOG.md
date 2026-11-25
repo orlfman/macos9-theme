@@ -2,6 +2,52 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-24, Codex (GPT-6.2) — combine the Firefox menu and loading indicator
+
+The native menu shows the Firefox logo over moving lavender stripes while the selected tab loads. Verified with a live local page load.
+
+## 2026-11-24, Codex (GPT-6.2) — use lavender for Firefox highlights
+
+Applied lavender to Places tree hover and selection, shared sidebar controls, and browser text selection. Verified actual Bookmarks rows with Vapor loaded and passed all 43 Firefox M4 checks.
+
+## 2026-11-24, Codex (GPT-6.2) — restore Firefox sidebar tool contrast
+
+Applied Platinum foregrounds and search field colors to built-in sidebar panels. Verified Bookmarks, History, synced tabs, and Passwords alongside Vapor. M4 passed 43/43.
+
+## 2026-11-24, Codex (GPT-6.2) — theme Firefox Settings and address suggestions
+
+Applied Platinum colors and square cards to Firefox Settings and themed Nova’s separate address results background with readable suggestion colors. Verified both surfaces with Platinum and Vapor loaded.
+
+## 2026-11-24, Codex (GPT-6.2) — fix Customize Sidebar alongside Vapor Firefox
+
+Scoped the light Customize Sidebar rules to the panel element so a later generic dark root stylesheet cannot wash out the labels. Verified with both stylesheets loaded in a disposable Firefox profile.
+
+## 2026-11-24, Codex (GPT-6.2) — correct Customize Sidebar with dark sidebar colors
+
+Passed the Platinum color scheme into the Customize Sidebar document and verified the panel with collapsed vertical tabs and injected dark sidebar colors. M4 passed 38/38.
+
+## 2026-11-24, Codex (GPT-6.2 Sol) — style the KDE file picker’s editable fields
+
+- Fixed #224 in the Qt Widgets style with the existing Platinum field colors,
+  focus ring and dropdown artwork. Verified KDE's file widget and the
+  `xdg-desktop-portal-kde` dialog in an isolated session, and added focused
+  frame, arrow and RTL geometry assertions to `dev/styleshot.cpp`.
+- Passed 135/135 Qt Widgets reference regions, 29/29 Qt Quick, 19/19 Plasma,
+  745/745 installer/undo and 40/40 nested install checks. The standalone KDE widget passed ASan/UBSan.
+- User desktop review is pending.
+
+## 2026-11-24, Codex (GPT-6.2) — fix Firefox sidebar contrast and text selection
+
+Restored readable Customize Sidebar controls and added lavender selection to light-mode web pages. Firefox M4 passed 38/38.
+
+## 2026-11-24, Codex (GPT-6) — audit GTK 3 packaging and undo
+
+Scoped new installations to GTK 3 resources and checked for a surviving widget-theme selection before removal. Added referenced artwork validation and GTK co-installation and undo regressions.
+
+## 2026-11-24, Codex (GPT-6) — install and remove the named GTK 3 theme
+
+The main installer packages the GTK 3 stylesheet, assets, palette and theme metadata as one managed directory. The README documents selection, and the installer fixture checks the installed tree and undo. Verified with disposable homes and a real GTK 3 Broadway widget.
+
 ## 2026-11-24, Codex (GPT-6) — publish the production-ready Firefox theme
 
 Recorded maintainer approval and documented Firefox-only installation, profile selection, removal, and collapsed vertical tabs in normal and Private Browsing windows. Verified the documented options through both root scripts.

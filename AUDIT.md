@@ -3,6 +3,30 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+**KDE portal file picker, 2026-11-24.** #224 fixed. The editable path, Name and File type controls use Platinum field borders and dropdown arrows. Desktop visual review is pending.
+
+**#223 · P3 · verified, 2026-11-24.** Combined the separate loading indicator with the native Firefox menu. A real loopback page load switched the menu glyph to the Firefox logo, the menu opened during the load, and the hamburger returned after completion (`dev/build/firefox-real-load.HDgkjQ`). The M4 check covers the animated background and reduced motion.
+
+**#222 · P3 · verified, 2026-11-24.** The legacy Bookmarks tree painted gray hover independently of the sidebar theme. Its hovered and selected rows now paint lavender, and built-in list, button and text selection colors use the Platinum accent. Screenshots with Platinum and Vapor loaded contained lavender across the hovered and selected bookmark rows. Firefox M4 passed 43/43.
+
+**#221 · P2 · verified, 2026-11-24.** Vapor’s generic dark styling also affected Bookmarks, History, Tabs from Other Devices, and Passwords. The built-in sidebar documents now use matching foregrounds, backgrounds, and search field colors. M4 passed 43/43. A disposable profile with both stylesheets verified both Bookmarks implementations, white search fields, and a readable sample login with a masked password (`dev/build/firefox-sidebar-vapor-tools.Mrm06Q`).
+
+**#220 · P2 · verified, 2026-11-24.** With Vapor loaded, Settings inherited a dark canvas and Firefox Nova painted the open address results over a separate dark background. Settings now uses page-scoped Platinum colors and square cards. The open address bar applies light field and suggestion colors to both background layers. Before and after screenshots and computed colors were verified with both stylesheets in Firefox 160.0.1 (`dev/build/firefox-vapor-settings.E8k2JK`).
+
+**#219 · P2 · verified, 2026-11-24.** The live Firefox profile loaded Vapor Firefox after Platinum. Its generic dark root rule overrode the Customize Sidebar foreground and color scheme. A disposable profile using both installed stylesheets reproduced light text on Platinum gray. Matching the panel element in the document rule restored dark labels and a light scheme (`dev/build/firefox-vapor-sidebar.dMmbpd`). M4 now tests a later generic dark rule.
+
+**#218 · P2 · verified, 2026-11-24.** The previous Customize Sidebar fix skipped documents carrying a dark sidebar theme attribute. The Platinum browser now gives the embedded Customize Sidebar a light scheme and the document applies matching colors for the default theme. The M4 probe opens it with collapsed vertical tabs, injects dark sidebar colors, and verifies readable labels. All 38 checks passed on Firefox 160.0.1 (`dev/build/firefox-m4.7UQMzY`).
+
+**Firefox sidebar and selection, 2026-11-24.** #216 fixed light Customize Sidebar labels by setting the color scheme and foreground inside the sidebar document. #217 added black text on lavender for default web text selection. Firefox 160.0.1 M4 passed 38/38, and screenshots showed readable sidebar controls and a rendered lavender selection.
+
+**GTK 3 packaging audit, 2026-11-24.** Verified in disposable homes on the working tree.
+
+- **#213 · P2.** Installing the whole named theme directory hid other toolkits’ resources. New installations manage the GTK 3 subtree with a private palette and add metadata only when needed. Existing GTK 4 CSS, shared palette and metadata survived install, reinstall and undo.
+- **#214 · P2.** Undo removed a theme still selected in GTK settings. Undo now checks the surviving file preferences and GSettings, keeps the theme if needed and finishes on retry after a switch. A GTK 3 Broadway widget loaded the installed palette, and both uninstall preview and real undo identified a GSettings selection (`dev/build/gtk3-package-audit.EyhjkU`).
+- **#215 · P2.** Preflight accepted a directory with missing referenced artwork. Missing and symlinked referenced artwork now fail validation before installation.
+
+**GTK 3 packaging, 2026-11-24.** A disposable install and reinstall loaded the installed `platinum_selection` color as `rgb(204,204,255)` in a GTK 3 Broadway widget. Uninstall restored a displaced theme directory. Evidence in `dev/build/gtk3-install.NNMa5r`.
+
 **#212 · P3 · verified, 2026-11-24.** The collapsed-tab check measured the icon wrapper only in a normal window. The M4 probe now measures visible favicon elements against their frames and the new-tab icon in both normal and Private Browsing windows, and checks the selected tab uses Platinum styling. All five icons measured zero horizontal offset in both comparisons. M4 passed 36/36 (`dev/build/firefox-m4.vnNzES`).
 
 **#211 · P2 · verified, 2026-11-24.** Collapsed vertical tab icons were 9 CSS pixels right of their beveled frame centers. Restored Firefox’s inline tab margins and removed the extra collapsed strip padding. All three tab icons measured 0 pixels from their frame centers and shared the new-tab icon’s centerline on Firefox 160.0.1. M4 passed 35/35 (`dev/build/firefox-m4.47VPSw`).
@@ -33,6 +57,33 @@ Current C++ audit status, 2026-11-22. Checkpoint 5 passed. #99 (P3) and
 #100 (P2) are fixed and verified in the working tree. #95 remains open (P3).
 
 Status: #53–58 passed their original regression cases. #59–68 are fixed in this revision, including code commits `ef8250a` and `fb4156f`. The user has completed the first desktop install. #3 (P3) awaits the user's visual review. The panel-resize fix for #23 is verified at the user’s 32 px setting. The panel follow-ups #69 and #70 are fixed in the working tree and verified in nested Plasma. The user reported that the updated Kwi tab close button worked well on their desktop (#71–74). Wallpaper findings #75–77 are fixed and verified in disposable Plasma. Cursor findings #78–80 are fixed; the cursors are now bundled (`cursors/`), which removes the external download they concerned. The bundled cursor follow-ups #81–84 are fixed in the working tree. The decisions on #21, #25 and #26 still apply.
+
+## 2026-11-24, Codex (GPT-6.2 Sol) — KDE portal editable file-picker controls
+
+- **#224 · P2 · fixed and verified.** The portal screenshot
+  `reference/testing/kde-portal-editable-combo.png` shows light rounded input
+  frames and stock arrow buttons next to Platinum toolbar and dialog buttons.
+  In KDE's real KFileWidget, the path and filename are framed editable
+  KUrlComboBox instances and the filter is a framed editable KFileFilterCombo.
+  The custom QStyle only painted non-editable combos and the embedded editors
+  had their own frames disabled. The style now draws the existing Platinum
+  field and adapts the measured arrow cap to the widget's natural height.
+  The custom mirror geometry and hit test keep the arrow clickable in RTL.
+- KFileWidget before and after captures, test output and a nested
+  `xdg-desktop-portal-kde` screenshot are in `dev/build/kde-picker.BHekEL`.
+  The offscreen probe verified all three editors fit without overlapping
+  the arrow, including the path icon inset. Click opened the filter popup,
+  keyboard selection committed the second option and closed it, and typed
+  filters propagated. Geometry and popup opening also passed at 150% and
+  200% Qt scale offscreen. Ctrl+L switched the native portal picker into
+  editable-path mode in virtual KWin at 100%. The full Platinum palette and
+  all three editable frames are visible in `portal-editing.png`. User desktop
+  review is pending.
+- The Qt Widgets reference suite passed 135/135 plus the new focused editable
+  combo rendering and geometry assertions in both directions. The prior plugin
+  failed the new geometry assertion. The standalone
+  picker passed with ASan/UBSan and leak checking disabled. Qt Quick passed
+  29/29, Plasma 19/19, installer/undo 745/745 and nested install 40/40.
 
 ## 2026-11-24, Codex (GPT-6.2) — content stylesheet upgrades and Private Browsing
 

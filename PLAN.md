@@ -2,6 +2,26 @@
 
 ## Status
 
+**KDE portal file picker fixed 2026-11-24 (#224).** The path, Name and File type fields now use the Platinum Qt Widgets editable combo style. KDE's file widget and the native portal rendered in the sandbox. Qt Widgets 135/135, Qt Quick 29/29, Plasma 19/19, installer/undo 745/745 and nested install 40/40 passed. User visual review is pending.
+
+The Firefox menu now doubles as the selected-tab loading indicator (#223).
+
+Firefox sidebar hover and selection highlights verified in lavender (#222).
+
+Firefox Bookmarks, History, synced tabs, and Passwords sidebar contrast verified on Firefox 160.0.1 (M4 43/43, #221).
+
+Firefox Settings and open address suggestions now use Platinum colors, verified alongside Vapor on Firefox 160.0.1 (#220).
+
+Firefox Customize Sidebar contrast verified with Vapor Firefox and Platinum loaded together (#219).
+
+Firefox Customize Sidebar contrast verified with collapsed vertical tabs and dark sidebar colors on Firefox 160.0.1 (M4 38/38, #218).
+
+Firefox Customize Sidebar contrast and lavender web text selection verified on Firefox 160.0.1 (M4 38/38, #216–217).
+
+GTK 3 packaging audit #213–215 verified coexistence with GTK 4 resources, selected-theme removal and artwork preflight.
+
+The main installer now packages the named GTK 3 theme for per-app or manual selection. Its manifest handles upgrade, removal and restoration. GTK 4 packaging and automatic GTK preference adoption remain planned.
+
 **Firefox is production-ready.** The maintainer approved the Linux Firefox theme on 2026-11-24. Tested on Firefox 160.0.1.
 
 Collapsed vertical tab icons verified in both normal and Private Browsing windows on Firefox 160.0.1 (M4 36/36, #212).
@@ -151,7 +171,7 @@ the sandbox. Decoration pixel comparisons used the offscreen software preview.
 follow-up. **Remaining theming scope (user, 2026-11-22):** WhiteSur Lavender
 icons, GTK 3, GTK 4/libadwaita, an optional IE5-style Firefox theme (decision
 14), Plasma Login Manager, Konsole and Kwi colors, splash screen, lock screen,
-and the small Qt gaps (editable combo, size grip).
+and the Qt size grip.
 Fonts are settled (SF). Publication questions include #25 and the theme name.
 
 **Before finishing any change, run the suites** (expected results are kept
@@ -172,11 +192,11 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | reference  | reference/, docs/REFERENCE.md | nobody | 82 VM captures (incl. `ie5-window-blank.png` backed up in `macos9-theme-reference` `05292a6`); first real Platinum desktop archived at 100%, 150% and 200% in reference/testing/; measurements partial |
 | colors     | colors/                   | nobody     | Platinum.colors done (sandbox-checked) |
 | decoration | decoration/               | nobody | plugin works in nested KWin; frame pixel exact; only the three Mac OS 9 boxes are created (AUDIT 20); audit #86, #90, #96 and #99 verified |
-| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); Qt Quick style in style/quick: menus, menu bar, combo list, tooltips, switches (AUDIT 3, check-quick 29/29; installed by install.sh); also dialogs (measured modal frame), drawers, range sliders; combo lists track live model edits (#63); compact tab close indicator and selected state verified in Kwi (#71–74); open: editable combo, size grip; audit #85, #87–89, #91–94, #97 and #100 verified; #95 open |
+| style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); Qt Quick style in style/quick: menus, menu bar, combo list, tooltips, switches (AUDIT 3, check-quick 29/29; installed by install.sh); also dialogs (measured modal frame), drawers, range sliders; combo lists track live model edits (#63); compact tab close indicator and selected state verified in Kwi (#71–74); editable combo styled and verified in KDE file picker (#224); open: size grip; audit #85, #87–89, #91–94, #97 and #100 verified; #95 open |
 | plasma     | plasma/                   | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); main screen only (decision 10); resizable menu bar ends and divider (AUDIT 23), with complete divider dots and pixel comparisons across four panel heights (AUDIT 69–70); #98 table reader verified; global theme defaults updated to `Theme=WhiteSur-lavender` (#110) |
 | icons      | icons/                    | nobody | #101–109, #111, #116, #118–121, #123, #132, #134, #135, #137, #143 committed on `main` against pinned `2026-09-10` (`73d8040da51a9ed74e47c7366e7e9ff437601a5c`); external pin (`icons/whitesur-pin.json`), tracked custom layer (`icons/custom/{all,light,dark}/` + cross-dir variant aliases), read-only update review (`icons/review-whitesur-update.sh`), mandatory-`flock` full-`fsck` bare-git cache (`icons/fetch-whitesur.sh` with safe user-owned symlinked `~/.cache`), recovery-safe journaled publish, archive + linked-worktree safeguards, and disposable suite (`dev/test_icons_phase1.py`, 80/80); full-copy + custom layer retained |
 | cursors    | cursors/                  | nobody | bundled black cursors (`macOS-cursors`) installed and selected by the global theme, verified in nested Plasma; discovery, selection and undo verified (#78–#84). No cursors of our own (decision 8, user). |
-| gtk        | gtk/                      | nobody | Milestones 1–3 and the GTK 4 initial slice are committed. GTK 4 menus, dropdowns and lists added locally; 109/109 Wayland, 74/74 Broadway. Next are notebook tabs, scales, progress bars and scrollbars. User visual review is pending. |
+| gtk        | gtk/                      | nobody | GTK 3 install and removal verified. Milestones 1–3 and the GTK 4 initial slice are committed. GTK 4 menus, dropdowns and lists added locally; 109/109 Wayland, 74/74 Broadway. Next are notebook tabs, scales, progress bars and scrollbars. User visual review is pending. |
 | firefox    | firefox/                  | nobody | Production-ready on Linux. Normal and private collapsed tabs verified on Firefox 160.0.1 (M4 36/36, #211–212). |
 | extras     | extras/, wallpapers/      | nobody | Pastel Ribbon Landscape and Lavender Desktop Pattern packaged with the global theme. Platinum Lavender terminal palette verified in disposable Kwi and Konsole and included in install and undo (#173–176 fixed). Plasma Login Manager, splash and lock screen remain. |
 | packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's four audits (#4-#14, #27-#31, #34-#42 fixed); Qt Quick style & pass-through (#59–65); wallpapers (#75–77); bundled cursors (#78–84); WhiteSur Lavender #110, #112–115, #117–118, #122, #124–131, #133, #135–136, #138–143 committed on `main` (`dev/test-install.sh` 702/702 with real `XDG_CONFIG_DIRS` cascade; `dev/test-install-live.sh` 40/40 in user's terminal); live plain reinstall completed and visually approved by user; desktop uninstall untested; terminal palette audit #173–176 fixed, install/undo verified at 727/727 |
