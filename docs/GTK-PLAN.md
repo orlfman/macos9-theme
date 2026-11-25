@@ -78,9 +78,51 @@ row under normal named-theme selection. The 150% and 200% compositor captures
 cover the additional gallery. The 200% dropdown arrow matches the doubled 1×
 reference exactly. The audit records the virtual compositor's buffer limitation.
 
-Next are GTK 4 notebook tabs, scales, progress bars and scrollbars, including
-overlay and classic scrolling and GTK 4’s lack of steppers. Header bars,
-tooltips and dialogs follow. Installation is scheduled for Milestone 6.
+## Milestone 4 tabs, scales, progress bars and scrollbars
+
+`gtk-4.0/tabs-ranges.css` ports the measured GTK 3 notebook, scale, progress
+and scrollbar rules to GTK 4's nodes. GTK 4 draws a top notebook's pane after
+its header, so the header paints the pane's first three rows and the tabs
+cover them; bottom tabs keep the GTK 3 overlap. GTK 4 has no scrollbar
+steppers, so the Smart Scrolling arrows are left out rather than drawn as
+inert areas; the trough runs to the end of the bar. Overlay indicators keep
+the compact Lavender bar and expand to the classic bar while hovered.
+
+GTK 4 samples past nine-slice strips whenever it scales them. Guarded GTK 4
+variants copy each stretch strip into the inner edge of both neighboring
+slices (`guard_strip` in `gtk/gen-assets.py`), which keeps 1× pixel-exact on
+Cairo and Vulkan and avoids seams at 150%.
+
+`dev/check-gtk4.sh` gains a `ranges` fixture. Both backends compare the GTK 3
+Batch 2 reference crops (scrollbars minus the 31 px of arrows, sliders, three
+tab rows and the pane, progress and barber pole), bottom tabs against the
+mirrored top tabs, reversed and tiny fills, the disabled well, the overlay
+indicator and hover state, and GTK's own slider, notebook and scroll actions.
+Wayland adds the real backdrop and a compact layout at 150% and 200%; at 200%
+the tab bands, slider and progress equal the doubled references.
+
+## Milestone 4 header bars, tooltips and alerts
+
+On Plasma, GTK 4 windows without a header bar use KWin's server-side Platinum
+decoration. Apps that set a GtkHeaderBar draw their own title bar, so
+`gtk-4.0/windows.css` redraws those windows as the decoration does: the 6 px
+frame with its hard shadow, the 22-row title bar with etched pinstripes and
+13 px close, zoom and collapse boxes (none on inactive bars), a flat inactive
+look, and a frameless maximized or tiled bar. `gen-assets.py` renders the
+frame and title-bar slices with a Python port of the decoration's
+`paintFrame()`. App widgets share the box row; stripes show only in the gaps.
+Tooltips use the Help Balloon outline, and GtkAlertDialog uses the plain modal
+frame around the `#DDDDDD` dialog face.
+
+`dev/check-gtk4.sh` gains a `windows` fixture. Both backends check the balloon
+outline against `help-balloon.png` and the title-bar metrics. Wayland compares
+compositor captures of an active, inactive and maximized header-bar window
+with `window-document-active/inactive.png`, including the stripe ends around
+the title, an app bar with push buttons, the alert frame against
+`dialog-modal-plain.png`, the zoom and close actions, and 150%/200% output.
+
+Next is GtkLevelBar, which still uses GTK's stock colors; GtkMenuButton in
+header bars is also still stock. Installation is scheduled for Milestone 6.
 
 ## Installer contract for milestone 6
 

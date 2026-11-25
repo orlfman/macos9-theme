@@ -3,7 +3,26 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+**GTK 4 header bars/tooltips/alerts self-test, 2026-11-25.** Frame, title bar, balloon and alert frame exact against the captures; 201/201 Wayland, 127/127 Broadway; no open findings.
+
+**GTK 4 tabs/scales/progress/scrollbars self-test, 2026-11-25.** All Batch 2 reference crops exact on both GTK 4 renderers; 124/124 Broadway, 162/162 Wayland; no open findings. Independent audit and user review pending.
+
 **Bottom tabs independent audit, 2026-11-25.** #236–239 all verified fixed (`dev/check-tabs.sh` 50/50, `PE_FrameTabBarBase` AA diffs 0/10, `-Wall -Wextra -Wshadow` 0 warnings, `dev/check-quick.sh` 29/29, ASan/UBSan clean). No open tab findings. User desktop review is pending.
+
+## 2026-11-25, Claude (Opus 5.5) — GTK 4 header bars, tooltips and alerts (self-test)
+
+- Audited: working tree (`gtk/Platinum/gtk-4.0/windows.css`, new GTK 4 assets, `gtk/gen-assets.py`, `dev/gtk4-check/`). Findings: none open.
+- Reference comparisons (tolerance 0), nested Wayland compositor captures: `window-document-active.png` and `window-document-inactive.png` title bar ends with boxes and stripes, title-bar bottom rows, side, bottom and corner frame and shadow, stripe ends before and after the title; maximized bar against the same rows; `dialog-modal-plain.png` corners and edges of a GtkAlertDialog; `help-balloon.png` outline (also Broadway). All 0 differing pixels. At 200% the title bar equals the doubled reference.
+- Excluded on purpose: the reference's size box (bottom right), desktop pixels where the shadow starts, the alert body (`#DDDDDD` vs the About box's white), title text and icon.
+- Checks: `dev/check-gtk4.sh plasma` 201/201, `broadway` 127/127, ASan/UBSan 127/127; injected faults rejected: 6 px border, unguarded balloon, flat inactive boxes, title without margin trim. GTK 3 47/47, 38/38, 61/61.
+- Limits: no pointer-driven tooltip; virtual outputs only; not seen by the user.
+
+## 2026-11-25, Claude (Opus 5.5) — GTK 4 tabs, scales, progress bars and scrollbars (self-test)
+
+- Audited: working tree over `81a0382` (`gtk/Platinum/gtk-4.0/{gtk.css,tabs-ranges.css,assets/}`, `gtk/gen-assets.py`, `dev/gtk4-check/`). Findings: none open.
+- Reference comparisons (tolerance 0) on Broadway Cairo and nested Wayland Vulkan: `scroll-vertical-inactive.png` and `disclosure-triangles.png` scrollbar crops (trough and thumb only; GTK 4 has no arrows; the mid-thumb grip rows GTK 3 excluded now match), `controls-general-controls.png` slider 91×23, `slider-pressed.png` thumb, `controls-memory.png` disabled slider, `progress-determinate-55.png`, `progress-copy-window.png`, `progress-indeterminate-a.png`, and all tab bands and pane edges from `appearance-{1,2,6}-*.png`: all 0 differing pixels. At 200% the slider, progress and tab bands equal the 2× nearest-neighbor references.
+- Checks: `dev/check-gtk4.sh broadway` 124/124 (`dev/build/gtk4-m4-broadway.*`), same under ASan/UBSan 124/124 with 0 diagnostics, `dev/check-gtk4.sh plasma` 162/162. Regressions: GTK 3 47/47, 38/38, 61/61; check-style 135/135, check-quick 29/29, check-plasma 19/19, test-install 757/757, test-install-live 47/47. Injected faults rejected: unguarded tab artwork, GTK 3 pane overlap, missing mark offset, stock progress margin, CSS parse error.
+- Limits: virtual outputs only; fractional 150% checked for bounds, color and absence of seams, not pixel exactness; GtkLevelBar not styled; not seen by the user.
 
 ## 2026-11-25, Claude (Opus 5.5) — Finder Waves and Retro Lavender Ripples wallpapers
 

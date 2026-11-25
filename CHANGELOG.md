@@ -2,6 +2,23 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-25, Claude (Opus 5.5) — GTK 4 header bars, tooltips and alerts
+
+- New `gtk/Platinum/gtk-4.0/windows.css`: header-bar (CSD) windows drawn as the KWin Platinum decoration (frame, shadow, 22-row title bar, pinstripes with their offset ends, boxes 4 px in and 3 px apart, no boxes when inactive, frameless maximized/tiled bar), app widgets on the box row with stripes only in the gaps, the Help Balloon tooltip, and the plain modal frame on GtkAlertDialog.
+- `gtk/gen-assets.py`: `render_platinum_window()` ports `paintFrame()` and the shadow; new GTK 4 assets `csd-frame-*`, `titlebar-*`, `titlebar-max-*`, guarded `modal-frame` and `tooltip-balloon`. GTK 3 assets regenerate byte-identical.
+- `dev/gtk4-check`: `windows` fixture and 39 Wayland / 3 Broadway checks (frame crops active and inactive, title stripe ends, maximized bar, app bar alignment, alert frame, balloon outline, metrics, zoom and close actions, 150%/200%).
+- Results: Wayland 201/201, Broadway 127/127 (also ASan/UBSan, 0 diagnostics), four injected faults rejected, GTK 3 suites 47/47, 38/38, 61/61. Qt, Plasma and installer suites not rerun (nothing they cover changed).
+- Not done: a real hover tooltip (needs a pointer) and user review. GTK 3 header bars still show flat boxes when inactive. Nothing committed. Claims released.
+
+## 2026-11-25, Claude (Opus 5.5) — port GTK 4 tabs, scales, progress bars and scrollbars
+
+- New `gtk/Platinum/gtk-4.0/tabs-ranges.css` (imported by `gtk.css` in light, normal-contrast mode): notebook tabs top/bottom/side, scales with and without marks, determinate, reversed, tiny and pulsing progress bars, classic and overlay scrollbars, from the measured GTK 3 rules.
+- GTK 4 differences handled: the top notebook header now draws the pane's first three rows (GTK 4 paints the pane after the header); the stock pointed-slider and progress-margin rules are overridden in every state; scale marks carry the thumb's 6 px overhang; scroll grips are rounded to whole pixels. GTK 4 has no scrollbar steppers, so there are no arrows (no inert areas drawn).
+- `gtk/gen-assets.py`: new `guard_strip()` writes 22 GTK 4 slice variants (tabs, scale grooves, scroll troughs and thumb frames, progress tubes, split pane) that copy each stretch strip into both neighboring slices, so GTK's filtering stays exact at 1× and seam-free at 150%. The 200 GTK 3 PNGs and the earlier GTK 4 PNGs regenerate byte-identical.
+- `dev/gtk4-check`: `ranges` fixture (full layout at 1×, compact layout for 150%/200%), `session.sh` runs it, `verify.py` adds 50 Broadway / 53 Wayland checks: every GTK 3 Batch 2 reference crop (scrollbars minus the 31 px of arrows), mirrored bottom tabs, reversed/tiny fills, vertical pulse tile, disabled well, overlay indicator and hover, native slider/notebook/scroll actions, real backdrop, 150%/200% output (200% equals the doubled references). The diagnostics check now ignores only GDK's nested-compositor frame-timing warning (pre-existing; see FINDINGS).
+- Results: Broadway 124/124 (also under ASan/UBSan, 0 diagnostics), Wayland 162/162 (Vulkan renderer); five injected faults rejected. Regressions: check-style 135/135, check-quick 29/29, check-plasma 19/19, test-install 757/757, test-install-live 47/47, GTK 3 suites 47/47, 38/38, 61/61 (GTK 3 assets byte-identical).
+- Not done: user visual review; nothing committed or installed. Next: GTK 4 header bars, tooltips and dialogs, then GtkLevelBar (still stock blue). Claims released.
+
 ## 2026-11-25, Claude (Opus 5.5) — add Finder Waves and Retro Lavender Ripples wallpapers
 
 - Two more wallpaper packages from the user's 4K images (byte-identical JPEG XL). The default stays Lavender Desktop Pattern. Updated `scripts/common.sh`, both install tests, README and PLAN. Nothing committed.

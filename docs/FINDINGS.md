@@ -585,6 +585,64 @@ vertically inverted bars, while vertical activity uses an unframed tile.
   render matched GTK’s stock high-contrast entry pixel for pixel and the
   original Platinum rendering returned in the same mapped window.
 
+### GTK 4 tabs, scales, progress bars and scrollbars (2026-11-25, Claude Opus 5.5)
+
+Verified on GTK 4.24.1 with Broadway (Cairo) and nested KWin (Vulkan).
+
+- GtkNotebook snapshots its children in order. With tabs on top the header
+  comes first, so the pane paints over a negative header margin and closes
+  the current tab. With tabs at the bottom the header is last and the GTK 3
+  overlap still works. Drawing the pane's top rows as the header's bottom
+  border, with the tabs reaching into it, restores the measured pane.
+- The stock theme replaces the slider with its own pointed images when a
+  scale has marks (`.marks-before`, `.marks-after`) and in each slider state.
+  Each of those compound selectors needs a matching Platinum rule.
+- Marks sit against the trough's border box; the trough's bottom margin does
+  not separate them. The 6 px the thumb overhangs the groove moves to the
+  marks when `.marks-after` is set, keeping the measured 23 px.
+- The stock theme gives progress fills a −1 px margin through
+  `progressbar.horizontal|vertical > trough > progress`, which outranks a
+  plain `progressbar > trough > progress` reset.
+- Scrollbars are `scrollbar > range > trough > slider`, with no stepper
+  nodes. Overlay indicators fade with widget opacity driven by pointer motion,
+  not CSS; a test that wants to see them sets the opacity itself.
+- Scaled nine-slice regions read texels past the slice edge on both
+  renderers: a 1 px strip stretched across a tab blended into the corner
+  column, and a 512-texel strip lost its last column on Cairo. `repeat`
+  draws 1:1 at 1× but wraps the tile vertically too, which left a seam
+  through every tab at 150%. Copying the strip into the inner edge of both
+  neighboring slices makes the filtered neighbors identical; with `stretch`
+  this is exact at 1× on both renderers and seam-free at 150%.
+- Odd free space centers a background on a half pixel and blurs the scroll
+  grip. `round(down, calc(50% + 0px), 1px)` keeps it whole, as for the
+  dropdown arrows.
+- Nested virtual KWin occasionally makes GDK warn
+  `Duplicate call to gdk_frame_timings_presented()`: 2 of 11 saved runs on
+  2026-11-24, before this batch, and 2 of 4 on 2026-11-25. It is compositor
+  timing; the diagnostics check ignores exactly that message on Wayland.
+
+### GTK 4 header bars, tooltips and alerts (2026-11-25, Claude Opus 5.5)
+
+Verified on GTK 4.24.1 in nested KWin 6.8.3 (Vulkan) and Broadway.
+
+- GTK 4 windows without a titlebar widget are decorated by KWin (no `.csd`
+  class); only windows with a GtkHeaderBar or other titlebar draw their own
+  frame. GtkAlertDialog windows are `window.csd.dialog.message` with an
+  empty `box.titlebar`.
+- GtkWindow clips its children to its content box. A header bar cannot reach
+  into the window's CSS border with negative margins; the theme keeps the
+  border at 4 px and draws the last two frame columns with the border image
+  extending inward, then gives the window's content a 2 px CSS margin.
+- `gtk_widget_paintable_new()` on a window captures only its content area;
+  the CSD frame is outside it, so frame checks use compositor captures.
+- GTK 4.24 does not parse `:is()` (theme parser error). Stock
+  `button.image-button` outranks `windowcontrols > button` for min-width.
+- GtkWindowControls rebuilds its buttons when the window maximizes; a pointer
+  taken before is stale.
+- A centered GtkLabel's height depends on the font (18 px with Noto Sans 10
+  here). With equal negative top and bottom margins and its cover centered on
+  whole pixels, the title band lines up with the stripes for any height.
+
 ## Firefox 160.0.1 chrome and `userChrome.css` discovery (2026-11-24, Antigravity Gemini 4 Carbon)
 
 Verified in isolated nested `kwin_wayland --virtual` via `dev/firefox-test.sh` and `dev/check-firefox-m1.sh` (**46/46 PASS**, `dev/build/firefox-m1.zVJtP1/probe-report.json`):
