@@ -60,8 +60,11 @@ PlasmoidItem {
         serial += 1;
         executable.connectSource(command + " # platinum-trash " + tag + " " + serial);
     }
+    // Through KIO, which knows trash:/ is a folder and opens it in the file
+    // manager. Qt.openUrlExternally finds no handler for the trash: scheme
+    // and asks which application to use.
     function openTrash() {
-        Qt.openUrlExternally("trash:/");
+        run("kioclient exec 'trash:/'", "open");
     }
     // Moves local files to the trash in batches well under the kernel's
     // argument size limit (AUDIT #230).
