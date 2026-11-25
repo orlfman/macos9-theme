@@ -3,6 +3,41 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+**Bottom tabs independent audit, 2026-11-25.** #236–239 all verified fixed (`dev/check-tabs.sh` 50/50, `PE_FrameTabBarBase` AA diffs 0/10, `-Wall -Wextra -Wshadow` 0 warnings, `dev/check-quick.sh` 29/29, ASan/UBSan clean). No open tab findings. User desktop review is pending.
+
+## 2026-11-25, Claude (Opus 5.5) — fixes for Gemini's tab findings #238–239
+
+- **#238 fixed.** `PE_FrameTabBarBase` now turns antialiasing off like the other tab parts. This also applied to top tabs before. `dev/tabcheck.cpp` now draws the base, a face, and the pane with and without an antialiasing painter at 1.25x, 1.5x and 1.75x, top and bottom (18 checks); without the fix exactly the 6 base cases Gemini reported fail.
+- **#239 fixed.** The label's inner rectangles are renamed (`textSpace`, `textArea`, `textRect`); `-Wall -Wextra -Wshadow` reports no warnings in `platinumstyle.cpp`.
+- Checks: `check-tabs` 50/50, `check-style` 135/135, `check-quick` 29/29.
+
+## 2026-11-25, Antigravity (Gemini 4 Neon) — bottom tabs audit (correctness, stability, performance, latency)
+
+Audited Claude's uncommitted tab changes over `b54c2f7` (`style/platinum/platinumstyle.cpp`, `dev/tabcheck.cpp`, `dev/check-tabs.sh`, `dev/tabs-quick.qml`, docs).
+
+- **Verified clean (no P1/P2 findings):**
+  - **#236 · P2 · verified** and **#237 · P3 · verified:** `dev/check-tabs.sh` passed **32/32** (including LTR/RTL close-button clearance on top & bottom tabs, exact fractional-scale mirror model at 1.25×/1.5×, and Qt Quick footer `TabBar`), and `dev/check-quick.sh` passed **29/29**.
+  - **Stability:** `drawNineSlice` (`w < 2 * K || h < 2 * K`), `drawTab` (`row < TabHeight && row < r.height()`, `to >= from`), balanced `painter->save()`/`restore()`, and `eventFilter` `tabBar()->isVisibleTo(tw)` guards are all sound. `dev/tabcheck.cpp` passed under `-fsanitize=address,undefined` (`ASAN_OPTIONS=detect_leaks=0`) with zero diagnostics.
+  - **Performance & latency:** `flipVertically()` is two O(1) `QPainter` transform ops (`translate` + `scale(1, -1)`) with zero allocations or offscreen image copies; `SE_TabBarTabText` is O(1) arithmetic. No measurable paint latency added.
+- **#238 · P3 · open (correctness).** `PE_FrameTabBarBase` (`style/platinum/platinumstyle.cpp:1843–1856`) calls `painter->save()` and `fillRect()` for the 3 seam rows without `painter->setRenderHint(QPainter::Antialiasing, false);` (unlike `CE_TabBarTabShape` and `PE_FrameTabWidget`). Reproduced with an offscreen probe: **6/10** cases (north and south at 1.25×, 1.5×, and 1.75×) differ when called with an antialiased `QPainter`.
+- **#239 · P3 · open (hygiene).** `CE_TabBarTabLabel` (`style/platinum/platinumstyle.cpp:1661,1673`) introduces two `-Wshadow` warnings (`area` shadowing line 1654, `text` shadowing line 1660) — the only `-Wshadow` warnings in `platinumstyle.cpp`.
+- **Limits:** Code review, `dev/check-tabs.sh` (32/32), `dev/check-quick.sh` (29/29), ASan/UBSan `tabcheck`, `-Wall -Wextra -Wshadow` syntax check, and offscreen `PE_FrameTabBarBase` AA probe. Nested KWin Kwi/Konsole captures were not re-run; user live desktop review is pending.
+
+## 2026-11-25, Claude (Opus 5.5) — fixes for bottom tab findings #236–237
+
+- **#236 fixed (reproduced first).** In a 230 px closable `QTabBar` with a long elided title, the label painted 5 dark pixels inside the hidden close button's area in LTR and 18 in RTL, on top **and** bottom tabs, while Fusion painted none. So it predated the bottom-tab work and caused the top-tab overlap seen in Konsole. Text-only labels now take their horizontal extent from `SE_TabBarTabText`; icon labels keep Qt's own layout, which already makes room for buttons. All four cases now measure 0, and `check-style` stays 135/135, so top tabs without buttons are unchanged.
+- **#237 fixed.** At 1.25x and 1.5x, `dev/tabcheck.cpp` now compares each bottom part with the 1x top part flipped and scaled the way Qt's raster engine scales whole pixels (logical row n covers device rows qRound(n·dpr) to qRound((n+1)·dpr)), and requires the top part to match that model too. Added `dev/tabs-quick.qml`: a Qt Quick header and footer `TabBar` through KDE's bridge, where the footer must equal the header flipped (and differ from it unflipped).
+- Negative controls: removing the face flip fails 18 checks; drawing text across the whole tab fails all 4 close-button checks.
+- Checks: `check-tabs` 32/32, `check-style` 135/135, `check-quick` 29/29. Not rerun: the nested Kwi and Konsole screenshots (Kwi supplies its own labels; Konsole's labels now stop before the close button).
+
+## 2026-11-24, Codex (GPT-6.2 Sol) — audit bottom tabs
+
+Reviewed Claude’s working-tree patch over `b54c2f7`. Rebuilt the style and reran `dev/check-tabs.sh` (27/27), `dev/check-style.sh` (135/135 pixel-exact regions), and `dev/check-quick.sh` (29/29). Captured Kwi with two tabs and a long title in three isolated nested KWin sessions. Each screenshot shows mirrored tab faces, a visible selected-tab opening, upright labels and distinct close buttons. Evidence is in `dev/build/kwi-tabs-audit.OvNEXs`. The audit covered rendering. Tab drag, keyboard interaction, and overflow in Kwi remain unverified.
+
+- **#236 · P2 · open.** The south label renderer centers iconless text across the full tab and ignores the space reserved by Qt for tab buttons. A 170 px closable tab bar with a long elided title painted 10 text pixels inside the close-button rectangle in LTR and 40 in RTL. Fusion, which previously handled south labels, painted zero with the same options. Keep south labels upright and derive horizontal placement from Qt’s tab text sub-element.
+- **#237 · P3 · open.** The fractional-scale predicate checks only whether each south pixel is in the north image’s palette. Missing or misplaced face rows can pass. Compare against the expected reflected shape with device-pixel row rounding. The offscreen fixture also exercises Qt Widgets only, while the plan calls for a Qt Quick footer fixture.
+
+
 **Default wallpaper switch (`b50bad5` / `c61c687`) audit, 2026-11-24.** Verified clean: `plasma/make-plasma.py` and `platinum.desktop/contents/defaults` match (`Image=platinum-lavender`), both wallpapers remain installed/removable via `scripts/common.sh`, `dev/plasma-test.sh` links both, `dev/test-install-live.sh` passed 41/41, and `dev/build/test-home-live/wallpaper-desktop.png` renders Lavender Desktop Pattern on both screens. No findings.
 
 **`platinum.trash` `openTrash()` audit, 2026-11-24.** Verified clean over `db9b3b2`: `kioclient exec 'trash:/'` (`tag: "open"`) fixes `Qt.openUrlExternally("trash:/")` showing "Choose Application", covers all 6 activation paths, avoids `onNewData` recursion, and exits after handoff so `disconnectSource` cleans up. `dev/check-trash.sh` 6/6. No findings.
@@ -67,6 +102,12 @@ Current C++ audit status, 2026-11-22. Checkpoint 5 passed. #99 (P3) and
 #100 (P2) are fixed and verified in the working tree. #95 remains open (P3).
 
 Status: #53–58 passed their original regression cases. #59–68 are fixed in this revision, including code commits `ef8250a` and `fb4156f`. The user has completed the first desktop install. #3 (P3) awaits the user's visual review. The panel-resize fix for #23 is verified at the user’s 32 px setting. The panel follow-ups #69 and #70 are fixed in the working tree and verified in nested Plasma. The user reported that the updated Kwi tab close button worked well on their desktop (#71–74). Wallpaper findings #75–77 are fixed and verified in disposable Plasma. Cursor findings #78–80 are fixed; the cursors are now bundled (`cursors/`), which removes the external download they concerned. The bundled cursor follow-ups #81–84 are fixed in the working tree. The decisions on #21, #25 and #26 still apply.
+
+## 2026-11-24, Claude (Opus 5.5) — bottom tabs for Konsole and Kwi
+
+- Implemented `docs/KWI-TABS-PLAN.md` plus Konsole. South-shaped tabs (`RoundedSouth`, `TriangularSouth`) now draw the measured north tab faces, tab bar base and pane flipped vertically; labels stay upright. Size, tab bar placement, pane geometry and the document-mode pane paint cover south too. North drawing is unchanged.
+- `dev/check-tabs.sh` (new, 27/27): south faces in normal, current, pressed and disabled states, the base and the pane are exact mirrors at 1x and 2x and use only the north colors at 1.25x and 1.5x (row rounding prevents a row-for-row mirror there); the bottom label is the top label 2 rows lower; whole plain and document-mode `QTabWidget`s mirror with 0 differing pixels. `check-style` 135/135, `check-quick` 29/29.
+- Nested KWin at 100%: Kwi (`TabBarPosition=Bottom`) and Konsole (`TabBarPosition=Bottom`) show Platinum bottom tabs with the current tab opening into the terminal. Kwi's top tabs already used the Platinum face. Konsole clips long labels behind the close button, as it does with top tabs. Not checked: 150% and 200% in the apps, tab dragging, overflow scrolling, and the user's desktop.
 
 ## 2026-11-24, Antigravity (Gemini 4 Neon) — default wallpaper switch (`b50bad5`) audit
 

@@ -2,6 +2,22 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-25, Claude (Opus 5.5) — fix Gemini's tab findings #238–239
+
+- The tab bar base draws whole pixels for antialiasing painters (#238), and the tab label code no longer shadows variables (#239). New antialiasing checks in `dev/tabcheck.cpp`. check-tabs 50/50, check-style 135/135, check-quick 29/29. Nothing committed or installed.
+
+## 2026-11-25, Claude (Opus 5.5) — fix Codex's bottom tab findings #236–237
+
+- Tab titles stay clear of close buttons on top and bottom tabs (#236; also fixes Konsole's top-tab overlap). `dev/check-tabs.sh` now checks fractional scales against an exact mirror model, checks the close-button overlap, and covers a Qt Quick footer TabBar (#237). check-tabs 32/32, check-style 135/135, check-quick 29/29. Nothing committed or installed.
+
+## 2026-11-24, Codex (GPT-6.2 Sol) — audit Kwi bottom tabs
+
+Rechecked the tab renderer and inspected Kwi bottom tabs at 100%, 150%, and 200% in nested KWin. Recorded closable Qt Widgets label overlap and gaps in automated coverage as #236–237.
+
+## 2026-11-24, Claude (Opus 5.5) — Platinum bottom tabs
+
+- `style/platinum/platinumstyle.cpp`: bottom tabs are the top tabs upside down (Konsole's and Kwi's bottom tab bars). New `dev/tabcheck.cpp` and `dev/check-tabs.sh`; derived design recorded in `docs/REFERENCE.md`; plan status in `docs/KWI-TABS-PLAN.md`. check-tabs 27/27, check-style 135/135, check-quick 29/29, nested Kwi and Konsole checked at 100%. Nothing committed or installed.
+
 ## 2026-11-24, Claude (Opus 5.5) — Lavender Desktop Pattern as the default wallpaper
 
 - `--apply` now sets `platinum-lavender` (user's preference) instead of `platinum-ribbon`; both stay in Plasma's picker. Updated `plasma/make-plasma.py` and the generated defaults, the live render check (its blank-image guard lowered from a spread of 10 to 5 because the pattern measures about 9), the nested test links, README, PLAN, and DEVELOPMENT. check-plasma 19/19, test-install-live 41/41 including Lavender on both screens. Gemini's audit of the Trash open fix came back clean.

@@ -175,6 +175,7 @@ style/quick/build.sh
 
 ```bash
 dev/check-quick.sh
+dev/check-tabs.sh
 ```
 
 ```bash
@@ -186,6 +187,8 @@ M9_QUICK=1 QSTYLE=Platinum dev/run.sh platinum breeze env QT_QUICK_BACKEND=softw
 the C++ item that paints with the QStyle) and links Kirigami's platform
 plugin for it (`style/build/plugins/kf6/kirigami/platform/Platinum.so`).
 `M9_QUICK=1` with `QSTYLE=Platinum` makes `dev/run.sh` use it.
+`dev/check-tabs.sh` (50 checks) checks that bottom tabs are the top tabs upside down: tab faces in every state, the tab bar base, the pane, and whole tab widgets, plain and in document mode, at 1x to 2x (at 1.25x and 1.5x against the 1x mirror scaled the way Qt scales whole pixels), that tab titles stay out of close buttons top and bottom in both directions, that every tab part ignores an antialiasing painter at 1.25x to 1.75x, and that a Qt Quick footer TabBar (Kwi) is the header upside down.
+
 `dev/check-quick.sh` (29 checks) renders the Qt Quick menus (first and last row
 selected), combo box list, menu bar, switch indicator, tooltip, dialog
 frame, range slider (and where KDE's hidden handles sit), drawer edge and a
