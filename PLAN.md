@@ -133,8 +133,8 @@ The user reviewed the resized top panel at 32 px and liked the result. Both P3 f
 The user tested the updated Kwi tab close fix and reported that it worked
 well on their desktop (#71–74). The Qt Quick suite passed 29/29.
 
-Pastel Ribbon Landscape is the default when applying the Platinum global
-theme. Installing also adds Lavender Desktop Pattern to Plasma’s picker.
+Lavender Desktop Pattern is the default when applying the Platinum global (user, 2026-11-24; was Pastel Ribbon Landscape)
+theme. Installing also adds Pastel Ribbon Landscape to Plasma’s picker.
 Verified both renders and the upgrade from a single wallpaper.
 Findings #75–77 are fixed. Uninstall keeps selected packages, apply
 warns if Qt can't open the JPEG XL images, and the live test checks

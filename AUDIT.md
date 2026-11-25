@@ -3,6 +3,8 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+**`platinum.trash` `openTrash()` audit, 2026-11-24.** Verified clean over `db9b3b2`: `kioclient exec 'trash:/'` (`tag: "open"`) fixes `Qt.openUrlExternally("trash:/")` showing "Choose Application", covers all 6 activation paths, avoids `onNewData` recursion, and exits after handoff so `disconnectSource` cleans up. `dev/check-trash.sh` 6/6. No findings.
+
 **KDE file picker (`d342ba7` + `#235`) independent audit, 2026-11-24.** Verified clean: #235 fixed and verified (`painter->save()`/`setRenderHint(QPainter::Antialiasing, false)`/`restore()`, `dev/check-style.sh` 135/135 + `checkEditableCombo()`). No open findings. User desktop review is pending.
 
 **`platinum.trash` re-audit, 2026-11-24.** #228–230, #232–234 verified fixed in the working tree (`dev/check-trash.sh` 6/6 plus realistic sibling-dir/`Trash/info`/delete/recreate/idle probe; idle models confirmed at `file:///` instead of `$HOME`). #231 (P3) partly fixed (`Unsorted`; home-trash-only and `plasma5support` remain QML-only trade-offs). No P1/P2 findings remain. User desktop review (hover bevel, drag-to-trash, Empty Trash) is pending.
@@ -63,6 +65,14 @@ Current C++ audit status, 2026-11-22. Checkpoint 5 passed. #99 (P3) and
 #100 (P2) are fixed and verified in the working tree. #95 remains open (P3).
 
 Status: #53–58 passed their original regression cases. #59–68 are fixed in this revision, including code commits `ef8250a` and `fb4156f`. The user has completed the first desktop install. #3 (P3) awaits the user's visual review. The panel-resize fix for #23 is verified at the user’s 32 px setting. The panel follow-ups #69 and #70 are fixed in the working tree and verified in nested Plasma. The user reported that the updated Kwi tab close button worked well on their desktop (#71–74). Wallpaper findings #75–77 are fixed and verified in disposable Plasma. Cursor findings #78–80 are fixed; the cursors are now bundled (`cursors/`), which removes the external download they concerned. The bundled cursor follow-ups #81–84 are fixed in the working tree. The decisions on #21, #25 and #26 still apply.
+
+## 2026-11-24, Antigravity (Gemini 4 Neon) — `platinum.trash` `openTrash()` audit
+
+Audited Claude's uncommitted change to `plasma/plasmoids/platinum.trash/contents/ui/main.qml` over `db9b3b2`.
+
+- **Verified clean (no findings):** Switching `openTrash()` from `Qt.openUrlExternally("trash:/")` to `run("kioclient exec 'trash:/'", "open")` routes `trash:/` through KIO (resolving it as a folder in Dolphin instead of prompting "Choose Application" for `x-scheme-handler/trash`), covers all 6 open paths (`onClicked`, `"Open"` action, `Plasmoid.onActivated`, `Keys.onPressed`, `Accessible.onPressAction`, and the missing-`kdialog` fallback), uses tag `"open"` so `onNewData`'s `"empty"` exit-127 fallback cannot recurse, and uses unique `serial` sources so `disconnectSource` cleans up after `kioclient exec` exits.
+- **Checks:** `git diff --check` clean; `dev/check-trash.sh` passed **6/6**.
+- **Limits:** Code review and offscreen `TrashState` check only; the user already confirmed `kioclient exec trash:/` opens Dolphin on their desktop, and reinstall + click-test in the live dock remains with the user.
 
 ## 2026-11-24, Claude (Opus 5.5) — verification of Gemini's file picker audit (#235)
 

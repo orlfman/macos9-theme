@@ -2,6 +2,14 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-24, Claude (Opus 5.5) — Lavender Desktop Pattern as the default wallpaper
+
+- `--apply` now sets `platinum-lavender` (user's preference) instead of `platinum-ribbon`; both stay in Plasma's picker. Updated `plasma/make-plasma.py` and the generated defaults, the live render check (its blank-image guard lowered from a spread of 10 to 5 because the pattern measures about 9), the nested test links, README, PLAN, and DEVELOPMENT. check-plasma 19/19, test-install-live 41/41 including Lavender on both screens. Gemini's audit of the Trash open fix came back clean.
+
+## 2026-11-24, Claude (Opus 5.5) — open the Trash through KIO
+
+- `platinum.trash` opened `trash:/` with `Qt.openUrlExternally`, which found no `x-scheme-handler/trash` app and showed Choose Application on the user's desktop. It now runs `kioclient exec trash:/`, which KIO treats as a folder. The user confirmed that command opens Dolphin on the Trash. check-trash 6/6, check-plasma 19/19.
+
 ## 2026-11-24, Claude (Opus 5.5) — fix editable combo antialiasing (#235)
 
 - `style/platinum/platinumstyle.cpp`: the editable combo branch draws with antialiasing off, like the other controls. Antialiased painters previously changed the output in 12 of 20 tested cases; now 0. check-style 135/135, check-quick 29/29. Nothing committed.
