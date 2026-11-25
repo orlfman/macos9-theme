@@ -1,0 +1,9 @@
+{
+    "KPackageStructure": "Wallpaper/Images",
+    "KPlugin": {
+        "Authors": [{ "Name": "orlfman" }],
+        "Description": "Retro lavender ripple pattern with embossed waves (user-supplied image)",
+        "Id": "platinum-ripples",
+        "Name": "Retro Lavender Ripples"
+    }
+}

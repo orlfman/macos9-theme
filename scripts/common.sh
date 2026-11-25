@@ -168,7 +168,7 @@ plasma_theme=platinum
 piece_id=platinum.menubarpiece
 trash_id=platinum.trash
 lnf_id=platinum.desktop
-wallpaper_ids=(platinum-ribbon platinum-lavender platinum-waves platinum-glass platinum-nebula)
+wallpaper_ids=(platinum-ribbon platinum-lavender platinum-waves platinum-glass platinum-nebula platinum-finder-waves platinum-ripples)
 icon_base_id=WhiteSur-lavender
 icon_theme_ids=(WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark)
 

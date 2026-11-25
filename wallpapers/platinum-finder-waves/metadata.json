@@ -1,0 +1,9 @@
+{
+    "KPackageStructure": "Wallpaper/Images",
+    "KPlugin": {
+        "Authors": [{ "Name": "orlfman" }],
+        "Description": "Embossed blue waves with a Finder face (user-supplied image)",
+        "Id": "platinum-finder-waves",
+        "Name": "Finder Waves"
+    }
+}
