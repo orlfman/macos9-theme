@@ -424,6 +424,11 @@ def main() -> int:
     csd_bak_face = count_color(im_csd_bak, hb_box, (0xDD, 0xDD, 0xDD))
     csd_bak_stripes = count_color(im_csd_bak, stripe_zone, (0x77, 0x77, 0x77))
     csd_bak_stripes_white = count_color(im_csd_bak, stripe_zone, (0xFF, 0xFF, 0xFF))
+    # Box frames are #222222: drawn on active bars, none on inactive ones (as KWin and GTK 4).
+    box_zones = ((hbx, hby, 40, hbh), (hbx + hbw - 60, hby, 60, hbh))
+    csd_act_boxes = sum(count_color(im_csd_act, zone, (0x22, 0x22, 0x22)) for zone in box_zones)
+    csd_bak_boxes = sum(count_color(im_csd_bak, zone, color) for zone in box_zones
+                        for color in ((0x22, 0x22, 0x22), (0x88, 0x88, 0x88)))
     record(
         cs_hdr.get("theme") == "Platinum"
         and cs_hdr.get("backend") == expected_backend
@@ -435,9 +440,11 @@ def main() -> int:
         and csd_bak_face >= 1000
         and csd_bak_stripes == 0
         and csd_bak_stripes_white == 0
+        and csd_act_boxes >= 120
+        and csd_bak_boxes == 0
         and (mode == "broadway" or (cs_hdr.get("real_active") == "1" and cs_hdr.get("real_backdrop") == "1")),
         "csd-headerbar-active-and-backdrop",
-        f"act_stripes={csd_act_stripes} act_#ccc={csd_act_face} bak_#ddd={csd_bak_face} bak_stripes={csd_bak_stripes}",
+        f"act_stripes={csd_act_stripes} act_#ccc={csd_act_face} bak_#ddd={csd_bak_face} bak_stripes={csd_bak_stripes} boxes={csd_act_boxes}/{csd_bak_boxes}",
     )
 
     nar_w = int(cs_hdr.get("narrow_w", "0"))

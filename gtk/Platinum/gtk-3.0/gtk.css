@@ -1715,12 +1715,15 @@ headerbar button.titlebutton.minimize {
   background-size: 13px 13px;
 }
 
+/* The hidden icon is 16 px; trimming its footprint to 12 px keeps the button
+ * at the box's 13 px, so the box art lands on whole pixels. */
 headerbar button.titlebutton.close > image,
 headerbar button.titlebutton.maximize > image,
 headerbar button.titlebutton.minimize > image {
   opacity: 0;
   min-width: 13px;
   min-height: 13px;
+  margin: -2px;
 }
 
 headerbar button.titlebutton.close {
@@ -1747,10 +1750,12 @@ headerbar button.titlebutton.minimize:active {
   background-image: -gtk-scaled(url("assets/titlebutton-minimize-pressed.png"), url("assets/titlebutton-minimize-pressed@2.png"));
 }
 
+/* Inactive title bars show no boxes, like the KWin decoration and GTK 4;
+ * the buttons keep their place and still respond. */
 headerbar:backdrop button.titlebutton.close,
 headerbar:backdrop button.titlebutton.maximize,
 headerbar:backdrop button.titlebutton.minimize {
-  background-image: -gtk-scaled(url("assets/titlebutton-backdrop.png"), url("assets/titlebutton-backdrop@2.png"));
+  background-image: none;
 }
 
 /* Toolbar & linked button polish for GTK 3 apps (e.g. Meld) */
