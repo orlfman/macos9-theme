@@ -136,7 +136,7 @@ The user tested the updated Kwi tab close fix and reported that it worked
 well on their desktop (#71–74). The Qt Quick suite passed 29/29.
 
 Lavender Desktop Pattern is the default when applying the Platinum global (user, 2026-11-24; was Pastel Ribbon Landscape)
-theme. Installing also adds Pastel Ribbon Landscape, Platinum Waves and Platinum Glass to Plasma’s picker.
+theme. Installing also adds Pastel Ribbon Landscape, Platinum Waves, Platinum Glass and Platinum Nebula to Plasma’s picker.
 Verified both renders and the upgrade from a single wallpaper.
 Findings #75–77 are fixed. Uninstall keeps selected packages, apply
 warns if Qt can't open the JPEG XL images, and the live test checks
@@ -200,7 +200,7 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | cursors    | cursors/                  | nobody | bundled black cursors (`macOS-cursors`) installed and selected by the global theme, verified in nested Plasma; discovery, selection and undo verified (#78–#84). No cursors of our own (decision 8, user). |
 | gtk        | gtk/                      | nobody | GTK 3 install and removal verified. Milestones 1–3 and the GTK 4 initial slice are committed. GTK 4 menus, dropdowns and lists added locally; 109/109 Wayland, 74/74 Broadway. Next are notebook tabs, scales, progress bars and scrollbars. User visual review is pending. |
 | firefox    | firefox/                  | nobody | Production-ready on Linux. Normal and private collapsed tabs verified on Firefox 160.0.1 (M4 36/36, #211–212). |
-| extras     | extras/, wallpapers/      | nobody | Pastel Ribbon Landscape, Lavender Desktop Pattern (default), Platinum Waves and Platinum Glass packaged with the global theme (the last two added 2026-11-25, user-supplied). Platinum Lavender terminal palette verified in disposable Kwi and Konsole and included in install and undo (#173–176 fixed). Plasma Login Manager, splash and lock screen remain. |
+| extras     | extras/, wallpapers/      | nobody | Pastel Ribbon Landscape, Lavender Desktop Pattern (default), Platinum Waves, Platinum Glass and Platinum Nebula packaged with the global theme (the last three added 2026-11-25, user-supplied). Platinum Lavender terminal palette verified in disposable Kwi and Konsole and included in install and undo (#173–176 fixed). Plasma Login Manager, splash and lock screen remain. |
 | packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's four audits (#4-#14, #27-#31, #34-#42 fixed); Qt Quick style & pass-through (#59–65); wallpapers (#75–77); bundled cursors (#78–84); WhiteSur Lavender #110, #112–115, #117–118, #122, #124–131, #133, #135–136, #138–143 committed on `main` (`dev/test-install.sh` 702/702 with real `XDG_CONFIG_DIRS` cascade; `dev/test-install-live.sh` 40/40 in user's terminal); live plain reinstall completed and visually approved by user; desktop uninstall untested; terminal palette audit #173–176 fixed, install/undo verified at 727/727 |
 
 ## Goal
@@ -334,8 +334,8 @@ measurements.
 - **firefox**: optional IE5 Mac-style `userChrome.css` theme in Platinum
   Lavender (decision 14), with its own install and undo.
 - **extras**: Konsole and Kwi colors only (user, 2026-11-22), Pastel Ribbon
-  Landscape, Lavender Desktop Pattern, Platinum Waves and Platinum Glass
-  wallpapers (user-supplied images),
+  Landscape, Lavender Desktop Pattern, Platinum Waves, Platinum Glass and
+  Platinum Nebula wallpapers (user-supplied images),
   Plasma Login Manager (replaces SDDM, user 2026-11-22), splash, lock screen.
 
 ## Order of work

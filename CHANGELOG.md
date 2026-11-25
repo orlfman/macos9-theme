@@ -2,6 +2,10 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-25, Claude (Opus 5.5) — add Platinum Nebula wallpaper
+
+- New wallpaper package from the user's image (byte-identical JPEG XL). The default stays Lavender Desktop Pattern. Updated `scripts/common.sh`, both install tests, README and PLAN. Nothing committed.
+
 ## 2026-11-25, Claude (Opus 5.5) — clarify the legal rules
 
 - AGENTS.md "Legal rules" reworded at the user's request: the project is a personal recreation for personal use and never for sale; Apple's original files stay out of the repo; recreated motifs (such as a Finder face) are allowed; descriptive names such as "Mac OS 9" or `macOS-cursors` are fine; passing the work off as Apple's (Apple's logo as branding, or claiming or implying Apple made or endorses it) is not.

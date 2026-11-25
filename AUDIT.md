@@ -5,6 +5,11 @@ the whole project and are never reused.
 
 **Bottom tabs independent audit, 2026-11-25.** #236–239 all verified fixed (`dev/check-tabs.sh` 50/50, `PE_FrameTabBarBase` AA diffs 0/10, `-Wall -Wextra -Wshadow` 0 warnings, `dev/check-quick.sh` 29/29, ASan/UBSan clean). No open tab findings. User desktop review is pending.
 
+## 2026-11-25, Claude (Opus 5.5) — Platinum Nebula wallpaper
+
+- Added `wallpapers/platinum-nebula` (Platinum Nebula) from the user's 3840x2160 lossless JPEG XL image, copied byte for byte. It contains a recreated Finder face, allowed under the AGENTS.md legal rules. `--apply` still selects Lavender Desktop Pattern. Install record targets are now 22.
+- Checks: `test-install-live` 45/45 (Lavender still rendered on both screens; Platinum Nebula installs, is removed on uninstall, and is removed when unselected in the picker-only case). `test-install` 753/753.
+
 ## 2026-11-25, Claude (Opus 5.5) — two new wallpapers
 
 - Added `wallpapers/platinum-waves` (Platinum Waves) and `wallpapers/platinum-glass` (Platinum Glass) from the user's 3840x2160 lossless JPEG XL images, copied byte for byte. `--apply` still selects Lavender Desktop Pattern. Installed, validated, kept while selected and removed through the existing wallpaper list (`scripts/common.sh`). Install record targets are now 21.
