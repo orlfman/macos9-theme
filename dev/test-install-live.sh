@@ -186,6 +186,10 @@ after_panels=$(panels)
 echo "info    after --apply: $after_panels"
 check "--apply replaced the panels with the menu bar and the dock" \
     bash -c "[[ '$after_panels' == *':top:20'* && '$after_panels' == *':bottom:52'* && '$after_panels' != *'left'* ]]"
+applied_widgets=$(widgets)
+echo "info    dock widgets after --apply: $applied_widgets"
+check "--apply puts the Platinum Trash at the dock's end" \
+    bash -c "[[ '$applied_widgets' == *'bottom=org.kde.plasma.icontasks,platinum.trash'* && '$applied_widgets' != *'org.kde.plasma.trash'* ]]"
 check "--apply switches both screens to image wallpaper" same \
     "0:org.kde.image: 1:org.kde.image:" "$(desktop_backgrounds)"
 # Compare the wallpaper that was actually rendered on both screens with

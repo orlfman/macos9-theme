@@ -411,6 +411,7 @@ place_dir "$here/plasma/platinum" "$data/plasma/desktoptheme/$plasma_theme"
 drop_plasma_caches
 say "Installed the Plasma style \"Platinum\""
 place_dir "$here/plasma/plasmoids/$piece_id" "$data/plasma/plasmoids/$piece_id"
+place_dir "$here/plasma/plasmoids/$trash_id" "$data/plasma/plasmoids/$trash_id"
 for wallpaper_id in "${wallpaper_ids[@]}"; do
     place_dir "$here/wallpapers/$wallpaper_id" "$data/wallpapers/$wallpaper_id"
 done

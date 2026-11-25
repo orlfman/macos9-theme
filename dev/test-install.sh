@@ -214,7 +214,8 @@ check "install exits 0" run install "$project/install.sh"
 for f in .local/lib/macos9-theme/style/styles/platinumstyle.so .local/lib/macos9-theme/decoration/org.kde.kdecoration3/platinum.so \
     .local/share/themes/Platinum/{index.theme,gtk-3.0/palette.css,gtk-3.0/gtk.css} \
     .config/plasma-workspace/env/macos9-theme.sh .local/share/color-schemes/Platinum.colors \
-    .local/share/plasma/desktoptheme/platinum/metadata.json .local/share/plasma/plasmoids/platinum.menubarpiece/metadata.json \
+    .local/share/plasma/desktoptheme/platinum/metadata.json .local/share/plasma/plasmoids/platinum.menubarpiece/metadata.json .local/share/plasma/plasmoids/platinum.trash/metadata.json \
+    .local/share/plasma/plasmoids/platinum.trash/contents/ui/main.qml \
     .local/share/plasma/look-and-feel/platinum.desktop/metadata.json .local/lib/macos9-theme/qml/Platinum/qmldir \
     .local/lib/macos9-theme/qml/Platinum/libplatinumquick.so; do
     check "installed $f" test -s "$home/$f"
@@ -227,7 +228,7 @@ done
 check "all GTK 3 artwork is installed" diff -qr "$project/gtk/Platinum/gtk-3.0/assets" "$data/themes/Platinum/gtk-3.0/assets"
 check "the Kwi and Konsole palette is installed byte for byte" cmp \
     "$project/extras/terminal/PlatinumLavender.colorscheme" "$terminal_palette"
-check "the record lists the 18 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 18
+check "the record lists the 19 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 19
 check "Kirigami's plugin link for the Qt Quick style points at KDE's" \
     bash -c "[[ \$(readlink '$home/.local/lib/macos9-theme/style/kf6/kirigami/platform/Platinum.so') == */kf6/kirigami/platform/org.kde.desktop.so ]]"
 check "install alone leaves the config files alone" same "$seed" "$(config_state)"
@@ -253,8 +254,8 @@ else
     echo "skip    the installed style plugin loads (build dev/build/styleshot first: dev/check-style.sh)"
 fi
 check "a second plain install exits 0" run install-2 "$project/install.sh"
-check "the record still lists 18 targets, nothing moved aside" \
-    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 18 ]] && ! grep -q '^displaced' '$state/installed'"
+check "the record still lists 19 targets, nothing moved aside" \
+    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 19 ]] && ! grep -q '^displaced' '$state/installed'"
 
 check "--apply exits 0" run apply env QT_PLUGIN_PATH="$plugins/style:$plugins/decoration" "$project/install.sh" --apply
 check "--apply explains the next login for Qt Quick apps" grep -Fq 'Log out and back in for Qt Quick apps' "$root/$n-apply.log"

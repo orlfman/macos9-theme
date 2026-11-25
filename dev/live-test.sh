@@ -40,6 +40,7 @@ if [[ $M9_PLASMA == 1 ]]; then
     ln -sfn "$project/plasma/platinum" "$dev/build/sandbox/data/plasma/desktoptheme/platinum"
     mkdir -p "$dev/build/sandbox/data/plasma/plasmoids"
     ln -sfn "$project/plasma/plasmoids/platinum.menubarpiece" "$dev/build/sandbox/data/plasma/plasmoids/platinum.menubarpiece"
+    ln -sfn "$project/plasma/plasmoids/platinum.trash" "$dev/build/sandbox/data/plasma/plasmoids/platinum.trash"
     rm -f "$config/plasma-org.kde.plasma.desktop-appletsrc" "$config/plasmashellrc"
     kwriteconfig6 --file "$config/plasmarc" --group Theme --key name platinum
     printf 'XDG_DESKTOP_DIR="%s"\n' "$dev/build/sandbox/desktop" > "$config/user-dirs.dirs"

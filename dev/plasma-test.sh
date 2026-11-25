@@ -32,6 +32,7 @@ ln -sfn "$project/plasma/platinum" "$sandbox/data/plasma/desktoptheme/platinum"
 mkdir -p "$sandbox/data/plasma/plasmoids" "$sandbox/data/plasma/look-and-feel"
 ln -sfn "$project/plasma/look-and-feel/platinum.desktop" "$sandbox/data/plasma/look-and-feel/platinum.desktop"
 ln -sfn "$project/plasma/plasmoids/platinum.menubarpiece" "$sandbox/data/plasma/plasmoids/platinum.menubarpiece"
+ln -sfn "$project/plasma/plasmoids/platinum.trash" "$sandbox/data/plasma/plasmoids/platinum.trash"
 mkdir -p "$sandbox/data/wallpapers"
 ln -sfn "$project/wallpapers/platinum-ribbon" "$sandbox/data/wallpapers/platinum-ribbon"
 

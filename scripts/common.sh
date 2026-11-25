@@ -166,6 +166,7 @@ terminal_scheme=PlatinumLavender.colorscheme
 terminal_scheme_path=$data/konsole/$terminal_scheme
 plasma_theme=platinum
 piece_id=platinum.menubarpiece
+trash_id=platinum.trash
 lnf_id=platinum.desktop
 wallpaper_ids=(platinum-ribbon platinum-lavender)
 icon_base_id=WhiteSur-lavender
@@ -184,6 +185,7 @@ targets=(
     "file	$gtk_theme_dir/index.theme"
     "dir	$data/plasma/desktoptheme/$plasma_theme"
     "dir	$data/plasma/plasmoids/$piece_id"
+    "dir	$data/plasma/plasmoids/$trash_id"
     "dir	$data/plasma/look-and-feel/$lnf_id"
     "dir	$quick_module"
     "link	$kirigami_link"
