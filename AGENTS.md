@@ -246,8 +246,9 @@ auditing doesn't give you the right to edit a component you haven't claimed.
 - Commits: small and self-contained, imperative subject with a component
   prefix (`decoration: draw title bar pinstripes`), a body explaining why.
   Every AI-assisted commit ends with a `Co-Authored-By:` trailer naming the
-  agent and model, e.g. `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
-  Other agents use their own name.
+  agent and model, e.g. `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`
+  or `Co-Authored-By: Gemini <176961590+gemini-code-assist[bot]@users.noreply.github.com>`
+  (so GitHub links Gemini in the Contributors list). Other agents use their own name.
 - Git identity is set per repo (`orlfman` with the GitHub noreply address).
   Don't change it.
 - **Never touch the live desktop without the user's OK**: no installing into
