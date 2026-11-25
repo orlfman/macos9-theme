@@ -1,0 +1,9 @@
+{
+    "KPackageStructure": "Wallpaper/Images",
+    "KPlugin": {
+        "Authors": [{ "Name": "orlfman" }],
+        "Description": "Soft lavender and blue glass arcs (user-supplied image)",
+        "Id": "platinum-glass",
+        "Name": "Platinum Glass"
+    }
+}

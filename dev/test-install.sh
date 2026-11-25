@@ -173,7 +173,7 @@ theme_files_gone() {
     local p
     shopt -s nullglob
     for p in "$home/.local/lib/macos9-theme" "$data"/plasma/*/platinum* "$data/color-schemes/Platinum.colors" "$data/konsole/PlatinumLavender.colorscheme" \
-        "$data/wallpapers/platinum-ribbon" "$data/wallpapers/platinum-lavender" \
+        "$data/wallpapers/platinum-ribbon" "$data/wallpapers/platinum-lavender" "$data/wallpapers/platinum-waves" "$data/wallpapers/platinum-glass" \
         "$data/icons/WhiteSur-lavender" "$data/icons/WhiteSur-lavender-light" "$data/icons/WhiteSur-lavender-dark" \
         "$config/plasma-workspace/env/macos9-theme.sh" "$config"/plasma-workspace/env/macos9-theme-cleanup*.sh; do
         if [[ -e $p || -L $p ]]; then
@@ -201,7 +201,7 @@ before=$(snapshot)
 run dry "$project/install.sh" --dry-run
 check "install --dry-run changes nothing" same "$before" "$(snapshot)"
 check "install --dry-run says what it would do" grep -q "would copy your config files" "$root/$n-dry.log"
-for id in platinum-ribbon platinum-lavender; do
+for id in platinum-ribbon platinum-lavender platinum-waves platinum-glass; do
     check "install --dry-run lists $id" grep -Fq "would install $data/wallpapers/$id/" "$root/$n-dry.log"
 done
 check "install --dry-run lists the terminal palette" grep -Fq "would install $terminal_palette" "$root/$n-dry.log"
@@ -220,7 +220,7 @@ for f in .local/lib/macos9-theme/style/styles/platinumstyle.so .local/lib/macos9
     .local/lib/macos9-theme/qml/Platinum/libplatinumquick.so; do
     check "installed $f" test -s "$home/$f"
 done
-for id in platinum-ribbon platinum-lavender; do
+for id in platinum-ribbon platinum-lavender platinum-waves platinum-glass; do
     check "$id is installed byte for byte" cmp \
         "$project/wallpapers/$id/contents/images/3840x2160.jxl" \
         "$data/wallpapers/$id/contents/images/3840x2160.jxl"
@@ -228,7 +228,7 @@ done
 check "all GTK 3 artwork is installed" diff -qr "$project/gtk/Platinum/gtk-3.0/assets" "$data/themes/Platinum/gtk-3.0/assets"
 check "the Kwi and Konsole palette is installed byte for byte" cmp \
     "$project/extras/terminal/PlatinumLavender.colorscheme" "$terminal_palette"
-check "the record lists the 19 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 19
+check "the record lists the 21 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 21
 check "Kirigami's plugin link for the Qt Quick style points at KDE's" \
     bash -c "[[ \$(readlink '$home/.local/lib/macos9-theme/style/kf6/kirigami/platform/Platinum.so') == */kf6/kirigami/platform/org.kde.desktop.so ]]"
 check "install alone leaves the config files alone" same "$seed" "$(config_state)"
@@ -254,8 +254,8 @@ else
     echo "skip    the installed style plugin loads (build dev/build/styleshot first: dev/check-style.sh)"
 fi
 check "a second plain install exits 0" run install-2 "$project/install.sh"
-check "the record still lists 19 targets, nothing moved aside" \
-    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 19 ]] && ! grep -q '^displaced' '$state/installed'"
+check "the record still lists 21 targets, nothing moved aside" \
+    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 21 ]] && ! grep -q '^displaced' '$state/installed'"
 
 check "--apply exits 0" run apply env QT_PLUGIN_PATH="$plugins/style:$plugins/decoration" "$project/install.sh" --apply
 check "--apply explains the next login for Qt Quick apps" grep -Fq 'Log out and back in for Qt Quick apps' "$root/$n-apply.log"
@@ -688,7 +688,7 @@ check "  it removed the other theme files" bash -c '
     next_login "$2"
     shopt -s nullglob
     for p in "$3/.local/lib/macos9-theme" "$4"/plasma/*/platinum* "$4/color-schemes/Platinum.colors" \
-        "$4/wallpapers/platinum-ribbon" "$4/wallpapers/platinum-lavender" \
+        "$4/wallpapers/platinum-ribbon" "$4/wallpapers/platinum-lavender" "$4/wallpapers/platinum-waves" "$4/wallpapers/platinum-glass" \
         "$4/icons/WhiteSur-lavender-light" "$4/icons/WhiteSur-lavender-dark" \
         "$2/plasma-workspace/env/macos9-theme.sh" "$2"/plasma-workspace/env/macos9-theme-cleanup*.sh; do
         [[ ! -e $p && ! -L $p ]] || exit 1

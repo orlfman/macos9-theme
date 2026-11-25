@@ -1,0 +1,9 @@
+{
+    "KPackageStructure": "Wallpaper/Images",
+    "KPlugin": {
+        "Authors": [{ "Name": "orlfman" }],
+        "Description": "Lavender waves with an embossed face (user-supplied image)",
+        "Id": "platinum-waves",
+        "Name": "Platinum Waves"
+    }
+}

@@ -66,11 +66,12 @@ the dock (like Mac OS 9). `--dry-run` shows what either step would do. On a
 first switch from Breeze, log out and back in after applying so Qt Quick
 apps start with Platinum controls.
 
-To try either wallpaper on an existing installation, rerun `./install.sh`
-and choose **Pastel Ribbon Landscape** or **Lavender Desktop Pattern** in
-Plasma's desktop wallpaper settings. Both 3840 × 2160 JPEG XL images use
+To try another wallpaper on an existing installation, rerun `./install.sh`
+and choose **Pastel Ribbon Landscape**, **Lavender Desktop Pattern**,
+**Platinum Waves** or **Platinum Glass** in Plasma's desktop wallpaper
+settings. All four 3840 × 2160 JPEG XL images use
 Qt's JPEG XL decoder, provided by `kimageformats` on Arch. The
-`--apply` option checks both images and warns before switching if Qt
+`--apply` option checks all four images and warns before switching if Qt
 cannot open them.
 
 Your config files (panels, colors, style, decoration, and the GTK

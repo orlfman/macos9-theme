@@ -279,7 +279,7 @@ restored_widgets=$(widgets)
 echo "info    their widgets after uninstall: $restored_widgets"
 check "  with their widgets and the clock's setting" same "$before_widgets" "$restored_widgets"
 check "both original wallpapers are back" same "$before_backgrounds" "$(desktop_backgrounds)"
-for id in platinum-ribbon platinum-lavender; do
+for id in platinum-ribbon platinum-lavender platinum-waves platinum-glass; do
     check "uninstall removed $id" test ! -e "$XDG_DATA_HOME/wallpapers/$id"
 done
 check "every config and GTK file is back byte for byte" same "$before_files" "$(files_state)"
@@ -315,6 +315,8 @@ check "dry run keeps the selected packages" bash -c "'$project/uninstall.sh' --d
 check "picker-only uninstall reports the deferred removal" bash -c "'$project/uninstall.sh' > '$root/picker-undo.log' 2>&1; [[ \$? == 1 ]]"
 check "both selected wallpaper files are kept" bash -c "[[ -s '$XDG_DATA_HOME/wallpapers/platinum-ribbon/contents/images/3840x2160.jxl' &&
     -s '$XDG_DATA_HOME/wallpapers/platinum-lavender/contents/images/3840x2160.jxl' ]]"
+check "the two unselected wallpaper packages are removed" bash -c "[[ ! -e '$XDG_DATA_HOME/wallpapers/platinum-waves' &&
+    ! -e '$XDG_DATA_HOME/wallpapers/platinum-glass' ]]"
 check "picker-only uninstall keeps the panel layout" same "$before_panels" "$(panels)"
 shell_js 'desktops().forEach(function (d) { d.wallpaperPlugin = "org.kde.color"; });' > "$root/picker-clear.log"
 check "picker-only uninstall can finish after changing the wallpapers" bash -c "'$project/uninstall.sh' > '$root/picker-undo-2.log' 2>&1"
