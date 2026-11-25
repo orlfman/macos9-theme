@@ -2,6 +2,21 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-24, Claude (Opus 5.5) — Trash state folder matching (#234)
+
+- `TrashState.qml` finds `Trash` and `files` by name (nameFilters ignore folders) and idles at `/` instead of `$HOME`. `dev/check-trash.sh` now uses a realistic data folder. Results: check-trash 6/6, check-plasma 19/19, test-install-live 41/41. Nothing committed.
+
+## 2026-11-24, Claude (Opus 5.5) — fix Platinum Trash audit findings
+
+- Added `TrashState.qml` (event-driven trash state, no polling) and `dev/check-trash.sh`, and reworked the widget's commands, drops, layout and accessibility for #228–233. See AUDIT.md.
+- Results: `check-trash` 6/6, `check-plasma` 19/19, `test-install-live` 41/41, `test-install` 747/747. Nothing committed or installed.
+
+## 2026-11-24, Claude (Opus 5.5) — Platinum Trash widget for the dock
+
+- Added `plasma/plasmoids/platinum.trash` and made the default dock use it, because Plasma's Trash widget forces a monochrome symbolic icon in panels and fills the panel's thickness. Installed and removed with the other Platinum widgets (`scripts/common.sh`, `install.sh`); nested test sessions link it like the menu bar widget.
+- Results: `check-plasma` 19/19 with 0 differing pixels, `test-install-live` 41/41 with the new dock assertion. See AUDIT.md for #225–227.
+- Only a fresh `install.sh --apply` changes the dock layout. The user's live dock and nothing else changed. Nothing committed.
+
 ## 2026-11-24, Codex (GPT-6.2) — combine the Firefox menu and loading indicator
 
 The native menu shows the Firefox logo over moving lavender stripes while the selected tab loads. Verified with a live local page load.
