@@ -209,7 +209,7 @@ QML
 wallpaper_matches() {
     QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software "$dev/build/quickshot" \
         "$root/wallpaper.qml" "$root/wallpaper-expected.png" \
-        "$XDG_DATA_HOME/wallpapers/platinum-ribbon/contents/images/3840x2160.jxl" || return 1
+        "$XDG_DATA_HOME/wallpapers/platinum-lavender/contents/images/3840x2160.jxl" || return 1
     spectacle -b -n -f -o "$root/wallpaper-desktop.png" || return 1
     python3 -I - "$root" << 'PYEND'
 from pathlib import Path
@@ -220,7 +220,9 @@ root = Path(sys.argv[1])
 expected = Image.open(root / "wallpaper-expected.png").convert("RGB")
 actual = Image.open(root / "wallpaper-desktop.png").convert("RGB")
 assert expected.size == (1280, 800) and actual.size == (2560, 800)
-assert max(ImageStat.Stat(expected).stddev) > 10, "reference wallpaper did not load"
+# (The Lavender Desktop Pattern is subtle: its spread is about 9, a blank
+# image's 0.)
+assert max(ImageStat.Stat(expected).stddev) > 5, "reference wallpaper did not load"
 for screen in (0, 1):
     for box in ((80, 230, 200, 350), (1090, 470, 1210, 590)):
         x0, y0, x1, y1 = box
@@ -230,7 +232,7 @@ for screen in (0, 1):
         assert max(error) < 4, (screen, box, error)
 PYEND
 }
-check "--apply renders Pastel Ribbon Landscape on both screens" wallpaper_matches
+check "--apply renders Lavender Desktop Pattern on both screens" wallpaper_matches
 after_files=$(files_state)
 check "install.sh again after the switch exits 0 (an update; no links in the copied folders)" \
     bash -c "'$project/install.sh' > '$root/install-2.log' 2>&1"

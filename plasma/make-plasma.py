@@ -611,7 +611,7 @@ def write_lookandfeel(base):
         "[kdeglobals][General]\nColorScheme=Platinum\n\n"
         "[kdeglobals][Icons]\nTheme=WhiteSur-lavender\n\n"
         "[plasmarc][Theme]\nname=platinum\n\n"
-        "[Wallpaper]\nImage=platinum-ribbon\n\n"
+        "[Wallpaper]\nImage=platinum-lavender\n\n"
         "[kcminputrc][Mouse]\ncursorTheme=macOS-cursors\n\n"
         "[kwinrc][org.kde.kdecoration2]\nlibrary=platinum\ntheme=\n")
     layout = (Path(__file__).resolve().parent / "layout.js").read_text()

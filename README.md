@@ -60,7 +60,7 @@ style and the window decoration), and switch:
 ```
 
 `--apply` applies the Platinum global theme. It replaces your panels with
-the menu bar and the dock, sets the Pastel Ribbon Landscape wallpaper, and
+the menu bar and the dock, sets the Lavender Desktop Pattern wallpaper, and
 puts the close box on the left. Only the main screen gets the menu bar and
 the dock (like Mac OS 9). `--dry-run` shows what either step would do. On a
 first switch from Breeze, log out and back in after applying so Qt Quick

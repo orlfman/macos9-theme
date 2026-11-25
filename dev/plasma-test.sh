@@ -35,6 +35,7 @@ ln -sfn "$project/plasma/plasmoids/platinum.menubarpiece" "$sandbox/data/plasma/
 ln -sfn "$project/plasma/plasmoids/platinum.trash" "$sandbox/data/plasma/plasmoids/platinum.trash"
 mkdir -p "$sandbox/data/wallpapers"
 ln -sfn "$project/wallpapers/platinum-ribbon" "$sandbox/data/wallpapers/platinum-ribbon"
+ln -sfn "$project/wallpapers/platinum-lavender" "$sandbox/data/wallpapers/platinum-lavender"
 
 # run.sh keeps the platinum scheme's config here. Start from a clean
 # layout every time (sandbox files only).

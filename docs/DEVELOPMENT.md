@@ -102,7 +102,7 @@ global menu title (`dev/build/fakeinput`), opens the launcher, and saves
 own empty Desktop folder. With `M9_APPLY=lnf` it applies the
 look-and-feel package (`plasma-apply-lookandfeel --resetLayout`, sandbox
 only) instead of evaluating the layout, and prints what the package set. That
-mode previews Pastel Ribbon Landscape. The panel artwork comparisons use
+mode previews Lavender Desktop Pattern. The panel artwork comparisons use
 a solid backdrop.
 `dev/check-plasma.sh` runs it and compares the bar, its rounded ends, the
 divider, an open title and the dock's top corners with the captures. Plasma needs
@@ -277,7 +277,7 @@ back on their screens with their widgets and a widget setting of the
 user's (a clock with seconds), both screens have their previous wallpapers,
 and every config and GTK file is back byte for byte. The same test checks
 that installing alone leaves both wallpapers in place and switching to
-the global theme renders Pastel Ribbon Landscape on both screens. The
+the global theme renders Lavender Desktop Pattern on both screens. The
 picker-only case verifies that uninstall keeps both selected wallpapers
 under Breeze and removes their packages after the selections change. The
 suite runs `install.sh` again after the switch (an update), and
