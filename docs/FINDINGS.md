@@ -643,6 +643,28 @@ Verified on GTK 4.24.1 in nested KWin 6.8.3 (Vulkan) and Broadway.
   here). With equal negative top and bottom margins and its cover centered on
   whole pixels, the title band lines up with the stripes for any height.
 
+### GTK 3 title-bar boxes (2026-11-25, Claude Opus 5.5)
+
+- GTK 3 sized each title button around its hidden 16 px icon (20 × 16), so
+  the 13 px box art sat on a half pixel and was blended on every backend;
+  no captured box matched its artwork. A −2 px margin on the hidden icon
+  keeps the button at 13 px and the boxes now match their artwork exactly.
+- Inactive GTK 3 header bars no longer draw boxes, matching the KWin
+  decoration and GTK 4; the buttons keep their place and still respond.
+  This replaces the flat inactive boxes recorded above.
+
+### GTK 4 menu buttons, level bars and alerts (2026-11-25, Claude Opus 5.5)
+
+- A GtkMenuButton without a menu model or popover is insensitive, so it
+  draws its disabled look.
+- The menu button's `arrow` is a built-in icon sized by `-gtk-icon-size`;
+  `min-width`/`min-height` alone leave it 16 px.
+- GtkLevelBar draws a full-width `block.empty` under `block.filled`, and the
+  stock rules use `levelbar > trough > block...` selectors; a reset of the
+  end segments' radius must not also reset their fill.
+- GTK 4 alerts have only an empty `box.titlebar` and no drag area, so the
+  movable alert's strip is drawn by the window border and cannot move it.
+
 ## Firefox 160.0.1 chrome and `userChrome.css` discovery (2026-11-24, Antigravity Gemini 4 Carbon)
 
 Verified in isolated nested `kwin_wayland --virtual` via `dev/firefox-test.sh` and `dev/check-firefox-m1.sh` (**46/46 PASS**, `dev/build/firefox-m1.zVJtP1/probe-report.json`):

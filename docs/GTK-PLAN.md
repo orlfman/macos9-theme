@@ -111,18 +111,28 @@ frame with its hard shadow, the 22-row title bar with etched pinstripes and
 look, and a frameless maximized or tiled bar. `gen-assets.py` renders the
 frame and title-bar slices with a Python port of the decoration's
 `paintFrame()`. App widgets share the box row; stripes show only in the gaps.
-Tooltips use the Help Balloon outline, and GtkAlertDialog uses the plain modal
-frame around the `#DDDDDD` dialog face.
+Tooltips use the Help Balloon outline. GtkAlertDialog is the movable alert
+from `dialog-save-changes.png`: the pinstriped drag strip, `#DDDDDD` ring and
+bevels around a white body (the strip cannot be dragged; GTK gives alerts no
+drag area).
 
 `dev/check-gtk4.sh` gains a `windows` fixture. Both backends check the balloon
 outline against `help-balloon.png` and the title-bar metrics. Wayland compares
 compositor captures of an active, inactive and maximized header-bar window
 with `window-document-active/inactive.png`, including the stripe ends around
 the title, an app bar with push buttons, the alert frame against
-`dialog-modal-plain.png`, the zoom and close actions, and 150%/200% output.
+`dialog-save-changes.png`, the zoom and close actions, and 150%/200% output.
 
-Next is GtkLevelBar, which still uses GTK's stock colors; GtkMenuButton in
-header bars is also still stock. Installation is scheduled for Milestone 6.
+## Milestone 4 menu buttons and level bars
+
+`gtk-4.0/menubuttons-levels.css`: GtkMenuButton uses the measured push-button
+frame, pressed while its menu is open, with the submenu triangle turned to
+point down (generated GTK 4 assets). GtkLevelBar uses the progress tube; low,
+high and full levels all fill with Lavender, and discrete levels are separate
+segments. A level bar at 101/184 matches `progress-determinate-55.png` exactly.
+
+Remaining for the plain GTK 4 port: user review on the desktop. Installation
+is scheduled for Milestone 6, then libadwaita (step 5).
 
 ## Installer contract for milestone 6
 

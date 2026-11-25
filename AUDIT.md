@@ -3,11 +3,28 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+**GTK 4 movable alert, menu buttons, level bars, 2026-11-25.** Exact against `dialog-save-changes.png` and `progress-determinate-55.png`; 205/205 Wayland, 133/133 Broadway.
+
+**GTK 3 title-bar boxes, 2026-11-25.** Crisp boxes, none when inactive; GTK 3 suites all pass.
+
 **GTK 4 header bars/tooltips/alerts self-test, 2026-11-25.** Frame, title bar, balloon and alert frame exact against the captures; 201/201 Wayland, 127/127 Broadway; no open findings.
 
 **GTK 4 tabs/scales/progress/scrollbars self-test, 2026-11-25.** All Batch 2 reference crops exact on both GTK 4 renderers; 124/124 Broadway, 162/162 Wayland; no open findings. Independent audit and user review pending.
 
 **Bottom tabs independent audit, 2026-11-25.** #236–239 all verified fixed (`dev/check-tabs.sh` 50/50, `PE_FrameTabBarBase` AA diffs 0/10, `-Wall -Wextra -Wshadow` 0 warnings, `dev/check-quick.sh` 29/29, ASan/UBSan clean). No open tab findings. User desktop review is pending.
+
+## 2026-11-25, Claude (Opus 5.5) — GTK 4 movable alert, menu buttons and level bars (self-test)
+
+- Audited: working tree (`windows.css`, `menubuttons-levels.css`, GTK 4 assets, `gen-assets.py`, `dev/gtk4-check/`). Findings: none open.
+- Reference comparisons (tolerance 0): GtkAlertDialog strip ends, left and right edges and bottom corners against `dialog-save-changes.png` (Wayland compositor capture); GtkLevelBar 188×14 at 101/184 against `progress-determinate-55.png` (Broadway and Wayland); menu triangles against their generated artwork. All 0 differing pixels.
+- Checks: `dev/check-gtk4.sh plasma` 205/205, `broadway` 133/133, ASan/UBSan 133/133; injected faults rejected: plain modal alert, stock empty level block, stock arrow size. GTK 3 47/47, 38/38, 61/61.
+- Limits: alert button layout is GTK's (evenly spread, not right-aligned); inverted level bars not checked; not seen by the user.
+
+## 2026-11-25, Claude (Opus 5.5) — GTK 3 title-bar boxes (self-test)
+
+- Audited: working tree (`gtk/Platinum/gtk-3.0/gtk.css`, `dev/gtk3-m3b2/verify.py`). Found and fixed in the same change: GTK 3 title-bar boxes were drawn on a half pixel (blended, 0 exact `#222222` frame pixels in the Wayland capture); now an exact 13 × 13 match of `titlebutton-close.png` in `m3b2-csd-active.png`. Findings: none open.
+- Checks: GTK 3 Batch 2 62/62 Wayland, 61/61 Broadway; Milestone 2 51/51, 47/47; Batch 1 39/39, 38/38. The previous CSS fails the new box check (0 crisp box pixels).
+- Limits: only the close box was matched against its artwork; not seen by the user.
 
 ## 2026-11-25, Claude (Opus 5.5) — GTK 4 header bars, tooltips and alerts (self-test)
 

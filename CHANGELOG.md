@@ -2,6 +2,20 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-25, Claude (Opus 5.5) — GTK 4 movable alert, menu buttons and level bars
+
+- Alerts (`windows.css`): the movable alert from `dialog-save-changes.png` replaces the plain modal frame: 22-row pinstriped strip, `#DDDDDD` ring, bevels and shadow as the window border, white body (user's choice). `gen-assets.py` `render_movable_alert()`; the GTK 4 `modal-frame` asset is removed.
+- New `gtk/Platinum/gtk-4.0/menubuttons-levels.css`: menu buttons with the push-button frame and a down-pointing menu triangle (`menu-arrow-down-*` assets); level bars as the progress tube, Lavender for every level, discrete segments.
+- `dev/gtk4-check`: level bars, menu buttons (with menus) and a header-bar menu button in the fixture; checks for the alert against `dialog-save-changes.png` and its white body, the level bar against `progress-determinate-55.png`, the tube colors and both triangles.
+- Results: Wayland 205/205, Broadway 133/133 (also ASan/UBSan, 0 diagnostics), three injected faults rejected, GTK 3 47/47, 38/38, 61/61. Nothing committed. Claims released.
+
+## 2026-11-25, Claude (Opus 5.5) — GTK 3 inactive title-bar boxes
+
+- `gtk/Platinum/gtk-3.0/gtk.css`: inactive header bars show no boxes, matching KWin and GTK 4 (user's request). Also fixed blurred boxes: the hidden 16 px icon made each button 20 × 16 and centered the 13 px art on a half pixel; a −2 px icon margin keeps the button 13 px, and the close box now matches its artwork exactly.
+- `dev/gtk3-m3b2/verify.py`: the CSD check requires crisp box frames on the active bar and none in the inactive box areas; the previous CSS fails it.
+- GTK 3 suites: 47/47 and 51/51, 38/38 and 39/39, 61/61 and 62/62 (Broadway and Wayland).
+- Recorded the measured dialog bodies in `docs/REFERENCE.md`: alerts are white inside (the movable alert also has a pinstriped drag strip); Standard File is `#DDDDDD`. The GTK 4 alert currently uses the plain modal frame on `#DDDDDD`; changing it is the user's call. Nothing committed. Claims released.
+
 ## 2026-11-25, Claude (Opus 5.5) — GTK 4 header bars, tooltips and alerts
 
 - New `gtk/Platinum/gtk-4.0/windows.css`: header-bar (CSD) windows drawn as the KWin Platinum decoration (frame, shadow, 22-row title bar, pinstripes with their offset ends, boxes 4 px in and 3 px apart, no boxes when inactive, frameless maximized/tiled bar), app widgets on the box row with stripes only in the gaps, the Help Balloon tooltip, and the plain modal frame on GtkAlertDialog.

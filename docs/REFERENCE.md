@@ -188,6 +188,15 @@ current item). Measured.
 | Plain modal dialog frame | `dialog-modal-plain.png` ("About Balloon Help", black outline x=766–1151, y=194–382) | 1 px black outline; inside it `#BBBBBB` on the top row and left column; `#555555` on the right column and bottom row, `#999999` one in from those (the right column from 3 rows down, the bottom row from 3 columns in), with one `#BBBBBB` pixel where each meets the light edge (top right, bottom left); a 1 px black shadow right of and below the outline, starting 2 px in. Inside white (the app's body). Used for Qt Quick dialogs (`PE_PlatinumModalFrame`; check-style `modal-frame-*`) |
 | Movable alert frame | `dialog-save-changes.png` (x=537–902) | the same right and bottom edges (`#999999`, `#555555`, black, black shadow); the light left edge is `#DDDDDD`; a pinstriped drag strip on top (black, white, `#CCCCCC`×2, `#777777`/white stripes, `#CCCCCC`×4, `#999999`, black). Not used yet |
 
+Dialog bodies (measured 2026-11-25, Claude): the alerts are white inside,
+dialogs with controls are `#DDDDDD`.
+
+| Capture | Frame | Body |
+|---------|-------|------|
+| `dialog-save-changes.png` (movable alert, frame x=536–903, y=195–344) | 22-row pinstriped drag strip (black, white, `#CCCCCC`×2, white/`#777777` stripes on rows 4–15, `#CCCCCC`×4, `#999999`, black); then black, `#DDDDDD` left column, `#999999`/`#555555`/black right, `#999999` then `#555555` bottom rows, black, black shadow | white, with a 1 px `#DDDDDD` ring inside the frame |
+| `dialog-modal-plain.png` (About Balloon Help) | plain modal frame | white |
+| `dialog-file-open.png` (Standard File, frame x=490–949, y=297–490) | plain modal frame: black, `#BBBBBB`, one white column/row, then the body; `#999999`, `#555555`, black and shadow right and bottom | `#DDDDDD` |
+
 ## Text colors (for the color scheme)
 
 | What | Value | Source |
