@@ -10,7 +10,7 @@
 #   - the Platinum color scheme, Plasma style, menu bar piece widget,
 #     the Platinum Lavender terminal palette for Kwi and Konsole,
 #     WhiteSur Lavender icon themes, bundled cursors, and the Platinum
-#     global theme (menu bar, dock, and wallpaper)
+#     global theme (menu bar, dock, and wallpaper), and the named GTK 3 theme
 # Run it again to update. When Platinum is not your active global theme,
 # nothing is switched to unless you ask (--apply). When Platinum is already
 # your active global theme, a plain install also selects WhiteSur-lavender
@@ -119,6 +119,10 @@ for wallpaper_id in "${wallpaper_ids[@]}"; do
         die "couldn't find the Platinum wallpaper package in $wallpaper_source"
 done
 
+gtk_source=$here/gtk/Platinum
+python3 -I "$here/scripts/gtk_theme.py" validate "$gtk_source" || die "GTK 3 package preflight failed"
+[[ ! -L $gtk_theme_dir ]] || die "$gtk_theme_dir is a symbolic link; cannot install into it"
+
 terminal_scheme_source=$here/extras/terminal/$terminal_scheme
 [[ -r $terminal_scheme_source && -f $terminal_scheme_source ]] ||
     die "couldn't find the Platinum Lavender terminal palette at $terminal_scheme_source; nothing was installed"
@@ -219,6 +223,9 @@ if ((dry_run)); then
 else
     build=$(mktemp -d)
     trap 'rm -rf "${build:-/nonexistent}"' EXIT
+    # Package GTK 3 with its shared palette and metadata for named-theme lookup.
+    mkdir -p "$build/gtk-theme"
+    cp -R "$gtk_source/"{index.theme,palette.css,gtk-3.0} "$build/gtk-theme/"
     mkdir -p "$build/cursors" "$build/icons"
     tar -xJf "$cursor_archive" -C "$build/cursors" "$black_cursor_id" ||
         die "couldn't unpack the bundled cursor theme; nothing was installed"
@@ -382,6 +389,22 @@ place_dir "$build/cursors/$black_cursor_id" "$cursor_theme_dir"
 say "Installed the cursors into $cursor_theme_dir"
 place_file "$here/colors/$scheme_name.colors" "$data/color-schemes/$scheme_name.colors" 644
 say "Installed the color scheme \"Platinum\""
+if manifest_lists dir "$gtk_theme_dir"; then
+    # Prior installs recorded the entire directory, including displaced originals.
+    place_dir "$build/gtk-theme" "$gtk_theme_dir"
+else
+    # Other toolkits can share this theme name. Own only our GTK 3 resources.
+    if ((!dry_run)); then
+        cp "$gtk_source/palette.css" "$build/gtk-theme/gtk-3.0/palette.css"
+        sed -i 's|url("../palette.css")|url("palette.css")|' "$build/gtk-theme/gtk-3.0/gtk.css"
+    fi
+    if [[ ! -e $gtk_theme_dir/index.theme && ! -L $gtk_theme_dir/index.theme ]] ||
+        manifest_lists file "$gtk_theme_dir/index.theme"; then
+        place_file "$gtk_source/index.theme" "$gtk_theme_dir/index.theme" 644
+    fi
+    place_dir "$build/gtk-theme/gtk-3.0" "$gtk_theme_dir/gtk-3.0"
+fi
+say "Installed the Platinum GTK 3 theme. To use it for one app, launch it with GTK_THEME=Platinum."
 place_file "$terminal_scheme_source" "$terminal_scheme_path" 644
 say "Installed the Platinum Lavender terminal palette for Kwi and Konsole"
 place_dir "$here/plasma/platinum" "$data/plasma/desktoptheme/$plasma_theme"

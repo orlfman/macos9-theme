@@ -533,6 +533,34 @@ if ((${#managed_icon_ids[@]})); then
     fi
 fi
 
+# A manually selected GTK theme must remain usable after any config restore.
+gtk_target=$gtk_theme_dir/gtk-3.0
+gtk_css=gtk.css
+if manifest_lists dir "$gtk_theme_dir"; then
+    gtk_target=$gtk_theme_dir
+    gtk_css=gtk-3.0/gtk.css
+fi
+if manifest_lists dir "$gtk_target" && is_kind dir "$gtk_target"; then
+    saved=""
+    if [[ -n ${first_aside[$gtk_target]:-} ]]; then
+        IFS=$'	' read -r _ _ saved _ <<< "${first_aside[$gtk_target]}"
+    fi
+    if [[ -z $saved || -L $saved || ! -f $saved/$gtk_css || ! -s $saved/$gtk_css ]] || ! installed_unchanged dir "$gtk_target"; then
+        gtk_args=("$config_home" "$home")
+        if ((dry_run && restored)); then
+            gtk_args+=("$backup")
+        fi
+        if ! gtk_selection=$(python3 -I "$here/scripts/gtk_theme.py" selected "${gtk_args[@]}"); then
+            gtk_selection="unreadable GTK settings"
+        fi
+        if [[ -n $gtk_selection ]]; then
+            kept_packages[$gtk_target]=selected
+            kept_packages[$gtk_theme_dir/index.theme]=selected
+            warn "Keeping the Platinum GTK 3 theme ($gtk_selection). Choose another GTK style or resolve the unreadable settings, then rerun uninstall.sh."
+        fi
+    fi
+fi
+
 # A terminal profile can select the palette independently of the global theme.
 # Check the configuration which survives uninstall, including inactive profiles.
 terminal_palette_selection() {
@@ -783,7 +811,7 @@ if ((!dry_run)); then
 else
     plan "remove the install record $manifest"
 fi
-say "Removed the Platinum style (widgets and Qt Quick), decoration, color scheme, Plasma style, global theme, wallpapers, cursors, icons, terminal palette and login script"
+say "Removed the Platinum style (widgets and Qt Quick), decoration, color scheme, Plasma style, global theme, wallpapers, cursors, icons, GTK 3 theme, terminal palette and login script"
 if ((shell_failed)); then
     warn "$shell_failed_message"
     exit 1

@@ -161,6 +161,7 @@ find_kde_quick() {
 env_script=$config_home/plasma-workspace/env/macos9-theme.sh
 
 scheme_name=Platinum
+gtk_theme_dir=$data/themes/Platinum
 terminal_scheme=PlatinumLavender.colorscheme
 terminal_scheme_path=$data/konsole/$terminal_scheme
 plasma_theme=platinum
@@ -178,6 +179,9 @@ targets=(
     "file	$env_script"
     "file	$data/color-schemes/$scheme_name.colors"
     "file	$terminal_scheme_path"
+    "dir	$gtk_theme_dir" # legacy whole-theme installs
+    "dir	$gtk_theme_dir/gtk-3.0"
+    "file	$gtk_theme_dir/index.theme"
     "dir	$data/plasma/desktoptheme/$plasma_theme"
     "dir	$data/plasma/plasmoids/$piece_id"
     "dir	$data/plasma/look-and-feel/$lnf_id"

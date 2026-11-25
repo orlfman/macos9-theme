@@ -84,6 +84,8 @@ tooltips and dialogs follow. Installation is scheduled for Milestone 6.
 
 ## Installer contract for milestone 6
 
+GTK 3 file packaging and manifest-based undo are implemented in the main scripts. Launching an app with `GTK_THEME=Platinum` loads the installed theme. GTK 4 packaging and automatic selection are still pending.
+
 Claim packaging before changing the scripts. A plain upgrade installs the named theme files and preserves the current GTK widget-theme choice. Enable selection on explicit apply only after milestone 1 demonstrates a viable route and the following recovery tests pass.
 
 - Under the existing installer lock, journal pre-adoption values, unset versus explicit keys, original file contents/link metadata and intended changes before mutation. Track GTK 3 and 4 settings.ini, GTK 2 gtkrc, xsettingsd and the GSettings gtk-theme user value. Use isolated persistent dconf for tests. Capture generated CSS/imports and the post-apply state so undo can identify subsequent edits. Share the existing icon transaction's ownership rules for icon keys.

@@ -212,6 +212,7 @@ check "install --apply --dry-run shows the switch" grep -q "would run plasma-app
 
 check "install exits 0" run install "$project/install.sh"
 for f in .local/lib/macos9-theme/style/styles/platinumstyle.so .local/lib/macos9-theme/decoration/org.kde.kdecoration3/platinum.so \
+    .local/share/themes/Platinum/{index.theme,gtk-3.0/palette.css,gtk-3.0/gtk.css} \
     .config/plasma-workspace/env/macos9-theme.sh .local/share/color-schemes/Platinum.colors \
     .local/share/plasma/desktoptheme/platinum/metadata.json .local/share/plasma/plasmoids/platinum.menubarpiece/metadata.json \
     .local/share/plasma/look-and-feel/platinum.desktop/metadata.json .local/lib/macos9-theme/qml/Platinum/qmldir \
@@ -223,9 +224,10 @@ for id in platinum-ribbon platinum-lavender; do
         "$project/wallpapers/$id/contents/images/3840x2160.jxl" \
         "$data/wallpapers/$id/contents/images/3840x2160.jxl"
 done
+check "all GTK 3 artwork is installed" diff -qr "$project/gtk/Platinum/gtk-3.0/assets" "$data/themes/Platinum/gtk-3.0/assets"
 check "the Kwi and Konsole palette is installed byte for byte" cmp \
     "$project/extras/terminal/PlatinumLavender.colorscheme" "$terminal_palette"
-check "the record lists the 16 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 16
+check "the record lists the 18 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 18
 check "Kirigami's plugin link for the Qt Quick style points at KDE's" \
     bash -c "[[ \$(readlink '$home/.local/lib/macos9-theme/style/kf6/kirigami/platform/Platinum.so') == */kf6/kirigami/platform/org.kde.desktop.so ]]"
 check "install alone leaves the config files alone" same "$seed" "$(config_state)"
@@ -251,8 +253,8 @@ else
     echo "skip    the installed style plugin loads (build dev/build/styleshot first: dev/check-style.sh)"
 fi
 check "a second plain install exits 0" run install-2 "$project/install.sh"
-check "the record still lists 16 targets, nothing moved aside" \
-    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 16 ]] && ! grep -q '^displaced' '$state/installed'"
+check "the record still lists 18 targets, nothing moved aside" \
+    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 18 ]] && ! grep -q '^displaced' '$state/installed'"
 
 check "--apply exits 0" run apply env QT_PLUGIN_PATH="$plugins/style:$plugins/decoration" "$project/install.sh" --apply
 check "--apply explains the next login for Qt Quick apps" grep -Fq 'Log out and back in for Qt Quick apps' "$root/$n-apply.log"
@@ -290,6 +292,7 @@ check "uninstall left only the pass-through for the session's running apps" \
     bash -c "[[ \$(find '$home/.local/lib' '$config/plasma-workspace' ! -type d | sort | tr '\n' ' ') == '$config/plasma-workspace/env/macos9-theme-cleanup.sh $home/.local/lib/macos9-theme/qml/Platinum/qmldir $home/.local/lib/macos9-theme/style/kf6/kirigami/platform/Platinum.so ' ]]"
 next_login
 check "uninstall removed the theme's files" theme_files_gone
+check "uninstall removed the GTK theme and its empty parent" test ! -e "$data/themes"
 check "uninstall removed the empty terminal palette directory" test ! -e "$data/konsole"
 check "after the next login, the folders it made are gone too" bash -c "[[ ! -e '$home/.local/lib' && ! -e '$config/plasma-workspace' && ! -e '$data/plasma' ]]"
 check "uninstall removed the record" no_record_left
@@ -309,6 +312,8 @@ fresh "finding 4: things in the way of an install target are kept"
 mkdir -p "$data/color-schemes" "$data/plasma/desktoptheme/platinum" "$data/konsole"
 printf 'mine' > "$data/color-schemes/Platinum.colors"
 printf '[General]\nDescription=My Platinum Lavender\n' > "$terminal_palette"
+mkdir -p "$data/themes/Platinum"
+printf 'original theme' > "$data/themes/Platinum/original"
 printf 'extra' > "$data/plasma/desktoptheme/platinum/extra.txt"
 before=$(snapshot)
 check "install exits 0" run install "$project/install.sh"
@@ -319,6 +324,28 @@ check "uninstall exits 0" run uninstall "$project/uninstall.sh"
 check "uninstall put the earlier files back, nothing else changed" same "$before" "$(clean_snapshot)"
 
 # --------------------------------------------------------------------------
+fresh "GTK 3 selection and coexisting toolkit resources"
+gtk_theme=$data/themes/Platinum
+mkdir -p "$gtk_theme/gtk-4.0"
+printf 'existing GTK 4 rules' > "$gtk_theme/gtk-4.0/gtk.css"
+printf 'existing shared colors' > "$gtk_theme/palette.css"
+printf 'existing metadata' > "$gtk_theme/index.theme"
+check "install GTK 3 alongside GTK 4" run gtk-install "$project/install.sh"
+check "reinstall GTK 3 alongside GTK 4" run gtk-update "$project/install.sh"
+check "installed GTK 3 palette matches the source" cmp "$project/gtk/Platinum/palette.css" "$gtk_theme/gtk-3.0/palette.css"
+check "existing GTK 4 still available" grep -qx 'existing GTK 4 rules' "$gtk_theme/gtk-4.0/gtk.css"
+check "existing palette still available" grep -qx 'existing shared colors' "$gtk_theme/palette.css"
+check "existing metadata still available" grep -qx 'existing metadata' "$gtk_theme/index.theme"
+printf '[Settings]\ngtk-theme-name=Platinum\n' > "$config/gtk-3.0/settings.ini"
+check "preview selected GTK theme removal" run gtk-preview "$project/uninstall.sh" --dry-run
+check "preview explains selected GTK theme" grep -Fq 'Keeping the Platinum GTK 3 theme' "$root/$n-gtk-preview.log"
+check "uninstall defers removal while GTK 3 selects Platinum" bash -c '! "$1" > "$2" 2>&1' _ "$project/uninstall.sh" "$root/gtk-selected.log"
+check "selected GTK 3 artwork stays installed" test -s "$gtk_theme/gtk-3.0/gtk.css"
+printf '[Settings]\ngtk-theme-name=Adwaita\n' > "$config/gtk-3.0/settings.ini"
+check "retry removes GTK 3" run gtk-retry "$project/uninstall.sh"
+check "GTK 3 is gone" test ! -e "$gtk_theme/gtk-3.0"
+check "GTK 4 survives undo" grep -qx 'existing GTK 4 rules' "$gtk_theme/gtk-4.0/gtk.css"
+
 fresh "finding 6: a linked config entry is refused before any change"
 mkdir -p "$root/elsewhere/kdedefaults"
 printf '[General]\nColorScheme=MyOriginalScheme\n' > "$root/elsewhere/kdedefaults/kdeglobals"
