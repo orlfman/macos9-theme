@@ -2,6 +2,10 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-25, Claude (Opus 5.5) — add Finder Waves and Retro Lavender Ripples wallpapers
+
+- Two more wallpaper packages from the user's 4K images (byte-identical JPEG XL). The default stays Lavender Desktop Pattern. Updated `scripts/common.sh`, both install tests, README and PLAN. Nothing committed.
+
 ## 2026-11-25, Claude (Opus 5.5) — add Platinum Nebula wallpaper
 
 - New wallpaper package from the user's image (byte-identical JPEG XL). The default stays Lavender Desktop Pattern. Updated `scripts/common.sh`, both install tests, README and PLAN. Nothing committed.

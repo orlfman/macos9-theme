@@ -5,6 +5,11 @@ the whole project and are never reused.
 
 **Bottom tabs independent audit, 2026-11-25.** #236–239 all verified fixed (`dev/check-tabs.sh` 50/50, `PE_FrameTabBarBase` AA diffs 0/10, `-Wall -Wextra -Wshadow` 0 warnings, `dev/check-quick.sh` 29/29, ASan/UBSan clean). No open tab findings. User desktop review is pending.
 
+## 2026-11-25, Claude (Opus 5.5) — Finder Waves and Retro Lavender Ripples wallpapers
+
+- Added `wallpapers/platinum-finder-waves` (Finder Waves) and `wallpapers/platinum-ripples` (Retro Lavender Ripples) from the user's 3840x2160 lossless JPEG XL images, copied byte for byte. Earlier 1672x941 versions were held back until these 4K ones arrived. Finder Waves contains a recreated Finder face, allowed under the AGENTS.md legal rules. `--apply` still selects Lavender Desktop Pattern. Install record targets are now 24.
+- Checks: `test-install-live` 47/47 (Lavender still rendered on both screens; both packages install, are removed on uninstall, and are removed when unselected in the picker-only case). `test-install` 757/757.
+
 ## 2026-11-25, Claude (Opus 5.5) — Platinum Nebula wallpaper
 
 - Added `wallpapers/platinum-nebula` (Platinum Nebula) from the user's 3840x2160 lossless JPEG XL image, copied byte for byte. It contains a recreated Finder face, allowed under the AGENTS.md legal rules. `--apply` still selects Lavender Desktop Pattern. Install record targets are now 22.
