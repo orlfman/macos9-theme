@@ -153,14 +153,20 @@ void drawScrollTrack(QPainter *p, const QRect &r)
     }
 }
 
-// Mac OS 9 had no right-to-left controls. Pop-up menus, spin boxes and
-// group boxes in a right-to-left layout use Fusion's mirrored layout and
+// Non-editable pop-up menus, spin boxes and group boxes in a
+// right-to-left layout use Fusion's mirrored layout and
 // drawing (consistently, so clicks match what's drawn) instead of a
 // Platinum layout that doesn't mirror (AUDIT.md finding 19).
 bool rtlFallback(QStyle::ComplexControl control, const QStyleOption *option)
 {
-    return option && option->direction == Qt::RightToLeft
-        && (control == QStyle::CC_ComboBox || control == QStyle::CC_SpinBox || control == QStyle::CC_GroupBox);
+    if (!option || option->direction != Qt::RightToLeft) {
+        return false;
+    }
+    if (control == QStyle::CC_ComboBox) {
+        const auto *combo = qstyleoption_cast<const QStyleOptionComboBox *>(option);
+        return !combo || !combo->editable || !combo->frame;
+    }
+    return control == QStyle::CC_SpinBox || control == QStyle::CC_GroupBox;
 }
 
 // Layout of a vertical bar in r (rects for the parts).
@@ -521,6 +527,44 @@ void drawField(QPainter *p, const QRect &r, bool focused, const QColor &base)
     p->fillRect(black.adjusted(1, 1, -1, -1), base);
 }
 
+QRect editableComboPart(const QStyleOptionComboBox *combo, bool arrow)
+{
+    QRect part = combo->rect;
+    const int arrowWidth = std::min(PopupArrowWidth, part.width() / 2);
+    if (arrow) {
+        part.setLeft(part.right() - arrowWidth + 1);
+    } else {
+        part.adjust(0, 0, -arrowWidth, 0);
+    }
+    return QStyle::visualRect(combo->direction, combo->rect, part);
+}
+
+void drawEditableComboArrow(QPainter *painter, const QRect &rect, const Sprite &sprite, Qt::LayoutDirection direction)
+{
+    painter->save();
+    painter->setClipRect(rect, Qt::IntersectClip);
+    painter->translate(direction == Qt::RightToLeft ? rect.right() + 1 : rect.left(), rect.top());
+    if (direction == Qt::RightToLeft) {
+        painter->scale(-1, 1);
+    }
+
+    // Keep the measured end caps and glyph at native size. Extend the
+    // plain bevel rows to meet the field at the application's text height.
+    const int extra = std::max(0, rect.height() - sprite.h);
+    const int above = extra / 2;
+    constexpr int bevel = 4;
+    for (int y = 0; y < rect.height(); ++y) {
+        int source = y;
+        if (y >= std::max(bevel, rect.height() - bevel)) {
+            source = sprite.h - (rect.height() - y);
+        } else if (y >= bevel) {
+            source = std::clamp(y - above, bevel, sprite.h - bevel - 1);
+        }
+        drawRow(painter, 0, y, sprite.data.data() + source * sprite.w, rect.width());
+    }
+    painter->restore();
+}
+
 bool hasFieldFrame(const QStyleOption *option)
 {
     const auto *f = qstyleoption_cast<const QStyleOptionFrame *>(option);
@@ -732,6 +776,11 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption *option, con
         if (const auto *cb = qstyleoption_cast<const QStyleOptionComboBox *>(option); cb && !cb->editable) {
             return QSize(size.width() + 6 + PopupArrowWidth + 6, PopupHeight);
         }
+        if (const auto *cb = qstyleoption_cast<const QStyleOptionComboBox *>(option); cb && cb->editable && cb->frame) {
+            const QSize natural = QProxyStyle::sizeFromContents(type, option, size, widget);
+            return natural.expandedTo(QSize(size.width() + 2 * FieldFrame + PopupArrowWidth,
+                                            std::max(size.height() + 2 * FieldFrame, FieldMinHeight)));
+        }
     }
     if (type == CT_Slider) {
         if (const auto *s = qstyleoption_cast<const QStyleOptionSlider *>(option)) {
@@ -915,6 +964,18 @@ QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex *o
         }
     }
     if (control == CC_ComboBox) {
+        if (const auto *cb = qstyleoption_cast<const QStyleOptionComboBox *>(option); cb && cb->editable && cb->frame) {
+            switch (sub) {
+            case SC_ComboBoxArrow:
+                return editableComboPart(cb, true);
+            case SC_ComboBoxEditField:
+                return editableComboPart(cb, false).adjusted(FieldFrame, FieldFrame, -FieldFrame, -FieldFrame);
+            case SC_ComboBoxFrame:
+                return cb->rect;
+            default:
+                break;
+            }
+        }
         if (const auto *cb = qstyleoption_cast<const QStyleOptionComboBox *>(option); cb && !cb->editable) {
             const QRect r = cb->rect;
             switch (sub) {
@@ -963,6 +1024,17 @@ QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex *o
 
 QStyle::SubControl Style::hitTestComplexControl(ComplexControl control, const QStyleOptionComplex *option, const QPoint &pos, const QWidget *widget) const
 {
+    if (control == CC_ComboBox) {
+        if (const auto *cb = qstyleoption_cast<const QStyleOptionComboBox *>(option); cb && cb->editable && cb->frame) {
+            if ((cb->subControls & SC_ComboBoxArrow) && editableComboPart(cb, true).contains(pos)) {
+                return SC_ComboBoxArrow;
+            }
+            if ((cb->subControls & SC_ComboBoxEditField) && subControlRect(control, cb, SC_ComboBoxEditField, widget).contains(pos)) {
+                return SC_ComboBoxEditField;
+            }
+            return (cb->subControls & SC_ComboBoxFrame) && cb->rect.contains(pos) ? SC_ComboBoxFrame : SC_None;
+        }
+    }
     const auto *sb = qstyleoption_cast<const QStyleOptionSlider *>(option);
     if (control == CC_ScrollBar && sb && !rtlFallback(control, option)) {
         const ScrollLayout layout = scrollLayout(sb->rect, sb, sb->orientation == Qt::Horizontal);
@@ -1240,6 +1312,26 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
         return;
     }
     if (control == CC_ComboBox) {
+        if (const auto *cb = qstyleoption_cast<const QStyleOptionComboBox *>(option); cb && cb->editable && cb->frame) {
+            const bool enabled = cb->state & State_Enabled;
+            const auto *combo = qobject_cast<const QComboBox *>(widget);
+            const auto *edit = combo ? combo->lineEdit() : nullptr;
+            const bool focused = enabled && (cb->state & State_Active)
+                && ((cb->state & State_HasFocus) || (edit && edit->hasFocus()))
+                && !(edit && edit->isReadOnly());
+            if (cb->subControls & SC_ComboBoxFrame) {
+                drawField(painter, editableComboPart(cb, false), focused,
+                          cb->palette.color(enabled ? QPalette::Active : QPalette::Disabled, QPalette::Base));
+            }
+            if (cb->subControls & SC_ComboBoxArrow) {
+                const bool pressed = (cb->state & State_On)
+                    || ((cb->activeSubControls & SC_ComboBoxArrow) && (cb->state & State_Sunken));
+                const Sprite &arrow = !enabled ? Sprites::PopupArrowDisabled
+                    : pressed ? Sprites::PopupArrowPressed : Sprites::PopupArrow;
+                drawEditableComboArrow(painter, editableComboPart(cb, true), arrow, cb->direction);
+            }
+            return;
+        }
         if (const auto *cb = qstyleoption_cast<const QStyleOptionComboBox *>(option); cb && !cb->editable) {
             painter->save();
             painter->setRenderHint(QPainter::Antialiasing, false);

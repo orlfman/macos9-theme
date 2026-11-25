@@ -64,6 +64,44 @@ void popup(QPainter &p, const char *name, const QRect &r, QStyle::State state)
     report(name, r);
 }
 
+bool checkEditableCombo()
+{
+    for (auto direction : {Qt::LeftToRight, Qt::RightToLeft}) {
+        QComboBox combo;
+        combo.setEditable(true);
+        combo.setLayoutDirection(direction);
+        combo.resize(120, 26);
+        combo.show();
+
+        QStyleOptionComboBox option;
+        option.initFrom(&combo);
+        option.frame = option.editable = true;
+        option.subControls = QStyle::SC_All;
+        option.state |= QStyle::State_Active | QStyle::State_HasFocus;
+        const auto control = QStyle::CC_ComboBox;
+        const auto arrow = style->subControlRect(control, &option, QStyle::SC_ComboBoxArrow, &combo);
+        const auto field = style->subControlRect(control, &option, QStyle::SC_ComboBoxEditField, &combo);
+        if (arrow != QStyle::visualRect(direction, option.rect, QRect(98, 0, 22, 26))
+            || !field.contains(combo.lineEdit()->geometry()) || field.intersects(arrow)
+            || style->hitTestComplexControl(control, &option, arrow.center(), &combo) != QStyle::SC_ComboBoxArrow) {
+            std::fputs("Editable combo field and arrow geometry mismatch\n", stderr);
+            return false;
+        }
+
+        QImage image(combo.size(), QImage::Format_RGB32);
+        image.fill(QColor(0xDD, 0xDD, 0xDD));
+        QPainter paint(&image);
+        style->drawComplexControl(control, &option, &paint, &combo);
+        paint.end();
+        if (image.pixelColor(field.center().x(), 1) != QColor(0x66, 0x66, 0xCC)
+            || image.pixelColor(arrow.center().x(), 0) != Qt::black) {
+            std::fputs("Editable combo frame and dropdown artwork mismatch\n", stderr);
+            return false;
+        }
+    }
+    return true;
+}
+
 void slider(QPainter &p, const char *name, const QRect &r, QStyle::State state, int max, int value, bool ticks)
 {
     QStyleOptionSlider o;
@@ -423,5 +461,5 @@ int main(int argc, char **argv)
         report("modal-frame", r);
     }
     p.end();
-    return img.save(QString::fromLocal8Bit(argv[1])) ? 0 : 1;
+    return checkEditableCombo() && img.save(QString::fromLocal8Bit(argv[1])) ? 0 : 1;
 }
