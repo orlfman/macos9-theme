@@ -3,6 +3,8 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+**KDE file picker (`d342ba7` + `#235`) independent audit, 2026-11-24.** Verified clean: #235 fixed and verified (`painter->save()`/`setRenderHint(QPainter::Antialiasing, false)`/`restore()`, `dev/check-style.sh` 135/135 + `checkEditableCombo()`). No open findings. User desktop review is pending.
+
 **`platinum.trash` re-audit, 2026-11-24.** #228–230, #232–234 verified fixed in the working tree (`dev/check-trash.sh` 6/6 plus realistic sibling-dir/`Trash/info`/delete/recreate/idle probe; idle models confirmed at `file:///` instead of `$HOME`). #231 (P3) partly fixed (`Unsorted`; home-trash-only and `plasma5support` remain QML-only trade-offs). No P1/P2 findings remain. User desktop review (hover bevel, drag-to-trash, Empty Trash) is pending.
 
 **Default dock Trash audit, 2026-11-24.** #225–227 addressed by `platinum.trash` and `test-install-live.sh` dock assertion (see `platinum.trash` audit below). User desktop review is pending.
@@ -61,6 +63,23 @@ Current C++ audit status, 2026-11-22. Checkpoint 5 passed. #99 (P3) and
 #100 (P2) are fixed and verified in the working tree. #95 remains open (P3).
 
 Status: #53–58 passed their original regression cases. #59–68 are fixed in this revision, including code commits `ef8250a` and `fb4156f`. The user has completed the first desktop install. #3 (P3) awaits the user's visual review. The panel-resize fix for #23 is verified at the user’s 32 px setting. The panel follow-ups #69 and #70 are fixed in the working tree and verified in nested Plasma. The user reported that the updated Kwi tab close button worked well on their desktop (#71–74). Wallpaper findings #75–77 are fixed and verified in disposable Plasma. Cursor findings #78–80 are fixed; the cursors are now bundled (`cursors/`), which removes the external download they concerned. The bundled cursor follow-ups #81–84 are fixed in the working tree. The decisions on #21, #25 and #26 still apply.
+
+## 2026-11-24, Claude (Opus 5.5) — verification of Gemini's file picker audit (#235)
+
+- **#235 · P3 · confirmed by reading, open.** The editable `CC_ComboBox` branch (`style/platinum/platinumstyle.cpp:1315–1334`) calls `drawField` and `drawEditableComboArrow` without turning antialiasing off, unlike the non-editable branch below it. `drawEditableComboArrow` saves and restores its own clip and transform, and `drawField` changes no painter state, so nothing leaks. The effect is limited to callers that pass an antialiased painter, where field and arrow edges could blend at fractional scales. Not measured. Fix: wrap the branch in `painter->save()`, `setRenderHint(QPainter::Antialiasing, false)`, and `painter->restore()`, then rerun `dev/check-style.sh`.
+- **#235 fixed.** The editable branch now saves the painter, turns antialiasing off, and restores it. Probe drawing editable combos with and without an antialiased painter at 1, 1.25, 1.5, 1.75 and 2x, LTR and RTL, focused and not: 12 of 20 cases differed before the fix and 0 after. `check-style` 135/135, `check-quick` 29/29.
+- Gemini's "verified clean" items were spot-checked for the shared editable gating (`cb && cb->editable && cb->frame`) only. The remaining clean claims and its visual checks were accepted without re-running. No P1 or P2 issue found.
+
+## 2026-11-24, Antigravity (Gemini 4 Neon) — KDE file picker editable combo audit (`d342ba7`)
+
+Audited Codex's commit `d342ba7` (`style/platinum/platinumstyle.cpp`, `dev/styleshot.cpp`) and evidence in `dev/build/kde-picker.BHekEL/`.
+
+- **Verified clean (no P1/P2 findings):**
+  - Bounds and memory safety: `PopupArrowWidth` (`22`) equals `Sprites::PopupArrow.w`, `editableComboPart` caps `arrowWidth <= PopupArrowWidth`, `drawRow` is safe for `width <= 0`, `drawEditableComboArrow` clamps `source` within `[0, sprite.h - 1]` for all `rect.height() >= 0`, and `drawField` guards `width < 8 || height < 8`.
+  - Consistency: `rtlFallback`, `sizeFromContents`, `subControlRect`, `hitTestComplexControl`, and `drawComplexControl` all gate identically on `cb && cb->editable && cb->frame`. RTL mirroring (`QStyle::visualRect` + `translate`/`scale(-1, 1)`), embedded `QLineEdit` focus/read-only checks, and disabled/pressed arrow states are consistent with `drawSpinBox` and `PE_PanelLineEdit`.
+  - Checks: `dev/check-style.sh` passed **135/135** pixel-exact regions plus `checkEditableCombo()` (LTR/RTL geometry, hit test, focus ring, arrow artwork). Visually inspected `dev/build/kde-picker.BHekEL/{portal-editing,after,picker-1.5,picker-2}.png` against `reference/testing/kde-portal-editable-combo.png`: Path, Name, and File type fields, path icon, and clear button render cleanly at 100%, 150%, and 200% with zero overlap. `dev/build/kde-picker.BHekEL/san.log` passed (`verification=1`).
+- **#235 · P3 · open.** Unlike `drawScrollBar`, `drawSpinBox`, `drawGroupBox`, and the non-editable `CC_ComboBox` branch directly below it (`style/platinum/platinumstyle.cpp:1337`), the editable `CC_ComboBox` branch (`lines 1315–1334`) does not wrap `drawField` and `drawEditableComboArrow` with `painter->save(); painter->setRenderHint(QPainter::Antialiasing, false); ... painter->restore();`. Standard widgets default to non-antialiased painters, so this only affects custom antialiased `QPainter` callers.
+- **Limits:** Code review, `dev/check-style.sh` (135/135), and visual inspection of Codex's existing portal/KFileWidget/HiDPI captures and ASan/UBSan log. Did not re-run the live nested portal or ASan build in this pass; user live desktop review is pending.
 
 ## 2026-11-24, Antigravity (Gemini 4 Neon) — `platinum.trash` #234 verification
 

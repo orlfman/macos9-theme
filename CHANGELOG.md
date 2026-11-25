@@ -2,6 +2,10 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-24, Claude (Opus 5.5) — fix editable combo antialiasing (#235)
+
+- `style/platinum/platinumstyle.cpp`: the editable combo branch draws with antialiasing off, like the other controls. Antialiased painters previously changed the output in 12 of 20 tested cases; now 0. check-style 135/135, check-quick 29/29. Nothing committed.
+
 ## 2026-11-24, Claude (Opus 5.5) — Trash state folder matching (#234)
 
 - `TrashState.qml` finds `Trash` and `files` by name (nameFilters ignore folders) and idles at `/` instead of `$HOME`. `dev/check-trash.sh` now uses a realistic data folder. Results: check-trash 6/6, check-plasma 19/19, test-install-live 41/41. Nothing committed.
