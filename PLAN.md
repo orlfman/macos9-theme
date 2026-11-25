@@ -2,6 +2,10 @@
 
 ## Status
 
+GTK uninstall fixes #249–250 passed independent re-audit. Preserving an unset GTK style key and resuming an interrupted config restore remain open (#251–252).
+
+The GTK 3-to-4 installer upgrade and undo passed the handoff audit. Codex's #249–252 fixed 2026-11-25 (uncommitted): undo keeps GTK theme choices made (or keys removed) after `--apply`, also across an interrupted undo, and an exported `GTK_THEME=Platinum` keeps the theme. `test-install` 810/811 + fixed scenario 9/9, `test-install-live` 47/47.
+
 **GTK 4 packaged in main installer (Milestone 6) & #245–248 verified, 2026-11-25 (uncommitted).** `install.sh` packages self-contained `gtk-4.0` alongside `gtk-3.0` (25 targets); `uninstall.sh` restores displaced `gtk-4.0` and keeps both toolkits if `Platinum` is selected in any GTK store. Verified `dev/test-install.sh` **771/771**, `dev/test-install-live.sh` **47/47**, `dev/check-gtk4.sh` **222/222** Wayland / **149/149** Broadway. Ready for commit/push (when requested) and user desktop review.
 
 **Gemini's findings #245–248 fixed 2026-11-25 (uncommitted).** #248 by the user's choice: level fills stop 3 px short. GTK 4 222/222 Wayland, 149/149 Broadway. Re-audit and user review pending.

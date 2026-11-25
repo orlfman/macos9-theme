@@ -3,6 +3,42 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+**Fixes for #251–252, 2026-11-25.** Verified and fixed (Claude): removed GTK theme keys stay removed through undo, and later choices survive an interrupted undo. Awaiting re-audit.
+
+**GTK uninstall re-audit, 2026-11-25.** The original #249 and #250 scenarios passed. Two follow-up cases remain open (#251–252).
+
+## 2026-11-25, Claude (Opus 5.5) — fixes for Codex's #251–252
+
+- **#251 · P2 · fixed.** `scripts/gtk_theme.py` tracks whether each store's widget-theme key is present, not only its value. A key removed after the switch is carried as removed (`carry` deletes it after the restore), and the preview says so. With presence tracked, a missing file or key that Plasma's GTK sync fills in with the name the pre-install copy already held is not treated as a choice (kded copies the name into missing stores), so undo still puts those files back byte for byte.
+- **#252 · P2 · fixed.** `uninstall.sh` saves the later choices to `$state/gtk-later-choices` before stopping Plasma's shell or putting back any file. A run that resumes an interrupted restore (the in-progress marker exists) uses the saved list instead of the restored files. A failed write-back now stops uninstall before the copy is moved away, so running it again finishes; the list is removed with the other state once used.
+- Checks: new `dev/test-install.sh` scenarios: a key removed after the switch stays removed and the theme is removed; the sync filling in a missing key with the existing name leaves every file as seeded; an undo interrupted at the write-back (wrapped `python3`, as in the finding 27 tests) is finished by a second run that keeps the later GTK 4 Platinum choice, both toolkits, and removes the saved list. Full run 810/811 (the one failure was the new scenario's test wrapper, which continued past its interrupt; fixed, the scenario then passed 9/9 on its own); `dev/test-install-live.sh` 47/47.
+- Limits: not run on the user's desktop; GSettings stays outside the config copy.
+
+## 2026-11-25, Codex (GPT-6.2 Sol) — re-audit GTK uninstall selection
+
+Reviewed Claude’s working-tree changes over `baab60f`. All 23 assertions in the original #249–250 regression scenarios passed in an isolated home. They cover carrying explicit GTK 3 and GTK 4 choices through undo, preview, retry, and the inherited `GTK_THEME=Platinum:dark` override. Reproduced two additional cases. The full installer and nested desktop suites were outside this rerun.
+
+- **#251 · P2 · open.** The later-choice filter ignores an unset key. Starting with GTK 4 explicitly set to Platinum, applying the global theme, and deleting only the GTK 4 theme key caused undo to recreate the key and retain both toolkits. The plan requires preserving the distinction between unset and explicit choices. Evidence: `dev/build/gtk-undo-reaudit.zVdQst`.
+- **#252 · P2 · open.** The carried theme values live in shell memory until after the restore. Killing undo immediately before `carry` reproduced Claude’s documented interruption window. The retry read the restored Adwaita value, discarded the later Platinum choice, and removed both toolkits. A retry-safe fix should persist the choice before restoring configs and publish it with the staged GTK config overlay. Evidence: `dev/build/gtk-undo-interrupt.dqQgrM`.
+
+**Fixes for #249–250, 2026-11-25.** Verified and fixed (Claude): later GTK widget-theme choices survive undo, and an exported `GTK_THEME=Platinum` keeps the theme. `test-install` 794/794, `test-install-live` 47/47. Re-audited with follow-ups #251–252.
+
+**GTK installer handoff audit, 2026-11-25.** The GTK 3-to-4 upgrade, runtime loading, and displaced GTK 4 restoration passed. Selection handling has two open edge cases (#249–250).
+
+## 2026-11-25, Claude (Opus 5.5) — fixes for Codex's #249–250
+
+- **#249 · P2 · fixed.** Undo carries forward GTK widget-theme names chosen after `--apply`. Before the config restore, `scripts/gtk_theme.py later-choices` lists each store (GTK 3/4 `settings.ini`, `.gtkrc-2.0`, `xsettingsd.conf`) whose name differs from the pre-install copy; after the restore `carry` writes back only that key (line- and mode-preserving editors from `icon_prefs.py`). Neither install nor Plasma's GTK sync changes the name (docs/FINDINGS.md, kded preserved `gtk-theme-name` across reapply), so a differing value is the user's. The preview's selection check uses the same rule and lists the carried choices. The installer test's fake GTK sync wrote `Platinum` into two stores, contradicting that finding; it now changes other keys and keeps the name, like kded.
+- **#250 · P3 · fixed.** The selection guard honors an inherited `GTK_THEME` whose theme part is `Platinum` (e.g. `Platinum:dark`) and names it in the warning.
+- Checks: new scenarios in `dev/test-install.sh` (later Adwaita kept while the rest is put back; later GTK 4 Platinum kept with both toolkits and shown in the preview, retry after switching away removes the theme and keeps the new choice; `GTK_THEME=Platinum:dark` defers, `GTK_THEME=Adwaita` does not). `dev/test-install.sh` 794/794, `dev/test-install-live.sh` 47/47 (real kded: no carried choices, every file put back). Against the committed `gtk_theme.py` both cases go unseen (isolated GSettings).
+- Limits: an undo interrupted between the restore and the carry loses the later choice (it is in `$keep/current`); GSettings is not part of the config copy and is unchanged by undo; not run on the user's desktop.
+
+## 2026-11-25, Codex (GPT-6.2 Sol) — GTK 4 installer handoff
+
+Audited `935bd98` through `baab60f`. Installed from the preceding GTK 3-only script in an isolated home, then upgraded and reinstalled with the current scripts. GTK 3 and GTK 4 both loaded the installed palette. The upgrade preserved the active GTK setting, and undo restored the pre-existing GTK 4 stylesheet byte for byte. A separate GTK 4 app loaded the installed GTK 4 subtree on its own. The copied GTK 3 artwork matched the source. With Platinum selected through GSettings, preview and undo both kept the toolkit folders, and retry after switching removed them. Evidence is in `dev/build/gtk-packaging-audit.LnUAHW` and `dev/build/gtk-packaging-standalone.ADVJ3g`. The installer regression run passed its first 145 checks, including all dedicated GTK packaging scenarios. The remaining general installer cases were outside this rerun.
+
+- **#249 · P2 · open.** After `install.sh --apply`, undo restores the snapshot’s GTK widget-theme setting before checking what is selected. A later GTK 4 `gtk-theme-name=Platinum` choice reverted to Adwaita in the disposable test, and the GTK 4 package was removed. This is inherited from the whole-config restore and conflicts with Milestone 6’s requirement to preserve later GTK widget-theme choices. Preview leaves the file alone and predicts the same removal. Evidence is in `dev/build/gtk-packaging-selection.HtoLx0`.
+- **#250 · P3 · open.** The selection guard reads persistent GTK settings and overlooks an inherited `GTK_THEME` override. Running undo with `GTK_THEME=Platinum:dark` and Adwaita in the settings removed the installed GTK 3 theme and restored a displaced GTK 4 theme. This matters when the override is exported for a session. Per-app overrides remain scoped to the app launching with them.
+
 **GTK 4 packaging (Milestone 6) & #245–248 verification, 2026-11-25.** Verified by Antigravity (Gemini 4 Neon) finishing Claude's session: `dev/test-install.sh` 771/771, `dev/test-install-live.sh` 47/47, `dev/check-gtk4.sh` 222/222 Wayland / 149/149 Broadway. #245–248 verified fixed. User visual review and live reinstall pending.
 
 **Fixes for #245–248, 2026-11-25.** Verified and fixed (Claude); #248 by the user's choice to shorten level fills 3 px. 222/222 Wayland, 149/149 Broadway. Awaiting re-audit.

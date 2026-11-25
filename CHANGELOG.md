@@ -2,6 +2,28 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-25, Codex (GPT-6.2 Sol) — re-audit GTK uninstall selection
+
+Verified the original selection regressions and reproduced two follow-ups. Undo can recreate a deliberately cleared theme key or lose a later theme choice if interrupted during config restoration (#251–252).
+
+## 2026-11-25, Claude (Opus 5.5) — fix Codex's installer findings #251–252
+
+- `scripts/gtk_theme.py`: later choices include a removed key (#251); a key the GTK sync fills in with the existing name is not a choice.
+- `uninstall.sh`, `scripts/common.sh`: the choices are saved to `$state/gtk-later-choices` before any file is put back and reused when an interrupted undo resumes; a failed write-back stops before the copy is moved (#252).
+- `dev/test-install.sh`: four new scenarios. Full run 810/811 before fixing the new scenario's own wrapper; that scenario then 9/9. `test-install-live` 47/47.
+- README and `docs/GTK-PLAN.md` updated. Nothing committed (#249–252 together). Claims released.
+
+## 2026-11-25, Claude (Opus 5.5) — fix Codex's installer findings #249–250
+
+- `scripts/gtk_theme.py`: `later-choices` and `carry` keep GTK widget-theme names chosen after `--apply` across the config restore (#249); `selected` honors an inherited `GTK_THEME=Platinum[:variant]` (#250) and predicts carried choices in a preview.
+- `uninstall.sh`: reads later choices before stopping Plasma's shell or changing a file, writes them back after the restore, and lists them in a dry run.
+- `dev/test-install.sh`: the fake GTK sync keeps the widget-theme name like kded; three new scenarios. 794/794; `test-install-live` 47/47.
+- README and `docs/GTK-PLAN.md` describe the behavior. Nothing committed. Claims released.
+
+## 2026-11-25, Codex (GPT-6.2 Sol) — audit GTK installer handoff
+
+Verified the GTK 3-to-4 upgrade, both installed toolkits, standalone GTK 4, and undo in disposable sessions. Recorded two selection edge cases as #249–250.
+
 ## 2026-11-25, Claude (Opus 5.5) & Antigravity (Gemini 4 Neon) — package GTK 4 in the main installer (Milestone 6)
 
 - `install.sh`, `uninstall.sh`, `scripts/common.sh`, `scripts/gtk_theme.py`: package `gtk/Platinum/gtk-4.0` alongside `gtk-3.0` as target 25 in the install record. `scripts/gtk_theme.py validate` checks both GTK 3 and GTK 4 stylesheets and referenced artwork; `scripts/gtk_theme.py self-contain` copies shared GTK 3 artwork (`assets/gtk3/`) and `palette.css` into the installed `gtk-4.0/` so each toolkit folder stands alone with no `../` links. On uninstall, an existing displaced `gtk-4.0` is restored, and a `Platinum` selection in any GTK config store (`gtk-3.0`, `gtk-4.0`, `.gtkrc-2.0`, `xsettingsd`, or GSettings) keeps both toolkit folders until unselected.

@@ -44,7 +44,10 @@ that launch. To use it across GTK apps, select **Platinum** in Plasma’s GTK
 application style settings. If Platinum is still selected (for GTK 3 or GTK 4),
 `./uninstall.sh` keeps both toolkits' resources until you choose another GTK
 style and rerun the command. An earlier GTK 3 or GTK 4 theme of the same name
-displaced by installation is restored on removal.
+displaced by installation is restored on removal. A GTK style you chose (or
+cleared) after `./install.sh --apply` is kept when `./uninstall.sh` puts your
+config files back, even if the uninstall is interrupted and run again. An
+exported `GTK_THEME=Platinum` counts as selecting it.
 
 GTK 4 apps that draw their own title bar (a header bar) get the Platinum
 window frame and title bar; other GTK 4 windows use the window decoration.
