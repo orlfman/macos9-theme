@@ -1313,6 +1313,9 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
     }
     if (control == CC_ComboBox) {
         if (const auto *cb = qstyleoption_cast<const QStyleOptionComboBox *>(option); cb && cb->editable && cb->frame) {
+            // Whole pixels, as the other controls (AUDIT.md #235).
+            painter->save();
+            painter->setRenderHint(QPainter::Antialiasing, false);
             const bool enabled = cb->state & State_Enabled;
             const auto *combo = qobject_cast<const QComboBox *>(widget);
             const auto *edit = combo ? combo->lineEdit() : nullptr;
@@ -1330,6 +1333,7 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
                     : pressed ? Sprites::PopupArrowPressed : Sprites::PopupArrow;
                 drawEditableComboArrow(painter, editableComboPart(cb, true), arrow, cb->direction);
             }
+            painter->restore();
             return;
         }
         if (const auto *cb = qstyleoption_cast<const QStyleOptionComboBox *>(option); cb && !cb->editable) {
