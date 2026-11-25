@@ -3,6 +3,8 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+**Default wallpaper switch (`b50bad5` / `c61c687`) audit, 2026-11-24.** Verified clean: `plasma/make-plasma.py` and `platinum.desktop/contents/defaults` match (`Image=platinum-lavender`), both wallpapers remain installed/removable via `scripts/common.sh`, `dev/plasma-test.sh` links both, `dev/test-install-live.sh` passed 41/41, and `dev/build/test-home-live/wallpaper-desktop.png` renders Lavender Desktop Pattern on both screens. No findings.
+
 **`platinum.trash` `openTrash()` audit, 2026-11-24.** Verified clean over `db9b3b2`: `kioclient exec 'trash:/'` (`tag: "open"`) fixes `Qt.openUrlExternally("trash:/")` showing "Choose Application", covers all 6 activation paths, avoids `onNewData` recursion, and exits after handoff so `disconnectSource` cleans up. `dev/check-trash.sh` 6/6. No findings.
 
 **KDE file picker (`d342ba7` + `#235`) independent audit, 2026-11-24.** Verified clean: #235 fixed and verified (`painter->save()`/`setRenderHint(QPainter::Antialiasing, false)`/`restore()`, `dev/check-style.sh` 135/135 + `checkEditableCombo()`). No open findings. User desktop review is pending.
@@ -65,6 +67,18 @@ Current C++ audit status, 2026-11-22. Checkpoint 5 passed. #99 (P3) and
 #100 (P2) are fixed and verified in the working tree. #95 remains open (P3).
 
 Status: #53–58 passed their original regression cases. #59–68 are fixed in this revision, including code commits `ef8250a` and `fb4156f`. The user has completed the first desktop install. #3 (P3) awaits the user's visual review. The panel-resize fix for #23 is verified at the user’s 32 px setting. The panel follow-ups #69 and #70 are fixed in the working tree and verified in nested Plasma. The user reported that the updated Kwi tab close button worked well on their desktop (#71–74). Wallpaper findings #75–77 are fixed and verified in disposable Plasma. Cursor findings #78–80 are fixed; the cursors are now bundled (`cursors/`), which removes the external download they concerned. The bundled cursor follow-ups #81–84 are fixed in the working tree. The decisions on #21, #25 and #26 still apply.
+
+## 2026-11-24, Antigravity (Gemini 4 Neon) — default wallpaper switch (`b50bad5`) audit
+
+Audited Claude's commits `b50bad5` and `c61c687` switching `--apply`'s default wallpaper from `platinum-ribbon` to `platinum-lavender`.
+
+- **Verified clean (no findings):**
+  - `plasma/make-plasma.py` and generated `plasma/look-and-feel/platinum.desktop/contents/defaults` match (`Image=platinum-lavender`).
+  - `scripts/common.sh`, `install.sh`, and `uninstall.sh` still package, validate, keep-if-selected, and remove both `platinum-ribbon` and `platinum-lavender`.
+  - `dev/plasma-test.sh` links both wallpaper packages for `M9_APPLY=lnf`.
+  - `dev/test-install-live.sh` compares both screens against `platinum-lavender/contents/images/3840x2160.jxl` with a documented `stddev > 5` blank-image guard (pattern spread ~9 vs 0 for blank); `dev/build/test-home-live/result.log` passed **41/41** and visual inspection of `dev/build/test-home-live/wallpaper-desktop.png` confirms Lavender Desktop Pattern renders on both screens.
+  - `README.md`, `PLAN.md`, `docs/DEVELOPMENT.md`, and `CHANGELOG.md` have no stale "Pastel Ribbon Landscape is the default" references (only a minor line-wrap placement of the parenthetical in `PLAN.md:136`).
+- **Limits:** Code review, repo-wide grep, and inspection of Claude's latest `test-install-live` screenshot and log; did not re-run nested KWin in this pass.
 
 ## 2026-11-24, Antigravity (Gemini 4 Neon) — `platinum.trash` `openTrash()` audit
 
