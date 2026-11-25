@@ -78,11 +78,18 @@
     --toolbar-text-color: var(--m9-label-text) !important;
     --toolbarbutton-icon-fill: var(--m9-lav-deep) !important;
     --toolbarbutton-border-radius: 0px !important;
+    --background-color-list-item-hover: var(--m9-lav-select) !important;
+    --text-color-list-item-hover: var(--m9-black) !important;
     --focus-outline-color: var(--m9-lav-focus) !important;
     --focus-outline: 2px solid var(--m9-lav-focus) !important;
     --chrome-content-separator-color: var(--m9-black) !important;
     --urlbar-min-height: 20px !important;
     --urlbar-height: 20px !important;
     scrollbar-color: var(--m9-lav-light) var(--m9-surface-mid);
+
+    ::selection {
+      background-color: var(--m9-lav-select) !important;
+      color: var(--m9-black) !important;
+    }
   }
 }

@@ -103,6 +103,17 @@ with a conflict message instead of overwriting if markers or files inside
   files and pref values on undo. The scrollbar size/square-shape prefs apply
   profile-wide across Firefox themes, including dark mode.
 
+Light-mode pages use lavender (`#CCCCFF`) with black text for selection by
+default. Sites can supply their own selection colors.
+
+In the light System theme, Firefox Settings uses Platinum gray surfaces and
+square cards. The open address bar uses a white results panel and lavender
+hover and selection colors.
+
+The Firefox menu doubles as the loading indicator. While the selected tab
+loads, the menu icon changes to the Firefox logo with moving lavender stripes.
+With reduced motion enabled, the stripes stay still. The menu remains clickable.
+
 ## Sandbox testing and selector checks
 
 - `tools/check-firefox-selectors.py`: checks every `#id` and `::part()` selector

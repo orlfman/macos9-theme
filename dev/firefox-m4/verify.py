@@ -111,16 +111,19 @@ def main() -> int:
     )
     s.check("status-5a-permanent-16px", t1a["statusBandDisplay"] == "block" and t1a["statusBandHeight"] == "16px", f"{t1a['statusBandDisplay']} {t1a['statusBandHeight']}")
 
-    # Activity indicator: built-in Firefox logo when idle, animated Platinum Lavender bar when busy
     act = rep["activity"]
     s.check(
-        "activity-indicator-idle-and-busy",
-        act["idleW"] == "24px"
-        and act["idleBg"] == "rgb(238, 238, 238)"
-        and act["logoLoaded"]
-        and "about-logo.svg" in (act.get("idleImg") or "")
-        and act["busyBg"] == "rgb(51, 51, 153)"
-        and "repeating-linear-gradient" in act["busyImg"],
+        "firefox-menu-shows-activity-while-loading",
+        act.get("logoLoaded") is True
+        and "about-logo.svg" in act["busyImg"]
+        and "about-logo.svg" not in act["idleImg"]
+        and act["restoredImg"] == act["idleImg"]
+        and act["idleWidth"] == act["busyWidth"] > 0
+        and act["separateIndicator"] == "none"
+        and act["animation"] == "m9-activity-pulse"
+        and act["moved"]
+        and act["reducedMotion"] == "none"
+        and "repeating-linear-gradient" in act["stripes"],
         str(act),
     )
 
@@ -176,10 +179,19 @@ def main() -> int:
         up["isOpen"] is True
         and up["viewRadius"] == "0px"
         and up["viewBorder"] == "rgb(0, 0, 0)"
-        and up["viewBg"] == "rgb(255, 255, 255)"
+        and up["viewBg"] == up["jointBg"] == "rgb(255, 255, 255)"
+        and up["text"] == "rgb(17, 17, 17)"
         and up["selRowBg"] == "rgb(51, 51, 153)"
         and up["selRowColor"] == "rgb(255, 255, 255)",
         str(up),
+    )
+
+    prefs = rep["preferences"]
+    s.check(
+        "settings-platinum-canvas-and-cards",
+        prefs == {"background": "rgb(221, 221, 221)", "text": "rgb(17, 17, 17)",
+                  "card": "rgb(238, 238, 238)", "radius": "0px"},
+        str(prefs),
     )
 
     # Find bar, notification bar, legacy sidebar
@@ -220,6 +232,28 @@ def main() -> int:
         "popup-window-compact-no-status-band",
         ip["popupHasAttr"] is True and ip["popupNavHeight"] <= 44 and ip["popupStatusAfterContent"] == "none",
         f"popupAttr={ip['popupHasAttr']} navH={ip['popupNavHeight']} statusContent={ip['popupStatusAfterContent']}",
+    )
+
+    customize_sidebar = rep["sidebar_customize"]
+    s.check(
+        "sidebar-customize-readable",
+        customize_sidebar == {"text": "rgb(17, 17, 17)", "background": "rgb(238, 238, 238)", "scheme": "light", "hostScheme": "light only"},
+        str(customize_sidebar),
+    )
+    sidebar_tools = rep["sidebar_tools"]
+    for name in ("viewBookmarksSidebar", "viewHistorySidebar", "viewTabsSidebar", "viewCPMSidebar"):
+        tool = sidebar_tools.get(name, {})
+        s.check(
+            f"{name}-platinum-contrast",
+            tool.get("scheme") == "light" and tool.get("hostScheme") == "light only"
+            and tool.get("color") == "rgb(17, 17, 17)" and tool.get("bg") == "rgb(238, 238, 238)",
+            str(tool or sidebar_tools),
+        )
+    selection = rep["page_selection"]
+    s.check(
+        "web-page-lavender-selection",
+        selection == {"text": "rgb(0, 0, 0)", "background": "rgb(204, 204, 255)"},
+        str(selection),
     )
 
     # Private window obeys Platinum in System light mode (via browser.theme.dark-private-windows=false),

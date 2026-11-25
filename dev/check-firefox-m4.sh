@@ -107,8 +107,37 @@ M9_FF_PROFILE="$cold_prof" M9_KEEP_PROFILE=1 M9_USERCHROME="$project/firefox/chr
 echo "--- 3/3 interactive Milestone 4 full-coverage probe ---"
 probe_prof="$rdir/prof-probe"
 cp -R "$seed_prof" "$probe_prof"
-M9_FF_PROFILE="$probe_prof" M9_KEEP_PROFILE=1 M9_USERCHROME="$project/firefox/chrome" \
-    M9_TIMEOUT=180 \
+probe_chrome="$rdir/chrome-probe"
+cp -R "$project/firefox/chrome" "$probe_chrome"
+# Reproduce dark user rules loaded after the Platinum imports.
+cat >> "$probe_chrome/userChrome.css" <<'EOF'
+:root {
+  --toolbar-field-background-color-focus: #151C23 !important;
+  --toolbar-field-text-color-focus: #EFF0F1 !important;
+  color-scheme: dark !important;
+  --sidebar-text-color: #EFF0F1 !important;
+}
+@-moz-document url("chrome://browser/content/sidebar/sidebar-customize.html") {
+  :root {
+    color-scheme: dark !important;
+    --sidebar-text-color: #EFF0F1 !important;
+  }
+}
+EOF
+cat >> "$probe_chrome/userContent.css" <<'EOF'
+@-moz-document url-prefix("about:preferences") {
+  :root {
+    color-scheme: dark !important;
+    --background-color-box: #24272C !important;
+  }
+  body {
+    background-color: #151C23 !important;
+    color: #EFF0F1 !important;
+  }
+}
+EOF
+M9_FF_PROFILE="$probe_prof" M9_KEEP_PROFILE=1 M9_DARK_PRIVATE=false M9_USERCHROME="$probe_chrome" \
+    M9_TIMEOUT=180 M9_EXTRA_PREFS='user_pref("browser.contextual-password-manager.enabled", true);' \
     M9_MARIONETTE_SCRIPT="M9_M4_DIR='$rdir' python3 -I -W error '$dev/firefox-m4/probe.py'" \
     "$dev/firefox-test.sh" m4-probe "$u1"
 

@@ -116,32 +116,46 @@ def main() -> int:
             async_mode=True,
         )
 
-        # 1. Busy-tab neutral Platinum Lavender activity indicator (:has(.tabbrowser-tab[selected][busy])).
-        activity_info = m.exec_chrome(
-            """
+        # 1. The Firefox menu doubles as the selected tab's load indicator.
+        activity_info = m.exec_chrome("""
             const done = arguments[arguments.length - 1];
             (async () => {
-              const panelBtn = document.getElementById("PanelUI-button");
-              const idleCS = getComputedStyle(panelBtn, "::after");
-              const idleBg = idleCS.backgroundColor;
-              const idleImg = idleCS.backgroundImage;
-              const idleW = idleCS.width;
+              const menu = document.getElementById("PanelUI-menu-button");
+              const stack = menu.querySelector(".toolbarbutton-badge-stack");
+              const tab = gBrowser.selectedTab;
+              Services.prefs.setIntPref("ui.prefersReducedMotion", 0);
+              await new Promise(r => setTimeout(r, 100));
+              const idleImg = getComputedStyle(menu).listStyleImage;
+              const idleWidth = menu.getBoundingClientRect().width;
+              tab.setAttribute("busy", "");
+              const busyImg = getComputedStyle(menu).listStyleImage;
               const logo = document.createElementNS("http://www.w3.org/1999/xhtml", "img");
-              logo.src = idleImg.slice(5, -2);
+              logo.src = busyImg.slice(5, -2);
               const logoLoaded = await logo.decode().then(() => logo.naturalWidth > 0, () => false);
-
-              gBrowser.selectedTab.setAttribute("busy", "");
-              await new Promise(r => setTimeout(r, 200));
-              const busyCS = getComputedStyle(panelBtn, "::after");
-              const busyBg = busyCS.backgroundColor;
-              const busyImg = busyCS.backgroundImage;
-              done({ logoLoaded, idleBg, idleImg, idleW, busyBg, busyImg });
-            })();
-            """,
-            async_mode=True,
-        )
+              const stackStyle = getComputedStyle(stack);
+              const firstPosition = stackStyle.backgroundPosition;
+              await new Promise(r => setTimeout(r, 120));
+              done({idleImg, busyImg, logoLoaded, idleWidth,
+                    moved: firstPosition !== stackStyle.backgroundPosition,
+                    busyWidth: menu.getBoundingClientRect().width,
+                    separateIndicator: getComputedStyle(menu.parentNode, "::after").content,
+                    animation: stackStyle.animationName, stripes: stackStyle.backgroundImage});
+            })().catch(error => done({error: String(error)}));
+            """, async_mode=True)
         shoot(shots / "firefox-m4-activity-busy.png", settle=0.2)
-        m.exec_chrome('gBrowser.selectedTab.removeAttribute("busy");')
+        activity_info["reducedMotion"] = m.exec_chrome("""
+            const done = arguments[arguments.length - 1];
+            Services.prefs.setIntPref("ui.prefersReducedMotion", 1);
+            setTimeout(() => {
+              const stack = document.querySelector("#PanelUI-menu-button > .toolbarbutton-badge-stack");
+              done(getComputedStyle(stack).animationName);
+              Services.prefs.clearUserPref("ui.prefersReducedMotion");
+            }, 100);
+        """, async_mode=True)
+        activity_info["restoredImg"] = m.exec_chrome("""
+            gBrowser.selectedTab.removeAttribute("busy");
+            return getComputedStyle(document.getElementById("PanelUI-menu-button")).listStyleImage;
+        """)
 
         # 2. Live switch 1A -> 1C (Vertical Platinum tabs in left sidebar) and back!
         tabs_1c = m.exec_chrome(
@@ -258,6 +272,8 @@ def main() -> int:
                 viewRadius: vcs.borderBottomLeftRadius,
                 viewBorder: vcs.borderBottomColor,
                 viewBg: vcs.backgroundColor,
+                jointBg: getComputedStyle(view.querySelector(".urlbarView-background")).backgroundColor,
+                text: vcs.color,
                 selRowBg: rcs ? rcs.backgroundColor : null,
                 selRowColor: rcs ? rcs.color : null
               });
@@ -319,6 +335,71 @@ def main() -> int:
             Services.prefs.setBoolPref("sidebar.revamp", true);
             """
         )
+
+        sidebar_customize = m.exec_chrome(
+            """
+            const done = arguments[arguments.length - 1];
+            (async () => {
+              Services.prefs.setBoolPref("sidebar.verticalTabs", true);
+              SidebarController._state.launcherExpanded = false;
+              await SidebarController.show("viewCustomizeSidebar");
+              const win = document.getElementById("sidebar").contentWindow;
+              const root = win.document.documentElement;
+              // Firefox can supply dark sidebar colors independently of the main window.
+              root.setAttribute("lwt-sidebar", "dark");
+              root.style.setProperty("--sidebar-text-color", "rgb(240, 240, 240)");
+              const panel = win.document.querySelector("sidebar-customize");
+              await panel.updateComplete;
+              const checkbox = panel.shadowRoot.querySelector("moz-checkbox");
+              await checkbox.updateComplete;
+              const label = checkbox.shadowRoot.querySelector('[part~="label"]');
+              done({
+                text: win.getComputedStyle(label).color,
+                background: win.getComputedStyle(win.document.documentElement).backgroundColor,
+                scheme: win.getComputedStyle(root).colorScheme,
+                hostScheme: getComputedStyle(document.getElementById("sidebar")).colorScheme
+              });
+            })().catch(error => done({ error: String(error) }));
+            """,
+            async_mode=True,
+        )
+        shoot(shots / "firefox-m4-sidebar-customize.png", settle=0.2)
+        m.exec_chrome('SidebarController.hide(); Services.prefs.setBoolPref("sidebar.verticalTabs", false);')
+        sidebar_tools = m.exec_chrome(
+            """
+            const done = arguments[arguments.length - 1];
+            (async () => {
+              const tools = {};
+              for (const id of ["viewBookmarksSidebar", "viewHistorySidebar", "viewTabsSidebar", "viewCPMSidebar"]) {
+                await SidebarController.show(id);
+                const host = document.getElementById("sidebar");
+                const doc = host.contentDocument;
+                const style = doc.defaultView.getComputedStyle(doc.documentElement);
+                tools[id] = { url: doc.documentURI, color: style.color, bg: style.backgroundColor,
+                              scheme: style.colorScheme, hostScheme: getComputedStyle(host).colorScheme };
+              }
+              SidebarController.hide();
+              done(tools);
+            })().catch(error => done({ error: String(error) }));
+            """,
+            async_mode=True,
+        )
+        m.send("Marionette:SetContext", {"value": "content"})
+        page_selection = m.send("WebDriver:ExecuteScript", {
+            "script": """
+                const paragraph = document.querySelector("p");
+                const range = document.createRange();
+                range.selectNodeContents(paragraph);
+                getSelection().removeAllRanges();
+                getSelection().addRange(range);
+                const style = getComputedStyle(paragraph, "::selection");
+                return { text: style.color, background: style.backgroundColor };
+            """,
+            "args": [],
+        })["value"]
+        shoot(shots / "firefox-m4-page-selection.png", settle=0.2)
+        m.send("WebDriver:ExecuteScript", {"script": "getSelection().removeAllRanges();", "args": []})
+        m.send("Marionette:SetContext", {"value": "chrome"})
 
         # 7. Real Inactive Window state (:-moz-window-inactive) + Popup Window check!
         # Opening a real popup window deactivates the main browser window in KWin Wayland!
@@ -535,6 +616,20 @@ def main() -> int:
 
         shoot(main_out, settle=0.2)
 
+        m.send("Marionette:SetContext", {"value": "content"})
+        m.send("WebDriver:Navigate", {"url": "about:preferences"})
+        preferences = m.send("WebDriver:ExecuteScript", {
+            "script": """
+                const body = getComputedStyle(document.body);
+                const card = [...document.querySelectorAll("moz-card")]
+                  .find(element => element.getBoundingClientRect().height);
+                const cardStyle = getComputedStyle(card);
+                return { background: body.backgroundColor, text: body.color,
+                         card: cardStyle.backgroundColor, radius: cardStyle.borderRadius };
+            """,
+            "args": [],
+        })["value"]
+
         report = {
             "tabs_1a": tabs_1a,
             "activity": activity_info,
@@ -543,11 +638,15 @@ def main() -> int:
             "panel": panel_info,
             "url_popup": url_popup_info,
             "bars": bars_info,
+            "sidebar_customize": sidebar_customize,
+            "sidebar_tools": sidebar_tools,
+            "page_selection": page_selection,
             "inactive_and_popup": inactive_and_popup,
             "private": private_info,
             "fullscreen": fullscreen_info,
             "customize": customize_info,
             "theme_matrix": theme_matrix,
+            "preferences": preferences,
         }
         (rdir / "m4-report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
         return 0

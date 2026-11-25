@@ -143,12 +143,6 @@
         color: var(--m9-disabled-text) !important;
       }
 
-      #PanelUI-button::after {
-        border-color: var(--m9-shadow-dark) !important;
-        box-shadow: none !important;
-        opacity: 0.55 !important;
-      }
-
       /* Suppress all active #6666CC focus outlines when the window is inactive */
       #nav-bar .toolbarbutton-1:focus-visible,
       #PersonalToolbar toolbarbutton.bookmark-item:not(.subviewbutton):focus-visible,

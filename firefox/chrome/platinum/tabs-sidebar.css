@@ -283,6 +283,16 @@
       background-color: var(--m9-surface-light) !important;
     }
 
+    /* Pass the Platinum color scheme into Firefox's built-in sidebar panels. */
+    #sidebar-box:is([sidebarcommand="viewCustomizeSidebar"],
+                    [sidebarcommand="viewBookmarksSidebar"],
+                    [sidebarcommand="viewHistorySidebar"],
+                    [sidebarcommand="viewTabsSidebar"],
+                    [sidebarcommand="viewOpenTabsSidebar"],
+                    [sidebarcommand="viewCPMSidebar"]) #sidebar {
+      color-scheme: only light !important;
+    }
+
     /* Legacy sidebar header (sidebar.revamp=false) */
     #sidebar-header {
       background-color: var(--m9-surface) !important;
@@ -334,6 +344,66 @@
       background: var(--m9-surface-mid) !important;
       border-inline-start: 1px solid var(--m9-white) !important;
       border-inline-end: 1px solid var(--m9-black) !important;
+    }
+  }
+}
+
+/* Sidebar pages are separate chrome documents. Use the same light colors
+ * for the page and its inherited component tokens. The root type raises
+ * specificity above generic user stylesheet root rules. */
+@-moz-document url("chrome://browser/content/sidebar/sidebar-customize.html"),
+  url("chrome://browser/content/sidebar/sidebar-bookmarks.html"),
+  url("chrome://browser/content/sidebar/sidebar-history.html"),
+  url("chrome://browser/content/sidebar/sidebar-syncedtabs.html"),
+  url("chrome://browser/content/sidebar/sidebar-opentabs.html"),
+  url("chrome://browser/content/places/bookmarksSidebar.xhtml"),
+  url("chrome://browser/content/places/historySidebar.xhtml"),
+  url("chrome://browser/content/syncedtabs/sidebar.html"),
+  url("chrome://global/content/megalist/megalist.html") {
+  @media (prefers-color-scheme: light) and (not (prefers-contrast)) and (not (forced-colors)) and -moz-pref("extensions.activeThemeID", "default-theme@mozilla.org") {
+    :root:is(html, window) {
+      color-scheme: light !important;
+      color: #111111 !important;
+      background-color: #EEEEEE !important;
+      --sidebar-text-color: #111111 !important;
+      --sidebar-background-color: #EEEEEE !important;
+      --sidebar-box-background: #DDDDDD !important;
+      --button-background-color-ghost-hover: #CCCCFF !important;
+      --button-background-color-ghost-active: #BDBDEE !important;
+      --button-text-color-ghost-hover: #111111 !important;
+      --button-text-color-ghost-active: #111111 !important;
+      --background-color-list-item-hover: #CCCCFF !important;
+      --text-color-list-item-hover: #111111 !important;
+      --tab-background-color-selected: #CCCCFF !important;
+      --tab-text-color-selected: #111111 !important;
+      --lwt-sidebar-highlight-background-color: #CCCCFF !important;
+      --lwt-sidebar-highlight-text-color: #111111 !important;
+      --text-color: #111111 !important;
+      --text-color-deemphasized: #444444 !important;
+      --link-color: #333399 !important;
+      --link-color-hover: #222277 !important;
+      --focus-outline-color: #6666CC !important;
+      --input-background-color: #FFFFFF !important;
+      --input-text-color: #111111 !important;
+    }
+
+    /* Legacy Places trees paint these rows outside the ordinary DOM. */
+    :root:is(html, window) .sidebar-placesTreechildren::-moz-tree-row(hover),
+    :root:is(html, window) .sidebar-placesTreechildren::-moz-tree-row(selected) {
+      background-color: #CCCCFF !important;
+    }
+
+    :root:is(html, window) .sidebar-placesTreechildren::-moz-tree-cell-text(selected) {
+      color: #111111 !important;
+    }
+
+    :root:is(html, window) .sidebar-placesTreechildren::-moz-tree-row(selected, current, focus) {
+      outline-color: #6666CC !important;
+    }
+
+    :root:is(html, window) ::selection {
+      background-color: #CCCCFF !important;
+      color: #000000 !important;
     }
   }
 }

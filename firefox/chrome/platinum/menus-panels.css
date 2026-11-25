@@ -187,6 +187,25 @@
     /* =====================================================================
      * Square Platinum URL Bar Autocomplete Popup (.urlbarView)
      * ===================================================================== */
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar[open] {
+      color-scheme: only light !important;
+      --toolbar-field-background-color-focus: var(--m9-white) !important;
+      --toolbar-field-text-color-focus: var(--m9-label-text) !important;
+      --toolbar-field-border-color-focus: var(--m9-lav-focus) !important;
+      --urlbarview-text-color-secondary: #444444 !important;
+      --urlbarview-text-color-action: var(--m9-lav-deep) !important;
+      --urlbarview-text-color-hover: var(--m9-label-text) !important;
+      --urlbarview-background-color-hover: var(--m9-lav-select) !important;
+      --urlbarview-text-color-selected: var(--m9-white) !important;
+      --urlbarview-background-color-selected: var(--m9-lav-deep) !important;
+    }
+
+    /* Nova paints the results half of the popup on a separate layer. */
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar[open] .urlbarView-background {
+      background-color: var(--m9-white) !important;
+      border-radius: 0 !important;
+    }
+
     &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #urlbar:is([open], [breakout-extend]) > .urlbar-background {
       background: var(--m9-white) !important;
       border: 1px solid var(--m9-black) !important;

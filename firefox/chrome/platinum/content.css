@@ -1,7 +1,7 @@
-/* Platinum Lavender scrollbar tint for light-mode web pages.
+/* Platinum Lavender scrollbars and text selection for light-mode web pages.
  * Loaded via chrome/userContent.css. Gated on light mode without contrast or
  * forced-colors overrides and without !important so dark-mode and
- * custom-scrollbar web apps keep their own styling.
+ * web apps with their own scrollbar or selection colors keep their styling.
  *
  * Measured Mac OS 9.2.2 Platinum Lavender values (docs/REFERENCE.md):
  *   scrollbar thumb fill: #9999FF
@@ -12,5 +12,70 @@
 @media (prefers-color-scheme: light) and (not (prefers-contrast)) and (not (forced-colors)) {
   :root {
     scrollbar-color: #9999FF #CCCCCC;
+  }
+
+  ::selection {
+    background-color: #CCCCFF;
+    color: #000000;
+  }
+}
+
+/* Firefox Settings and the components inside its shadow trees. */
+@-moz-document url-prefix("about:preferences") {
+  @media (prefers-color-scheme: light) and (not (prefers-contrast)) and (not (forced-colors)) and -moz-pref("extensions.activeThemeID", "default-theme@mozilla.org") {
+    #preferences-root {
+      color-scheme: light !important;
+      color: #111111 !important;
+      background: #DDDDDD !important;
+      --text-color: #111111 !important;
+      --text-color-deemphasized: #444444 !important;
+      --background-color-canvas: #DDDDDD !important;
+      --background-color-box: #EEEEEE !important;
+      --in-content-page-background: #DDDDDD !important;
+      --in-content-page-color: #111111 !important;
+      --in-content-box-background: #EEEEEE !important;
+      --in-content-box-border-color: #888888 !important;
+      --in-content-accent-color: #333399 !important;
+      --in-content-accent-color-foreground: #FFFFFF !important;
+      --color-accent-primary: #333399 !important;
+      --color-accent-primary-hover: #4444AA !important;
+      --color-accent-primary-active: #222277 !important;
+      --link-color: #333399 !important;
+      --link-color-hover: #222277 !important;
+      --link-color-active: #222277 !important;
+      --focus-outline-color: #6666CC !important;
+      --button-background-color: #DDDDDD !important;
+      --button-background-color-hover: #CCCCFF !important;
+      --button-background-color-active: #BDBDEE !important;
+      --button-text-color: #111111 !important;
+      --border-radius-small: 0px !important;
+      --border-radius-medium: 0px !important;
+      --card-background-color: #EEEEEE !important;
+      --card-border: 1px solid #888888 !important;
+      --card-border-radius: 0px !important;
+      --card-box-shadow: inset 1px 1px #FFFFFF, inset -1px -1px #CCCCCC !important;
+      --page-nav-button-border-radius: 0px !important;
+      --page-nav-button-background-color: #EEEEEE !important;
+      --page-nav-button-background-color-hover: #D8D8FF !important;
+      --page-nav-button-background-color-active: #BDBDEE !important;
+      --page-nav-button-background-color-selected: #CCCCFF !important;
+      --page-nav-button-text-color-selected: #111111 !important;
+      --page-nav-button-indicator-background-color: #333399 !important;
+    }
+
+    #preferences-root body {
+      background-color: #DDDDDD !important;
+      color: #111111 !important;
+    }
+
+    #preferences-root :is(button, select, input:not([type="checkbox"], [type="radio"]), textarea),
+    #preferences-root moz-button::part(button) {
+      border-radius: 0 !important;
+    }
+
+    #preferences-root ::selection {
+      background-color: #CCCCFF !important;
+      color: #000000 !important;
+    }
   }
 }

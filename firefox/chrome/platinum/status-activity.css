@@ -1,65 +1,41 @@
-/* Milestone 4: Permanent 16 px IE5 Status Band (pick 5A) and Neutral
- * Platinum Lavender Activity Indicator (zero Microsoft/Apple logos).
+/* Milestone 4: Permanent 16 px IE5 Status Band (pick 5A) and the Firefox menu loading indicator.
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
+@property --m9-activity-offset {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
 @keyframes m9-activity-pulse {
-  0%   { background-position: 0 0; border-color: #333399; }
-  50%  { background-position: 16px 0; border-color: #6666CC; }
-  100% { background-position: 32px 0; border-color: #333399; }
+  from { --m9-activity-offset: 0px; }
+  to { --m9-activity-offset: 16px; }
 }
 
 @media (-moz-native-theme) and (prefers-color-scheme: light) and (not (prefers-contrast)) and (not (forced-colors)) {
   :root:not([lwtheme]) {
-    /* =====================================================================
-     * Activity Indicator (far-right of Row 1)
-     * Sits in a clean sunken Platinum well right beside #PanelUI-menu-button.
-     * Idle: Firefox's own built-in vector branding logo on #EEEEEE (referenced
-     * via chrome://branding/content/about-logo.svg; zero artwork shipped here).
-     * Busy (:has(.tabbrowser-tab[selected][busy])): animated Platinum
-     * Lavender barber-pole / pulse bar (steady fill under reduced motion).
-     * ===================================================================== */
-    &:not([customizing], [popup-window], [chromeless-window], [mini-window]) #PanelUI-button::after {
-      content: "";
-      display: block;
-      width: 24px;
-      height: 24px;
-      margin: 0 6px 0 4px;
-      box-sizing: border-box;
-      border: 1px solid var(--m9-black);
-      box-shadow:
-        inset 1px 1px 0 var(--m9-shadow-dark),
-        inset -1px -1px 0 var(--m9-white);
-      background-color: var(--m9-surface-light);
-      background-image: url("chrome://branding/content/about-logo.svg");
-      background-size: 18px 18px;
-      background-position: center center;
-      background-repeat: no-repeat;
-      pointer-events: none;
-    }
+    /* Keep the native menu button and badge stack. While the selected tab
+       loads, replace only its glyph and animate the surrounding icon well. */
+    &:not([customizing], [popup-window], [chromeless-window], [mini-window]):has(.tabbrowser-tab[selected][busy]) #PanelUI-menu-button {
+      list-style-image: url("chrome://branding/content/about-logo.svg") !important;
 
-    &:not([customizing], [popup-window], [chromeless-window], [mini-window]):has(.tabbrowser-tab[selected][busy]) #PanelUI-button::after {
-      border-color: var(--m9-lav-deep);
-      box-shadow:
-        inset 1px 1px 0 var(--m9-lav-select),
-        inset -1px -1px 0 #000055;
-      background-color: var(--m9-lav-deep);
-      background-image: repeating-linear-gradient(
-        135deg,
-        #333399 0px 4px,
-        #6666CC 4px 8px,
-        #9999FF 8px 12px,
-        #CCCCFF 12px 16px
-      );
-      background-size: 32px 32px;
-      background-repeat: repeat;
-      animation: m9-activity-pulse 0.8s linear infinite;
-    }
+      > .toolbarbutton-badge-stack {
+        background-color: var(--m9-lav-deep) !important;
+        background-image: repeating-linear-gradient(
+          to right,
+          var(--m9-lav-deep) 0 4px,
+          var(--m9-lav-focus) 4px 8px,
+          var(--m9-lav-light) 8px 12px,
+          var(--m9-lav-select) 12px 16px
+        ) !important;
+        background-size: 16px 100% !important;
+        background-position: var(--m9-activity-offset) 0 !important;
 
-    @media (prefers-reduced-motion: reduce) {
-      &:has(.tabbrowser-tab[selected][busy]) #PanelUI-button::after {
-        animation: none !important;
+        @media (prefers-reduced-motion: no-preference) {
+          animation: m9-activity-pulse 0.8s linear infinite;
+        }
       }
     }
 
