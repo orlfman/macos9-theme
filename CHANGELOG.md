@@ -2,6 +2,20 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-25, Claude (Opus 5.5) & Antigravity (Gemini 4 Neon) — package GTK 4 in the main installer (Milestone 6)
+
+- `install.sh`, `uninstall.sh`, `scripts/common.sh`, `scripts/gtk_theme.py`: package `gtk/Platinum/gtk-4.0` alongside `gtk-3.0` as target 25 in the install record. `scripts/gtk_theme.py validate` checks both GTK 3 and GTK 4 stylesheets and referenced artwork; `scripts/gtk_theme.py self-contain` copies shared GTK 3 artwork (`assets/gtk3/`) and `palette.css` into the installed `gtk-4.0/` so each toolkit folder stands alone with no `../` links. On uninstall, an existing displaced `gtk-4.0` is restored, and a `Platinum` selection in any GTK config store (`gtk-3.0`, `gtk-4.0`, `.gtkrc-2.0`, `xsettingsd`, or GSettings) keeps both toolkit folders until unselected.
+- `dev/test-install.sh`, `README.md`, `docs/GTK-PLAN.md`: updated for 25 targets, self-contained `gtk-4.0` artwork/palette checks, displaced `gtk-4.0` set-aside/restore, and dedicated GTK 4 selection-keeps-both-toolkits scenario.
+- Verification (completed by Antigravity Gemini 4 Neon after Claude hit usage limits): `dev/test-install.sh` **771/771**, `dev/test-install-live.sh` **47/47**, `dev/check-gtk4.sh plasma` **222/222**, `dev/check-gtk4.sh broadway` **149/149** (all `#245–248` fixes verified).
+- Not done: user live reinstall/review, automatic GTK selection, libadwaita. Nothing committed. Claims released.
+
+## 2026-11-25, Claude (Opus 5.5) — fix Gemini's findings #245–248
+
+- `menubuttons-levels.css`: menu buttons in linked groups, toolbars and OSD boxes, and OSD menu buttons, keep GTK's look and arrow (#245, #246).
+- `tabs-ranges.css`: a 100% inverted progress bar no longer covers the trough's outer bevel (#247; GTK 3 unaffected).
+- #248 fixed by the user's choice: continuous level fills stop 3 px short so their shadow always stays inside the trough (no more bleed with custom ranges); an empty level bar draws only the trough.
+- Harness: menu buttons in the stock-role comparison, full inverted progress bars, level bars against progress bars filled 3 px less, custom-range, empty and 1% level bars. GTK 4 222/222 Wayland, 149/149 Broadway, ASan/UBSan clean. Nothing committed. Claims released.
+
 ## 2026-11-25, Claude (Opus 5.5) — fix Gemini's GTK 4 findings #240–243 and #244
 
 - Verified and fixed #240–243 (`menubuttons-levels.css`, `tabs-ranges.css`): disabled level bars and disabled reversed/pulsing progress bars are flat; full level bars drop their trailing shadow and inverted ones use the reversed tube; menu buttons draw a triangle for each direction (new `menu-arrow-{up,left,right}-*` assets) and keep GTK's icon when they have none.

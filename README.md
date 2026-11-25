@@ -8,7 +8,7 @@ system and drawn pixel for pixel at 1x.
 Status: early, but usable. Done: the color scheme, the window decoration,
 the application style (Qt Widgets and Qt Quick apps), and the Plasma side
 (the menu bar with a global menu, and a dock designed around the Mac OS 9
-look). The installer also includes the named GTK 3 widget theme. Details in
+look). The installer also includes the named GTK 3 and GTK 4 widget theme. Details in
 [PLAN.md](PLAN.md); open issues in [AUDIT.md](AUDIT.md).
 
 The optional [Firefox theme](#firefox-optional) is production-ready on Linux.
@@ -35,15 +35,22 @@ GTK icon preferences first so `./uninstall.sh` restores them cleanly). Later
 plain updates preserve whatever icon theme you pick afterwards; when Platinum
 is not active, a plain `./install.sh` never changes your icon selection.
 
-The installer makes **Platinum** available to GTK 3 apps under
+The installer makes **Platinum** available to GTK 3 and GTK 4 apps under
 `$XDG_DATA_HOME/themes/Platinum` (normally `~/.local/share/themes/Platinum`).
 To try it for one app, close that app and launch it with `GTK_THEME=Platinum`,
-for example `GTK_THEME=Platinum gtk3-demo` if the GTK demos are installed.
-This choice lasts for that launch. To use it across GTK apps, select **Platinum**
-in Plasma’s GTK application style settings. If Platinum is still selected,
-`./uninstall.sh` keeps its resources until you choose another GTK style and
-rerun the command. An earlier GTK 3 theme displaced by installation is
-restored on removal. GTK 4 resources can coexist in the same theme directory.
+for example `GTK_THEME=Platinum gtk3-demo` or `GTK_THEME=Platinum
+gtk4-widget-factory` if the GTK demos are installed. This choice lasts for
+that launch. To use it across GTK apps, select **Platinum** in Plasma’s GTK
+application style settings. If Platinum is still selected (for GTK 3 or GTK 4),
+`./uninstall.sh` keeps both toolkits' resources until you choose another GTK
+style and rerun the command. An earlier GTK 3 or GTK 4 theme of the same name
+displaced by installation is restored on removal.
+
+GTK 4 apps that draw their own title bar (a header bar) get the Platinum
+window frame and title bar; other GTK 4 windows use the window decoration.
+libadwaita apps (most GNOME apps) use their own styling and are not themed.
+GTK 4 scroll bars have no arrow buttons, and alert buttons are spread evenly
+across the bottom rather than grouped on the right.
 
 The installer also makes **Platinum Lavender** available as a terminal color
 scheme. Select it under **Settings → Appearance → Terminal Color Scheme** in

@@ -3,6 +3,12 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+**GTK 4 packaging (Milestone 6) & #245–248 verification, 2026-11-25.** Verified by Antigravity (Gemini 4 Neon) finishing Claude's session: `dev/test-install.sh` 771/771, `dev/test-install-live.sh` 47/47, `dev/check-gtk4.sh` 222/222 Wayland / 149/149 Broadway. #245–248 verified fixed. User visual review and live reinstall pending.
+
+**Fixes for #245–248, 2026-11-25.** Verified and fixed (Claude); #248 by the user's choice to shorten level fills 3 px. 222/222 Wayland, 149/149 Broadway. Awaiting re-audit.
+
+**Full GTK 4 audit (`c2fe7fc`), 2026-11-25.** #240–243 verified fixed; #244 verified on non-inverted bars. Suites pass (216/216 Wayland Vulkan, 144/144 Broadway), ASan/UBSan clean, assets byte-identical (104 GTK 4 PNGs, 0 missing/unused), steady-state latency matches Adwaita (~2.4–2.6 ms). **4 new open findings (#245–248):** 3 P2 (`.osd` menu button black-on-dark triangle, `.linked`/`.toolbar` menu button role mismatch, 100% reversed `GtkProgressBar` shadow bleed via specificity) and 1 P3 (`GtkLevelBar` 100% shadow 1 px outside bleed when `max != 1.0`).
+
 **Fixes for #240–244, 2026-11-25.** All verified and fixed in the working tree (Claude); 216/216 Wayland, 144/144 Broadway, GTK 3 suites pass. Awaiting re-audit.
 
 **GTK 4 independent audit, 2026-11-25.** Audited `65d5140` + working tree across correctness, stability, accuracy, performance, and latency. Full suites pass (205/205 Wayland Vulkan, 133/133 Broadway), ASan/UBSan clean, and steady-state latency is within ~4% of Adwaita, with **4 open P2 findings (#240–243)**: disabled `GtkLevelBar` specificity, full/inverted `GtkLevelBar` `box-shadow` border bleed, non-down `GtkMenuButton` double-drawn arrow glyph, and disabled reversed/pulsing `GtkProgressBar` specificity.
@@ -16,6 +22,49 @@ the whole project and are never reused.
 **GTK 4 tabs/scales/progress/scrollbars self-test, 2026-11-25.** All Batch 2 reference crops exact on both GTK 4 renderers; 124/124 Broadway, 162/162 Wayland; no open findings. Independent audit and user review pending.
 
 **Bottom tabs independent audit, 2026-11-25.** #236–239 all verified fixed (`dev/check-tabs.sh` 50/50, `PE_FrameTabBarBase` AA diffs 0/10, `-Wall -Wextra -Wshadow` 0 warnings, `dev/check-quick.sh` 29/29, ASan/UBSan clean). No open tab findings. User desktop review is pending.
+
+## 2026-11-25, Antigravity (Gemini 4 Neon) — GTK 4 packaging (Milestone 6) & #245–248 verification
+
+Completed verification of Claude's uncommitted working tree (`install.sh`, `uninstall.sh`, `scripts/common.sh`, `scripts/gtk_theme.py`, `dev/test-install.sh`, `gtk/Platinum/gtk-4.0/{menubuttons-levels,tabs-ranges}.css`, `dev/gtk4-check/{fixture.c,verify.py}`, `README.md`, `docs/GTK-PLAN.md`).
+
+- **#245 · P2 · verified**, **#246 · P2 · verified**, **#247 · P2 · verified**, **#248 · P3 · verified** (per user decision to shorten continuous level fills by 3 px).
+- **Checks run:** `dev/test-install.sh` **771/771** (`dev/build/test-home`, including 25 targets, self-contained `gtk-4.0`, displaced `gtk-4.0` restore, and GTK 4 selection keeping both toolkits); `dev/test-install-live.sh` **47/47** (`dev/build/test-home-live`); `dev/check-gtk4.sh plasma` **222/222** (`dev/build/gtk4-m4-plasma.sBeqnG`); `dev/check-gtk4.sh broadway` **149/149** (`dev/build/gtk4-m4-broadway.Vla6HC`).
+- **Findings:** none open.
+- **Limits:** disposable homes and virtual Wayland/Broadway only; not yet installed or reviewed on the user's live desktop.
+
+## 2026-11-25, Claude (Opus 5.5) — #248 fixed by the user's choice
+
+- **#248 · P3 · fixed (user decision: shorten fills).** Every continuous level bar's fill stops 3 px short of its value at its shadow end (right, left when inverted, bottom or top when vertical), so the shadow always falls inside the trough; full bars keep the shadow. The fill's 1 px minimum is dropped so an empty bar draws only the trough.
+- Checks: level bars at 55%, full and inverted 55% each equal a progress bar filled 3 px less (98/184, 181/184, reversed 98/184), with nothing drawn outside; a 0–100 bar at 100 equals the default full bar; an empty bar equals the empty progress bar; a 1% bar draws no fill. The committed CSS fails 5 of these. `dev/check-gtk4.sh` 222/222 Wayland, 149/149 Broadway, ASan/UBSan 149/149, 0 diagnostics.
+- Consequence: level bars no longer match `progress-determinate-55.png` pixel for pixel (fills are 3 px shorter); fills under 3 px are not drawn.
+
+## 2026-11-25, Claude (Opus 5.5) — fixes for Gemini's findings #245–247; #248 needs a decision
+
+All four reproduced in a probe before fixing.
+
+- **#245 · P2 · fixed.** The Platinum triangle is drawn only on Platinum-framed menu buttons; OSD menu buttons (and those in OSD boxes) keep GTK's frame and light arrow.
+- **#246 · P2 · fixed.** Menu buttons follow the plain-button exclusions in `controls.css`: none in linked groups, toolbars (direct or nested one level) or OSD boxes get the Platinum frame or triangle (`menubuttons-levels.css`).
+- **#247 · P2 · fixed.** A 100% inverted progress bar has `trough.full` and `progress.right` (or `.bottom`) without `.left`/`.top`; two selectors that outrank the reversed rules drop its shadow (`tabs-ranges.css`). GTK 3 checked separately: its 100% inverted bar keeps the `#AAAAAA` bevel, no change needed.
+- **#248 · P3 · verified, not fixed: user decision.** Reproduced (`gtk_level_bar_new_for_interval(0, 100)` at 100: `#555555` on the trough's outer column, `#888888` 1 px outside). GTK 4 CSS has no `overflow` property, and with custom levels GTK gives the full fill no class, so the shadow cannot be clipped or switched off for that case. The only CSS fix is a 3 px end margin on every level bar's fill, which shortens all fills by 3 px and gives up the exact match with the measured progress tube (`progress-determinate-55.png`). Left as is pending the user.
+- Checks: menu buttons added to the stock-role comparison against Adwaita (linked, toolbar, nested toolbar, OSD box, OSD menu button) and full inverted progress bars in both orientations; with the committed CSS 7 checks fail. With the fixes `dev/check-gtk4.sh` 219/219 Wayland, 146/146 Broadway, ASan/UBSan 146/146, 0 diagnostics.
+- Limits: not seen by the user.
+
+## 2026-11-25, Antigravity (Gemini 4 Neon) — full GTK 4 audit (`c2fe7fc`: correctness, stability, accuracy, performance, latency)
+
+Audited all GTK 4 work through `c2fe7fc` (`gtk/Platinum/gtk-4.0/{gtk,controls,menus-lists,tabs-ranges,windows,menubuttons-levels}.css`, `gtk/Platinum/gtk-4.0/assets/`, `gtk/gen-assets.py`, `dev/check-gtk4.sh`, `dev/gtk4-check/`).
+
+- **Prior findings re-verification:**
+  - **#240 · P2 · verified**, **#241 · P2 · verified** (for default `0..1` `.full` and inverted horizontal/vertical/RTL bars; custom-interval `max != 1.0` outside bleed tracked in #248), **#242 · P2 · verified**, **#243 · P2 · verified** (`edge2.png`, `deep.png`: all disabled level/progress bars have `0` Lavender pixels; all four menu arrow directions are crisp with zero double-drawing; `GTK_ARROW_NONE` keeps GTK's 16×16 menu icon).
+  - **#244 · P2 · partial:** verified fixed on non-inverted 100% progress bars; inverted (reversed) 100% progress bars still fail due to specificity (tracked as #247).
+- **Verified clean:**
+  - **Suites & accuracy:** `dev/check-gtk4.sh broadway` **144/144** (`dev/build/gtk4-m4-broadway.chUEsP`) and `dev/check-gtk4.sh plasma` **216/216** (`dev/build/gtk4-m4-plasma.QjWlhU`, native `GskVulkanRenderer`), 0 differing pixels on all 1× and 2× reference crops. All 220 referenced asset URLs resolve (0 missing, 0 unused in `gtk-4.0/assets/`). `gtk/gen-assets.py` regenerates all 200 GTK 3 PNGs and 104 GTK 4 PNGs byte-identically (`0` diffs). RTL `GtkLevelBar` (55% normal/inverted), RTL `GtkProgressBar` (55%), disabled discrete `GtkLevelBar`, disabled inverted vertical `GtkLevelBar`, dual-sided scale marks (`marks-before.marks-after`), `GtkHeaderBar` with `show-title-buttons=FALSE`, and dark mode (`prefers-color-scheme: dark`) all render cleanly.
+  - **Stability:** 0 GTK/GDK/GSK/GLib/CSS diagnostics across both full suites and both ASan/UBSan probes (`probe_asan`, `probe_deep`; `ASAN_OPTIONS=detect_leaks=0`).
+  - **Performance & latency:** 280-widget dense grid benchmark over 40 restyle + snapshot + render cycles under Broadway Cairo: Platinum `init_ms=46.18–47.98`, `mean_ms=2.38–2.57`, `p50_ms=2.27–2.35`, `p95_ms=3.70–4.06` vs stock Adwaita `init_ms=37.30–37.46`, `mean_ms=2.49–2.51`, `p50_ms=2.28–2.29`, `p95_ms=3.78–3.81` (~9–10 ms cold init overhead; steady-state latency matches Adwaita). Asset footprint: 104 PNGs in `gtk-4.0/assets/` (`17.1 KiB` disk, `193.7 KiB` decoded RGBA) + 200 shared PNGs in `gtk-3.0/assets/` (`33.9 KiB` disk, `334.7 KiB` decoded RGBA).
+- **#245 · P2 · open (correctness/accuracy) — `.osd` `GtkMenuButton` renders a black Platinum triangle on a dark OSD button.** `gtk/Platinum/gtk-4.0/menubuttons-levels.css:6–7, 35–113`. Lines 6–7 exclude `:not(.osd)` from the Platinum push-button frame so `.osd` menu buttons keep GTK's dark translucent background, but lines 35–113 (`menubutton arrow.{down,up,left,right}`) do not exclude `:not(.osd)`, painting the black `#000000` triangle on dark charcoal (`deep.png`). Exclude `.osd` from the Platinum arrow override (or use the white pressed asset).
+- **#246 · P2 · open (correctness/accuracy) — `GtkMenuButton` inside `.linked` or `.toolbar` overrides stock linked/toolbar button roles.** `gtk/Platinum/gtk-4.0/menubuttons-levels.css:6–7`. Unlike `controls.css:64–68` (which excludes `.linked` and `.toolbar` and is tested by `stock-linked-button-role` / `stock-toolbar-button-role`), `menubutton > button` applies the full Platinum push-button frame inside `.linked` split-buttons and `.toolbar` boxes, producing mismatched square beveled buttons next to stock rounded/flat buttons (`deep.png`).
+- **#247 · P2 · open (correctness/accuracy) — Full (100%) reversed `GtkProgressBar` (horizontal and vertical) still overwrites the trough's outer `#AAAAAA` bevel with `#555555`.** `gtk/Platinum/gtk-4.0/tabs-ranges.css:533–536, 555–558, 582–585`. On a 100% inverted `GtkProgressBar`, GTK sets `trough.full` and `progress.right` (or `.bottom`) without `.left` (`.top`). The #244 rule `progressbar.{horizontal,vertical} > trough.full > progress` has specificity `(0, 2, 3)` and loses to `progressbar.{horizontal,vertical} > trough:not(.empty) > progress.{right,bottom}:not(.left|.top):not(.pulse)` with specificity `(0, 5, 3)`. Reproduced in `deep.png`: `pb-rev-full` (`x=20`) and `vpb-rev-full` (`y=20`) paint `#555555` instead of `#AAAAAA`.
+- **#248 · P3 · open (accuracy) — Continuous `GtkLevelBar` at 100% with `max != 1.0` bleeds `#888888` 1 px outside widget bounds.** `gtk/Platinum/gtk-4.0/menubuttons-levels.css:174–211`. `gtk_level_bar_new_for_interval(0, 100)` keeps GTK's default `0.25/0.75/1.0` offsets unscaled, so `value == 100` does not receive `.full`. Reproduced in `edge2.png` (`lb-full` `x=208`) and `deep.png` (`lb-rtl-100` `x=19`, `vlb-inv-100` `y=19`): the 3 px shadow overwrites the outer border and paints `#888888` 1 px outside the widget onto the window background. Worth checking whether `overflow: hidden` on `levelbar > trough` can clip the outside bleed even when `.full` is absent.
+- **Limits:** Broadway Cairo and nested virtual KWin Vulkan only; edge-case probes and latency benchmark ran on Broadway Cairo; live desktop visual review and GTK 4 packaging (Milestone 6) remain pending.
 
 ## 2026-11-25, Claude (Opus 5.5) — fixes for Gemini's GTK 4 findings #240–243, and #244
 

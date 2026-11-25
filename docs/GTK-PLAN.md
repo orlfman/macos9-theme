@@ -129,14 +129,16 @@ the title, an app bar with push buttons, the alert frame against
 frame, pressed while its menu is open, with the submenu triangle turned to
 point down (generated GTK 4 assets). GtkLevelBar uses the progress tube; low,
 high and full levels all fill with Lavender, and discrete levels are separate
-segments. A level bar at 101/184 matches `progress-determinate-55.png` exactly.
+segments. Continuous fills stop 3 px short of their value so the tube's
+shadow always stays inside the trough (user's choice, audit #248); each level
+bar equals a progress bar filled 3 px less.
 
-Remaining for the plain GTK 4 port: user review on the desktop. Installation
-is scheduled for Milestone 6, then libadwaita (step 5).
+The installer packages GTK 4 alongside GTK 3 (see below). Remaining: user
+review on the desktop, automatic selection, then libadwaita (step 5).
 
 ## Installer contract for milestone 6
 
-GTK 3 file packaging and manifest-based undo are implemented in the main scripts. Launching an app with `GTK_THEME=Platinum` loads the installed theme. GTK 4 packaging and automatic selection are still pending.
+GTK 3 and GTK 4 file packaging and manifest-based undo are implemented in the main scripts. The installed `gtk-4.0` folder stands alone: `scripts/gtk_theme.py self-contain` copies the GTK 3 artwork and palette it uses into `gtk-4.0/assets/gtk3/` and `gtk-4.0/palette.css` and rewrites its links. A selection in any GTK store keeps both toolkit folders on uninstall. Launching an app with `GTK_THEME=Platinum` loads the installed theme. Automatic selection is still pending.
 
 Claim packaging before changing the scripts. A plain upgrade installs the named theme files and preserves the current GTK widget-theme choice. Enable selection on explicit apply only after milestone 1 demonstrates a viable route and the following recovery tests pass.
 
