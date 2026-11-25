@@ -70,7 +70,7 @@ if [[ ! -d $backup && ${#manifest_entries[@]} -eq 0 ]]; then
     ((shell_resumed)) || note "Nothing to remove: there's no install record in $state."
     if ((!dry_run)); then
         # What an earlier run stopped just before removing.
-        rm -f "$state/lock" "$icon_adoption" "$restore_decision_file" "$uninstall_marker"
+        rm -f "$state/lock" "$icon_adoption" "$restore_decision_file" "$uninstall_marker" "$gtk_later_file"
         rmdir "$state" 2> /dev/null || true
     fi
     exit 0
@@ -218,6 +218,20 @@ if [[ -d $backup ]]; then
             printf '  %s\n' "${damaged[@]}" >&2
             die "the copy of your config files is incomplete or was changed; nothing was changed. To remove the theme without putting back your config files, move $backup somewhere else and run uninstall.sh again"
         fi
+        # GTK widget-theme choices made after the switch survive the restore
+        # (#249, #251). They are saved before any file is put back, and a run
+        # that resumes an interrupted restore uses the saved list, since the
+        # files no longer show the choices (#252).
+        if [[ (-e $uninstall_marker || -L $uninstall_marker) && -f $gtk_later_file && ! -L $gtk_later_file ]]; then
+            gtk_later=$(< "$gtk_later_file")
+        else
+            gtk_later=$(python3 -I "$here/scripts/gtk_theme.py" later-choices "$config_home" "$home" "$backup") ||
+                die "couldn't read your GTK theme settings; nothing was changed"
+            if ((!dry_run)); then
+                printf '%s\n' "$gtk_later" > "$gtk_later_file.new" && mv -f "$gtk_later_file.new" "$gtk_later_file" ||
+                    die "couldn't save your GTK theme settings in $gtk_later_file; nothing was changed"
+            fi
+        fi
         shell_stop || die "couldn't stop Plasma's shell, which has to be stopped while your panel layout is put back; nothing was changed. Try again, or log out and run uninstall.sh from a text console (Ctrl+Alt+F3)"
         restore_stage=""
         # If anything below fails, clean temporary stage and restart Plasma's shell.
@@ -335,11 +349,23 @@ if [[ -d $backup ]]; then
             [[ -z $restore_stage ]] || rm -rf "$restore_stage"
             restore_stage=""
         fi
+        while IFS=$'\t' read -r _ gtk_rel gtk_name; do
+            [[ -z $gtk_rel ]] && continue
+            if [[ -n $gtk_name ]]; then
+                plan "keep your later GTK theme choice \"$gtk_name\" in $gtk_rel"
+            else
+                plan "keep the GTK theme setting you removed from $gtk_rel removed"
+            fi
+        done <<< "$gtk_later"
+        if ((!dry_run)) && [[ -n ${gtk_later//[$'\n']/} ]]; then
+            printf '%s\n' "$gtk_later" | python3 -I "$here/scripts/gtk_theme.py" carry "$config_home" "$home" ||
+                die "couldn't keep your later GTK theme choice; run uninstall.sh again to finish"
+        fi
         plan "move the copy that was put back to $keep/original"
         if ((!dry_run)); then
             mkdir -p "$keep"
             mv -T "$backup" "$keep/original"
-            rm -f "$restore_decision_file"
+            rm -f "$restore_decision_file" "$gtk_later_file"
             if [[ -f $icon_adoption && ! -L $icon_adoption ]]; then
                 python3 -I "$icon_prefs" finish-restore "$icon_adoption" || true
                 mv -T "$icon_adoption" "$keep/icon-adoption"
@@ -818,7 +844,7 @@ if ((left)); then
 fi
 
 if ((!dry_run)); then
-    rm -f "$manifest" "$state/lock" "$icon_adoption" "$restore_decision_file" "$uninstall_marker"
+    rm -f "$manifest" "$state/lock" "$icon_adoption" "$restore_decision_file" "$uninstall_marker" "$gtk_later_file"
     rmdir "$state" 2> /dev/null || true
 else
     plan "remove the install record $manifest"

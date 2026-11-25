@@ -118,6 +118,8 @@ icon_adoption=$state/icon-adoption
 restore_decision_file=$state/restore-decision
 # Retained throughout uninstall until backup, packages, and manifest are retired (#140).
 uninstall_marker=$state/uninstall-in-progress
+# GTK widget-theme choices made after the switch, kept across a resumed undo (#252)
+gtk_later_file=$state/gtk-later-choices
 # Fast O(N) manifest helper (format version 4 compatible).
 manifest_ops=$here/scripts/manifest_ops.py
 # Durable KDE + GTK icon transaction and unified dependency checker.

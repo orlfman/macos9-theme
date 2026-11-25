@@ -146,8 +146,9 @@ fake_gtk_sync() {
     printf '@import "colors.css";\n' > "$config/gtk-4.0/gtk.css"
     printf 'colors' > "$config/gtk-4.0/colors.css"
     printf 'deco' > "$config/gtk-3.0/window_decorations.css"
-    printf 'Net/ThemeName "Platinum"\n' > "$config/xsettingsd/xsettingsd.conf"
-    printf 'gtk-theme-name="Platinum"\n' > "$home/.gtkrc-2.0"
+    # kded rewrites these files but keeps the widget-theme name (docs/FINDINGS.md).
+    printf 'Net/ThemeName "Breeze"\nNet/CursorBlink 1\n' > "$config/xsettingsd/xsettingsd.conf"
+    printf 'gtk-theme-name="Breeze"\ngtk-cursor-blink=1\n' > "$home/.gtkrc-2.0"
 }
 
 no_record_left() { [[ ! -e $state ]]; }
@@ -375,6 +376,75 @@ check "  and still stands alone" test -s "$gtk_theme/gtk-4.0/assets/gtk3/push-di
 rm "$config/gtk-4.0/settings.ini"
 check "retry removes both" run gtk4-retry "$project/uninstall.sh"
 check "the GTK theme is gone" test ! -e "$gtk_theme"
+
+fresh "#249: a GTK theme chosen after the switch survives undo"
+check "install --apply" run gtk249-apply "$project/install.sh" --apply
+fake_gtk_sync
+printf '[Settings]\ngtk-theme-name=Adwaita\n' > "$config/gtk-3.0/settings.ini"
+check "uninstall exits 0" run gtk249-undo "$project/uninstall.sh"
+check "  the later GTK 3 choice is kept" grep -qx 'gtk-theme-name=Adwaita' "$config/gtk-3.0/settings.ini"
+check "  the GTK 2 and XSettings files are put back" bash -c 'grep -qx "gtk-theme-name=\"Breeze\"" "$1/.gtkrc-2.0" && grep -qx "Net/ThemeName \"Breeze\"" "$2/xsettingsd/xsettingsd.conf" && ! grep -q Blink "$1/.gtkrc-2.0"' _ "$home" "$config"
+check "  and the rest of the config is put back" same "$(printf '[KDE]\nwidgetStyle=Breeze\nLookAndFeelPackage=org.kde.breeze.desktop\n\n[General]\nColorScheme=BreezeLight\n')" "$(cat "$config/kdeglobals")"
+check "  the GTK theme is removed" test ! -e "$data/themes/Platinum"
+
+fresh "#249: Platinum chosen for GTK 4 after the switch is kept with the theme"
+check "install --apply" run gtk249p-apply "$project/install.sh" --apply
+fake_gtk_sync
+printf '[Settings]\ngtk-theme-name=Platinum\n' > "$config/gtk-4.0/settings.ini"
+check "preview exits 0" run gtk249p-preview "$project/uninstall.sh" --dry-run
+check "  says it keeps the later choice" grep -Fq 'would keep your later GTK theme choice "Platinum" in gtk-4.0/settings.ini' "$root/$n-gtk249p-preview.log"
+check "  and the theme" grep -Fq 'Keeping the Platinum GTK theme' "$root/$n-gtk249p-preview.log"
+check "uninstall defers the GTK theme" bash -c '! "$1" > "$2" 2>&1' _ "$project/uninstall.sh" "$root/gtk249p-undo.log"
+check "  the later choice is still there" grep -qx 'gtk-theme-name=Platinum' "$config/gtk-4.0/settings.ini"
+check "  GTK 3 and GTK 4 stay installed" bash -c 'test -s "$1/gtk-3.0/gtk.css" && grep -q "Platinum GTK 4 theme" "$1/gtk-4.0/gtk.css"' _ "$data/themes/Platinum"
+check "  the rest of the config is put back" grep -qx 'gtk-theme-name=Breeze' "$config/gtk-3.0/settings.ini"
+printf '[Settings]\ngtk-theme-name=Adwaita\n' > "$config/gtk-4.0/settings.ini"
+check "retry removes the theme" run gtk249p-retry "$project/uninstall.sh"
+check "  and keeps the new choice" grep -qx 'gtk-theme-name=Adwaita' "$config/gtk-4.0/settings.ini"
+check "  the GTK theme is gone" test ! -e "$data/themes/Platinum"
+
+fresh "#251: a GTK theme key removed after the switch stays removed"
+printf '[Settings]\ngtk-theme-name=Platinum\n' > "$config/gtk-4.0/settings.ini"
+check "install --apply" run gtk251-apply "$project/install.sh" --apply
+fake_gtk_sync
+printf '[Settings]\n' > "$config/gtk-4.0/settings.ini"
+check "preview says the key stays removed" bash -c '"$1" --dry-run > "$2" 2>&1; grep -Fq "keep the GTK theme setting you removed from gtk-4.0/settings.ini removed" "$2"' _ "$project/uninstall.sh" "$root/gtk251-preview.log"
+check "uninstall exits 0" run gtk251-undo "$project/uninstall.sh"
+check "  the key is still gone" bash -c '! grep -q gtk-theme-name "$1"' _ "$config/gtk-4.0/settings.ini"
+check "  the GTK theme is removed" test ! -e "$data/themes/Platinum"
+
+fresh "#251: the GTK sync filling in a missing key is not a choice"
+check "install --apply" run gtk251s-apply "$project/install.sh" --apply
+fake_gtk_sync
+# (like kded: the name the other files already hold, in a file that wasn't there)
+printf '[Settings]\ngtk-theme-name=Breeze\n' > "$config/gtk-4.0/settings.ini"
+check "uninstall exits 0" run gtk251s-undo "$project/uninstall.sh"
+check "  every config and GTK file is put back" same "$seed" "$(config_state)"
+
+fresh "#252: an undo stopped before the GTK choice is written back keeps it"
+check "install --apply" run gtk252-apply "$project/install.sh" --apply
+fake_gtk_sync
+printf '[Settings]\ngtk-theme-name=Platinum\n' > "$config/gtk-4.0/settings.ini"
+bash -c "
+    python3() { if [[ \${3:-} == carry ]]; then kill -INT \$\$; exit 130; fi; command python3 \"\$@\"; }
+    source '$project/uninstall.sh'" > "$root/gtk252-stopped.log" 2>&1 || true
+check "the stopped undo had put the config back" grep -qx 'LookAndFeelPackage=org.kde.breeze.desktop' "$config/kdeglobals"
+check "  and saved the choice" grep -q 'Platinum' "$state/gtk-later-choices"
+check "running it again keeps the theme" bash -c '! "$1" > "$2" 2>&1' _ "$project/uninstall.sh" "$root/gtk252-again.log"
+check "  with the later choice" grep -qx 'gtk-theme-name=Platinum' "$config/gtk-4.0/settings.ini"
+check "  and both toolkits" bash -c 'test -s "$1/gtk-3.0/gtk.css" && grep -q "Platinum GTK 4 theme" "$1/gtk-4.0/gtk.css"' _ "$data/themes/Platinum"
+check "  the saved list is gone once used" test ! -e "$state/gtk-later-choices"
+rm "$config/gtk-4.0/settings.ini"
+check "retry after switching away removes the theme" run gtk252-retry "$project/uninstall.sh"
+check "  the GTK theme is gone" test ! -e "$data/themes/Platinum"
+
+fresh "#250: an exported GTK_THEME keeps the theme"
+check "install" run gtk250-install "$project/install.sh"
+check "uninstall with GTK_THEME=Platinum:dark defers" bash -c '! env GTK_THEME=Platinum:dark "$1" > "$2" 2>&1' _ "$project/uninstall.sh" "$root/gtk250-undo.log"
+check "  and names the variable" grep -Fq 'GTK_THEME=Platinum:dark' "$root/gtk250-undo.log"
+check "  GTK 3 and GTK 4 stay installed" bash -c 'test -s "$1/gtk-3.0/gtk.css" && test -s "$1/gtk-4.0/gtk.css"' _ "$data/themes/Platinum"
+check "another theme in GTK_THEME does not" run gtk250-other env GTK_THEME=Adwaita "$project/uninstall.sh"
+check "  the GTK theme is gone" test ! -e "$data/themes/Platinum"
 
 fresh "finding 6: a linked config entry is refused before any change"
 mkdir -p "$root/elsewhere/kdedefaults"
