@@ -68,10 +68,10 @@ apps start with Platinum controls.
 
 To try another wallpaper on an existing installation, rerun `./install.sh`
 and choose **Pastel Ribbon Landscape**, **Lavender Desktop Pattern**,
-**Platinum Waves** or **Platinum Glass** in Plasma's desktop wallpaper
-settings. All four 3840 × 2160 JPEG XL images use
+**Platinum Waves**, **Platinum Glass** or **Platinum Nebula** in Plasma's
+desktop wallpaper settings. All five 3840 × 2160 JPEG XL images use
 Qt's JPEG XL decoder, provided by `kimageformats` on Arch. The
-`--apply` option checks all four images and warns before switching if Qt
+`--apply` option checks all five images and warns before switching if Qt
 cannot open them.
 
 Your config files (panels, colors, style, decoration, and the GTK

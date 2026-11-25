@@ -1,0 +1,9 @@
+{
+    "KPackageStructure": "Wallpaper/Images",
+    "KPlugin": {
+        "Authors": [{ "Name": "orlfman" }],
+        "Description": "Lavender space scene with a Finder face in the nebula (user-supplied image)",
+        "Id": "platinum-nebula",
+        "Name": "Platinum Nebula"
+    }
+}
