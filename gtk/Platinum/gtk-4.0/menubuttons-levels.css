@@ -28,28 +28,88 @@ menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular
   color: inherit;
 }
 
-/* GTK's arrow is a 16 px symbolic icon; the triangle is 11 x 6, centered on
- * whole pixels. */
-menubutton arrow,
-menubutton arrow.down,
-menubutton > button arrow.down {
+/* GTK's arrow is a 16 px symbolic icon; the triangle is 11 x 6 (6 x 11 for
+ * left and right), centered on whole pixels, pointing where the menu opens.
+ * A menu button with no direction keeps GTK's menu icon. Each rule matches
+ * GTK's own per-direction selector. */
+menubutton arrow.down {
   -gtk-icon-source: none;
   -gtk-icon-size: 6px;
   min-width: 11px;
   min-height: 6px;
   margin: 0;
   background-repeat: no-repeat;
-  background-position: center round(down, calc(50% + 0px), 1px);
+  background-position: round(down, calc(50% + 0px), 1px) round(down, calc(50% + 0px), 1px);
   background-image: -gtk-scaled(url("assets/menu-arrow-down-normal.png"), url("assets/menu-arrow-down-normal@2.png"));
 }
 
-menubutton > button:checked arrow,
-menubutton > button:active arrow {
+menubutton > button:checked arrow.down,
+menubutton > button:active arrow.down {
   background-image: -gtk-scaled(url("assets/menu-arrow-down-pressed.png"), url("assets/menu-arrow-down-pressed@2.png"));
 }
 
-menubutton > button:disabled arrow {
+menubutton > button:disabled arrow.down {
   background-image: -gtk-scaled(url("assets/menu-arrow-down-disabled.png"), url("assets/menu-arrow-down-disabled@2.png"));
+}
+
+menubutton arrow.up {
+  -gtk-icon-source: none;
+  -gtk-icon-size: 6px;
+  min-width: 11px;
+  min-height: 6px;
+  margin: 0;
+  background-repeat: no-repeat;
+  background-position: round(down, calc(50% + 0px), 1px) round(down, calc(50% + 0px), 1px);
+  background-image: -gtk-scaled(url("assets/menu-arrow-up-normal.png"), url("assets/menu-arrow-up-normal@2.png"));
+}
+
+menubutton > button:checked arrow.up,
+menubutton > button:active arrow.up {
+  background-image: -gtk-scaled(url("assets/menu-arrow-up-pressed.png"), url("assets/menu-arrow-up-pressed@2.png"));
+}
+
+menubutton > button:disabled arrow.up {
+  background-image: -gtk-scaled(url("assets/menu-arrow-up-disabled.png"), url("assets/menu-arrow-up-disabled@2.png"));
+}
+
+menubutton arrow.left {
+  -gtk-icon-source: none;
+  -gtk-icon-size: 6px;
+  min-width: 6px;
+  min-height: 11px;
+  margin: 0;
+  background-repeat: no-repeat;
+  background-position: round(down, calc(50% + 0px), 1px) round(down, calc(50% + 0px), 1px);
+  background-image: -gtk-scaled(url("assets/menu-arrow-left-normal.png"), url("assets/menu-arrow-left-normal@2.png"));
+}
+
+menubutton > button:checked arrow.left,
+menubutton > button:active arrow.left {
+  background-image: -gtk-scaled(url("assets/menu-arrow-left-pressed.png"), url("assets/menu-arrow-left-pressed@2.png"));
+}
+
+menubutton > button:disabled arrow.left {
+  background-image: -gtk-scaled(url("assets/menu-arrow-left-disabled.png"), url("assets/menu-arrow-left-disabled@2.png"));
+}
+
+menubutton arrow.right {
+  -gtk-icon-source: none;
+  -gtk-icon-size: 6px;
+  min-width: 6px;
+  min-height: 11px;
+  margin: 0;
+  background-repeat: no-repeat;
+  background-position: round(down, calc(50% + 0px), 1px) round(down, calc(50% + 0px), 1px);
+  background-image: -gtk-scaled(url("assets/menu-arrow-right-normal.png"), url("assets/menu-arrow-right-normal@2.png"));
+}
+
+menubutton > button:checked arrow.right,
+menubutton > button:active arrow.right {
+  background-image: -gtk-scaled(url("assets/menu-arrow-right-pressed.png"), url("assets/menu-arrow-right-pressed@2.png"));
+}
+
+menubutton > button:disabled arrow.right {
+  background-image: -gtk-scaled(url("assets/menu-arrow-right-disabled.png"), url("assets/menu-arrow-right-disabled@2.png"));
 }
 
 menubutton > button > box {
@@ -120,6 +180,14 @@ levelbar.horizontal > trough > block.filled.full {
   box-shadow: 3px 0 0 0 #888888, 2px 0 0 0 #555555, 1px 0 0 0 #000000;
 }
 
+/* An inverted bar fills from the far end: GTK has no class for it, but its
+ * filled block follows the empty one. It takes the reversed tube with the
+ * shadow on its leading edge, as an inverted progress bar does. */
+levelbar.horizontal.continuous > trough > block.empty + block.filled {
+  border-image: -gtk-scaled(url("assets/progress-fill-reversed-h.png"), url("assets/progress-fill-reversed-h@2.png")) 5 3 5 4 / 5px 3px 5px 4px stretch;
+  box-shadow: -3px 0 0 0 #888888, -2px 0 0 0 #555555, -1px 0 0 0 #000000;
+}
+
 levelbar.vertical > trough > block.filled,
 levelbar.vertical > trough > block.filled.low,
 levelbar.vertical > trough > block.filled.high,
@@ -127,6 +195,19 @@ levelbar.vertical > trough > block.filled.full {
   background-color: @platinum_accent;
   border-image: -gtk-scaled(url("assets/progress-fill-full-v.png"), url("assets/progress-fill-full-v@2.png")) 3 5 4 5 / 3px 5px 4px 5px stretch;
   box-shadow: 0 3px 0 0 #888888, 0 2px 0 0 #555555, 0 1px 0 0 #000000;
+}
+
+levelbar.vertical.continuous > trough > block.empty + block.filled {
+  border-image: -gtk-scaled(url("assets/progress-fill-reversed-v.png"), url("assets/progress-fill-reversed-v@2.png")) 4 5 3 5 / 4px 5px 3px 5px stretch;
+  box-shadow: 0 -3px 0 0 #888888, 0 -2px 0 0 #555555, 0 -1px 0 0 #000000;
+}
+
+/* A full bar has no unfilled trough for the shadow to fall on. GTK marks it
+ * .full with its default levels; with custom levels, a bar at its maximum
+ * still shows the shadow over the trough's inner bevel. */
+levelbar.continuous > trough > block.filled.full,
+levelbar.continuous > trough > block.empty + block.filled.full {
+  box-shadow: none;
 }
 
 /* Discrete levels: separate tube segments with a trough gap between them. */
@@ -151,7 +232,24 @@ levelbar.discrete > trough > block.filled.full {
   box-shadow: none;
 }
 
-levelbar:disabled > trough > block.filled {
+/* Disabled bars are flat, whatever their level (each selector outranks the
+ * level and inverted rules above). */
+levelbar.horizontal:disabled > trough > block.filled,
+levelbar.horizontal:disabled > trough > block.filled.low,
+levelbar.horizontal:disabled > trough > block.filled.high,
+levelbar.horizontal:disabled > trough > block.filled.full,
+levelbar.horizontal:disabled > trough > block.empty + block.filled,
+levelbar.horizontal:disabled > trough > block.empty + block.filled.low,
+levelbar.horizontal:disabled > trough > block.empty + block.filled.high,
+levelbar.horizontal:disabled > trough > block.empty + block.filled.full,
+levelbar.vertical:disabled > trough > block.filled,
+levelbar.vertical:disabled > trough > block.filled.low,
+levelbar.vertical:disabled > trough > block.filled.high,
+levelbar.vertical:disabled > trough > block.filled.full,
+levelbar.vertical:disabled > trough > block.empty + block.filled,
+levelbar.vertical:disabled > trough > block.empty + block.filled.low,
+levelbar.vertical:disabled > trough > block.empty + block.filled.high,
+levelbar.vertical:disabled > trough > block.empty + block.filled.full {
   background-color: @platinum_bg;
   border-image: none;
   box-shadow: none;

@@ -1083,9 +1083,18 @@ def main() -> int:
     balloon = pick(assets["tooltip-balloon"], (*range(7), 7, *range(13, 20)), (*range(7), 7, *range(13, 20)))
     save_asset(OUT_GTK4, "tooltip-balloon", guard_strip(balloon, 7, 7))
 
-    # Menu buttons: the measured submenu triangle, pointing down.
-    for state, source in (("normal", "normal"), ("pressed", "hover"), ("disabled", "disabled")):
-        save_asset(OUT_GTK4, f"menu-arrow-down-{state}", assets[f"menu-arrow-{source}"].transpose(tr))
+    # Menu buttons: the measured submenu triangle (pointing right) turned to
+    # each direction GtkMenuButton can open in.
+    turns = {
+        "down": Image.Transpose.TRANSPOSE,
+        "up": Image.Transpose.ROTATE_90,
+        "left": Image.Transpose.FLIP_LEFT_RIGHT,
+        "right": None,
+    }
+    for direction, turn in turns.items():
+        for state, source in (("normal", "normal"), ("pressed", "hover"), ("disabled", "disabled")):
+            art = assets[f"menu-arrow-{source}"]
+            save_asset(OUT_GTK4, f"menu-arrow-{direction}-{state}", art.transpose(turn) if turn is not None else art)
 
     for name, image in make_csd_assets().items():
         save_asset(OUT_GTK4, name, image)

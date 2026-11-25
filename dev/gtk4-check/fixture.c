@@ -968,7 +968,7 @@ ranges(gboolean wayland)
     gtk_window_set_child(GTK_WINDOW(window), fixed);
     gtk_window_set_default_size(GTK_WINDOW(window), 1000, 730);
 
-    struct { const char *name; GtkWidget *widget; } items[32];
+    struct { const char *name; GtkWidget *widget; } items[48];
     guint count = 0;
 #define PUT(label, widget, x, y, w, h) do { \
         GtkWidget *put_widget = (widget); \
@@ -1033,6 +1033,37 @@ ranges(gboolean wayland)
     gtk_menu_button_set_label(GTK_MENU_BUTTON(menu_button), "View");
     gtk_menu_button_set_always_show_arrow(GTK_MENU_BUTTON(menu_button), TRUE);
     PUT("menu-button", menu_button, 220, 170, -1, -1);
+    /* Audit #240-243: full, inverted and disabled bars, every arrow direction. */
+    GtkWidget *level_full = gtk_level_bar_new_for_interval(0, 1);
+    gtk_level_bar_set_value(GTK_LEVEL_BAR(level_full), 1);
+    PUT("level-full", level_full, 10, 230, 188, 14);
+    PUT("progress-full", progress(1, FALSE, FALSE), 10, 250, 188, 14);
+    GtkWidget *level_inverted = gtk_level_bar_new_for_interval(0, 184);
+    gtk_level_bar_set_inverted(GTK_LEVEL_BAR(level_inverted), TRUE);
+    gtk_level_bar_set_value(GTK_LEVEL_BAR(level_inverted), 101);
+    PUT("level-inverted", level_inverted, 10, 270, 188, 14);
+    const double disabled_levels[] = {0.15, 0.55, 1.0};
+    const char *disabled_names[] = {"level-disabled-low", "level-disabled-high", "level-disabled-full"};
+    for (guint i = 0; i < G_N_ELEMENTS(disabled_levels); i++) {
+        GtkWidget *bar = gtk_level_bar_new_for_interval(0, 1);
+        gtk_level_bar_set_value(GTK_LEVEL_BAR(bar), disabled_levels[i]);
+        gtk_widget_set_sensitive(bar, FALSE);
+        PUT(disabled_names[i], bar, 10, 290 + 20 * i, 188, 14);
+    }
+    GtkWidget *progress_off_reversed = progress(101.0 / 184.0, FALSE, TRUE);
+    gtk_widget_set_sensitive(progress_off_reversed, FALSE);
+    PUT("progress-disabled-reversed", progress_off_reversed, 220, 230, 188, 14);
+    GtkWidget *progress_off_pulse = progress(-1, FALSE, FALSE);
+    gtk_widget_set_sensitive(progress_off_pulse, FALSE);
+    PUT("progress-disabled-pulse", progress_off_pulse, 220, 250, 188, 14);
+    const GtkArrowType directions[] = {GTK_ARROW_UP, GTK_ARROW_LEFT, GTK_ARROW_RIGHT, GTK_ARROW_NONE};
+    const char *direction_names[] = {"menu-up", "menu-left", "menu-right", "menu-none"};
+    GtkWidget *direction_buttons[G_N_ELEMENTS(directions)];
+    for (guint i = 0; i < G_N_ELEMENTS(directions); i++) {
+        direction_buttons[i] = gtk_menu_button_new();
+        gtk_menu_button_set_direction(GTK_MENU_BUTTON(direction_buttons[i]), directions[i]);
+        PUT(direction_names[i], direction_buttons[i], 220 + 50 * i, 280, -1, -1);
+    }
     GtkWidget *menu_open = gtk_menu_button_new();
     gtk_menu_button_set_menu_model(GTK_MENU_BUTTON(menu_open), G_MENU_MODEL(view_menu));
     gtk_widget_set_state_flags(gtk_widget_get_first_child(menu_open), GTK_STATE_FLAG_CHECKED, FALSE);
@@ -1082,6 +1113,9 @@ ranges(gboolean wayland)
     report_node("vscale-thumb", vertical_scale, "slider", window, &ok);
     report_node("menu-arrow", menu_button, "arrow", window, &ok);
     report_node("menu-open-arrow", menu_open, "arrow", window, &ok);
+    const char *arrow_names[] = {"menu-up-arrow", "menu-left-arrow", "menu-right-arrow", "menu-none-arrow"};
+    for (guint i = 0; i < G_N_ELEMENTS(arrow_names); i++)
+        report_node(arrow_names[i], direction_buttons[i], "arrow", window, &ok);
     printf("overlay_indicator=%d\n", gtk_widget_has_css_class(overlay_bar, "overlay-indicator"));
 
     /* Native behavior: the styled nodes must still drive GTK's own ranges. */

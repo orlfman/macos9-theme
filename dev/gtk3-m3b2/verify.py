@@ -248,6 +248,16 @@ def main() -> int:
             "expected divider and three shadow tones before the fill",
         )
 
+    # A full bar keeps the trough's right edge (as at 55%) and paints nothing
+    # outside itself: its trailing shadow has no trough to fall on.
+    fx, fy, fw, fh = ch_items["progress-full"][0]
+    hx, hy, hw, _ = ch_items["progress-55"][0]
+    edge_full = [chrome.getpixel((fx + fw - 2 + i, fy + y)) for i in range(2) for y in range(2, fh - 2)]
+    edge_55 = [chrome.getpixel((hx + hw - 2 + i, hy + y)) for i in range(2) for y in range(2, fh - 2)]
+    beyond = {chrome.getpixel((fx + fw, fy + y)) for y in range(fh)}
+    record(edge_full == edge_55 and beyond == {chrome.getpixel((fx + fw + 4, fy + 4))},
+           "progress-full-keeps-trough-edge", f"outside {sorted(beyond)}")
+
     vx, vy, _, _ = ch_items["progress-vertical-busy"][0]
     pattern_path = PROJECT / "gtk" / "Platinum" / "gtk-3.0" / "assets" / "progress-pulse-v.png"
     with Image.open(pattern_path) as pattern:

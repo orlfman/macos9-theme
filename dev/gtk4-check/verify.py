@@ -393,6 +393,40 @@ def verify_ranges(root, wayland, record, compare):
         x, y, w, h = controls[name][:4]
         observed = crop(image, (x, y + (h - 6) // 2, 11, 6))
         record(ImageChops.difference(observed, expected).getbbox() is None, name + "-artwork")
+    # Audit #241: full and inverted level bars draw exactly like progress bars
+    # with the same fill, and nothing lands outside the widget.
+    def same_as(a, b):
+        return ImageChops.difference(crop(image, controls[a]), crop(image, controls[b])).getbbox() is None
+    fx, fy, fw, fh = controls["level-full"][:4]
+    outside = image.crop((fx + fw, fy, fx + fw + 2, fy + fh))
+    record(same_as("level-full", "progress-full")
+           and color_count(outside, (221, 221, 221)) == outside.width * outside.height, "level-full-matches-progress")
+    record(same_as("level-inverted", "progress-reversed"), "level-inverted-matches-progress")
+
+    # Audit #240 and #243: disabled bars are flat at every level and mode.
+    for name in ("level-disabled-low", "level-disabled-high", "level-disabled-full",
+                 "progress-disabled-reversed", "progress-disabled-pulse"):
+        region = crop(image, controls[name])
+        # A full disabled bar is face color across; the others show the trough.
+        trough_ok = name.endswith("-full") or color_count(region, (187, 187, 187)) > 100
+        record(blue_count(region) == 0 and trough_ok and color_count(region, (221, 221, 221)) > 0, name + "-flat",
+               f"{blue_count(region)} blue pixels")
+
+    # Audit #242: each direction gets its own triangle; no direction keeps GTK's icon.
+    for direction in ("up", "left", "right"):
+        with Image.open(PROJECT / f"gtk/Platinum/gtk-4.0/assets/menu-arrow-{direction}-disabled.png") as ink:
+            ink = ink.convert("RGBA")
+            expected = Image.new("RGB", ink.size, (221, 221, 221))
+            expected.paste(ink, mask=ink.getchannel("A"))
+        x, y, w, h = controls[f"menu-{direction}-arrow"][:4]
+        observed = crop(image, (x + (w - ink.width) // 2, y + (h - ink.height) // 2, ink.width, ink.height))
+        whole = crop(image, controls[f"menu-{direction}-arrow"])
+        record(ImageChops.difference(observed, expected).getbbox() is None
+               and len(whole.getcolors(whole.width * whole.height)) <= 3, f"menu-{direction}-arrow-artwork")
+    none_arrow = crop(image, controls["menu-none-arrow"])
+    record(controls["menu-none-arrow"][2:4] == (16, 16) and color_count(none_arrow, (119, 119, 119)) > 20,
+           "menu-none-keeps-gtk-icon", f"{controls['menu-none-arrow'][2:4]}")
+
     # Bottom tabs are the measured top tabs flipped; compare above the pane line.
     tx, ty = at("pane-appearance", 0, -24)
     bx, by = at("pane-bottom", 0, 43)

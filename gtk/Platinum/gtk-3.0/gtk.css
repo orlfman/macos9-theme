@@ -1472,6 +1472,13 @@ progressbar.horizontal trough:not(.empty) progress.right:not(.left):not(.pulse) 
   box-shadow: -3px 0 0 0 #888888, -2px 0 0 0 #555555, -1px 0 0 0 #000000;
 }
 
+/* A full bar has no unfilled trough for the shadow to fall on (it painted
+ * over the trough's outer column and 1 px outside the widget). */
+progressbar.horizontal trough.full progress,
+progressbar.vertical trough.full progress {
+  box-shadow: none;
+}
+
 /* Prevent 0px border-image Gtk-CRITICAL when fraction == 0 */
 progressbar trough.empty progress {
   border-image: none;

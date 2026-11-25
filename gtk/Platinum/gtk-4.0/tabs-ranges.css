@@ -577,8 +577,22 @@ progressbar.vertical > trough > progress.pulse {
   background-image: -gtk-scaled(url("../gtk-3.0/assets/progress-pulse-v.png"), url("../gtk-3.0/assets/progress-pulse-v@2.png"));
 }
 
-progressbar > trough > progress:disabled {
+/* A full bar has no unfilled trough for the shadow to fall on; GTK marks its
+ * trough .full but gives a non-inverted fill only .left (or .top). */
+progressbar.horizontal > trough.full > progress,
+progressbar.vertical > trough.full > progress {
+  box-shadow: none;
+}
+
+/* Disabled bars are flat. The selectors outrank the reversed and pulse rules
+ * above, which would otherwise keep the Lavender tube or barber pole. */
+progressbar > trough > progress:disabled,
+progressbar.horizontal > trough:not(.empty) > progress.right:not(.left):not(.pulse):disabled,
+progressbar.vertical > trough:not(.empty) > progress.bottom:not(.top):not(.pulse):disabled,
+progressbar.horizontal > trough > progress.pulse:disabled,
+progressbar.vertical > trough > progress.pulse:disabled {
   background-color: @platinum_bg;
+  background-image: none;
   border-image: none;
   box-shadow: none;
 }

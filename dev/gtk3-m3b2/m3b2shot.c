@@ -293,6 +293,11 @@ static int run_chrome(const char *out_png, const char *coords_txt) {
     gtk_widget_set_size_request(pb_tiny_vertical, 14, 188);
     PUT("progress-vertical-tiny", pb_tiny_vertical, 505, 160);
 
+    GtkWidget *pb_full = gtk_progress_bar_new();
+    gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(pb_full), 1.0);
+    gtk_widget_set_size_request(pb_full, 188, 14);
+    PUT("progress-full", pb_full, 420, 380);
+
     GtkWidget *pb_busy_vertical = gtk_progress_bar_new();
     gtk_orientable_set_orientation(GTK_ORIENTABLE(pb_busy_vertical), GTK_ORIENTATION_VERTICAL);
     gtk_progress_bar_pulse(GTK_PROGRESS_BAR(pb_busy_vertical));
