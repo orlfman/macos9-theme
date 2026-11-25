@@ -850,11 +850,466 @@ menus_lists(gboolean wayland)
     return ok;
 }
 
+static GtkWidget *
+notebook_6tabs(int pane_w, int pane_h, int current, GtkPositionType position)
+{
+    static const int widths[] = {72, 101, 57, 74, 62, 71};
+    GtkWidget *notebook = gtk_notebook_new();
+    gtk_notebook_set_tab_pos(GTK_NOTEBOOK(notebook), position);
+    gtk_widget_set_focusable(notebook, FALSE);
+    for (guint i = 0; i < G_N_ELEMENTS(widths); i++) {
+        /* The pane border is 3 px, and each tab has 3 px by 12 px padding. */
+        GtkWidget *page = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+        gtk_widget_set_size_request(page, pane_w - 6, pane_h - 6);
+        GtkWidget *label = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+        gtk_widget_set_size_request(label, widths[i] - 24, 18);
+        gtk_notebook_append_page(GTK_NOTEBOOK(notebook), page, label);
+    }
+    gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), current);
+    return notebook;
+}
+
+static GtkWidget *
+marked_scale(double value, gboolean marks)
+{
+    GtkWidget *scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 2, 1);
+    gtk_scale_set_draw_value(GTK_SCALE(scale), FALSE);
+    gtk_range_set_value(GTK_RANGE(scale), value);
+    for (int mark = 0; marks && mark <= 2; mark++)
+        gtk_scale_add_mark(GTK_SCALE(scale), mark, GTK_POS_BOTTOM, NULL);
+    gtk_widget_set_focusable(scale, FALSE);
+    return scale;
+}
+
+static GtkWidget *
+progress(double fraction, gboolean vertical, gboolean inverted)
+{
+    GtkWidget *bar = gtk_progress_bar_new();
+    if (vertical)
+        gtk_orientable_set_orientation(GTK_ORIENTABLE(bar), GTK_ORIENTATION_VERTICAL);
+    gtk_progress_bar_set_inverted(GTK_PROGRESS_BAR(bar), inverted);
+    if (fraction >= 0)
+        gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(bar), fraction);
+    else
+        gtk_progress_bar_pulse(GTK_PROGRESS_BAR(bar));
+    return bar;
+}
+
+static GtkWidget *
+scroller(gboolean overlay, GtkWidget **list)
+{
+    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    for (int i = 0; i < 30; i++) {
+        g_autofree char *text = g_strdup_printf("Scrolling row %02d with enough text to overflow", i);
+        gtk_box_append(GTK_BOX(box), gtk_label_new(text));
+    }
+    GtkWidget *window = gtk_scrolled_window_new();
+    gtk_scrolled_window_set_overlay_scrolling(GTK_SCROLLED_WINDOW(window), overlay);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(window), GTK_POLICY_ALWAYS, GTK_POLICY_ALWAYS);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(window), box);
+    *list = box;
+    return window;
+}
+
+static void
+report_node(const char *name, GtkWidget *root, const char *css_name, GtkWidget *window, gboolean *ok)
+{
+    GtkWidget *node = find_node(root, css_name);
+    *ok &= node && report_widget(name, node, window);
+}
+
+/* A layout small enough for the 1024×768 virtual output at 200%. */
+static gboolean
+ranges_scaled(gboolean wayland, const char *output)
+{
+    GtkWidget *window = window_new("Platinum tabs and ranges at scale");
+    GtkWidget *fixed = gtk_fixed_new();
+    gtk_window_set_child(GTK_WINDOW(window), fixed);
+    gtk_window_set_default_size(GTK_WINDOW(window), 476, 330);
+    GtkWidget *notebook = notebook_6tabs(466, 120, 1, GTK_POS_TOP);
+    GtkWidget *slider = marked_scale(1, TRUE);
+    GtkWidget *bar = progress(101.0 / 184.0, FALSE, FALSE);
+    GtkWidget *scroll = gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL,
+                                          gtk_adjustment_new(252, 0, 1708, 20, 708, 708));
+    gtk_widget_set_size_request(slider, 91, 23);
+    gtk_widget_set_size_request(bar, 188, 14);
+    gtk_widget_set_size_request(scroll, 16, 160);
+    gtk_fixed_put(GTK_FIXED(fixed), notebook, 5, 5);
+    gtk_fixed_put(GTK_FIXED(fixed), slider, 10, 160);
+    gtk_fixed_put(GTK_FIXED(fixed), bar, 120, 165);
+    gtk_fixed_put(GTK_FIXED(fixed), scroll, 330, 160);
+    gtk_window_present(GTK_WINDOW(window));
+    gtk_window_set_focus(GTK_WINDOW(window), NULL);
+    settle(400);
+    gboolean ok = snapshot(window, "ranges-scaled.png");
+    report_renderer(window);
+    ok &= report_widget("notebook", notebook, window);
+    report_node("pane", notebook, "stack", window, &ok);
+    ok &= report_widget("slider", slider, window);
+    ok &= report_widget("progress", bar, window);
+    ok &= report_widget("scrollbar", scroll, window);
+    printf("real_active=%d\n", gtk_window_is_active(GTK_WINDOW(window)));
+    ok &= wayland && gtk_window_is_active(GTK_WINDOW(window)) && capture_output(output);
+    gtk_window_destroy(GTK_WINDOW(window));
+    return ok;
+}
+
+/* Lay out the GTK 3 Batch 2 reference controls. GTK 4 scrollbars have no
+ * steppers, so each bar is shorter by the 31 px the two arrows occupied. */
+static gboolean
+ranges(gboolean wayland)
+{
+    const char *output = g_getenv("GTK4_CHECK_OUTPUT");
+    if (output)
+        return ranges_scaled(wayland, output);
+
+    GtkWidget *window = window_new("Platinum tabs and ranges");
+    GtkWidget *fixed = gtk_fixed_new();
+    gtk_window_set_child(GTK_WINDOW(window), fixed);
+    gtk_window_set_default_size(GTK_WINDOW(window), 1000, 730);
+
+    struct { const char *name; GtkWidget *widget; } items[32];
+    guint count = 0;
+#define PUT(label, widget, x, y, w, h) do { \
+        GtkWidget *put_widget = (widget); \
+        if ((w) > 0) gtk_widget_set_size_request(put_widget, (w), (h)); \
+        gtk_fixed_put(GTK_FIXED(fixed), put_widget, (x), (y)); \
+        items[count++] = (typeof(items[0])){(label), put_widget}; \
+    } while (0)
+
+    PUT("vbar-top", gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL,
+        gtk_adjustment_new(0, 0, 1975, 20, 975, 975)), 560, 10, 16, 316);
+    PUT("vbar-mid", gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL,
+        gtk_adjustment_new(252, 0, 1708, 20, 708, 708)), 600, 10, 16, 292);
+    PUT("hbar", gtk_scrollbar_new(GTK_ORIENTATION_HORIZONTAL,
+        gtk_adjustment_new(0, 0, 2266, 20, 1266, 1266)), 10, 380, 358, 16);
+    GtkWidget *disabled_bar = gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL,
+        gtk_adjustment_new(0, 0, 100, 10, 50, 50));
+    gtk_widget_set_sensitive(disabled_bar, FALSE);
+    PUT("vbar-disabled", disabled_bar, 630, 10, 16, 160);
+
+    GtkWidget *slider = marked_scale(1, TRUE);
+    GtkWidget *pressed = marked_scale(1, TRUE);
+    GtkWidget *disabled = marked_scale(0, FALSE);
+    gtk_widget_set_sensitive(disabled, FALSE);
+    PUT("slider", slider, 10, 50, 91, 23);
+    PUT("slider-pressed", pressed, 120, 50, 91, 23);
+    PUT("slider-disabled", disabled, 230, 50, 140, 16);
+    GtkWidget *vertical_scale = gtk_scale_new_with_range(GTK_ORIENTATION_VERTICAL, 0, 10, 1);
+    gtk_scale_set_draw_value(GTK_SCALE(vertical_scale), FALSE);
+    gtk_range_set_value(GTK_RANGE(vertical_scale), 3);
+    PUT("vscale", vertical_scale, 400, 10, 23, 120);
+
+    PUT("progress-55", progress(101.0 / 184.0, FALSE, FALSE), 10, 100, 188, 14);
+    PUT("progress-0", progress(0, FALSE, FALSE), 220, 100, 188, 14);
+    GtkWidget *busy = progress(-1, FALSE, FALSE);
+    gtk_progress_bar_set_pulse_step(GTK_PROGRESS_BAR(busy), 0.0);
+    PUT("progress-busy", busy, 10, 130, 310, 14);
+    PUT("progress-reversed", progress(101.0 / 184.0, FALSE, TRUE), 345, 130, 188, 14);
+    PUT("progress-tiny", progress(0.001, FALSE, FALSE), 220, 150, 188, 14);
+    PUT("progress-vertical-reversed", progress(101.0 / 184.0, TRUE, TRUE), 475, 160, 14, 188);
+    PUT("progress-vertical-tiny", progress(0.001, TRUE, FALSE), 505, 160, 14, 188);
+    PUT("progress-vertical-busy", progress(-1, TRUE, FALSE), 530, 160, 14, 188);
+
+    GtkWidget *themes = notebook_6tabs(466, 280, 0, GTK_POS_TOP);
+    GtkWidget *appearance = notebook_6tabs(466, 40, 1, GTK_POS_TOP);
+    GtkWidget *options = notebook_6tabs(466, 40, 5, GTK_POS_TOP);
+    GtkWidget *bottom = notebook_6tabs(466, 40, 1, GTK_POS_BOTTOM);
+    PUT("tabs-themes", themes, 5, 420, -1, -1);
+    PUT("tabs-appearance", appearance, 520, 420, -1, -1);
+    PUT("tabs-options", options, 520, 510, -1, -1);
+    PUT("tabs-bottom", bottom, 520, 600, -1, -1);
+
+    GtkWidget *classic_list, *overlay_list;
+    GtkWidget *classic = scroller(FALSE, &classic_list);
+    GtkWidget *overlay = scroller(TRUE, &overlay_list);
+    PUT("classic-window", classic, 670, 10, 150, 160);
+    PUT("overlay-window", overlay, 840, 10, 150, 160);
+#undef PUT
+
+    gtk_window_present(GTK_WINDOW(window));
+    gtk_window_set_focus(GTK_WINDOW(window), NULL);
+    settle(400);
+    /* GTK fades overlay indicators in only after pointer motion; show it to test the CSS. */
+    GtkWidget *overlay_bar = gtk_scrolled_window_get_vscrollbar(GTK_SCROLLED_WINDOW(overlay));
+    gtk_widget_set_opacity(overlay_bar, 1.0);
+    GtkWidget *pressed_slider = find_node(pressed, "slider");
+    if (!pressed_slider)
+        return FALSE;
+    gtk_widget_set_state_flags(pressed_slider, GTK_STATE_FLAG_ACTIVE, FALSE);
+    settle(150);
+
+    gboolean ok = snapshot(window, "ranges.png");
+    report_renderer(window);
+    for (guint i = 0; i < count; i++)
+        ok &= report_widget(items[i].name, items[i].widget, window);
+    GtkWidget *notebooks[] = {themes, appearance, options, bottom};
+    const char *panes[] = {"pane-themes", "pane-appearance", "pane-options", "pane-bottom"};
+    for (guint i = 0; i < G_N_ELEMENTS(notebooks); i++)
+        report_node(panes[i], notebooks[i], "stack", window, &ok);
+    report_node("header-bottom", bottom, "header", window, &ok);
+    GtkWidget *classic_bar = gtk_scrolled_window_get_vscrollbar(GTK_SCROLLED_WINDOW(classic));
+    ok &= report_widget("classic-vbar", classic_bar, window);
+    ok &= report_widget("overlay-vbar", overlay_bar, window);
+    report_node("overlay-thumb", overlay_bar, "slider", window, &ok);
+    report_node("vscale-thumb", vertical_scale, "slider", window, &ok);
+    printf("overlay_indicator=%d\n", gtk_widget_has_css_class(overlay_bar, "overlay-indicator"));
+
+    /* Native behavior: the styled nodes must still drive GTK's own ranges. */
+    g_signal_emit_by_name(slider, "move-slider", GTK_SCROLL_STEP_RIGHT);
+    g_signal_emit_by_name(vertical_scale, "move-slider", GTK_SCROLL_PAGE_DOWN);
+    gboolean switched = FALSE;
+    g_signal_emit_by_name(appearance, "change-current-page", 1, &switched);
+    GtkAdjustment *classic_scroll = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(classic));
+    gtk_adjustment_set_value(classic_scroll, gtk_adjustment_get_upper(classic_scroll));
+    gtk_progress_bar_pulse(GTK_PROGRESS_BAR(busy));
+    settle(300);
+    printf("scale_value=%g vscale_value=%g notebook_page=%d classic_scrolled=%d\n",
+           gtk_range_get_value(GTK_RANGE(slider)), gtk_range_get_value(GTK_RANGE(vertical_scale)),
+           gtk_notebook_get_current_page(GTK_NOTEBOOK(appearance)),
+           gtk_adjustment_get_value(classic_scroll) > 0);
+    ok &= snapshot(window, "ranges-moved.png");
+
+    /* An overlay indicator expands to the classic bar while hovered. */
+    gtk_widget_add_css_class(overlay_bar, "hovering");
+    gtk_widget_set_opacity(overlay_bar, 1.0);
+    settle(200);
+    ok &= snapshot(window, "ranges-hover.png");
+    report_node("overlay-hover-thumb", overlay_bar, "slider", window, &ok);
+    ok &= report_widget("overlay-hover-vbar", overlay_bar, window);
+    gtk_widget_remove_css_class(overlay_bar, "hovering");
+
+    if (wayland) {
+        GtkWidget *other = window_new("Inactive ranges witness");
+        gtk_window_present(GTK_WINDOW(other));
+        settle(350);
+        gboolean backdrop = gtk_window_is_active(GTK_WINDOW(other)) && !gtk_window_is_active(GTK_WINDOW(window));
+        printf("ranges_backdrop=%d\n", backdrop);
+        ok &= backdrop && snapshot(window, "ranges-backdrop.png");
+        gtk_window_destroy(GTK_WINDOW(other));
+    }
+    gtk_window_destroy(GTK_WINDOW(window));
+    return ok;
+}
+
+/* A box drawn with the tooltip node's CSS, so the balloon can be measured in
+ * a window on both backends without a pointer hover. */
+typedef GtkBox FixtureTooltip;
+typedef GtkBoxClass FixtureTooltipClass;
+G_DEFINE_TYPE(FixtureTooltip, fixture_tooltip, GTK_TYPE_BOX)
+
+static void
+fixture_tooltip_class_init(FixtureTooltipClass *klass)
+{
+    gtk_widget_class_set_css_name(GTK_WIDGET_CLASS(klass), "tooltip");
+}
+
+static void
+fixture_tooltip_init(FixtureTooltip *self)
+{
+    gtk_widget_add_css_class(GTK_WIDGET(self), "background");
+}
+
+static GtkWidget *
+find_class(GtkWidget *root, const char *css_name, const char *css_class)
+{
+    if (!root)
+        return NULL;
+    if (g_str_equal(gtk_widget_get_css_name(root), css_name) && gtk_widget_has_css_class(root, css_class))
+        return root;
+    for (GtkWidget *child = gtk_widget_get_first_child(root); child; child = gtk_widget_get_next_sibling(child)) {
+        GtkWidget *found = find_class(child, css_name, css_class);
+        if (found)
+            return found;
+    }
+    return NULL;
+}
+
+/* Report a widget relative to its window's outer edge (the CSS border box). */
+static gboolean
+report_in_window(const char *name, GtkWidget *widget, GtkWidget *window)
+{
+    graphene_rect_t frame, bounds;
+    if (!gtk_widget_compute_bounds(window, window, &frame) ||
+        !gtk_widget_compute_bounds(widget, window, &bounds) || !gtk_widget_get_mapped(widget))
+        return FALSE;
+    printf("%s %.0f %.0f %.0f %.0f\n", name, bounds.origin.x - frame.origin.x, bounds.origin.y - frame.origin.y,
+           bounds.size.width, bounds.size.height);
+    return TRUE;
+}
+
+static GtkWidget *
+titled_window(const char *title, gboolean app_widgets)
+{
+    GtkWidget *window = gtk_window_new();
+    GtkWidget *bar = gtk_header_bar_new();
+    if (app_widgets) {
+        gtk_header_bar_pack_start(GTK_HEADER_BAR(bar), gtk_button_new_with_label("Open"));
+        gtk_header_bar_pack_end(GTK_HEADER_BAR(bar), gtk_button_new_with_label("Share"));
+    }
+    gtk_window_set_titlebar(GTK_WINDOW(window), bar);
+    gtk_window_set_title(GTK_WINDOW(window), title);
+    gtk_window_set_child(GTK_WINDOW(window), gtk_label_new("Window body"));
+    return window;
+}
+
+static gboolean
+close_requested(GtkWindow *window, gpointer data)
+{
+    (void)window;
+    *(gboolean *)data = TRUE;
+    return FALSE;
+}
+
+static gboolean
+shot_of(GtkWidget *window, const char *path)
+{
+    settle(250);
+    gboolean ok = capture_output(path);
+    (void)window;
+    return ok;
+}
+
+static gboolean
+windows(gboolean wayland)
+{
+    /* The decoration's button layout: close left, zoom and collapse right. */
+    g_object_set(gtk_settings_get_default(), "gtk-decoration-layout", "close:maximize,minimize", NULL);
+    const char *output = g_getenv("GTK4_CHECK_OUTPUT");
+    gboolean ok = TRUE;
+
+    /* Help Balloon, 160 × 121 as in help-balloon.png. */
+    GtkWidget *holder = window_new("Platinum balloon");
+    GtkWidget *fixed = gtk_fixed_new();
+    gtk_window_set_child(GTK_WINDOW(holder), fixed);
+    gtk_window_set_default_size(GTK_WINDOW(holder), 200, 150);
+    GtkWidget *balloon = g_object_new(fixture_tooltip_get_type(), "orientation", GTK_ORIENTATION_HORIZONTAL, NULL);
+    gtk_box_append(GTK_BOX(balloon), gtk_label_new("Balloon"));
+    place(GTK_FIXED(fixed), balloon, 10, 10, 160, 121);
+    gtk_window_present(GTK_WINDOW(holder));
+    settle(300);
+    if (!output) {
+        ok &= snapshot(holder, "balloon.png");
+        report_renderer(holder);
+        ok &= report_widget("balloon", balloon, holder);
+    }
+    gtk_window_destroy(GTK_WINDOW(holder));
+
+    /* A header-bar window the size of window-document-active.png's frame. */
+    GtkWidget *plain = titled_window("Untitled", FALSE);
+    gtk_window_set_default_size(GTK_WINDOW(plain), 403, 218);
+    gtk_window_present(GTK_WINDOW(plain));
+    settle(500);
+    GtkWidget *bar = gtk_window_get_titlebar(GTK_WINDOW(plain));
+    printf("plain_csd=%d\n", gtk_widget_has_css_class(plain, "csd"));
+    ok &= report_in_window("frame", plain, plain);
+    ok &= report_in_window("headerbar", bar, plain);
+    const char *controls[] = {"close", "maximize", "minimize"};
+    for (guint i = 0; i < G_N_ELEMENTS(controls); i++) {
+        GtkWidget *control = find_class(bar, "button", controls[i]);
+        ok &= control && report_in_window(controls[i], control, plain);
+    }
+    GtkWidget *title = find_class(bar, "label", "title");
+    ok &= title && report_in_window("title", title, plain);
+
+    if (output) {
+        /* Compositor output at 150% and 200%. */
+        printf("real_active=%d\n", gtk_window_is_active(GTK_WINDOW(plain)));
+        report_renderer(plain);
+        ok &= wayland && gtk_window_is_active(GTK_WINDOW(plain)) && capture_output(output);
+        gtk_window_destroy(GTK_WINDOW(plain));
+        return ok;
+    }
+    if (!wayland) {
+        gtk_window_destroy(GTK_WINDOW(plain));
+        return ok;
+    }
+
+    report_renderer(plain);
+    ok &= gtk_window_is_active(GTK_WINDOW(plain)) && shot_of(plain, "csd-active.png");
+    GtkWidget *other = window_new("Inactive CSD witness");
+    gtk_window_set_default_size(GTK_WINDOW(other), 40, 30);
+    gtk_window_present(GTK_WINDOW(other));
+    settle(400);
+    gboolean backdrop = !gtk_window_is_active(GTK_WINDOW(plain));
+    printf("csd_backdrop=%d\n", backdrop);
+    ok &= backdrop && shot_of(plain, "csd-backdrop.png");
+    gtk_window_destroy(GTK_WINDOW(other));
+    gtk_window_present(GTK_WINDOW(plain));
+    settle(300);
+
+    /* An app's header bar with its own push buttons. */
+    GtkWidget *app = titled_window("Document", TRUE);
+    gtk_window_set_default_size(GTK_WINDOW(app), 403, 150);
+    gtk_window_present(GTK_WINDOW(app));
+    settle(500);
+    GtkWidget *app_bar = gtk_window_get_titlebar(GTK_WINDOW(app));
+    ok &= report_in_window("app-frame", app, app);
+    ok &= report_in_window("app-headerbar", app_bar, app);
+    ok &= report_in_window("app-close", find_class(app_bar, "button", "close"), app);
+    ok &= report_in_window("app-title", find_class(app_bar, "label", "title"), app);
+    ok &= gtk_window_is_active(GTK_WINDOW(app)) && shot_of(app, "csd-app.png");
+
+    /* A GtkAlertDialog, drawn with the plain modal frame. */
+    GtkAlertDialog *alert = gtk_alert_dialog_new("Save changes to the document before closing?");
+    gtk_alert_dialog_set_detail(alert, "Your changes will be lost if you don't save them.");
+    const char *buttons[] = {"Don't Save", "Cancel", "Save", NULL};
+    gtk_alert_dialog_set_buttons(alert, buttons);
+    gtk_alert_dialog_set_cancel_button(alert, 1);
+    gtk_alert_dialog_set_default_button(alert, 2);
+    gtk_alert_dialog_show(alert, GTK_WINDOW(app));
+    settle(700);
+    GtkWidget *dialog = NULL;
+    GListModel *toplevels = gtk_window_get_toplevels();
+    for (guint i = 0; i < g_list_model_get_n_items(toplevels) && !dialog; i++) {
+        GtkWidget *w = g_list_model_get_item(toplevels, i);
+        if (gtk_widget_has_css_class(w, "message") && gtk_widget_get_mapped(w))
+            dialog = w;
+        g_object_unref(w);
+    }
+    ok &= dialog && report_in_window("alert-frame", dialog, dialog);
+    ok &= dialog && shot_of(dialog, "alert.png");
+    if (dialog)
+        gtk_window_destroy(GTK_WINDOW(dialog));
+    g_object_unref(alert);
+    gtk_window_destroy(GTK_WINDOW(app));
+    settle(300);
+
+    /* The window controls still act: zoom maximizes, close closes. */
+    gtk_window_present(GTK_WINDOW(plain));
+    settle(300);
+    GtkWidget *zoom = find_class(bar, "button", "maximize");
+    ok &= zoom && gtk_widget_activate(zoom);
+    settle(800);
+    gboolean maximized = gtk_window_is_maximized(GTK_WINDOW(plain));
+    printf("maximized=%d\n", maximized);
+    ok &= maximized && report_in_window("max-frame", plain, plain) && shot_of(plain, "csd-max.png");
+    /* GtkWindowControls rebuilds its buttons when the window state changes. */
+    GtkWidget *close = find_class(bar, "button", "close");
+    gboolean closed = FALSE;
+    g_signal_connect(plain, "close-request", G_CALLBACK(close_requested), &closed);
+    gboolean activated = close && gtk_widget_activate(close);
+    settle(500);
+    printf("close_activated=%d closed=%d\n", activated, closed);
+    ok &= activated;
+    if (!closed)
+        gtk_window_destroy(GTK_WINDOW(plain));
+
+    /* Plain windows without a header bar keep KWin's decoration. */
+    GtkWidget *ssd = gtk_window_new();
+    gtk_window_set_title(GTK_WINDOW(ssd), "Server-side");
+    gtk_window_present(GTK_WINDOW(ssd));
+    settle(400);
+    printf("plain_window_csd=%d\n", gtk_widget_has_css_class(ssd, "csd"));
+    gtk_window_destroy(GTK_WINDOW(ssd));
+    return ok && closed;
+}
+
 int
 main(int argc, char **argv)
 {
     if (argc != 2) {
-        fprintf(stderr, "usage: %s chrome|gallery|contrast|composites|menus\n", argv[0]);
+        fprintf(stderr, "usage: %s chrome|gallery|contrast|composites|menus|ranges\n", argv[0]);
         return 2;
     }
 
@@ -875,6 +1330,10 @@ main(int argc, char **argv)
         return 1;
     if (g_str_equal(argv[1], "menus"))
         return menus_lists(g_str_equal(backend, "GdkWaylandDisplay")) ? 0 : 1;
+    if (g_str_equal(argv[1], "windows"))
+        return windows(g_str_equal(backend, "GdkWaylandDisplay")) ? 0 : 1;
+    if (g_str_equal(argv[1], "ranges"))
+        return ranges(g_str_equal(backend, "GdkWaylandDisplay")) ? 0 : 1;
     if (g_str_equal(argv[1], "chrome"))
         return chrome() ? 0 : 1;
     if (g_str_equal(argv[1], "gallery"))

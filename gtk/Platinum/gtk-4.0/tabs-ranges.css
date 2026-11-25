@@ -1,0 +1,780 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+
+/* Notebook tabs and pane. Measured tabs.h and slices.h::TabPane, shared
+ * with GTK 3. GTK 4 keeps the GTK 3 node names, but its default theme adds
+ * header borders, tab margins and taller tabs that are reset here. */
+notebook,
+notebook.frame {
+  margin: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background-color: transparent;
+}
+
+notebook > stack:not(:only-child) {
+  background-color: @platinum_pane;
+  color: @platinum_fg;
+  border-style: solid;
+  border-width: 3px;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  border-image: -gtk-scaled(url("../gtk-3.0/assets/tab-pane.png"), url("../gtk-3.0/assets/tab-pane@2.png")) 4 / 4px stretch;
+}
+
+/* GTK 4 paints a top header before the pane, unlike GTK 3. The header draws
+ * the pane's top three rows so the current tab can open into the pane. */
+notebook > header.top + stack:not(:only-child) {
+  border-top-width: 0;
+  border-image: -gtk-scaled(url("assets/tab-pane-body.png"), url("assets/tab-pane-body@2.png")) 2 5 5 5 / 2px 5px 5px 5px stretch;
+}
+
+notebook > header,
+notebook > header.top,
+notebook > header.bottom,
+notebook > header.left,
+notebook > header.right {
+  margin: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background-color: transparent;
+  background-image: none;
+}
+
+notebook > header.top {
+  padding-left: 5px;
+  padding-right: 5px;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 0 0 3px 0;
+  border-image: -gtk-scaled(url("assets/tab-pane-top.png"), url("assets/tab-pane-top@2.png")) 0 5 3 5 / 0 5px 3px 5px stretch;
+}
+
+notebook > header.bottom {
+  margin-top: -3px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+notebook > header > tabs,
+notebook > header.top > tabs,
+notebook > header.bottom > tabs,
+notebook > header.left > tabs,
+notebook > header.right > tabs,
+notebook > header.top > tabs:not(:only-child),
+notebook > header.bottom > tabs:not(:only-child),
+notebook > header.top > tabs:not(:only-child):first-child,
+notebook > header.bottom > tabs:not(:only-child):first-child,
+notebook > header.top > tabs:not(:only-child):last-child,
+notebook > header.bottom > tabs:not(:only-child):last-child {
+  margin: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background-color: transparent;
+}
+
+notebook > header.top > tabs > tab,
+notebook > header.bottom > tabs > tab {
+  min-height: 18px;
+  min-width: 0;
+  padding: 3px 12px;
+  margin: 0;
+  color: @platinum_fg;
+  font-weight: normal;
+  background-color: @platinum_bg_alt;
+  background-clip: content-box;
+  background-image: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+  border-image: var(--platinum-tab-image);
+  --platinum-tab-image: -gtk-scaled(url("assets/tab-top-normal.png"), url("assets/tab-top-normal@2.png")) 12 13 12 13 / 12px 13px 12px 13px stretch;
+}
+
+/* Top tabs reach into the header's pane rows, which they cover. */
+notebook > header.top > tabs > tab {
+  margin-bottom: -3px;
+}
+
+notebook > header.top > tabs > tab:hover,
+notebook > header.bottom > tabs > tab:hover {
+  color: @platinum_fg;
+  background-color: @platinum_bg_alt;
+  box-shadow: none;
+}
+
+notebook > header.top > tabs > tab:active {
+  color: #ffffff;
+  background-color: #666666;
+  --platinum-tab-image: -gtk-scaled(url("assets/tab-top-pressed.png"), url("assets/tab-top-pressed@2.png")) 12 13 12 13 / 12px 13px 12px 13px stretch;
+}
+
+notebook > header.top > tabs > tab:checked,
+notebook > header.top > tabs > tab:checked:hover,
+notebook > header.top > tabs > tab:checked:active {
+  color: @platinum_fg;
+  background-color: @platinum_pane;
+  box-shadow: none;
+  --platinum-tab-image: -gtk-scaled(url("assets/tab-top-active.png"), url("assets/tab-top-active@2.png")) 12 13 12 13 / 12px 13px 12px 13px stretch;
+}
+
+notebook > header.bottom > tabs > tab {
+  --platinum-tab-image: -gtk-scaled(url("assets/tab-bottom-normal.png"), url("assets/tab-bottom-normal@2.png")) 12 13 12 13 / 12px 13px 12px 13px stretch;
+}
+
+notebook > header.bottom > tabs > tab:active {
+  color: #ffffff;
+  background-color: #666666;
+  --platinum-tab-image: -gtk-scaled(url("assets/tab-bottom-pressed.png"), url("assets/tab-bottom-pressed@2.png")) 12 13 12 13 / 12px 13px 12px 13px stretch;
+}
+
+notebook > header.bottom > tabs > tab:checked,
+notebook > header.bottom > tabs > tab:checked:hover,
+notebook > header.bottom > tabs > tab:checked:active {
+  color: @platinum_fg;
+  background-color: @platinum_pane;
+  box-shadow: none;
+  --platinum-tab-image: -gtk-scaled(url("assets/tab-bottom-active.png"), url("assets/tab-bottom-active@2.png")) 12 13 12 13 / 12px 13px 12px 13px stretch;
+}
+
+/* Mac OS 9 has no side tabs. Use the measured list-header and pane faces. */
+notebook > header.left > tabs > tab,
+notebook > header.right > tabs > tab {
+  min-height: 18px;
+  min-width: 0;
+  padding: 2px 8px;
+  margin: 1px 0;
+  color: @platinum_fg;
+  font-weight: normal;
+  background-color: @platinum_bg_alt;
+  background-image: none;
+  border-style: solid;
+  border-width: 2px;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+  border-image: -gtk-scaled(url("../gtk-3.0/assets/header-normal.png"), url("../gtk-3.0/assets/header-normal@2.png")) 2 / 2px stretch;
+}
+
+notebook > header.left > tabs > tab:hover,
+notebook > header.right > tabs > tab:hover {
+  background-color: @platinum_bg_alt;
+  box-shadow: none;
+}
+
+notebook > header.left > tabs > tab:checked,
+notebook > header.right > tabs > tab:checked {
+  background-color: @platinum_pane;
+  box-shadow: none;
+  border-image: -gtk-scaled(url("../gtk-3.0/assets/tab-pane.png"), url("../gtk-3.0/assets/tab-pane@2.png")) 4 / 4px stretch;
+}
+
+notebook > header > tabs > tab:disabled,
+notebook > header > tabs > tab:disabled label {
+  color: @platinum_fg_disabled;
+}
+
+notebook > header > tabs > tab label {
+  color: inherit;
+}
+
+notebook:focus:focus-visible:not(:backdrop) > header > tabs > tab:checked {
+  outline: 1px solid @platinum_focus;
+  outline-offset: -4px;
+}
+
+notebook > header > tabs > tab button.flat {
+  color: inherit;
+}
+
+notebook > header > tabs > arrow,
+notebook > header > tabs > arrow:hover,
+notebook > header > tabs > arrow:hover:not(:active):not(:backdrop),
+notebook > header > tabs > arrow:backdrop {
+  min-width: 14px;
+  min-height: 14px;
+  margin: 0;
+  padding: 2px;
+  color: @platinum_fg;
+  background-color: @platinum_bg;
+  background-image: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  -gtk-icon-filter: none;
+}
+
+notebook > header > tabs > arrow:active {
+  color: #ffffff;
+  background-color: #666666;
+}
+
+notebook > header > tabs > arrow:disabled {
+  color: @platinum_fg_disabled;
+  background-color: @platinum_bg;
+  -gtk-icon-filter: none;
+}
+
+/* Scales. Measured controls-general-controls.png and controls-memory.png.
+ * GTK places the slider inside the trough. The trough padding reserves the
+ * thumb's half width so the slider travel matches the GTK 3 range. */
+scale,
+scale.fine-tune {
+  min-height: 16px;
+  min-width: 16px;
+  padding: 0;
+  margin: 0;
+  color: @platinum_fg;
+}
+
+scale > value {
+  color: @platinum_fg;
+}
+
+scale:disabled > value {
+  color: @platinum_fg_disabled;
+}
+
+scale > trough > highlight,
+scale > trough > fill,
+scale.fine-tune > trough > highlight,
+scale.fine-tune > trough > fill {
+  margin: 0;
+  background-color: transparent;
+  background-image: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+scale > trough,
+scale.fine-tune > trough {
+  outline: none;
+  transition: none;
+}
+
+scale:focus:focus-visible:not(:backdrop) > trough {
+  outline: 1px solid @platinum_focus;
+  outline-offset: 2px;
+}
+
+scale.horizontal > trough,
+scale.horizontal.fine-tune > trough {
+  min-height: 7px;
+  padding: 0 10px;
+  margin: 3px 0 6px 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: transparent;
+  background-image: none;
+  border-image: -gtk-scaled(url("assets/scale-trough-h.png"), url("assets/scale-trough-h@2.png")) 3 4 4 4 / 3px 4px 4px 4px stretch;
+}
+
+scale.horizontal:disabled > trough {
+  background-color: transparent;
+  border-image: -gtk-scaled(url("assets/scale-trough-h-disabled.png"), url("assets/scale-trough-h-disabled@2.png")) 3 4 4 4 / 3px 4px 4px 4px stretch;
+}
+
+scale.vertical > trough,
+scale.vertical.fine-tune > trough {
+  min-width: 7px;
+  padding: 10px 0;
+  margin: 0 6px 0 3px;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: transparent;
+  background-image: none;
+  border-image: -gtk-scaled(url("assets/scale-trough-v.png"), url("assets/scale-trough-v@2.png")) 4 4 4 3 / 4px 4px 4px 3px stretch;
+}
+
+scale.vertical:disabled > trough {
+  background-color: transparent;
+  border-image: -gtk-scaled(url("assets/scale-trough-v-disabled.png"), url("assets/scale-trough-v-disabled@2.png")) 4 4 4 3 / 4px 4px 4px 3px stretch;
+}
+
+/* The stock theme swaps in its own pointed sliders when marks are present.
+ * Each compound selector below matches one of those stock variants. */
+scale.horizontal > trough > slider,
+scale.horizontal.fine-tune > trough > slider,
+scale.horizontal.marks-before:not(.marks-after) > trough > slider,
+scale.horizontal.marks-before:not(.marks-after).fine-tune > trough > slider,
+scale.horizontal.marks-after:not(.marks-before) > trough > slider,
+scale.horizontal.marks-after:not(.marks-before).fine-tune > trough > slider,
+scale.horizontal > trough > slider:hover,
+scale.horizontal.marks-before:not(.marks-after) > trough > slider:hover,
+scale.horizontal.marks-after:not(.marks-before) > trough > slider:hover,
+scale.horizontal > trough > slider:active,
+scale.horizontal.marks-before:not(.marks-after) > trough > slider:active,
+scale.horizontal.marks-after:not(.marks-before) > trough > slider:active,
+scale.horizontal > trough > slider:disabled,
+scale.horizontal.marks-before:not(.marks-after) > trough > slider:disabled,
+scale.horizontal.marks-after:not(.marks-before) > trough > slider:disabled {
+  min-width: 15px;
+  min-height: 16px;
+  margin: -3px -7px -6px -7px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  transition: none;
+  background-color: transparent;
+  border-image: none;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 15px 16px;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/slider-thumb-h.png"), url("../gtk-3.0/assets/slider-thumb-h@2.png"));
+}
+
+scale.horizontal > trough > slider:active,
+scale.horizontal.marks-before:not(.marks-after) > trough > slider:active,
+scale.horizontal.marks-after:not(.marks-before) > trough > slider:active {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/slider-thumb-h-pressed.png"), url("../gtk-3.0/assets/slider-thumb-h-pressed@2.png"));
+}
+
+scale.horizontal > trough > slider:disabled,
+scale.horizontal.marks-before:not(.marks-after) > trough > slider:disabled,
+scale.horizontal.marks-after:not(.marks-before) > trough > slider:disabled {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/slider-thumb-h-disabled.png"), url("../gtk-3.0/assets/slider-thumb-h-disabled@2.png"));
+}
+
+scale.vertical > trough > slider,
+scale.vertical.fine-tune > trough > slider,
+scale.vertical.marks-before:not(.marks-after) > trough > slider,
+scale.vertical.marks-before:not(.marks-after).fine-tune > trough > slider,
+scale.vertical.marks-after:not(.marks-before) > trough > slider,
+scale.vertical.marks-after:not(.marks-before).fine-tune > trough > slider,
+scale.vertical > trough > slider:hover,
+scale.vertical.marks-before:not(.marks-after) > trough > slider:hover,
+scale.vertical.marks-after:not(.marks-before) > trough > slider:hover,
+scale.vertical > trough > slider:active,
+scale.vertical.marks-before:not(.marks-after) > trough > slider:active,
+scale.vertical.marks-after:not(.marks-before) > trough > slider:active,
+scale.vertical > trough > slider:disabled,
+scale.vertical.marks-before:not(.marks-after) > trough > slider:disabled,
+scale.vertical.marks-after:not(.marks-before) > trough > slider:disabled {
+  min-width: 16px;
+  min-height: 15px;
+  margin: -7px -6px -7px -3px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  transition: none;
+  background-color: transparent;
+  border-image: none;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 16px 15px;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/slider-thumb-v.png"), url("../gtk-3.0/assets/slider-thumb-v@2.png"));
+}
+
+scale.vertical > trough > slider:active,
+scale.vertical.marks-before:not(.marks-after) > trough > slider:active,
+scale.vertical.marks-after:not(.marks-before) > trough > slider:active {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/slider-thumb-v-pressed.png"), url("../gtk-3.0/assets/slider-thumb-v-pressed@2.png"));
+}
+
+scale.vertical > trough > slider:disabled,
+scale.vertical.marks-before:not(.marks-after) > trough > slider:disabled,
+scale.vertical.marks-after:not(.marks-before) > trough > slider:disabled {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/slider-thumb-v-disabled.png"), url("../gtk-3.0/assets/slider-thumb-v-disabled@2.png"));
+}
+
+scale.horizontal > marks,
+scale.horizontal > marks.top,
+scale.horizontal > marks.bottom,
+scale.vertical > marks,
+scale.vertical > marks.top,
+scale.vertical > marks.bottom {
+  margin: 0;
+  padding: 0;
+  color: @platinum_fg;
+}
+
+/* GTK 4 places marks against the trough's border box, without its margin.
+ * The 6 px the thumb extends past the groove moves from trough to marks. */
+scale.horizontal > marks.bottom {
+  margin-top: 6px;
+}
+
+scale.horizontal.marks-after > trough,
+scale.horizontal.marks-after.fine-tune > trough {
+  margin-bottom: 0;
+}
+
+scale.vertical > marks.bottom {
+  margin-left: 6px;
+}
+
+scale.vertical.marks-after > trough,
+scale.vertical.marks-after.fine-tune > trough {
+  margin-right: 0;
+}
+
+scale.horizontal > marks > mark,
+scale.vertical > marks > mark {
+  margin: 0;
+  padding: 0;
+}
+
+scale.horizontal > marks > mark > indicator,
+scale.horizontal.fine-tune > marks > mark > indicator {
+  min-width: 3px;
+  min-height: 7px;
+  margin: 0;
+  padding: 0;
+  color: transparent;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/scale-tick-h.png"), url("../gtk-3.0/assets/scale-tick-h@2.png"));
+}
+
+scale.vertical > marks > mark > indicator,
+scale.vertical.fine-tune > marks > mark > indicator {
+  min-width: 7px;
+  min-height: 3px;
+  margin: 0;
+  padding: 0;
+  color: transparent;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/scale-tick-v.png"), url("../gtk-3.0/assets/scale-tick-v@2.png"));
+}
+
+scale:disabled > marks > mark > indicator {
+  background-image: none;
+}
+
+scale > marks > mark > label {
+  color: @platinum_fg;
+}
+
+scale:disabled > marks > mark > label {
+  color: @platinum_fg_disabled;
+}
+
+/* Progress bars. Measured progress.h: determinate Lavender tube and the
+ * indeterminate barber pole. */
+progressbar {
+  padding: 0;
+  margin: 0;
+  color: @platinum_fg;
+  font-size: smaller;
+}
+
+progressbar > text {
+  color: @platinum_fg;
+}
+
+progressbar.horizontal > trough {
+  min-height: 10px;
+  min-width: 12px;
+  padding: 2px;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: #bbbbbb;
+  border-image: -gtk-scaled(url("assets/progress-trough-h.png"), url("assets/progress-trough-h@2.png")) 7 4 7 6 / 7px 4px 7px 6px stretch;
+}
+
+progressbar.vertical > trough {
+  min-width: 10px;
+  min-height: 12px;
+  padding: 2px;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: #bbbbbb;
+  border-image: -gtk-scaled(url("assets/progress-trough-v.png"), url("assets/progress-trough-v@2.png")) 6 7 4 7 / 6px 7px 4px 7px stretch;
+}
+
+progressbar > trough > progress,
+progressbar > trough > progress.left,
+progressbar > trough > progress.right,
+progressbar > trough > progress.top,
+progressbar > trough > progress.bottom {
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+}
+
+progressbar.horizontal > trough > progress {
+  margin: 0;
+  min-height: 10px;
+  min-width: 0;
+  background-color: @platinum_accent;
+  border-image: -gtk-scaled(url("assets/progress-fill-full-h.png"), url("assets/progress-fill-full-h@2.png")) 5 4 5 3 / 5px 4px 5px 3px stretch;
+  box-shadow: 3px 0 0 0 #888888, 2px 0 0 0 #555555, 1px 0 0 0 #000000;
+}
+
+/* GTK truncates fractional allocations to pixels, even for nonzero progress. */
+progressbar.horizontal > trough:not(.empty) > progress:not(.pulse) {
+  min-width: 1px;
+}
+
+progressbar.horizontal > trough > progress.right {
+  box-shadow: none;
+}
+
+progressbar.horizontal > trough:not(.empty) > progress.right:not(.left):not(.pulse) {
+  border-image: -gtk-scaled(url("assets/progress-fill-reversed-h.png"), url("assets/progress-fill-reversed-h@2.png")) 5 3 5 4 / 5px 3px 5px 4px stretch;
+  box-shadow: -3px 0 0 0 #888888, -2px 0 0 0 #555555, -1px 0 0 0 #000000;
+}
+
+progressbar.vertical > trough > progress {
+  margin: 0;
+  min-width: 10px;
+  min-height: 0;
+  background-color: @platinum_accent;
+  border-image: -gtk-scaled(url("assets/progress-fill-full-v.png"), url("assets/progress-fill-full-v@2.png")) 3 5 4 5 / 3px 5px 4px 5px stretch;
+  box-shadow: 0 3px 0 0 #888888, 0 2px 0 0 #555555, 0 1px 0 0 #000000;
+}
+
+progressbar.vertical > trough:not(.empty) > progress:not(.pulse) {
+  min-height: 1px;
+}
+
+progressbar.vertical > trough > progress.bottom {
+  box-shadow: none;
+}
+
+progressbar.vertical > trough:not(.empty) > progress.bottom:not(.top):not(.pulse) {
+  border-image: -gtk-scaled(url("assets/progress-fill-reversed-v.png"), url("assets/progress-fill-reversed-v@2.png")) 4 5 3 5 / 4px 5px 3px 5px stretch;
+  box-shadow: 0 -3px 0 0 #888888, 0 -2px 0 0 #555555, 0 -1px 0 0 #000000;
+}
+
+progressbar.horizontal > trough > progress.pulse {
+  min-width: 16px;
+  box-shadow: none;
+  border-image: none;
+  background-color: transparent;
+  background-repeat: repeat-x;
+  background-position: left top;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/progress-pulse-h.png"), url("../gtk-3.0/assets/progress-pulse-h@2.png"));
+}
+
+progressbar.vertical > trough > progress.pulse {
+  min-height: 16px;
+  box-shadow: none;
+  border-image: none;
+  background-color: transparent;
+  background-repeat: repeat-y;
+  background-position: left top;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/progress-pulse-v.png"), url("../gtk-3.0/assets/progress-pulse-v@2.png"));
+}
+
+progressbar > trough > progress:disabled {
+  background-color: @platinum_bg;
+  border-image: none;
+  box-shadow: none;
+}
+
+progressbar.osd > trough,
+progressbar.osd > trough > progress {
+  border-image: none;
+  box-shadow: none;
+}
+
+/* Scrollbars. GTK 4 has no stepper buttons, so the Smart Scrolling arrows
+ * cannot be drawn without inert hit areas. The trough, thumb and grip keep
+ * the measured GTK 3 artwork; the trough simply runs to the end. */
+scrollbar,
+scrollbar.vertical,
+scrollbar.horizontal {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background-color: @platinum_pane;
+  transition: none;
+}
+
+scrollbar > range,
+scrollbar > range > trough {
+  margin: 0;
+  padding: 0;
+}
+
+scrollbar.vertical,
+scrollbar.vertical.right,
+scrollbar.vertical.left {
+  min-width: 16px;
+  border: none;
+  border-top: 1px solid @platinum_border;
+}
+
+scrollbar.horizontal,
+scrollbar.horizontal.bottom,
+scrollbar.horizontal.top {
+  min-height: 16px;
+  border: none;
+  border-left: 1px solid @platinum_border;
+}
+
+scrollbar.vertical > range > trough {
+  min-width: 16px;
+  border: none;
+  border-radius: 0;
+  background-color: #aaaaaa;
+  border-image: -gtk-scaled(url("assets/vscroll-trough.png"), url("assets/vscroll-trough@2.png")) 3 8 3 8 / 3px 8px 3px 8px stretch;
+}
+
+scrollbar.horizontal > range > trough {
+  min-height: 16px;
+  border: none;
+  border-radius: 0;
+  background-color: #aaaaaa;
+  border-image: -gtk-scaled(url("assets/hscroll-trough.png"), url("assets/hscroll-trough@2.png")) 8 3 8 3 / 8px 3px 8px 3px stretch;
+}
+
+scrollbar > range > trough > slider,
+scrollbar > range > trough > slider:hover,
+scrollbar > range.fine-tune > trough > slider,
+scrollbar > range.fine-tune.horizontal > trough > slider,
+scrollbar > range.fine-tune.vertical > trough > slider {
+  min-width: 12px;
+  min-height: 12px;
+  padding: 0;
+  border-style: solid;
+  border-width: 2px;
+  border-color: transparent;
+  border-radius: 0;
+  background-color: @platinum_accent;
+  background-clip: border-box;
+  background-repeat: no-repeat;
+  background-position: center;
+  transition: none;
+}
+
+scrollbar.vertical > range > trough > slider,
+scrollbar.vertical > range.fine-tune > trough > slider {
+  border-image: -gtk-scaled(url("assets/scroll-thumb-frame.png"), url("assets/scroll-thumb-frame@2.png")) 3 4 4 3 / 3px 4px 4px 3px stretch;
+  margin: -1px 0 0 0;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/vscroll-grip.png"), url("../gtk-3.0/assets/vscroll-grip@2.png"));
+  /* Keep the grip on whole pixels when the thumb's free length is odd. */
+  background-position: center round(down, calc(50% + 0px), 1px);
+  box-shadow: 0 5px 0 -3px #888888, 0 3px 0 -2px #777777;
+}
+
+scrollbar.horizontal > range > trough > slider,
+scrollbar.horizontal > range.fine-tune > trough > slider {
+  border-image: -gtk-scaled(url("assets/scroll-thumb-frame.png"), url("assets/scroll-thumb-frame@2.png")) 3 4 4 3 / 3px 4px 4px 3px stretch;
+  margin: 0 0 0 -1px;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/hscroll-grip.png"), url("../gtk-3.0/assets/hscroll-grip@2.png"));
+  /* Keep the grip on whole pixels when the thumb's free length is odd. */
+  background-position: round(down, calc(50% + 0px), 1px) center;
+  box-shadow: 5px 0 0 -3px #888888, 3px 0 0 -2px #777777;
+}
+
+scrollbar > range > trough > slider:active,
+scrollbar > range > trough > slider:hover:active {
+  background-color: @platinum_focus;
+}
+
+scrollbar.vertical > range > trough > slider:active {
+  border-image: -gtk-scaled(url("assets/scroll-thumb-frame-pressed.png"), url("assets/scroll-thumb-frame-pressed@2.png")) 3 4 4 3 / 3px 4px 4px 3px stretch;
+}
+
+scrollbar.horizontal > range > trough > slider:active {
+  border-image: -gtk-scaled(url("assets/scroll-thumb-frame-pressed.png"), url("assets/scroll-thumb-frame-pressed@2.png")) 3 4 4 3 / 3px 4px 4px 3px stretch;
+}
+
+/* Inactive and disabled classic scrollbars: measured #EEEEEE well with a
+ * #555555 frame and an empty #888888 thumb outline. */
+scrollbar.vertical:backdrop > range > trough,
+scrollbar.vertical:disabled > range > trough {
+  min-width: 14px;
+  background-color: @platinum_pane;
+  border-image: none;
+  border-left: 1px solid #555555;
+  border-right: 1px solid #555555;
+}
+
+scrollbar.horizontal:backdrop > range > trough,
+scrollbar.horizontal:disabled > range > trough {
+  min-height: 14px;
+  background-color: @platinum_pane;
+  border-image: none;
+  border-left: none;
+  border-right: none;
+  border-top: 1px solid #555555;
+  border-bottom: 1px solid #555555;
+}
+
+scrollbar:backdrop > range > trough > slider,
+scrollbar:disabled > range > trough > slider {
+  background-color: @platinum_bg;
+  background-image: none;
+  border-image: none;
+  border: 1px solid #888888;
+  box-shadow: none;
+}
+
+/* Overlay indicator: a compact Lavender bar until hovered or dragged, then
+ * the full classic scrollbar above. */
+scrollbar.overlay-indicator:not(.dragging):not(.hovering) {
+  min-width: 8px;
+  min-height: 8px;
+  border: none;
+  background-color: transparent;
+  opacity: 0.85;
+}
+
+scrollbar.overlay-indicator.vertical:not(.dragging):not(.hovering) > range > trough {
+  min-width: 8px;
+}
+
+scrollbar.overlay-indicator.horizontal:not(.dragging):not(.hovering) > range > trough {
+  min-height: 8px;
+}
+
+scrollbar.overlay-indicator:not(.dragging):not(.hovering) > range > trough {
+  border: none;
+  border-image: none;
+  background-color: transparent;
+}
+
+scrollbar.overlay-indicator.vertical:not(.dragging):not(.hovering) > range > trough > slider {
+  min-width: 6px;
+  min-height: 24px;
+  margin: 2px 1px;
+}
+
+scrollbar.overlay-indicator.horizontal:not(.dragging):not(.hovering) > range > trough > slider {
+  min-width: 24px;
+  min-height: 6px;
+  margin: 1px 2px;
+}
+
+scrollbar.overlay-indicator:not(.dragging):not(.hovering) > range > trough > slider {
+  border-image: none;
+  background-image: none;
+  background-color: @platinum_accent;
+  border: 1px solid @platinum_accent_dark;
+  box-shadow: none;
+}
+
+scrollbar.overlay-indicator.dragging,
+scrollbar.overlay-indicator.hovering {
+  background-color: @platinum_pane;
+  opacity: 1;
+}
+
+scrolledwindow > junction,
+scrolledwindow > junction:dir(rtl) {
+  background: @platinum_pane;
+  background-image: none;
+}

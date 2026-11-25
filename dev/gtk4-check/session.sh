@@ -53,6 +53,8 @@ fi
 ./fixture chrome > chrome.txt
 ./fixture gallery > dialog.txt
 ./fixture menus > menus.txt
+./fixture ranges > ranges.txt
+./fixture windows > windows.txt
 
 if [[ $mode == plasma ]]; then
     # KWin confirms that the screenshot is of the launched app's active window.
@@ -108,6 +110,8 @@ JS
             cd "scale-$scale"
             GTK4_CHECK_OUTPUT="$PWD/output.png" ../fixture gallery > dialog.txt
             GTK4_CHECK_OUTPUT="$PWD/lists-output.png" ../fixture menus > menus.txt
+            GTK4_CHECK_OUTPUT="$PWD/ranges-output.png" ../fixture ranges > ranges.txt
+            GTK4_CHECK_OUTPUT="$PWD/windows-output.png" ../fixture windows > windows.txt
         )
     done
 fi

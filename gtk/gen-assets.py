@@ -728,6 +728,122 @@ def pad_slice_center(image: Image.Image, stretch_x: int, stretch_y: int) -> Imag
     return padded
 
 
+def guard_strip(image: Image.Image, strip_x: int | None, strip_y: int | None) -> Image.Image:
+    """Copy a one-pixel stretch strip into the inner edge of both neighboring slices.
+
+    GTK 4 samples past the edges of nine-slice regions when it scales them, at
+    any filter and renderer. With the guards inside the corner slices, every
+    texel next to the strip on either side equals the strip. Each guarded axis
+    gains a pixel on both sides of the strip, so its two slice widths grow by 1.
+    """
+    def axis(strip: int | None, size: int) -> tuple[int, ...]:
+        if strip is None:
+            return tuple(range(size))
+        return (*range(strip), strip, strip, strip, *range(strip + 1, size))
+
+    xs, ys = axis(strip_x, image.width), axis(strip_y, image.height)
+    guarded = Image.new(image.mode, (len(xs), len(ys)))
+    guarded.putdata([image.getpixel((x, y)) for y in ys for x in xs])
+    return guarded
+
+
+def render_platinum_window(width: int, height: int, active: bool, sides: bool = True, bottom: bool = True) -> Image.Image:
+    """Port of decoration/platinum.cpp paintFrame() plus its hard shadow.
+
+    Returns (width + 1) x (height + 1): the window and the 1 px shadow column
+    and row. Title-bar rows carry no boxes, stripes or title; the content
+    inside the frame stays transparent. Metrics are decoration/platinum.h.
+    """
+    frame, title_bar = 6, 22
+    im = Image.new("RGBA", (width + 1, height + 1), (0, 0, 0, 0))
+    px = im.load()
+    face = rgba(0xCCCCCC if active else 0xDDDDDD)
+    line = rgba(0x000000 if active else 0x555555)
+    left = right = frame if sides else 0
+    low = frame if bottom else 0
+
+    def fill(x0: int, y0: int, w: int, h: int, c: tuple[int, int, int, int]) -> None:
+        for y in range(y0, y0 + h):
+            for x in range(x0, x0 + w):
+                px[x, y] = c
+
+    def hline(x0: int, x1: int, y: int, c: tuple[int, int, int, int]) -> None:
+        for x in range(x0, x1 + 1):
+            px[x, y] = c
+
+    def vline(x: int, y0: int, y1: int, c: tuple[int, int, int, int]) -> None:
+        for y in range(y0, y1 + 1):
+            px[x, y] = c
+
+    fill(0, 0, width, title_bar, face)
+    fill(0, title_bar, left, height - title_bar, face)
+    fill(width - right, title_bar, right, height - title_bar, face)
+    fill(0, height - low, width, low, face)
+    hline(0, width - 1, 0, line)
+    if sides:
+        vline(0, 0, height - 1, line)
+        vline(width - 1, 0, height - 1, line)
+    if bottom:
+        hline(0, width - 1, height - 1, line)
+    if active:
+        white, gray99 = rgba(0xFFFFFF), rgba(0x999999)
+        hline(1 if sides else 0, width - (3 if sides else 1), 1, white)
+        if sides:
+            vline(1, 1, height - (3 if bottom else 1), white)
+            vline(width - 2, 2, height - (2 if bottom else 1), gray99)
+        if bottom:
+            hline(2, width - 2, height - 2, gray99)
+        in_l, in_r = (4, width - 5) if sides else (0, width - 1)
+        in_b = height - 5 if bottom else height - 1
+        hline(in_l, in_r - 1, title_bar - 2, gray99)
+        if sides:
+            vline(in_l, title_bar - 2, in_b - 1, gray99)
+            vline(in_r, title_bar - 1, in_b, white)
+        if bottom:
+            hline(in_l + 1, in_r, in_b, white)
+    c_l, c_r = (frame - 1, width - frame) if sides else (0, width - 1)
+    c_b = height - frame if bottom else height - 1
+    hline(c_l, c_r, title_bar - 1, line)
+    if sides:
+        vline(c_l, title_bar - 1, c_b, line)
+        vline(c_r, title_bar - 1, c_b, line)
+    if bottom:
+        hline(c_l, c_r, c_b, line)
+    # createShadow(): 1 px right and bottom, from 2 px in, black or #555555.
+    shadow = rgba(0x000000 if active else 0x555555)
+    vline(width, 2, height, shadow)
+    hline(2, width, height, shadow)
+    return im
+
+
+def pick(image: Image.Image, xs: tuple[int, ...], ys: tuple[int, ...]) -> Image.Image:
+    """Assemble an image from the given source columns and rows."""
+    out = Image.new(image.mode, (len(xs), len(ys)))
+    out.putdata([image.getpixel((x, y)) for y in ys for x in xs])
+    return out
+
+
+def make_csd_assets() -> dict[str, Image.Image]:
+    """GTK 4 client-side windows drawn as the KWin Platinum decoration.
+
+    csd-frame-*: the window's border image (slices 3 8 8 7 with the guards:
+    the 6 px frame plus the shadow); the header bar covers its title rows.
+    titlebar-*: the header bar (cols 4..W-5, rows 1..21; slices 3 2 3 3).
+    titlebar-max-*: maximized, no side frame (rows 0..21; slices 3 1 2 1).
+    """
+    w, h = 13, 40
+    assets = {}
+    for state, active in (("active", True), ("inactive", False)):
+        win = render_platinum_window(w, h, active)
+        rows = (0, 1, 30, *range(h - 6, h + 1))
+        assets[f"csd-frame-{state}"] = guard_strip(pick(win, tuple(range(w + 1)), rows), 6, 2)
+        title = pick(win, (4, 5, 6, w - 5), (1, 2, 10, 20, 21))
+        assets[f"titlebar-{state}"] = guard_strip(title, 2, 2)
+        flat = render_platinum_window(w, h, active, sides=False, bottom=False)
+        assets[f"titlebar-max-{state}"] = guard_strip(pick(flat, (0, 6, w - 1), (0, 1, 2, 10, 20, 21)), 1, 3)
+    return assets
+
+
 def save_asset(out_dir: Path, name: str, im: Image.Image) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     im.save(out_dir / f"{name}.png")
@@ -882,7 +998,47 @@ def main() -> int:
     for name in ("header-normal", "header-sorted"):
         save_asset(OUT_GTK4, name, pad_slice_center(assets[name], 2, 2))
 
-    print(f"Generated GTK 4 button, dropdown and column-header slices in {OUT_GTK4}")
+    # Tabs, scale grooves, scroll troughs, thumbs and progress tubes. Each
+    # name maps to the stretch strip on each axis the control grows along.
+    for name, strip in {
+        "tab-top-normal": (12, None),
+        "tab-top-active": (12, None),
+        "tab-top-pressed": (12, None),
+        "tab-bottom-normal": (12, None),
+        "tab-bottom-active": (12, None),
+        "tab-bottom-pressed": (12, None),
+        "scale-trough-h": (3, None),
+        "scale-trough-h-disabled": (3, None),
+        "scale-trough-v": (None, 3),
+        "scale-trough-v-disabled": (None, 3),
+        "vscroll-trough": (None, 2),
+        "hscroll-trough": (2, None),
+        "scroll-thumb-frame": (2, 2),
+        "scroll-thumb-frame-pressed": (2, 2),
+        "progress-trough-h": (5, None),
+        "progress-trough-v": (None, 5),
+        "progress-fill-full-h": (2, None),
+        "progress-fill-reversed-h": (3, None),
+        "progress-fill-full-v": (None, 2),
+        "progress-fill-reversed-v": (None, 3),
+        "modal-frame": (4, 4),
+    }.items():
+        save_asset(OUT_GTK4, name, guard_strip(assets[name], *strip))
+
+    # The Help Balloon's 6 px straight center, reduced to one guarded strip.
+    balloon = pick(assets["tooltip-balloon"], (*range(7), 7, *range(13, 20)), (*range(7), 7, *range(13, 20)))
+    save_asset(OUT_GTK4, "tooltip-balloon", guard_strip(balloon, 7, 7))
+
+    for name, image in make_csd_assets().items():
+        save_asset(OUT_GTK4, name, image)
+
+    # GTK 4 paints a top notebook's pane after its header. The header draws
+    # the pane's top three rows instead, under the tabs; the pane keeps the rest.
+    tab_pane = assets["tab-pane"]
+    save_asset(OUT_GTK4, "tab-pane-top", guard_strip(tab_pane.crop((0, 0, 9, 3)), 4, None))
+    save_asset(OUT_GTK4, "tab-pane-body", guard_strip(tab_pane.crop((0, 3, 9, 9)), 4, 1))
+
+    print(f"Generated GTK 4 button, dropdown, column-header, tab and range slices in {OUT_GTK4}")
     print(f"Generated {len(assets)} assets (1x + @2x = {len(assets) * 2} PNGs) in {OUT_GTK3}")
     return 0
 

@@ -44,6 +44,10 @@ ACTIVE_SELECTION = (204, 204, 255)
 INACTIVE_SELECTION = (220, 220, 239)
 FOCUS = (102, 102, 204)
 PARSER_DIAGNOSTIC = re.compile(r"Theme parser (?:error|warning)|(?:Gtk|Gdk|Gsk|GLib(?:-GObject)?)-(?:CRITICAL|WARNING)", re.I)
+# The nested virtual KWin output sometimes reports a presentation time one
+# frame off. GDK's frame clock warns; it is compositor timing, not styling.
+COMPOSITOR_TIMING = re.compile(r"Gdk-WARNING \*\*: [0-9:.]+: Duplicate call to gdk_frame_timings_presented\(\) "
+                               r"with different values: presentation time is [0-9.]+ms off from expected$")
 
 
 def read_report(path):
@@ -259,6 +263,368 @@ def verify_menus(root, wayland, record, compare):
                "dropdown-search-overflow-and-selection")
 
 
+TAB_WIDTHS = (72, 101, 57, 74, 62, 71)
+
+
+def blue_count(image):
+    """Count Lavender-family pixels, including translucent or scaled blends."""
+    return sum(n for n, (r, g, b) in image.getcolors(image.width * image.height) if b > r + 40)
+LAVENDER = (153, 153, 255)
+
+
+def tab_crops(name, ref, rx, ry, ox, oy):
+    """Yield the GTK 3 Batch 2 tab-row crops for a pane whose top is at (ox, oy)."""
+    ty, oty = ry - 21, oy - 21
+    yield f"{name}-top", ref, rx + 2, ty, ox + 2, oty, 462, 6
+    yield f"{name}-bottom", ref, rx + 2, ty + 17, ox + 2, oty + 17, 462, 10
+    yield f"{name}-sides-0", ref, rx + 2, ty + 6, ox + 2, oty + 6, 15, 11
+    x = 5
+    for i, width in enumerate(TAB_WIDTHS[:5]):
+        x += width
+        yield f"{name}-sides-{i + 1}", ref, rx + x - 12, ty + 6, ox + x - 12, oty + 6, 24, 11
+    x += TAB_WIDTHS[5]
+    yield f"{name}-sides-6", ref, rx + x - 12, ty + 6, ox + x - 12, oty + 6, 464 - x + 12, 11
+
+
+def verify_scaled_ranges(root, scale):
+    directory = root / f"scale-{scale}"
+    props, controls = read_report(directory / "ranges.txt")
+    window = Image.open(directory / "ranges-scaled.png").convert("RGB")
+    screen = Image.open(directory / "ranges-output.png").convert("RGB")
+    bounds = screen.getbbox()
+    if (not bounds or props.get("surface_scale") != str(scale) or props.get("renderer_override") != "none"
+            or props.get("real_active") != "1"):
+        return False, f"surface={props.get('surface_scale')} active={props.get('real_active')}"
+    left, top, right, bottom = bounds
+    if (min(left, top) <= 0 or right >= screen.width or bottom >= screen.height
+            or abs(right - left - window.width * scale) > 1 or abs(bottom - top - window.height * scale) > 1):
+        return False, f"bounds={bounds} logical={window.size}"
+
+    def physical(name):
+        x, y, w, h = controls[name][:4]
+        return crop(screen, (left + round(x * scale), top + round(y * scale), round(w * scale), round(h * scale)))
+
+    lavender = color_count(physical("progress"), LAVENDER) + color_count(physical("scrollbar"), LAVENDER)
+    if lavender < 400 * scale:
+        return False, f"{lavender} lavender pixels"
+    if scale != 2:
+        return True, f"{lavender} lavender pixels"
+
+    # @2 artwork is the 1× artwork doubled, so 200% must equal the doubled reference.
+    def doubled(ref, x, y, w, h):
+        image = Image.open(PROJECT / "reference" / ref).convert("RGB").crop((x, y, x + w, y + h))
+        return image.resize((2 * w, 2 * h), Image.Resampling.NEAREST)
+
+    px, py = controls["pane"][:2]
+    py -= 3
+    sx, sy = controls["slider"][:2]
+    bx, by = controls["progress"][:2]
+    failed = []
+    regions = [
+        ("slider", doubled("controls-general-controls.png", 726, 438, 91, 23), sx, sy),
+        ("progress", doubled("progress-determinate-55.png", 590, 276, 188, 14), bx, by),
+    ]
+    for name, ref, rx, ry, ox, oy, w, h in tab_crops("tabs", "appearance-2-appearance.png", 469, 235, px, py):
+        regions.append((name, doubled(ref, rx, ry, w, h), ox, oy))
+    for name, expected, x, y in regions:
+        actual = crop(screen, (left + 2 * x, top + 2 * y, expected.width, expected.height))
+        if ImageChops.difference(actual, expected).getbbox():
+            failed.append(name)
+    return not failed, ", ".join(failed) or f"{len(regions)} regions equal the doubled reference"
+
+
+def verify_ranges(root, wayland, record, compare):
+    props, controls = read_report(root / "ranges.txt")
+    backend = "GdkWaylandDisplay" if wayland else "GdkBroadwayDisplay"
+    record(props.get("backend") == backend and props.get("theme") == "Platinum"
+           and props.get("theme_override") == "none" and props.get("surface_scale") == "1"
+           and (not wayland or props.get("renderer_override") == "none"), "ranges-named-theme")
+    sizes = {name: controls[name][2:4] for name in (
+        "vbar-top", "vbar-mid", "hbar", "vbar-disabled", "slider", "slider-pressed", "slider-disabled",
+        "progress-55", "progress-busy", "progress-vertical-reversed")}
+    expected = {"vbar-top": (16, 316), "vbar-mid": (16, 292), "hbar": (358, 16), "vbar-disabled": (16, 160),
+                "slider": (91, 23), "slider-pressed": (91, 23), "slider-disabled": (140, 16),
+                "progress-55": (188, 14), "progress-busy": (310, 14), "progress-vertical-reversed": (14, 188)}
+    natural = all(controls[name][4:6] == expected[name] for name in ("slider", "slider-disabled", "vbar-disabled"))
+    record(sizes == expected and natural, "range-natural-sizes",
+           ", ".join(f"{n}={w}×{h}" for n, (w, h) in sizes.items() if (w, h) != expected[n]) or "11 controls")
+
+    def at(name, dx=0, dy=0):
+        x, y, *_ = controls[name]
+        return x + dx, y + dy
+
+    # The GTK 3 crops minus the 31 px of Smart Scrolling arrows GTK 4 lacks.
+    for name, ref, rx, ry, (ox, oy), w, h in (
+        ("vbar-top", "scroll-vertical-inactive.png", 787, 249, at("vbar-top", 0, 1), 16, 315),
+        ("vbar-mid", "disclosure-triangles.png", 492, 175, at("vbar-mid", 0, 1), 16, 291),
+        ("hbar", "disclosure-triangles.png", 105, 496, at("hbar", 1), 357, 16),
+        ("slider", "controls-general-controls.png", 726, 438, at("slider"), 91, 23),
+        ("slider-pressed-thumb", "slider-pressed.png", 764, 438, at("slider-pressed", 38), 15, 16),
+        ("slider-disabled", "controls-memory.png", 672, 483, at("slider-disabled"), 140, 16),
+        ("progress-55", "progress-determinate-55.png", 590, 276, at("progress-55"), 188, 14),
+        ("progress-0", "progress-copy-window.png", 590, 276, at("progress-0"), 188, 14),
+        ("progress-busy-stripes", "progress-indeterminate-a.png", 1077, 473, at("progress-busy", 2, 2), 60, 10),
+    ):
+        compare("ref-gtk4-" + name, ref, rx, ry, ox, oy, w, h, "ranges.png")
+
+    # Top panes start 3 px above the stack: the header draws their first rows.
+    for name, ref in (("themes", "appearance-1-themes.png"), ("appearance", "appearance-2-appearance.png"),
+                      ("options", "appearance-6-options.png")):
+        x, y = at("pane-" + name, 0, -3)
+        for crop_args in tab_crops("ref-gtk4-tabs-" + name, ref, 469, 235, x, y):
+            compare(*crop_args, "ranges.png")
+    x, y = at("pane-themes", 0, -3)
+    compare("ref-gtk4-pane-left", "appearance-1-themes.png", 469, 235, x, y, 4, 280, "ranges.png")
+    compare("ref-gtk4-pane-right", "appearance-1-themes.png", 931, 235, x + 462, y, 4, 280, "ranges.png")
+    compare("ref-gtk4-pane-bottom", "appearance-1-themes.png", 469, 511, x, y + 276, 466, 4, "ranges.png")
+
+    image = Image.open(root / "ranges.png").convert("RGB")
+    # Bottom tabs are the measured top tabs flipped; compare above the pane line.
+    tx, ty = at("pane-appearance", 0, -24)
+    bx, by = at("pane-bottom", 0, 43)
+    top_row = image.crop((tx, ty, tx + 466, ty + 18)).transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+    bottom_row = image.crop((bx, by, bx + 466, by + 18))
+    record(ImageChops.difference(top_row, bottom_row).getbbox() is None, "bottom-tabs-mirror-top-tabs")
+
+    edge = [(v, v, v) for v in (187, 136, 85, 0)]
+    for name, vertical in (("progress-reversed", False), ("progress-vertical-reversed", True)):
+        x, y, w, h = controls[name][:4]
+        if vertical:
+            line = [image.getpixel((x + w // 2, y + n)) for n in range(8, h - 8)]
+        else:
+            line = [image.getpixel((x + n, y + h // 2)) for n in range(8, w - 8)]
+        record(any(line[i:i + 4] == edge for i in range(len(line))), name + "-leading-shadow")
+    # A one-pixel fill cannot hold the 5 px tube artwork; GTK scales it into a blue line.
+    for name in ("progress-tiny", "progress-vertical-tiny"):
+        bar = crop(image, controls[name])
+        blue = blue_count(bar)
+        record(blue > 0 and color_count(bar, (0, 0, 0)) > 20, name + "-visible-fill", f"{blue} blue pixels")
+    x, y, *_ = controls["progress-vertical-busy"]
+    with Image.open(PROJECT / "gtk/Platinum/gtk-3.0/assets/progress-pulse-v.png") as tile:
+        tile = tile.convert("RGB")
+        record(ImageChops.difference(image.crop((x + 2, y + 2, x + 2 + tile.width, y + 2 + tile.height)), tile)
+               .getbbox() is None, "progress-vertical-pulse-pattern")
+
+    disabled = crop(image, controls["vbar-disabled"])
+    well = color_count(disabled, (238, 238, 238)) + color_count(disabled, (221, 221, 221))
+    record(well > disabled.width * disabled.height * 0.8 and color_count(disabled, (85, 85, 85)) > 200
+           and color_count(disabled, (136, 136, 136)) > 100 and color_count(disabled, LAVENDER) == 0,
+           "scrollbar-disabled-well")
+
+    ox, oy, ow, oh = controls["overlay-thumb"][:4]
+    hover = Image.open(root / "ranges-hover.png").convert("RGB")
+    expanded = crop(hover, controls["overlay-hover-vbar"])
+    indicator = crop(image, controls["overlay-thumb"])
+    record(props.get("overlay_indicator") == "1" and ow <= 8
+           and blue_count(indicator) > ow * oh / 2
+           and controls["overlay-hover-vbar"][2] == 16 and color_count(expanded, LAVENDER) > 300
+           and color_count(expanded, (51, 51, 153)) >= 28, "overlay-indicator-and-hover",
+           f"indicator {ow} px, hovered {controls['overlay-hover-vbar'][2]} px")
+    record(props.get("scale_value") == "2" and props.get("vscale_value") == "10"
+           and props.get("notebook_page") == "2" and props.get("classic_scrolled") == "1",
+           "native-scale-notebook-scroll")
+
+    if wayland:
+        backdrop = Image.open(root / "ranges-backdrop.png").convert("RGB")
+        well = crop(backdrop, controls["vbar-top"])
+        gray = color_count(well, (238, 238, 238)) + color_count(well, (221, 221, 221))
+        record(props.get("ranges_backdrop") == "1" and color_count(well, LAVENDER) == 0
+               and gray > well.width * well.height * 0.8 and color_count(well, (85, 85, 85)) > 300,
+               "scrollbar-real-backdrop")
+        for scale in (1.5, 2):
+            passed, detail = verify_scaled_ranges(root, scale)
+            record(passed, f"tabs-and-ranges-output-{scale * 100:g}pct", detail)
+
+
+REF_WINDOW = (426, 410, 416, 246)  # window-document-*.png: x, y, visible width, height
+ETCH = (136, 136, 136)
+
+
+def find_run(image, color, length, scale=1):
+    """Top-left of the first horizontal run of COLOR at least LENGTH long."""
+    width = image.width
+    pixels = image.load()
+    for y in range(image.height):
+        run = 0
+        for x in range(width):
+            run = run + 1 if pixels[x, y] == color else 0
+            if run == length * scale:
+                return x - run + 1, y
+    return None
+
+
+def window_origin(image, active, scale=1):
+    """Our CSD window's top-left: the close box's etched row is 4 px in."""
+    if active:
+        hit = find_run(image, ETCH, 12, scale)
+        return hit and (hit[0] - 4 * scale, hit[1] - 4 * scale)
+    return find_run(image, (85, 85, 85), 40, scale)
+
+
+def frame_crops(rw, rh, ow, oh):
+    """(name, ref x, ref y, our x, our y, w, h) relative to each window's origin.
+
+    Skips the two shadow pixels left of and above the shadow's start (the
+    desktop shows there) and the reference's size box at the bottom right."""
+    return (
+        ("title-left", 0, 0, 0, 0, 40, 16),
+        ("title-right", rw - 50, 0, ow - 50, 0, 50, 16),
+        ("bar-bottom-left", 0, 18, 0, 18, 40, 4),
+        ("bar-bottom-right", rw - 40, 18, ow - 40, 18, 41, 4),
+        ("side-left", 0, 40, 0, 40, 6, 40),
+        ("side-right", rw - 6, 40, ow - 6, 40, 7, 40),
+        ("bottom-left", 2, rh - 6, 2, oh - 6, 38, 7),
+        ("bottom-right", rw - 2, rh - 6, ow - 2, oh - 6, 3, 7),
+        ("bottom-edge", rw - 60, rh - 5, ow - 60, oh - 5, 40, 6),
+    )
+
+
+def stripe_ends(ref, y):
+    """Last white column before the title gap and first one after it on row Y."""
+    x0, y0, rw, _ = REF_WINDOW
+    row = [ref.getpixel((x0 + x, y0 + y)) for x in range(rw)]
+    white = (255, 255, 255)
+    start = next(x for x in range(rw) if x > 20 and row[x] == white)
+    end = next(x for x in range(start, rw) if row[x] != white) - 1
+    resume = next(x for x in range(end + 2, rw) if row[x] == white)
+    return end, resume
+
+
+def verify_windows(root, wayland, record, compare):
+    props, geometry = read_report(root / "windows.txt")
+    backend = "GdkWaylandDisplay" if wayland else "GdkBroadwayDisplay"
+    record(props.get("theme") == "Platinum" and props.get("backend") == backend
+           and props.get("plain_csd") == "1", "windows-named-theme-and-csd")
+
+    # Help Balloon outline: black and white pixels of the frame and its corners.
+    shot = Image.open(root / "balloon.png").convert("RGB")
+    ref = Image.open(PROJECT / "reference/help-balloon.png").convert("RGB")
+    bx, by, bw, bh, *_ = geometry["balloon"]
+
+    def tone(pixel):
+        return "B" if pixel == (0, 0, 0) else "W" if pixel == (255, 255, 255) else "-"
+
+    checked = bad = 0
+    for y in range(121):
+        for x in range(160):
+            interior = 10 <= x < 150 and 10 <= y < 111
+            if interior or (x >= 130 and y < 14):  # the reference's tail is top right
+                continue
+            checked += 1
+            bad += tone(ref.getpixel((1690 + x, 149 + y))) != tone(shot.getpixel((bx + x, by + y)))
+    record((bw, bh) == (160, 121) and bad == 0, "ref-gtk4-balloon-outline", f"{bad} of {checked} px")
+
+    # The title bar's layout matches the decoration's metrics.
+    fx, fy, fw, fh = geometry["frame"]
+    visible = fw - 1
+    expected = {
+        "headerbar": (4, 1, visible - 8, 21),
+        "close": (4, 4, 13, 13),
+        "minimize": (visible - 17, 4, 13, 13),
+        "maximize": (visible - 33, 4, 13, 13),
+    }
+    actual = {name: geometry[name][:4] for name in expected}
+    record((fx, fy) == (0, 0) and actual == expected, "csd-title-bar-metrics",
+           ", ".join(f"{n}={actual[n]}" for n in expected if actual[n] != expected[n]) or "22 rows, boxes 4 px in, 3 px apart")
+    if not wayland:
+        return
+
+    rx, ry, rw, rh = REF_WINDOW
+    oh = fh - 1
+    title_x = geometry["title"][0]
+    for state in ("active", "inactive"):
+        image = Image.open(root / f"csd-{'active' if state == 'active' else 'backdrop'}.png").convert("RGB")
+        origin = window_origin(image, state == "active")
+        if not origin:
+            record(False, f"ref-gtk4-csd-{state}", "window not found")
+            continue
+        ox, oy = origin
+        ref_image = f"window-document-{state}.png"
+        for name, ax, ay, bx2, by2, w, h in frame_crops(rw, rh, visible, oh):
+            compare(f"ref-gtk4-csd-{state}-{name}", ref_image, rx + ax, ry + ay, ox + bx2, oy + by2, w, h,
+                    f"csd-{'active' if state == 'active' else 'backdrop'}.png")
+        if state == "active":
+            # The stripes stop 5 px before the title and resume 5 px after it.
+            reference = Image.open(PROJECT / "reference" / ref_image).convert("RGB")
+            end, resume = stripe_ends(reference, 4)
+            label_w = geometry["title"][2]
+            for side, ref_col, our_col in (("before", end, title_x - 1), ("after", resume, title_x + label_w - 1)):
+                compare(f"ref-gtk4-csd-stripes-{side}-title", ref_image, rx + ref_col - 3, ry + 4,
+                        ox + our_col - 3, oy + 4, 7, 12, "csd-active.png")
+
+    # An app's bar: the boxes, stripes and caps stay on the same rows.
+    app = Image.open(root / "csd-app.png").convert("RGB")
+    origin = window_origin(app, True)
+    if origin:
+        ox, oy = origin
+        _, close_y, _, _ = geometry["app-close"]
+        hit = find_run(app.crop((ox, oy, ox + 40, oy + 60)), ETCH, 12)
+        box_row = hit[1] if hit else -1
+        ax = geometry["app-title"][0]
+        stripes = [app.getpixel((ox + x, oy + box_row + r)) for r in range(12) for x in range(ax - 25, ax - 8)]
+        pattern = [(255, 255, 255) if r % 2 == 0 else (119, 119, 119) for r in range(12) for _ in range(ax - 25, ax - 8)]
+        bar_h = geometry["app-headerbar"][3]
+        record(stripes == pattern and bar_h <= 34 and box_row >= 4, "csd-app-bar-aligned",
+               f"bar {bar_h} px, boxes and stripes from row {box_row}")
+    else:
+        record(False, "csd-app-bar-aligned", "window not found")
+
+    # GtkAlertDialog: the plain modal frame, shadow included.
+    alert = Image.open(root / "alert.png").convert("RGB")
+    _, _, aw, ah = geometry["alert-frame"]
+    # The frame's top-left corner: black outline with #BBBBBB inside it.
+    pixels = alert.load()
+    hit = next(((x, y) for y in range(alert.height - 2) for x in range(alert.width - 2)
+                if pixels[x, y] == (0, 0, 0) and pixels[x + 1, y + 1] == (187, 187, 187)
+                and pixels[x + 2, y + 1] == (187, 187, 187) and pixels[x + 1, y + 2] == (187, 187, 187)), None)
+    ok = False
+    if hit:
+        x0, y0 = hit
+        ok = True
+        ref_l, ref_t, ref_r, ref_b = 766, 194, 1151, 382
+        our_r, our_b = x0 + aw - 2, y0 + ah - 2
+        for name, ax, ay, bx2, by2, w, h in (
+            ("top-left", ref_l, ref_t, x0, y0, 5, 5),
+            # Frame pixels only: the shadow starts 2 px in, and the body is
+            # #DDDDDD here where the About box is white.
+            ("top-right", ref_r - 3, ref_t, our_r - 3, y0, 4, 6),
+            ("bottom-left", ref_l, ref_b - 4, x0, our_b - 4, 4, 5),
+            ("bottom-right", ref_r - 3, ref_b - 4, our_r - 3, our_b - 4, 5, 6),
+            ("top-edge", ref_l + 20, ref_t, x0 + 20, y0, 60, 4),
+            ("left-edge", ref_l, ref_t + 20, x0, y0 + 20, 4, 60),
+            ("right-edge", ref_r - 3, ref_t + 20, our_r - 3, y0 + 20, 5, 60),
+            ("bottom-edge", ref_l + 20, ref_b - 3, x0 + 20, our_b - 3, 60, 5),
+        ):
+            compare(f"ref-gtk4-alert-{name}", "dialog-modal-plain.png", ax, ay, bx2, by2, w, h, "alert.png")
+    record(ok, "alert-window-found")
+
+    # Maximized: no side frame, the boxes 4 px in from the screen's edges.
+    maxed = "csd-max.png"
+    mw = geometry["max-frame"][2]
+    compare("ref-gtk4-csd-max-left", "window-document-active.png", rx + 4, ry + 1, 4, 1, 36, 15, maxed)
+    compare("ref-gtk4-csd-max-right", "window-document-active.png", rx + rw - 40, ry + 1, mw - 40, 1, 36, 15, maxed)
+    compare("ref-gtk4-csd-max-bottom", "window-document-active.png", rx + 10, ry + 20, 10, 20, 30, 2, maxed)
+    record(props.get("maximized") == "1" and props.get("close_activated") == "1" and props.get("closed") == "1"
+           and props.get("csd_backdrop") == "1" and props.get("plain_window_csd") == "0",
+           "csd-controls-act-and-plain-windows-use-kwin")
+
+    for scale in (1.5, 2):
+        directory = root / f"scale-{scale}"
+        sprops, sgeo = read_report(directory / "windows.txt")
+        screen = Image.open(directory / "windows-output.png").convert("RGB")
+        origin = window_origin(screen, True, 2 if scale == 2 else 1)
+        passed = sprops.get("surface_scale") == str(scale) and sprops.get("real_active") == "1" and origin
+        detail = f"surface={sprops.get('surface_scale')} origin={origin}"
+        if passed and scale == 2:
+            ox, oy = origin
+            reference = Image.open(PROJECT / "reference/window-document-active.png").convert("RGB")
+            wanted = reference.crop((rx, ry, rx + 40, ry + 16)).resize((80, 32), Image.Resampling.NEAREST)
+            got = screen.crop((ox, oy, ox + 80, oy + 32))
+            passed = ImageChops.difference(wanted, got).getbbox() is None
+            detail = "title bar left equals the doubled reference" if passed else f"differs at {origin}"
+        record(passed, f"csd-output-{scale * 100:g}pct", detail)
+
+
 def main(root, wayland):
     checks = []
 
@@ -292,8 +658,8 @@ def main(root, wayland):
                state + "-named-theme", f"{report.get('theme')} / {report.get('backend')}")
     session_log = (root / "session.log").read_text()
     app_logs = [path.read_text() for pattern in ("factory-*.log", "settings-*.log") for path in root.glob(pattern)]
-    diagnostics = [line.strip() for log in [session_log, *app_logs]
-                   for line in log.splitlines() if PARSER_DIAGNOSTIC.search(line)]
+    diagnostics = [line.strip() for log in [session_log, *app_logs] for line in log.splitlines()
+                   if PARSER_DIAGNOSTIC.search(line) and not (wayland and COMPOSITOR_TIMING.search(line.strip()))]
     record(not diagnostics, "gtk-css-and-runtime-diagnostics", " | ".join(diagnostics) or "0")
 
     for name, ref, rx, ry, width, height, edge, bottom, safe_width in CHROME_BANDS:
@@ -366,6 +732,8 @@ def main(root, wayland):
                    f"{remaining=} {after_reassignment=} focus_flags={dialog.get(f'backdrop-focus-flags-{state}')}")
 
     verify_menus(root, wayland, record, compare)
+    verify_ranges(root, wayland, record, compare)
+    verify_windows(root, wayland, record, compare)
 
     if wayland:
         backdrop = Image.open(root / "dialog-backdrop.png").convert("RGB")
