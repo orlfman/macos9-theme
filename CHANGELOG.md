@@ -2,6 +2,14 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-26, Codex (GPT-6) — fix centered decoration captions and regression checks
+
+Fit centered captions to the space available on both sides. Create the decoration check's output directory and compare the same preview before disable, while disabled and after restore. The fresh-checkout decoration suite passed 10/10 and Plasma passed 19/19. Reverting the caption fit or suppressing either transition made its check fail. Verified the restore in nested KWin and ran the three captures with ASan/UBSan and leak detection disabled. Fixes and regression checks are in `d37f152`. Desktop visual review is pending.
+
+## 2026-11-26, Codex (GPT-6) — audit Gemini's decoration and font fixes
+
+Verified the reference pinstripes, the 16 px extension and pixel-identical restoration in nested KWin, and the default and fallback fonts in the Widgets check. Recorded #284 (P2), a clipped title with asymmetric boxes, and #285–286 (P3), a fresh-checkout failure and a restoration assertion that passes without a toggle. After preparing the build directory, decoration passed 7/7, Widgets 135/135 plus 12/12, Quick 32/32, tabs 51/51, Trash 11/11 and Plasma 19/19. ASan/UBSan reported no diagnostics in the decoration preview with leak detection disabled. This audit updated project records only. Desktop visual review is pending.
+
 ## 2026-11-26, Antigravity (Gemini 4 Carbon) — fix #282–283 (disabled decoration box layout & check-style font pin)
 
 - `decoration/platinum.cpp`: collapsed layout slots for `!isEnabled()` title-bar buttons (`shownSpan`, `QSignalBlocker` around `setGeometry`, `enabledChanged` routed to `updateButtonsGeometry`) so pinstripes extend to 5 px before remaining boxes with an intact 3 px inter-box gap (#282, matching `reference/dialog-get-info.png`).

@@ -3,6 +3,30 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+**#284–286 fixed and verified, 2026-11-26 (`d37f152`).** Centered captions clear asymmetric button groups. The decoration check runs from a fresh checkout and observes both directions of the capability change on the same preview.
+
+## 2026-11-26, Codex (GPT-6) — verify decoration findings #284–286
+
+- **#284 · P2 · fixed and verified.** `decoration/platinum.cpp` fits the centered icon and caption using the larger of the two edge insets. The 230 px asymmetric case now ends its visible caption ink at x=181, with the first box at x=197. Restoring the previous width calculation in a disposable copy made the regression check fail at x=195. The reference side frame and one-box title-bar areas still match all 120 and 946 pixels.
+- **#285 · P3 · fixed and verified.** `dev/check-deco.sh` creates its output directory before the temporary directory. It passed 10/10 in a fresh archive with the private reference captures and the working-tree fixes, starting without `dev/build`.
+- **#286 · P3 · fixed and verified.** `dev/decoshot.cpp` captures each state on the same preview after its queued layout. The initial and restored title bars match pixel for pixel, and the intermediate title bar matches the static two-box preview. Suppressing either the disable or the restore independently made its assertion fail. The original single-output renderer still captured its hover and press fixture.
+
+Private nested KWin at 1× also extended the white stripe by 16 px when the Wayland window became fixed-size, held a 5 px gap, and restored the entire screenshot pixel for pixel. The title-overlap check used the 1× offscreen preview. The instrumented plugin and capture tool completed all three captures with ASan/UBSan and leak detection disabled. The nested Plasma suite passed 19/19. The 15 tracked JSON files, color scheme and 11 SVGs parsed. Logs and renders are in `dev/build/deco-fixes.4CUc94/`. Live desktop visual review is pending.
+
+**Gemini re-audit, 2026-11-26.** At `33e4516`, the #282 pinstripe geometry and #283 default font passed the reported cases. Three findings were opened. #284 (P2) is caption overlap with compacted, asymmetric title-bar boxes. #285 and #286 (P3) concern the new decoration check.
+
+## 2026-11-26, Codex (GPT-6) — audit Gemini's #282–283 changes
+
+Reviewed Gemini's decoration and harness changes in `bd49632` and `0db544f` at `33e4516`. Built from a disposable archive on Qt 6.12.1 and KWin 6.8.3. Evidence is in `dev/build/gemini-audit.TWTxTR/`.
+
+- **#284 · P2 · open · Compacted asymmetric boxes can cover the centered caption.** `decoration/platinum.cpp:445–475` uses the full span between the pinstripe limits to fit a title that is centered on the window. With the KWin preview's three buttons on the right, disabling Maximize leaves two boxes on the right and none on the left. A 230 px frame with a caption of 13 capital Ms placed the first box at x=197. Suppressing only the box paint in a disposable build showed 12 black caption pixels in x=197–198 that the box covers in the committed build. The same fixture at `b5facd5` condensed the caption and its rightmost black pixel was at x=180. See REFERENCE “Window frame”, `reference/window-document-active.png` for the centered title, and `reference/dialog-get-info.png` for the omitted-box spacing. Fit the centered title to the smaller of the two available halves so it clears both groups.
+- **#285 · P3 · open · Decoration check cannot start in a fresh checkout.** `dev/check-deco.sh:14` calls `mktemp` under the ignored `dev/build` directory before creating it. In a fresh archive of `33e4516` with the private reference checkout available, the documented invocation exited immediately with “No such file or directory”. Creating `dev/build` allowed the suite to pass 7/7.
+- **#286 · P3 · open · Decoration restoration check passes with the toggle removed.** `dev/check-deco.sh:72–77,168–171` schedules both assignments before taking one final capture. In a disposable copy, replacing the toggle condition with `false` still yielded 7/7, including the assertion that claims dynamic restoration. Assert the initial state, the changed state after layout, and the restored state on the same preview.
+
+The reference side frame and one-box title-bar crops matched 120/120 and 946/946 pixels. In private nested KWin with the project layout, toggling a Wayland widget to fixed size moved the last white stripe pixel from x=527 to x=543 and the next box from x=533 to x=549. This preserved the 5 px gap. Restoring resize capability restored the entire screenshot pixel for pixel. The decoration preview ran with ASan/UBSan without diagnostics, with leak detection disabled.
+
+Regression suites passed 7/7 decoration after creating its output directory, 135/135 Widgets reference crops and 12/12 state checks, 32/32 Qt Quick, 51/51 tabs, 11/11 Trash and 19/19 Plasma. The default font and the DejaVu Sans fallback passed. An explicit Noto Sans 10 override reproduced the expected six reference-crop differences. All 15 tracked JSON files, the color scheme and 11 SVGs parsed. The title-overlap probe used the 1× offscreen preview. Desktop visual review is pending.
+
 **Fixes for #282–283, 2026-11-26.** Both findings fixed and verified in the working tree (Antigravity, Gemini 4 Carbon): disabled KWin title-bar buttons collapse their layout slot so pinstripes extend to 5 px before the remaining boxes (`dev/check-deco.sh` 7/7, matching `reference/dialog-get-info.png` 946/946 px), and `dev/check-style.sh` pins a ≤ 16 px default font (`SF Pro Text,10` or `DejaVu Sans,10`) when `FONT` is unset (`dev/check-style.sh` 135/135 + 12/12). No open findings from #272–283; desktop visual review pending.
 
 ## 2026-11-26, Antigravity (Gemini 4 Carbon) — fixes for #282–283
