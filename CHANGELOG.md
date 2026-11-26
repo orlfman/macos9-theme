@@ -2,6 +2,10 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-26, Codex (GPT-6) — restore WhiteSur's small Trash icons
+
+Removed the six 16, 22 and 24 px custom aliases in `icons/custom/all/places/` so the built themes use WhiteSur's small empty and full Trash artwork. The user's scalable pair still supplies the default Platinum dock. Icon suite 80/80. Verified KDE and GTK 3 lookups for both states in all three variants offscreen. The working-tree change awaits a desktop reinstall and visual review.
+
 ## 2026-11-26, Claude Code (Opus 5.5) — audit custom Trash icons, fix #287
 
 Audited Codex's Trash icons (AUDIT.md). The user confirmed that they drew both icons themselves. Fixed #287 in `dev/test_icons_phase1.py`: the #111 count check had been loosened to `total_svgs > 0`. It now requires the count to be within one SVG per custom entry per theme of the pinned 20,326 baseline. The icon suite passed 80/80, and a mutant baseline failed the check. Everything, including Codex's icon files, is still uncommitted. Desktop reinstall and visual review are pending.

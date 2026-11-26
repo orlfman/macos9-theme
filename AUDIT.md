@@ -3,6 +3,14 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+## 2026-11-26, Claude Code (Opus 5.5) — audit restored small WhiteSur Trash icons
+
+Audited the working tree on `3e0dae6`: Codex removed the six 16/22/24 px aliases from `icons/custom/all/places/` and updated the docs. No findings. Own build from pin `73d8040` into a scratch directory. In `WhiteSur-lavender` and `-light`, `places/{16,22,24}/user-trash{,-full}.svg` are byte-identical to upstream `src/places/`. In `-dark`, the only difference is `#363636` → `#dedede`, upstream's own dark rule (`install.sh:162`). `places/scalable` is still the user's pair in all three variants. GTK 3 lookup: 16, 22 and 24 px pick WhiteSur's fixed icons, and 26 px and up pick the user's scalable icon (`places/scalable` MinSize=32). The `platinum.trash` dock icon is the slot minus a quarter (`main.qml:136`), so it's 32 px in the default 43 px slot and uses the user's art. Only a panel shrunk until the icon is 25 px or less would switch to WhiteSur's 24 px icon. The icon suite passed 80/80, and #111 counted exactly 20,326 within its margin of ±6. Removed the three directories the alias removal left empty (`icons/custom/README.md` "How to remove"). Not seen on the live desktop.
+
+## 2026-11-26, Codex (GPT-6) — verify restored small WhiteSur Trash icons
+
+Verified the working tree based on `3e0dae6`. No findings. Both states at 16, 22 and 24 px match the pinned WhiteSur SVGs, with WhiteSur's normal dark recolor in the dark variant. The checked 32, 39, 48, 64 and 128 px lookups resolve to the user's scalable SVGs. KDE passed 144 offscreen lookup and render checks across all variants at 1×, 1.5× and 2×. GTK 3 passed 96 lookup checks at 1× and 2×. The icon suite passed 80/80, including all 20,326 physical SVG namespaces. Parsed 15 JSON files, the Platinum color scheme and 13 SVGs. Build and suite logs are in `dev/build/trash-small.z8U7m3/`. Live Dolphin and dock review is pending.
+
 ## 2026-11-26, Claude Code (Opus 5.5) — audit Codex's custom Trash icons
 
 Audited the uncommitted working tree on `0d8b84f` (`icons/custom/all/places/`, `dev/test_icons_phase1.py`, docs). Both SVGs match the user's `~/Pictures/convert/other/trashcan-{empty,full}.svg` by sha256. They pass `xmllint --nonet` and use a 443 px pixel grid with 276 and 67 single-color paths. Content spans about 65% of the width and the full height. A 16 px render takes 20 ms. The 16, 22 and 24 px entries are relative symlinks, and WhiteSur's 21 legacy Trash aliases per size (`trashcan_full`, `gnome-fs-trash-*`, `xfce-trash_*` …) resolve through them to the new art. They are not ignored by git. Codex's preview and my 16/24/48 px renders show readable cans in both states. Suite log `dev/build/trash-icons.TgnuOZ/test-icons.log`: 80/80, #111 total_svgs=20314.
