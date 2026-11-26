@@ -3,6 +3,8 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+**#254 linked-folder half accepted, 2026-11-25 (user decision).** No open parts of #254 remain.
+
 **User report #265, 2026-11-25.** GTK 3 tabs with a close button grew 5–7 px taller; fixed (Claude), user look pending.
 
 **User report #264 and #263 follow-up, 2026-11-25.** GTK 3 tab-row action buttons cut into the pane, and the left tab arrow lacked its right edge; fixed (Claude), user look pending.
@@ -49,6 +51,10 @@ Audited Claude's uncommitted libadwaita work over `8397a0d` (`gtk/Platinum/gtk-4
 - **#257 · P2 · open (visual/accuracy) — `zenity` does not get the movable alert frame or white body.** `gtk/Platinum/gtk-4.0/adw-widgets.css:212-229` vs `dev/build/adw-m5-plasma.RNHZNa/layer-app-zenity.png`. `adw-widgets.css:212` targets `window.csd.alert.dialog-window`, which does not match `zenity`'s window classes; `zenity` falls back to the document CSD frame with a `#DDDDDD` body and no 22-row pinstriped drag strip.
 - **#258 · P3 · open (correctness) — `switch:focus-visible` lacks `:not(:backdrop)` and `adw_import("remove")` leaves a 0-byte `gtk.css` behind.** `gtk/Platinum/gtk-4.0/adw-widgets.css:79-82` draws the `#6666CC` focus outline in inactive windows unlike every other Platinum GTK 4 focus ring (`controls.css`, `tabs-ranges.css`, `windows.css`, `adw-widgets.css:198`). `scripts/gtk_theme.py:224-225` writes a 0-byte empty `gtk.css` when removing our lines leaves no other content instead of unlinking it.
 - **Limits:** Broadway Cairo and nested virtual KWin Vulkan at 1× only (no 150%/200%, no Flatpak, no live desktop test); no GTK or installer files were modified in this audit.
+
+## 2026-11-25, user decision on #254 (recorded by Claude, Opus 5.5)
+
+- **#254 (linked-folder half) · accepted (user decision).** Writing through a symlinked `~/.config/gtk-4.0` stays as it is: the installer's backup and restore, Plasma's GTK sync and the libadwaita import all treat a linked config folder the same way, and undo puts the files back. It only arises when someone deliberately links that folder (e.g. GNU Stow folding a dotfiles tree), and they already expect programs to write there; Plasma users rarely track the GTK folders because KDE's GTK sync rewrites them, and linked files (home-manager) are already refused. The user's own folder is a regular directory. Optional hardening if the theme is ever published: extend `check_backup_links` to the parent folders of every backed-up path. The temp-file half of #254 was fixed earlier the same day.
 
 ## 2026-11-25, Claude (Opus 5.5) — user report #265: GTK 3 tab close buttons
 

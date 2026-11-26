@@ -9,6 +9,11 @@ Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
 
 
+
+## 2026-11-25, Claude (Opus 5.5) — record the user's decision on #254
+
+- #254's linked-folder half accepted by the user (AUDIT.md): a symlinked `~/.config/gtk-4.0` keeps being written through, as by the existing backup/restore and Plasma's GTK sync. Optional hardening for a public release noted there. Not committed.
+
 ## 2026-11-25, Claude (Opus 5.5) — GTK 3 tab close buttons (#265)
 
 - Audacious's playlist tabs were taller than other GTK 3 tabs because their close button had the push-button bevel. Buttons inside tabs are now just the icon, as on the Qt tabs (`gtk/Platinum/gtk-3.0/gtk.css`).
