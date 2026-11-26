@@ -2,6 +2,14 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-26, Claude Code (Opus 5.5) — audit custom Trash icons, fix #287
+
+Audited Codex's Trash icons (AUDIT.md). The user confirmed that they drew both icons themselves. Fixed #287 in `dev/test_icons_phase1.py`: the #111 count check had been loosened to `total_svgs > 0`. It now requires the count to be within one SVG per custom entry per theme of the pinned 20,326 baseline. The icon suite passed 80/80, and a mutant baseline failed the check. Everything, including Codex's icon files, is still uncommitted. Desktop reinstall and visual review are pending.
+
+## 2026-11-26, Codex (GPT-6) — add custom WhiteSur Lavender Trash icons
+
+Added the user's SVGs byte for byte as `places/scalable/user-trash.svg` and `places/scalable/user-trash-full.svg` in `icons/custom/all/`. The 16, 22 and 24 px entries link to those SVGs, so both states apply in all three Lavender variants. Updated the namespace checks to handle changes in the number of physical SVGs and to verify the unmodified upstream fixture with an empty custom layer. The icon suite passed 80/80 and the Trash state suite passed 11/11. Offscreen KDE and GTK 3 passed 144 and 96 icon lookup and render checks. The changes are uncommitted and await desktop reinstall and visual review.
+
 ## 2026-11-26, Codex (GPT-6) — fix centered decoration captions and regression checks
 
 Fit centered captions to the space available on both sides. Create the decoration check's output directory and compare the same preview before disable, while disabled and after restore. The fresh-checkout decoration suite passed 10/10 and Plasma passed 19/19. Reverting the caption fit or suppressing either transition made its check fail. Verified the restore in nested KWin and ran the three captures with ASan/UBSan and leak detection disabled. Fixes and regression checks are in `d37f152`. Desktop visual review is pending.
