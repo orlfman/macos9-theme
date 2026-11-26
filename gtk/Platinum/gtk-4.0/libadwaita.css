@@ -1,0 +1,27 @@
+/*
+ * Platinum for unmodified libadwaita apps.
+ *
+ * libadwaita ignores named GTK themes, so this file is loaded from the user
+ * stylesheet (~/.config/gtk-4.0/gtk.css, PRIORITY_USER) by an @import of
+ * this file's file:// path.
+ * At that priority every rule here wins over libadwaita's own stylesheet
+ * (provider priority ranks above specificity). Plain GTK 4 apps load this
+ * too, on top of the identical named-theme rules.
+ *
+ * Light, normal-contrast preference only: dark and high contrast keep
+ * libadwaita's own look.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+@import url("../palette.css");
+
+@media (prefers-color-scheme: light) and (not (prefers-contrast: more)) {
+  @import url("adw-colors.css");
+  @import url("controls.css");
+  @import url("menus-lists.css");
+  @import url("tabs-ranges.css");
+  @import url("windows.css");
+  @import url("menubuttons-levels.css");
+  @import url("adw-widgets.css");
+}

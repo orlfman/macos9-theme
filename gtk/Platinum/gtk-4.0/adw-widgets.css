@@ -1,0 +1,321 @@
+/*
+ * Platinum shapes for libadwaita-only widgets and for properties
+ * libadwaita sets that the plain GTK 4 rules never touch.
+ * Loaded only by libadwaita.css.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+/* --- Destructive text buttons: Mac OS 9 has no colored push buttons, so
+ * they are ordinary Platinum push buttons (controls.css variables). --- */
+button.destructive-action.text-button:not(.flat) {
+  min-height: var(--platinum-push-min);
+  min-width: var(--platinum-push-min);
+  padding: var(--platinum-push-padding);
+  font-weight: normal;
+  margin: 0;
+  color: var(--platinum-push-fg);
+  background-color: var(--platinum-push-bg);
+  background-clip: padding-box;
+  background-image: none;
+  border: solid transparent;
+  border-width: var(--platinum-push-border);
+  border-radius: 0;
+  border-image: var(--platinum-push-image);
+  box-shadow: none;
+  outline: var(--platinum-push-outline);
+  outline-offset: -1px;
+  transition: none;
+}
+
+button.destructive-action.text-button:not(.flat):disabled label:disabled {
+  color: inherit;
+}
+
+/* Pills keep libadwaita's larger padding otherwise. */
+button.pill {
+  border-radius: 0;
+}
+
+/* --- Switches: drawn as the Platinum check box, as the Qt Quick style
+ * does (style/quick/Platinum/Switch.qml). Mac OS 9 has no switch. --- */
+switch {
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-off.png"), url("../gtk-3.0/assets/check-off@2.png"));
+  transition: none;
+}
+
+switch:active {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-off-pressed.png"), url("../gtk-3.0/assets/check-off-pressed@2.png"));
+}
+
+switch:checked {
+  background-color: transparent;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-on.png"), url("../gtk-3.0/assets/check-on@2.png"));
+}
+
+switch:checked:active {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-on-pressed.png"), url("../gtk-3.0/assets/check-on-pressed@2.png"));
+}
+
+switch:disabled {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-off-disabled.png"), url("../gtk-3.0/assets/check-off-disabled@2.png"));
+}
+
+switch:checked:disabled {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-on-disabled.png"), url("../gtk-3.0/assets/check-on-disabled@2.png"));
+}
+
+switch:focus-visible:not(:backdrop) {
+  outline: 1px solid @platinum_focus;
+  outline-offset: 1px;
+}
+
+/* Half the 14x12 box each; the on/off glyphs and the knob are not drawn. */
+switch > slider,
+switch > image {
+  min-width: 7px;
+  min-height: 12px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  outline: none;
+  background: none;
+  opacity: 0;
+  -gtk-icon-size: 7px;
+}
+
+/* --- Boxed lists and cards: the list box, a plain 1 px black frame on
+ * white (dialog-file-open.png, docs/REFERENCE.md "List box"). --- */
+list.boxed-list,
+listview.boxed-list,
+.card {
+  border: 1px solid @platinum_border;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+  background-color: @platinum_base;
+  color: @platinum_fg;
+}
+
+list.boxed-list > row,
+listview.boxed-list > row,
+list.boxed-list > row:first-child,
+list.boxed-list > row:last-child {
+  border-radius: 0;
+}
+
+/* --- AdwAlertDialog: the movable alert (windows.css, dialog-save-changes.png).
+ * Mac OS 9 doesn't dim the window behind an alert. --- */
+floating-sheet > dimming {
+  background: none;
+  opacity: 0;
+}
+
+dialog.alert floating-sheet > sheet {
+  margin: 0;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 23px 4px 4px 2px;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+  color: @platinum_fg;
+  background-color: @platinum_base;
+  background-clip: padding-box;
+  border-image: -gtk-scaled(url("assets/alert-frame.png"), url("assets/alert-frame@2.png")) 25 8 5 8 / 25px 8px 5px 8px stretch;
+}
+
+dialog.alert .message-area .title-2,
+window.messagedialog .message-area .title-2 {
+  font-size: 100%;
+  font-weight: bold;
+}
+
+dialog.alert .response-area,
+window.messagedialog .response-area {
+  border-spacing: 12px;
+}
+
+dialog.alert .response-area > button,
+window.messagedialog .response-area > button {
+  border-radius: 0;
+}
+
+/* --- Framed icon buttons: the small square bevel button of Help's toolbar
+ * (help-viewer.png, docs/REFERENCE.md "Bevel buttons (sizes)", ToolNormal):
+ * #666666 top/left line, white highlight, #CCCCCC fill, #888888 shadow,
+ * #333333 bottom/right line. CSS can't draw its #555555 corner pixels.
+ * Pressed isn't captured: derived from the pressed push button (TBD).
+ * Header and action bar packing boxes, linked groups and composite
+ * widgets keep their own buttons. --- */
+:not(.start):not(.end):not(.linked):not(spinbutton):not(menubutton):not(dropdown):not(splitbutton):not(windowcontrols):not(.toolbar) >
+  button.image-button:not(.flat):not(.circular):not(.osd):not(.suggested-action):not(.destructive-action) {
+  min-width: 16px;
+  min-height: 16px;
+  padding: 3px;
+  margin: 0;
+  color: @platinum_fg;
+  background-color: #cccccc;
+  background-image: none;
+  border-style: solid;
+  border-width: 1px;
+  border-color: #666666 #333333 #333333 #666666;
+  border-radius: 0;
+  border-image: none;
+  box-shadow: inset 1px 1px #ffffff, inset -1px -1px #888888;
+  outline: none;
+  transition: none;
+}
+
+:not(.start):not(.end):not(.linked):not(spinbutton):not(menubutton):not(dropdown):not(splitbutton):not(windowcontrols):not(.toolbar) >
+  button.image-button:not(.flat):not(.circular):not(.osd):not(.suggested-action):not(.destructive-action):active,
+:not(.start):not(.end):not(.linked):not(spinbutton):not(menubutton):not(dropdown):not(splitbutton):not(windowcontrols):not(.toolbar) >
+  button.image-button:not(.flat):not(.circular):not(.osd):not(.suggested-action):not(.destructive-action):checked {
+  color: #ffffff;
+  background-color: #666666;
+  border-color: #333333 #444444 #444444 #333333;
+  box-shadow: inset 1px 1px #555555, inset -1px -1px #777777;
+}
+
+:not(.start):not(.end):not(.linked):not(spinbutton):not(menubutton):not(dropdown):not(splitbutton):not(windowcontrols):not(.toolbar) >
+  button.image-button:not(.flat):not(.circular):not(.osd):not(.suggested-action):not(.destructive-action):disabled {
+  color: @platinum_fg_disabled;
+  background-color: @platinum_bg;
+  border-color: @platinum_border_disabled;
+  box-shadow: none;
+}
+
+:not(.start):not(.end):not(.linked):not(spinbutton):not(menubutton):not(dropdown):not(splitbutton):not(windowcontrols):not(.toolbar) >
+  button.image-button:not(.flat):not(.circular):not(.osd):focus-visible:not(:backdrop) {
+  outline: 1px solid @platinum_focus;
+  outline-offset: 1px;
+}
+
+/* --- Alerts have a white body (windows.css). libadwaita paints alert
+ * contents with the dialog color. --- */
+dialog.alert,
+window.messagedialog,
+window.dialog.message {
+  --dialog-bg-color: @platinum_base;
+}
+
+/* --- A parentless AdwAlertDialog gets its own window, and the deprecated
+ * AdwMessageDialog (zenity 4) is one (#257): draw both as the movable
+ * alert, active or not, instead of the document frame. --- */
+window.csd.alert.dialog-window:not(.popup):not(.message):not(.maximized):not(.fullscreen):not(.tiled):not(.tiled-top):not(.tiled-bottom):not(.tiled-left):not(.tiled-right):not(.solid-csd),
+window.csd.alert.dialog-window:backdrop:not(.popup):not(.message):not(.maximized):not(.fullscreen):not(.tiled):not(.tiled-top):not(.tiled-bottom):not(.tiled-left):not(.tiled-right):not(.solid-csd),
+window.csd.messagedialog:not(.popup):not(.message):not(.maximized):not(.fullscreen):not(.tiled):not(.tiled-top):not(.tiled-bottom):not(.tiled-left):not(.tiled-right):not(.solid-csd),
+window.csd.messagedialog:backdrop:not(.popup):not(.message):not(.maximized):not(.fullscreen):not(.tiled):not(.tiled-top):not(.tiled-bottom):not(.tiled-left):not(.tiled-right):not(.solid-csd) {
+  --window-bg-color: @platinum_base;
+  margin: 0;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 23px 4px 4px 2px;
+  border-radius: 0;
+  box-shadow: none;
+  color: @platinum_fg;
+  background-color: @platinum_base;
+  background-clip: padding-box;
+  border-image: -gtk-scaled(url("assets/alert-frame.png"), url("assets/alert-frame@2.png")) 25 8 5 8 / 25px 8px 5px 8px stretch;
+}
+
+window.csd.alert.dialog-window:not(.popup):not(.message):not(.maximized):not(.fullscreen):not(.tiled):not(.tiled-top):not(.tiled-bottom):not(.tiled-left):not(.tiled-right):not(.solid-csd) > :not(.titlebar),
+window.csd.messagedialog:not(.popup):not(.message):not(.maximized):not(.fullscreen):not(.tiled):not(.tiled-top):not(.tiled-bottom):not(.tiled-left):not(.tiled-right):not(.solid-csd) > :not(.titlebar) {
+  margin: 0;
+}
+
+dialog.alert,
+dialog.alert .message-area {
+  background-color: transparent;
+}
+
+/* --- AdwHeaderBar wraps box.start, the title and box.end in a plain widget
+ * each (headerbar > windowhandle > box > widget > box.start). windows.css's
+ * title rule would give the side wrappers stripe end caps and padding,
+ * leaving pinstripe scraps outside the buttons (#256): the side wrappers
+ * are bare, and the boxes inside them get windows.css's box.start/box.end
+ * treatment. Plain GTK 4 header bars have no such wrappers (box.start is
+ * the first child there), so none of this matches them. --- */
+/* libadwaita insets the row 7 px and the boxes 5 px more; the plain
+ * GTK 4 bar starts its boxes at the edges, as the decoration does. */
+headerbar > windowhandle > box {
+  margin: 0;
+  padding: 0;
+}
+
+/* (:not(.start):not(.end) to outrank windows.css's title rule) */
+headerbar > windowhandle > box > widget:first-child:not(.start):not(.end),
+headerbar > windowhandle > box > widget:last-child:not(.start):not(.end) {
+  margin: 0;
+  padding: 0;
+  background-color: var(--platinum-title-face);
+  background-image: none;
+}
+
+headerbar > windowhandle > box > widget > box.start,
+headerbar > windowhandle > box > widget > box.end {
+  margin: 0;
+  border-spacing: 6px;
+}
+
+headerbar > windowhandle > box > widget > box.start {
+  padding-right: 5px;
+  background-color: var(--platinum-title-face);
+  background-image: var(--platinum-stripes-start);
+  background-repeat: no-repeat;
+  background-size: 1px 12px;
+  background-position: right round(down, calc(50% + 0px), 1px);
+}
+
+headerbar > windowhandle > box > widget > box.end {
+  padding-left: 5px;
+  background-color: var(--platinum-title-face);
+  background-image: var(--platinum-stripes-end);
+  background-repeat: no-repeat;
+  background-size: 1px 12px;
+  background-position: left round(down, calc(50% + 0px), 1px);
+}
+
+/* --- libadwaita's header bars are part of the window content, not its
+ * title bar: windows.css's 2 px content inset put the frame's sunken
+ * bevel and black line beside them, so the close box sat against that
+ * line. libadwaita's content (dialog-host) starts at column 4 instead: the
+ * opaque header bar covers those two columns, as the plain title bar does,
+ * and the frame's lines still show around the (transparent) body. --- */
+window.csd:not(.popup):not(.message):not(.maximized):not(.fullscreen):not(.tiled):not(.tiled-top):not(.tiled-bottom):not(.tiled-left):not(.tiled-right):not(.solid-csd) > dialog-host:not(.titlebar) {
+  margin: 0;
+}
+
+/* --- Floating AdwDialogs with their own header bar (preferences, about)
+ * get the document window frame of windows.css, active and inactive, in
+ * place of libadwaita's rounded sheet; their close box then sits 4 px in,
+ * as in a window. Alerts keep the movable alert above. --- */
+dialog.floating:not(.alert) floating-sheet > sheet {
+  margin: 0;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 1px 5px 5px 4px;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+  color: @platinum_fg;
+  background-color: @platinum_bg;
+  background-clip: padding-box;
+  border-image: -gtk-scaled(url("assets/csd-frame-active.png"), url("assets/csd-frame-active@2.png")) 3 8 8 7 / 3px 8px 8px 7px stretch;
+}
+
+dialog.floating:not(.alert) floating-sheet > sheet:backdrop {
+  border-image: -gtk-scaled(url("assets/csd-frame-inactive.png"), url("assets/csd-frame-inactive@2.png")) 3 8 8 7 / 3px 8px 8px 7px stretch;
+}

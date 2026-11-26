@@ -1,0 +1,42 @@
+/*
+ * libadwaita color variables in the measured Platinum palette
+ * (palette.css, docs/REFERENCE.md). Loaded only by libadwaita.css.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+:root {
+  --accent-bg-color: #ccccff;   /* selection lavender */
+  --accent-fg-color: #000000;
+  --accent-color: #333399;      /* accent text, readable on white */
+
+  --destructive-bg-color: #cc0000;
+  --destructive-fg-color: #ffffff;
+  --destructive-color: #cc0000;
+  --error-bg-color: #cc0000;
+  --error-fg-color: #ffffff;
+  --error-color: #cc0000;
+
+  --window-bg-color: #dddddd;
+  --window-fg-color: #000000;
+  --view-bg-color: #ffffff;
+  --view-fg-color: #000000;
+  --headerbar-bg-color: #dddddd;
+  --headerbar-fg-color: #000000;
+  --headerbar-backdrop-color: #dddddd;
+  --headerbar-border-color: #000000;
+  --sidebar-bg-color: #eeeeee;
+  --sidebar-fg-color: #000000;
+  --sidebar-backdrop-color: #eeeeee;
+  --secondary-sidebar-bg-color: #eeeeee;
+  --secondary-sidebar-fg-color: #000000;
+  --card-bg-color: #ffffff;
+  --card-fg-color: #000000;
+  --dialog-bg-color: #dddddd;
+  --dialog-fg-color: #000000;
+  --popover-bg-color: #ffffff;
+  --popover-fg-color: #000000;
+  --thumbnail-bg-color: #ffffff;
+  --thumbnail-fg-color: #000000;
+  --border-color: #888888;
+}

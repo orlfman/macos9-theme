@@ -142,7 +142,12 @@ popover.menu modelbutton:disabled radio:checked {
   background-image: -gtk-scaled(url("../gtk-3.0/assets/menu-radio-disabled.png"), url("../gtk-3.0/assets/menu-radio-disabled@2.png"));
 }
 
-dropdown > button {
+/* GtkComboBox (deprecated, still used by gtkmm apps such as pavucontrol)
+ * is combobox > box.linked > button.combo: the same pop-up menu (#259).
+ * :only-child leaves out combo boxes with an entry, whose button is only
+ * the arrow beside it. */
+dropdown > button,
+combobox > box.linked > button.combo:only-child {
   min-height: 14px;
   min-width: 28px;
   padding: 0 0 0 4px;
@@ -157,29 +162,32 @@ dropdown > button {
   box-shadow: none;
   border-image: -gtk-scaled(url("assets/popup-frame-normal.png"), url("assets/popup-frame-normal@2.png")) 5 23 5 5 / 5px 23px 5px 5px stretch;
 }
-
 dropdown > button:hover,
-dropdown > button:backdrop {
+dropdown > button:backdrop,
+combobox > box.linked > button.combo:only-child:hover,
+combobox > box.linked > button.combo:only-child:backdrop {
   color: @platinum_fg;
   background-color: @platinum_bg;
   border-image: -gtk-scaled(url("assets/popup-frame-normal.png"), url("assets/popup-frame-normal@2.png")) 5 23 5 5 / 5px 23px 5px 5px stretch;
 }
-
 dropdown > button:active,
-dropdown > button:checked {
+dropdown > button:checked,
+combobox > box.linked > button.combo:only-child:active,
+combobox > box.linked > button.combo:only-child:checked {
   color: #ffffff;
   background-color: #666666;
   border-image: -gtk-scaled(url("assets/popup-frame-pressed.png"), url("assets/popup-frame-pressed@2.png")) 5 23 5 5 / 5px 23px 5px 5px stretch;
 }
-
 dropdown > button:disabled,
-dropdown > button:disabled:backdrop {
+dropdown > button:disabled:backdrop,
+combobox > box.linked > button.combo:only-child:disabled,
+combobox > box.linked > button.combo:only-child:disabled:backdrop {
   color: @platinum_fg_disabled;
   background-color: @platinum_bg;
   border-image: -gtk-scaled(url("assets/popup-frame-disabled.png"), url("assets/popup-frame-disabled@2.png")) 5 23 5 5 / 5px 23px 5px 5px stretch;
 }
-
-dropdown > button > box > arrow {
+dropdown > button > box > arrow,
+combobox > box.linked > button.combo:only-child > box > arrow {
   -gtk-icon-size: 10px;
   -gtk-icon-source: none;
   min-width: 14px;
@@ -191,30 +199,42 @@ dropdown > button > box > arrow {
   background-position: center round(down, calc(50% + 0px), 1px);
   background-image: -gtk-scaled(url("../gtk-3.0/assets/popup-arrows-normal.png"), url("../gtk-3.0/assets/popup-arrows-normal@2.png"));
 }
-
 dropdown > button:active > box > arrow,
-dropdown > button:checked > box > arrow {
+dropdown > button:checked > box > arrow,
+combobox > box.linked > button.combo:only-child:active > box > arrow,
+combobox > box.linked > button.combo:only-child:checked > box > arrow {
   background-image: -gtk-scaled(url("../gtk-3.0/assets/popup-arrows-pressed.png"), url("../gtk-3.0/assets/popup-arrows-pressed@2.png"));
 }
-
-dropdown > button:disabled > box > arrow {
+dropdown > button:disabled > box > arrow,
+combobox > box.linked > button.combo:only-child:disabled > box > arrow {
   background-image: -gtk-scaled(url("../gtk-3.0/assets/popup-arrows-disabled.png"), url("../gtk-3.0/assets/popup-arrows-disabled@2.png"));
 }
-
 /* Keep the split compartment behind the arrow in right-to-left layouts. */
-dropdown > button:dir(rtl) {
+dropdown > button:dir(rtl),
+combobox > box.linked > button.combo:only-child:dir(rtl) {
   padding: 0 4px 0 0;
   border-image: -gtk-scaled(url("assets/popup-frame-normal-rtl.png"), url("assets/popup-frame-normal-rtl@2.png")) 5 5 5 23 / 5px 5px 5px 23px stretch;
 }
 dropdown > button:dir(rtl):active,
-dropdown > button:dir(rtl):checked {
+dropdown > button:dir(rtl):checked,
+combobox > box.linked > button.combo:only-child:dir(rtl):active,
+combobox > box.linked > button.combo:only-child:dir(rtl):checked {
   border-image-source: -gtk-scaled(url("assets/popup-frame-pressed-rtl.png"), url("assets/popup-frame-pressed-rtl@2.png"));
 }
-dropdown > button:dir(rtl):disabled {
+dropdown > button:dir(rtl):disabled,
+combobox > box.linked > button.combo:only-child:dir(rtl):disabled {
   border-image-source: -gtk-scaled(url("assets/popup-frame-disabled-rtl.png"), url("assets/popup-frame-disabled-rtl@2.png"));
 }
-dropdown > button:dir(rtl) > box > arrow {
+dropdown > button:dir(rtl) > box > arrow,
+combobox > box.linked > button.combo:only-child:dir(rtl) > box > arrow {
   margin: 0 4px 0 0;
+}
+
+/* GtkCellRendererText pads the text 2 px above and below (its ypad), which
+ * CSS can't change; take it back so the combo box is as tall as the
+ * drop-down. */
+combobox > box.linked > button.combo:only-child > box > cellview {
+  margin: -2px 0;
 }
 
 dropdown popover.menu listview {
