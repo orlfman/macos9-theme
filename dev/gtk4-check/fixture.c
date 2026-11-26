@@ -724,6 +724,33 @@ menus_lists(gboolean wayland)
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(table_scroll), table);
     gtk_widget_set_size_request(table_scroll, 270, 100);
     gtk_box_append(GTK_BOX(box), table_scroll);
+    /* The deprecated GtkComboBox that gtkmm apps still use (#259). */
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    GtkWidget *combo = gtk_combo_box_text_new();
+    GtkWidget *combo_disabled = gtk_combo_box_text_new();
+    for (const char **v = values; *v; v++) {
+        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combo), *v);
+        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combo_disabled), *v);
+    }
+    gtk_combo_box_set_active(GTK_COMBO_BOX(combo), 0);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(combo_disabled), 0);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+    gtk_widget_set_sensitive(combo_disabled, FALSE);
+    /* GtkComboBox settles its height after the first measure. A window
+     * resize then makes the nested KWin drop this Vulkan client (swapchain
+     * recreated), so reserve the final height up front. */
+    /* The 150 % and 200 % output runs (GTK4_CHECK_OUTPUT) keep the earlier
+     * window, which fits the scaled virtual screen; combo boxes are checked
+     * at 1x. */
+    gboolean with_combos = !g_getenv("GTK4_CHECK_OUTPUT");
+    if (with_combos)
+        gtk_widget_set_size_request(box, -1, 470);
+    gtk_widget_set_halign(combo, GTK_ALIGN_START);
+    gtk_widget_set_halign(combo_disabled, GTK_ALIGN_START);
+    if (with_combos) {
+        gtk_box_append(GTK_BOX(box), combo);
+        gtk_box_append(GTK_BOX(box), combo_disabled);
+    }
     gtk_column_view_sort_by_column(GTK_COLUMN_VIEW(table), col, GTK_SORT_ASCENDING);
     gtk_single_selection_set_selected(columns, 1);
     gtk_window_present(GTK_WINDOW(window));
@@ -743,6 +770,15 @@ menus_lists(gboolean wayland)
     ok &= report_widget("dropdown", drop, window);
     ok &= report_widget("dropdown-disabled", disabled, window);
     ok &= report_widget("dropdown-rtl", rtl, window);
+    if (with_combos) {
+        ok &= report_widget("combobox", find_node(combo, "button"), window);
+        ok &= report_widget("combobox-disabled", find_node(combo_disabled, "button"), window);
+    } else {
+        g_object_ref_sink(combo);
+        g_object_ref_sink(combo_disabled);
+        g_object_unref(combo);
+        g_object_unref(combo_disabled);
+    }
     ok &= report_widget("list-row", listrow, window);
     ok &= columnrow && report_widget("column-row", columnrow, window);
     ok &= report_widget("header", gtk_widget_get_first_child(header), window);
@@ -812,6 +848,21 @@ menus_lists(gboolean wayland)
     gtk_selection_model_select_item(filtered, 0, TRUE);
     g_signal_emit_by_name(choices, "activate", 0u);
     settle(300);
+    /* The GtkComboBox list (#259): its own tree popover. */
+    if (with_combos)
+        gtk_widget_activate(find_node(combo, "button"));
+    settle(400);
+    GtkWidget *combo_popup = with_combos ? find_node(combo, "popover") : NULL;
+    gboolean combo_open = combo_popup && gtk_widget_get_mapped(combo_popup);
+    printf("combobox_open=%d\n", combo_open);
+    if (with_combos)
+        ok &= combo_open && save_frame(combo_popup, "combobox-open.png");
+    if (with_combos) {
+        G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+        gtk_combo_box_popdown(GTK_COMBO_BOX(combo));
+        G_GNUC_END_IGNORE_DEPRECATIONS
+    }
+    settle(200);
     printf("chosen=%u dropdown_closed=%d\n", gtk_drop_down_get_selected(GTK_DROP_DOWN(drop)), !gtk_widget_get_mapped(popup));
     ok &= gtk_drop_down_get_selected(GTK_DROP_DOWN(drop)) == 2 && !gtk_widget_get_mapped(popup);
 

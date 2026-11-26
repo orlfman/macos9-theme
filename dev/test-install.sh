@@ -279,6 +279,13 @@ check "--apply preserves the chosen Kwi color scheme" grep -qx 'ColorScheme=kons
 check "--apply switched the global theme" grep -q "LookAndFeelPackage=platinum.desktop" "$config/kdeglobals"
 check "--apply set the widget style" grep -q "widgetStyle=Platinum" "$config/kdedefaults/kdeglobals"
 check "--apply set the button order" bash -c "grep -q '^ButtonsOnLeft=X' '$config/kwinrc' && grep -q '^ButtonsOnRight=AI' '$config/kwinrc'"
+cp "$config/gtk-4.0/gtk.css" "$root/adw-after-apply.css" # evidence
+adw_mark='/* macos9-theme: Platinum for libadwaita apps (install.sh adds this, uninstall.sh removes it) */'
+adw_line="@import url(\"file://$data/themes/Platinum/gtk-4.0/libadwaita.css\");"
+check "--apply puts the libadwaita import first in gtk-4.0/gtk.css (decision 15)" \
+    bash -c "[[ \$(head -2 '$config/gtk-4.0/gtk.css') == \"\$(printf '%s\n%s' '$adw_mark' '$adw_line')\" ]]"
+check "  and keeps the user's own rules" grep -Fqx '@import url("mine.css");' "$config/gtk-4.0/gtk.css"
+check "  and the imported layer is installed" test -s "$data/themes/Platinum/gtk-4.0/libadwaita.css"
 quick_on="style=Platinum qml=$home/.local/lib/macos9-theme/qml"
 check "after --apply the login script turns the Qt Quick style on" \
     bash -c "[[ \$($(declare -f quick_vars); env_script='$env_script'; quick_vars) == '$quick_on' ]]"
@@ -292,6 +299,7 @@ check "  and not after a KDE Frameworks upgrade (its Qt Quick style changed)" \
     bash -c "grep -q \"= '0.0.0'\" '$root/env-kde-upgraded.sh' && [[ \$(env -u QT_QUICK_CONTROLS_STYLE sh -c \". '$root/env-kde-upgraded.sh'; echo \\\${QT_QUICK_CONTROLS_STYLE:-none}\") == none ]]"
 fake_gtk_sync
 check "a second --apply exits 0" run apply-2 "$project/install.sh" --apply
+check "  which puts the import back after the GTK sync rewrote the file, once" test "$(grep -cF "$adw_mark" "$config/gtk-4.0/gtk.css")" -eq 1
 check "a plain install after --apply exits 0" run install-3 "$project/install.sh"
 check "after all that, the copy still matches the seed" \
     bash -c "diff -r '$state/backup/config/kdeglobals' <(printf '[KDE]\nwidgetStyle=Breeze\nLookAndFeelPackage=org.kde.breeze.desktop\n\n[General]\nColorScheme=BreezeLight\n') > /dev/null &&
@@ -303,6 +311,7 @@ check "uninstall --dry-run keeps the record and the copy" test -f "$state/instal
 check "uninstall --dry-run shows the restore" grep -q "would put back" "$root/$n-uninstall-dry.log"
 check "uninstall exits 0" run uninstall "$project/uninstall.sh"
 check "uninstall put every config and GTK file back (incl. absent ones)" same "$seed" "$(config_state)"
+check "  which takes the libadwaita import out" bash -c "! grep -qF 'macos9-theme: Platinum for libadwaita' '$config/gtk-4.0/gtk.css'"
 check "uninstall left only the pass-through for the session's running apps" \
     bash -c "[[ \$(find '$home/.local/lib' '$config/plasma-workspace' ! -type d | sort | tr '\n' ' ') == '$config/plasma-workspace/env/macos9-theme-cleanup.sh $home/.local/lib/macos9-theme/qml/Platinum/qmldir $home/.local/lib/macos9-theme/style/kf6/kirigami/platform/Platinum.so ' ]]"
 next_login
@@ -376,6 +385,46 @@ check "  and still stands alone" test -s "$gtk_theme/gtk-4.0/assets/gtk3/push-di
 rm "$config/gtk-4.0/settings.ini"
 check "retry removes both" run gtk4-retry "$project/uninstall.sh"
 check "the GTK theme is gone" test ! -e "$gtk_theme"
+
+fresh "libadwaita import (decision 15)"
+check "plain install while another theme is active" run adw-install "$project/install.sh"
+check "  adds no libadwaita import" bash -c "! grep -qF 'macos9-theme: Platinum for libadwaita' '$config/gtk-4.0/gtk.css'"
+sed -i 's/^LookAndFeelPackage=.*/LookAndFeelPackage=platinum.desktop/' "$config/kdeglobals"
+check "plain reinstall while Platinum is active (switched in System Settings)" run adw-reinstall "$project/install.sh"
+check "  adds the import" grep -qF 'macos9-theme: Platinum for libadwaita' "$config/gtk-4.0/gtk.css"
+check "  and says so" grep -Fq 'libadwaita apps use Platinum' "$root/$n-adw-reinstall.log"
+check "  without asking for --apply again" bash -c 'grep -Fq "Platinum is already your global theme" "$1" && ! grep -Fq "then run install.sh --apply" "$1"' _ "$root/$n-adw-reinstall.log"
+check "a third reinstall leaves gtk.css alone" bash -c 'a=$(sha256sum < "$1"); "$2" > "$3" 2>&1 && [[ $a == $(sha256sum < "$1") ]] && ! grep -q "libadwaita apps use" "$3"' \
+    _ "$config/gtk-4.0/gtk.css" "$project/install.sh" "$root/adw-reinstall-2.log"
+check "uninstall exits 0" run adw-undo "$project/uninstall.sh"
+check "  the import is gone" bash -c "! grep -qF 'macos9-theme: Platinum for libadwaita' '$config/gtk-4.0/gtk.css'"
+check "  the user's rules are still there" grep -Fqx '@import url("mine.css");' "$config/gtk-4.0/gtk.css"
+
+fresh "libadwaita import never writes through a linked gtk.css"
+mv "$config/gtk-4.0/gtk.css" "$home/linked-gtk.css"
+ln -s "$home/linked-gtk.css" "$config/gtk-4.0/gtk.css"
+linked_before=$(sha256sum < "$home/linked-gtk.css")
+check "install --apply refuses the linked config file" bash -c '! "$1" --apply > "$2" 2>&1 && grep -Fq "is a symbolic link" "$2"' \
+    _ "$project/install.sh" "$root/adw-link-apply.log"
+check "  the linked file is unchanged" test "$linked_before" == "$(sha256sum < "$home/linked-gtk.css")"
+check "uninstall exits 0" run adw-link-undo "$project/uninstall.sh"
+check "  the linked file is still unchanged" test "$linked_before" == "$(sha256sum < "$home/linked-gtk.css")"
+
+fresh "libadwaita import helper edge cases (#254, #255, #258)"
+adw_dir=$root/adw-helper
+mkdir -p "$adw_dir"
+printf 'victim\n' > "$adw_dir/victim.txt"
+printf '/* u */\n' > "$adw_dir/gtk.css"
+chmod 600 "$adw_dir/gtk.css"
+ln -s "$adw_dir/victim.txt" "$adw_dir/.gtk.css.macos9-theme.tmp"
+check "a planted temp-file link isn't written through (#254)" bash -c '
+    out=$(python3 -I "$1" adw-import add "$2/gtk.css" /t/gtk-4.0/libadwaita.css) && [[ $out == added ]] &&
+    [[ $(cat "$2/victim.txt") == victim && ! -L $2/gtk.css && $(stat -c %a "$2/gtk.css") == 600 ]]' _ "$project/scripts/gtk_theme.py" "$adw_dir"
+check "a non-ASCII path is UTF-8 percent-encoded (#255)" bash -c '
+    printf "" > "$2/u.css" && python3 -I "$1" adw-import add "$2/u.css" "/home/my—theme b/gtk-4.0/libadwaita.css" > /dev/null &&
+    grep -Fq "file:///home/my%E2%80%94theme%20b/gtk-4.0/libadwaita.css" "$2/u.css"' _ "$project/scripts/gtk_theme.py" "$adw_dir"
+check "removing our lines from a file that held nothing else removes the file (#258)" bash -c '
+    [[ $(python3 -I "$1" adw-import remove "$2/u.css") == removed && ! -e $2/u.css ]]' _ "$project/scripts/gtk_theme.py" "$adw_dir"
 
 fresh "#249: a GTK theme chosen after the switch survives undo"
 check "install --apply" run gtk249-apply "$project/install.sh" --apply

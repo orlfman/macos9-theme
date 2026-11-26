@@ -189,6 +189,8 @@ def verify_menus(root, wayland, record, compare):
     for name, ref, rx, ry, rw in (
         ("dropdown", "appearance-2-appearance.png", 591, 257, 180),
         ("dropdown-disabled", "appearance-4-desktop.png", 710, 451, 194),
+        ("combobox", "appearance-2-appearance.png", 591, 257, 180),
+        ("combobox-disabled", "appearance-4-desktop.png", 710, 451, 194),
     ):
         x, y, w, h = controls[name][:4]
         for side, u, v, dx, dy, width, height in (
@@ -200,6 +202,8 @@ def verify_menus(root, wayland, record, compare):
         ):
             compare(f"ref-{name}-{side}", ref, rx + u, ry + v, x + dx, y + dy, width, height,
                     "menus-lists.png")
+    record(controls["combobox"][3] == controls["dropdown"][3],
+           "combobox-as-tall-as-dropdown", f"{controls['combobox'][3]} vs {controls['dropdown'][3]} px")
     x, y, w, h = controls["dropdown-rtl"][:4]
     compare("ref-rtl-dropdown-arrows", "appearance-2-appearance.png", 753, 262,
             x + 4, y + (h - 10) // 2, 14, 10, "menus-lists.png")
@@ -257,6 +261,8 @@ def verify_menus(root, wayland, record, compare):
                "settings-app-column-header-and-selection")
         for scale in (1.5, 2):
             record(verify_scaled_lists(root, scale), f"list-and-dropdown-output-{scale * 100:g}pct")
+        record(props.get("combobox_open") == "1" and (root / "combobox-open.png").is_file(),
+               "combobox-list-opens")
         popup = Image.open(root / "dropdown-open.png").convert("RGB")
         record(color_count(popup, (51, 51, 153)) > 100 and props.get("chosen") == "2"
                and props.get("dropdown_closed") == props.get("overflow") == props.get("filtered") == "1",

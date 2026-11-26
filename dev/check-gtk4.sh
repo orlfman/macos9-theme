@@ -28,6 +28,13 @@ INI
 if [[ $mode == broadway ]]; then
     printf 'gtk-theme-name=Platinum\n' >> "$home/.config/gtk-4.0/settings.ini"
 fi
+# GTK4_CHECK_ADW_LAYER=1: also load the libadwaita layer from the user
+# stylesheet, as an installed layer would, to prove plain GTK 4 is unchanged.
+if [[ ${GTK4_CHECK_ADW_LAYER:-0} == 1 ]]; then
+    printf '@import url("file://%s");\n' \
+        "$home/.local/share/themes/Platinum/gtk-4.0/libadwaita.css" > "$home/.config/gtk-4.0/gtk.css"
+    echo "with the libadwaita layer in the user stylesheet"
+fi
 
 read -ra flags <<< "$(pkg-config --cflags --libs gtk4)"
 cc -Wall -Wextra -Werror "$dev/gtk4-check/fixture.c" "${flags[@]}" -o "$root/fixture"

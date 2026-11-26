@@ -457,6 +457,34 @@ def main() -> int:
         f"act_stripes={csd_act_stripes} act_#ccc={csd_act_face} bak_#ddd={csd_bak_face} bak_stripes={csd_bak_stripes} boxes={csd_act_boxes}/{csd_bak_boxes}",
     )
 
+    # Stripes only in the gaps between widgets (Lutris report): none at the
+    # bar's ends outside the window boxes or between neighbouring widgets,
+    # and still the measured 5 px before the zoom box.
+    sx0, sx1 = max(hbx, 0), min(hbx + hbw, im_csd_act.width)
+    stripe_rows = [y for y in range(max(hby, 0), min(hby + hbh, im_csd_act.height))
+                   if sum(im_csd_act.getpixel((x, y)) == (0x77, 0x77, 0x77) for x in range(sx0, sx1)) > 20]
+    runs = []
+    if stripe_rows:
+        y = stripe_rows[0]
+        start = None
+        for x in range(sx0, sx1 + 1):
+            stripe = x < sx1 and im_csd_act.getpixel((x, y)) == (0x77, 0x77, 0x77)
+            if stripe and start is None:
+                start = x
+            elif not stripe and start is not None:
+                if x - start > 3:  # single #777777 pixels belong to button bevels
+                    runs.append((start, x - 1))
+                start = None
+    right_edge = runs[-1][1] if runs else 0
+    after = [im_csd_act.getpixel((x, stripe_rows[0]))[0]
+             for x in range(right_edge + 1, min(right_edge + 7, sx1))] if runs else []
+    record(
+        len(runs) == 2 and runs[0][0] - sx0 > 40 and sx1 - right_edge > 40 and len(after) == 6
+        and after[:5] == [0xCC] * 5 and after[5] != 0xCC,
+        "csd-headerbar-stripes-only-in-gaps",
+        f"runs={runs} after_last={after}",
+    )
+
     nar_w = int(cs_hdr.get("narrow_w", "0"))
     nar_btn_w = int(cs_hdr.get("narrow_btn_w", "0"))
     max_w = int(cs_hdr.get("max_w", "0"))

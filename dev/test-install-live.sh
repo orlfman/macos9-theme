@@ -233,6 +233,15 @@ for screen in (0, 1):
 PYEND
 }
 check "--apply renders Lavender Desktop Pattern on both screens" wallpaper_matches
+# With the real GTK sync (kded) running through the switch, the libadwaita
+# import stays first and the user's own rules stay (decision 15).
+cp "$config/gtk-4.0/gtk.css" "$root/gtk4-after-apply.css"
+check "after --apply gtk-4.0/gtk.css starts with the libadwaita import" bash -c "
+    head -1 '$config/gtk-4.0/gtk.css' | grep -Fq 'macos9-theme: Platinum for libadwaita' &&
+    sed -n 2p '$config/gtk-4.0/gtk.css' | grep -Fq '/gtk-4.0/libadwaita.css\");'"
+check "  once, with the user's rules kept" bash -c "
+    [[ \$(grep -cF 'macos9-theme: Platinum for libadwaita' '$config/gtk-4.0/gtk.css') == 1 ]] &&
+    grep -Fqx '@import url(\"mine.css\");' '$config/gtk-4.0/gtk.css'"
 after_files=$(files_state)
 check "install.sh again after the switch exits 0 (an update; no links in the copied folders)" \
     bash -c "'$project/install.sh' > '$root/install-2.log' 2>&1"
