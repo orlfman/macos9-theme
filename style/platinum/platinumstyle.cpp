@@ -377,10 +377,16 @@ QRect tabPane(const QStyleOptionTabWidgetFrame *tw)
 // One tab, row by row from the measured edges (tabs.h): background, slanted
 // left edge, fill, slanted right edge. The last 3 rows lie on the pane's top
 // edge; a normal tab repeats it there, the current one opens into the pane.
+// A taller tab (Kwi reserves room for its progress bar) repeats the last
+// tab row, where both sides are already upright, before the pane rows, so
+// those still meet the pane at the tab's bottom edge.
 void drawTab(QPainter *p, const QRect &r, const Tabs::Shape &s)
 {
-    for (int row = 0; row < TabHeight && row < r.height(); ++row) {
-        const int y = r.y() + row;
+    constexpr int lastTabRow = TabHeight - TabPaneOverlap - 1;
+    const int extra = std::max(0, r.height() - TabHeight);
+    for (int line = 0; line < TabHeight + extra && line < r.height(); ++line) {
+        const int row = line <= lastTabRow ? line : line <= lastTabRow + extra ? lastTabRow : line - extra;
+        const int y = r.y() + line;
         const Tabs::Edge &l = s.left[row];
         const Tabs::Edge &rt = s.right[row];
         const int from = r.x() + l.offset + l.length;
