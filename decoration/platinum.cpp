@@ -36,6 +36,7 @@
 #include <QFontMetricsF>
 #include <QIcon>
 #include <QPainter>
+#include <QSignalBlocker>
 #include <QTimer>
 
 #include <algorithm>
@@ -291,6 +292,26 @@ QRectF Decoration::titleBarRect() const
     return QRectF(0, 0, size().width(), TitleBar - 2);
 }
 
+namespace
+{
+
+int shownSpan(const KDecoration3::DecorationButtonGroup *group)
+{
+    if (!group) {
+        return 0;
+    }
+    int count = 0;
+    const auto buttons = group->buttons();
+    for (const KDecoration3::DecorationButton *b : buttons) {
+        if (b->isVisible() && b->isEnabled()) {
+            ++count;
+        }
+    }
+    return count > 0 ? count * BoxSize + (count - 1) * BoxGap : 0;
+}
+
+} // namespace
+
 void Decoration::updateButtonsGeometry()
 {
     if (!m_leftButtons || !m_rightButtons) {
@@ -298,25 +319,24 @@ void Decoration::updateButtonsGeometry()
     }
     const int width = int(size().width());
     // Boxes sit 4 px in from the window's edges; between boxes on one side
-    // there are 3 px (16 px per box). The groups only lay themselves out now
-    // and then, so every button is placed here.
+    // there are 3 px (16 px per box). Unavailable actions omit their box and
+    // collapse its slot so the pinstripes reach 5 px from the remaining boxes
+    // (reference/dialog-get-info.png, #282).
     auto place = [&](KDecoration3::DecorationButtonGroup *group, bool left) {
-        const auto buttons = group->buttons();
-        QList<KDecoration3::DecorationButton *> shown;
-        for (KDecoration3::DecorationButton *b : buttons) {
-            if (b->isVisible()) {
-                shown << b;
-            } else {
-                b->setGeometry(QRectF(0, 0, BoxSize, BoxSize));
-            }
-        }
-        const int count = int(shown.size());
-        const int span = count > 0 ? count * BoxSize + (count - 1) * BoxGap : 0;
+        const int span = shownSpan(group);
         int x = left ? BoxInset : width - BoxInset - span;
         group->setPos(QPointF(x, BoxInset));
-        for (KDecoration3::DecorationButton *b : std::as_const(shown)) {
-            b->setGeometry(QRectF(x, BoxInset, BoxSize, BoxSize));
-            x += BoxSize + BoxGap;
+        const auto buttons = group->buttons();
+        for (KDecoration3::DecorationButton *b : buttons) {
+            // Block geometryChanged so DecorationButtonGroup's auto-layout
+            // does not re-add BoxGap for zero-width disabled buttons (#282).
+            const QSignalBlocker blocker(b);
+            if (b->isVisible() && b->isEnabled()) {
+                b->setGeometry(QRectF(x, BoxInset, BoxSize, BoxSize));
+                x += BoxSize + BoxGap;
+            } else {
+                b->setGeometry(QRectF());
+            }
         }
     };
     place(m_leftButtons, true);
@@ -422,12 +442,11 @@ void Decoration::paintTitle(QPainter *painter)
     // the right ones (white rows; the gray rows reach one pixel further).
     int stripeL = BoxInset;
     int stripeR = W - 1 - BoxInset;
-    if (!m_leftButtons->buttons().isEmpty()) {
-        // QRectF::right() is the first column past the group.
-        stripeL = int(m_leftButtons->geometry().right()) - 1 + StripeGap;
+    if (const int leftSpan = shownSpan(m_leftButtons); leftSpan > 0) {
+        stripeL = BoxInset + leftSpan - 1 + StripeGap;
     }
-    if (!m_rightButtons->buttons().isEmpty()) {
-        stripeR = int(m_rightButtons->geometry().left()) - StripeGap - 1;
+    if (const int rightSpan = shownSpan(m_rightButtons); rightSpan > 0) {
+        stripeR = W - BoxInset - rightSpan - StripeGap - 1;
     }
 
     // Title: icon + text, centered on the window. Too wide: condense the
@@ -488,6 +507,7 @@ Button::Button(DecorationButtonType type, Decoration *decoration, QObject *paren
     : KDecoration3::DecorationButton(type, decoration, parent)
 {
     connect(this, &DecorationButton::visibilityChanged, decoration, &Decoration::updateButtonsGeometry, Qt::QueuedConnection);
+    connect(this, &DecorationButton::enabledChanged, decoration, &Decoration::updateButtonsGeometry, Qt::QueuedConnection);
 }
 
 KDecoration3::DecorationButton *Button::create(DecorationButtonType type, KDecoration3::Decoration *decoration, QObject *parent)
@@ -513,8 +533,8 @@ void Button::paint(QPainter *painter, const QRectF &repaintArea)
 {
     Q_UNUSED(repaintArea)
     auto *d = qobject_cast<Decoration *>(decoration());
-    // Inactive Platinum windows show no boxes at all.
-    if (!d || !isVisible() || geometry().isEmpty() || !d->isActiveLook()) {
+    // Inactive windows and unavailable actions have no box.
+    if (!d || !isVisible() || !isEnabled() || geometry().isEmpty() || !d->isActiveLook()) {
         return;
     }
     Glyph glyph = Glyph::None;
