@@ -47,6 +47,7 @@ steps = {"menu-0": 0, "menu-1": 1, "combo": 2, "menubar": 3, "checkbox": 4, "too
          "dialog": 6, "rangeslider": 7, "drawer": 8, "combo-narrow": 9}
 where = {}
 handles = None
+combo_width = None
 for line in open(f"{out}/quick.log"):
     m = re.search(r"REGION (\S+) (-?[\d.]+) (-?[\d.]+)", line)
     if m:
@@ -54,6 +55,9 @@ for line in open(f"{out}/quick.log"):
     m = re.search(r"HANDLES (-?[\d.]+) (-?[\d.]+)", line)
     if m:
         handles = (float(m.group(1)), float(m.group(2)))
+    m = re.search(r"COMBO-WIDTH (\d+) (\d+) (\d+)", line)
+    if m:
+        combo_width = tuple(map(int, m.groups()))
 widget_handles = None
 for line in open(f"{out}/widget.log"):
     m = re.search(r"rangeslider \d+ \d+ handles (\d+) (\d+)", line)
@@ -156,6 +160,24 @@ for name, ok in tab_checks.items():
     failed += not ok
     print(f"{'ok' if ok else 'FAIL':<8}{name}")
 
+# The enlarged sliders should draw the same pixels as the ordinary one
+# translated into their center band, with the vertical version transposed.
+normal = Image.open(f"{out}/quick-7.png").convert("RGB").crop((20, 150, 220, 166))
+large = Image.open(f"{out}/quick-11.png").convert("RGB")
+centered = Image.new("RGB", (200, 48), (255, 0, 255))
+centered.paste(normal, (0, 16))
+quick_checks = {
+    "combo width is deferred while closed and responds to live renames": (
+        combo_width is not None and combo_width[0] == 0 and 60 < combo_width[1] < combo_width[2]),
+    "enlarged horizontal range slider paints centered": (
+        centered.tobytes() == large.crop((20, 150, 220, 198)).tobytes()),
+    "enlarged vertical range slider paints centered": (
+        centered.transpose(Image.Transpose.TRANSPOSE).tobytes() == large.crop((280, 100, 328, 300)).tobytes()),
+}
+for name, ok in quick_checks.items():
+    failed += not ok
+    print(f"{'ok' if ok else 'FAIL':<8}{name}")
+
 keys_p = open(f"{out}/keys-platinum.txt").read().split("\n")
 keys_k = open(f"{out}/keys-kde.txt").read().split("\n")
 keys_ok = keys_p == keys_k and len([l for l in keys_p if "space-toggles=1" in l]) == 2 \
@@ -163,7 +185,7 @@ keys_ok = keys_p == keys_k and len([l for l in keys_p if "space-toggles=1" in l]
 print(("ok      " if keys_ok else "FAIL    ") + "keyboard: Space toggles switches (role and state as with KDE's style); focus shows on sliders"
       + ("" if keys_ok else f" (Platinum {keys_p}, KDE {keys_k})"))
 failed += 0 if keys_ok else 1
-total = 2 * len(steps) + 1 + len(tab_checks)
+total = 2 * len(steps) + 1 + len(tab_checks) + len(quick_checks)
 print(f"\n{total - failed} of {total} Qt Quick checks passed" + (f" (diffs in {out})" if failed else ""))
 sys.exit(1 if failed else 0)
 PY

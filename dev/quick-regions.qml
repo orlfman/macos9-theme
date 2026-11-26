@@ -4,7 +4,8 @@
 // box's open list, 3 the menu bar, 4 a checked switch, 5 a tooltip, 6 a
 // dialog (its frame), 7 a range slider, 8 a drawer (its open edge), 9 a
 // combo box narrower than its items (its list widens as QComboBox's), and
-// 10 the tab close buttons. With --switch-to-fusion it switches the app
+// 10 the tab close buttons, 11 enlarged horizontal and vertical range sliders.
+// With --switch-to-fusion it switches the app
 // to Fusion first (the fallback
 // check: it must then look exactly like KDE's own style).
 import QtQuick
@@ -18,7 +19,7 @@ QQC2.ApplicationWindow {
     height: 360
     visible: false
     color: "#ff00ff"
-    property int steps: 11
+    property int steps: 12
     property int step: -1
     // dev/check-quick.sh's fallback run: switch the app's style to Fusion
     // first (only works with M9_QUICK_TEST set and this project's style).
@@ -34,8 +35,14 @@ QQC2.ApplicationWindow {
         else menu.close()
         if (i === 2) combo.popup.open()
         if (i === 9) {
-            narrowChoices.setProperty(0, "label", "Mountain Lavender")
+            narrowChoices.setProperty(0, "label", "Shorter")
+            const closedHint = narrowCombo.platinumListWidthHint
             narrowCombo.popup.open()
+            Qt.callLater(function () {
+                const before = narrowCombo.popup.implicitWidth
+                narrowChoices.setProperty(0, "label", "Mountain Lavender")
+                console.log("COMBO-WIDTH", closedHint, before, narrowCombo.popup.implicitWidth)
+            })
         } else {
             narrowCombo.popup.close()
         }
@@ -188,10 +195,21 @@ QQC2.ApplicationWindow {
         id: range
         x: 20; y: 150
         width: 200
-        visible: root.step === 7
+        height: root.step === 11 ? 48 : implicitHeight
+        visible: root.step === 7 || root.step === 11
         from: 0; to: 100
         first.value: 20
         second.value: 70
+    }
+    QQC2.RangeSlider {
+        x: 280; y: 100
+        width: 48; height: 200
+        visible: root.step === 11
+        orientation: Qt.Vertical
+        from: 0; to: 100
+        // Vertical visual positions run from bottom to top.
+        first.value: 30
+        second.value: 80
     }
     QQC2.Drawer {
         id: drawer

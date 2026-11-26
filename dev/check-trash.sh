@@ -9,10 +9,11 @@ dev=$(dirname "$(readlink -f "$0")")
 project=$(dirname "$dev")
 work=$(mktemp -d)
 trap 'rm -rf -- "$work"' EXIT
-mkdir -p "$work/data" "$work/cwd"
+data="$work/data#?%20"
+mkdir -p "$data" "$work/cwd"
 # Like a real home: other folders beside the trash, and in the current
 # directory, so a wrong folder would be counted (AUDIT #228).
-mkdir -p "$work/data/"{applications,icons,Trashcan} "$work/cwd/"{x,y}
+mkdir -p "$data/"{applications,icons,Trashcan} "$work/cwd/"{x,y}
 touch "$work/cwd/"{a,b,c}
 cat > "$work/test.qml" << 'QML'
 import QtQuick
@@ -38,20 +39,19 @@ Item {
 QML
 cp "$project/plasma/plasmoids/platinum.trash/contents/ui/TrashState.qml" "$work/"
 # The test asks for each step on stdout; this loop carries them out.
-(cd "$work/cwd" && XDG_DATA_HOME="$work/data" QT_QPA_PLATFORM=offscreen QT_FORCE_STDERR_LOGGING=1 \
+(cd "$work/cwd" && XDG_DATA_HOME="$data" QT_QPA_PLATFORM=offscreen QT_FORCE_STDERR_LOGGING=1 \
     QT_LOGGING_RULES='qml.debug=true;js.debug=true' timeout 20 /usr/lib/qt6/bin/qml "$work/test.qml" 2>&1) |
     while IFS= read -r line; do
         case $line in
-            *MKDIR) mkdir -p "$work/data/Trash/files" && touch "$work/data/Trash/files/item" ;;
-            *EMPTY) rm -f "$work/data/Trash/files/item" ;;
+            *MKDIR) mkdir -p "$data/Trash/files" && touch "$data/Trash/files/item" ;;
+            *EMPTY) rm -f "$data/Trash/files/item" ;;
             *ok\ \ \ \ \ \ *|*FAIL\ \ \ \ *) echo "${line#qml: }" ;;
         esac
     done
 status=${PIPESTATUS[0]}
 
-# The usual login: the trash folder already exists and holds an item.
-mkdir -p "$work/data2/Trash/files" "$work/data2/"{applications,icons}
-touch "$work/data2/Trash/files/old"
+# At login the trash can already hold an item. Include data directories
+# whose names must survive FolderListModel's second URL parse (#278).
 cat > "$work/test2.qml" << 'QML'
 import QtQuick
 Item {
@@ -63,8 +63,13 @@ Item {
     } }
 }
 QML
-(cd "$work/cwd" && XDG_DATA_HOME="$work/data2" QT_QPA_PLATFORM=offscreen QT_FORCE_STDERR_LOGGING=1 \
-    QT_LOGGING_RULES='qml.debug=true;js.debug=true' timeout 20 /usr/lib/qt6/bin/qml "$work/test2.qml" 2>&1) |
-    sed -n 's/^qml: //p' | grep -E '^(ok|FAIL) '
-status2=${PIPESTATUS[0]}
-((status == 0 && status2 == 0))
+for name in 'data2' 'data space' 'data#hash' 'data?query' 'data%20literal' 'data#?%20 café'; do
+    mkdir -p "$work/$name/Trash/files" "$work/$name/"{applications,icons}
+    touch "$work/$name/Trash/files/old"
+    if ! (cd "$work/cwd" && XDG_DATA_HOME="$work/$name" QT_QPA_PLATFORM=offscreen QT_FORCE_STDERR_LOGGING=1 \
+        QT_LOGGING_RULES='qml.debug=true;js.debug=true' timeout 20 /usr/lib/qt6/bin/qml "$work/test2.qml" 2>&1) |
+        sed -n 's/^qml: //p' | grep -E '^(ok|FAIL) ' | sed "s/\$/ ($name)/"; then
+        status=1
+    fi
+done
+((status == 0))

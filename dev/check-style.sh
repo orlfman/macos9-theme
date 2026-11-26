@@ -14,7 +14,14 @@ mkdir -p dev/build dev/shots
 # shellcheck disable=SC2046
 g++ -std=c++17 -O1 -fPIC dev/styleshot.cpp -o dev/build/styleshot $(pkg-config --cflags --libs Qt6Widgets)
 shot=dev/shots/styleshot.png
-PLATINUM_BARBER_PHASE=4 QSTYLE=Platinum dev/run.sh platinum breeze dev/build/styleshot "$shot" > dev/shots/styleshot.txt 2> /dev/null
+# Pin a ≤ 16 px font when FONT is unset so menu/popup-list reference crops stay
+# 16 px tall even in sandboxes without kdeglobals or under Noto Sans 10 (#283).
+style_font=${FONT:-}
+if [[ -z $style_font ]]; then
+    style_font="SF Pro Text,10"
+    [[ $(fc-match -f '%{family}' 'SF Pro Text' 2> /dev/null) == *"SF Pro Text"* ]] || style_font="DejaVu Sans,10"
+fi
+FONT=$style_font PLATINUM_BARBER_PHASE=4 QSTYLE=Platinum dev/run.sh platinum breeze dev/build/styleshot "$shot" > dev/shots/styleshot.txt 2> /dev/null
 
 failed=0
 total=0
@@ -245,4 +252,9 @@ else
 fi
 
 echo "$((total - failed)) of $total regions pixel exact"
+
+# Real widget regressions for states outside the reference captures.
+# shellcheck disable=SC2046
+g++ -std=c++17 -O1 -fPIC dev/widget-states.cpp -o dev/build/widget-states $(pkg-config --cflags --libs Qt6Widgets Qt6Test)
+QSTYLE=Platinum dev/run.sh platinum breeze dev/build/widget-states || failed=$((failed + 1))
 exit $((failed > 0))
