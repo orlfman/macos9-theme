@@ -2,6 +2,26 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-26, Antigravity (Gemini 4 Carbon) — fix #282–283 (disabled decoration box layout & check-style font pin)
+
+- `decoration/platinum.cpp`: collapsed layout slots for `!isEnabled()` title-bar buttons (`shownSpan`, `QSignalBlocker` around `setGeometry`, `enabledChanged` routed to `updateButtonsGeometry`) so pinstripes extend to 5 px before remaining boxes with an intact 3 px inter-box gap (#282, matching `reference/dialog-get-info.png`).
+- `dev/check-deco.sh`: new offscreen KDecoration3 preview check (7/7: `window-document-active.png` and `dialog-get-info.png` crops, 3 → 2 → 1 → 0 button pinstripe extension, dynamic `maximizable` restore).
+- `dev/check-style.sh`: pinned a default ≤ 16 px font (`SF Pro Text,10` or `DejaVu Sans,10`) when `FONT` is unset so reference menu/popup-list crops pass 135/135 regardless of sandbox `kdeglobals` or `Noto Sans,10` (#283).
+- Results: `dev/check-deco.sh` 7/7, `dev/check-style.sh` 135/135 + 12/12, `dev/check-quick.sh` 32/32, `dev/check-tabs.sh` 51/51, `dev/check-trash.sh` 11/11, decoration ASan/UBSan clean. Claims released; ready to commit and push at user's request. Desktop visual review pending.
+
+## 2026-11-26, Antigravity (Gemini 4 Neon) — audit Codex's fixes for #272–281
+
+- Audited the uncommitted working tree on top of `b5facd5` for correctness, stability, accuracy, performance, and latency (no component code modified).
+- Verified #272–280 clean: `FONT="SF Pro Text,10" dev/check-style.sh` 135/135 + 12/12, `dev/check-quick.sh` 32/32, `dev/check-tabs.sh` 51/51, `dev/check-trash.sh` 11/11 (+ 10 extra URL-special paths 10/10), `ComboBox.qml` synchronous right-edge open and 0 ms / 1 ms closed/open rename latency, and 10.0–12.5 µs widget paint latency.
+- Recorded two new findings in `AUDIT.md`: **#282 (P2)** disabled KWin title-bar buttons leave a 21 px blank gray gap instead of extending pinstripes to 5 px before the remaining box (`decoration/platinum.cpp` vs `reference/dialog-get-info.png`), and **#283 (P3)** `dev/check-style.sh` fails 129/135 when `~/.config/kdeglobals` is unreadable or `Noto Sans,10` is active because it does not pin a ≤ 16 px font after #279.
+- Not verified here: `dev/check-plasma.sh` and live nested KWin (Wayland/DRM blocked in this sandbox); desktop visual review pending.
+
+## 2026-11-26, Codex (GPT-6) — fix Qt, KWin and Plasma audit findings #272–281
+
+Deferred Qt Quick combo width measurement until the popup opens, with live width updates while open. Aligned enlarged range slider sprites to the actual Qt Quick handles and centered the groove. Widget menus now render labelled sections and size rows to fit larger fonts. Progress bars distinguish a completed single-value range from a busy 0–0 range and honor fill direction. Sliders paint ticks on either or both sides. Spin boxes honor available step directions and plus/minus symbols. The Trash widget resolves reserved characters in local data paths. The decoration omits disabled title-bar boxes and repaints on capability changes.
+
+Passed 135/135 Widgets reference crops plus 12/12 focused widget checks, 32/32 Qt Quick, 51/51 tabs, 19/19 Plasma and 11/11 Trash. Confirmed the fixed-size zoom box transition in nested KWin, the three disabled button states in the preview, 1.25× range slider alignment and ASan/UBSan for the three plugins. Changes are uncommitted. Desktop visual review is pending.
+
 ## 2026-11-26, Codex (GPT-6) — commit and synchronize local work
 
 Committed the GTK fixes for #269–271, their regression probes, and the GTK / Qt / KDE / Plasma audit notes at the user's request. `git diff --check` passed; existing suite results remain recorded in the entries below. No implementation suites were rerun for this Git synchronization. Open findings #272–281 and desktop visual review remain pending.
