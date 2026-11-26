@@ -61,7 +61,10 @@ Item {
     // goes through the root folder first.
     function point(model, folder) {
         model.folder = "file:///";
-        model.folder = folder;
+        // FolderListModel resolves a file URL to a path, then parses that
+        // path as a URL again. Keep these characters escaped through the
+        // first pass so the second pass cannot treat them as URL syntax.
+        model.folder = folder.replace(/%(?:25|23|3F)/gi, escape => "%25" + escape.slice(1));
     }
     // nameFilters don't apply to folders, so look for the folder by name.
     function has(model, folder) {
