@@ -28,12 +28,13 @@ before taking locks, fetching, or writing files.
 ./install.sh
 ```
 
-If Platinum is already your active global theme, a plain `./install.sh` also
-selects `WhiteSur-lavender` once for both KDE and GTK without touching your
-panels, wallpaper, cursors, or other settings (recording your previous KDE and
-GTK icon preferences first so `./uninstall.sh` restores them cleanly). Later
-plain updates preserve whatever icon theme you pick afterwards; when Platinum
-is not active, a plain `./install.sh` never changes your icon selection.
+If Platinum is already your active global theme, a plain `./install.sh` selects
+`WhiteSur-lavender-light` when it first adopts the icon theme. It also upgrades
+the inherited `WhiteSur-lavender` default from an older managed install.
+During an upgrade, explicit KDE icon choices and later GTK icon choices
+carry forward. The base variant stays available and supplies files shared
+with the light variant.
+Upgrades remove the old managed dark variant when it is unselected and unedited.
 
 The installer makes **Platinum** available to GTK 3 and GTK 4 apps under
 `$XDG_DATA_HOME/themes/Platinum` (normally `~/.local/share/themes/Platinum`).
@@ -79,7 +80,11 @@ style and the window decoration), and switch:
 `--apply` applies the Platinum global theme. It replaces your panels with
 the menu bar and the dock, sets the Lavender Desktop Pattern wallpaper, and
 puts the close box on the left. Only the main screen gets the menu bar and
-the dock (like Mac OS 9). `--dry-run` shows what either step would do. On a
+the dock (like Mac OS 9). Platinum appears in Plasma's **Choose Light Global
+Theme** picker. Use that picker to assign it as your daytime theme if you use
+automatic switching. The active Platinum palette advertises light appearance
+to portal clients, including Firefox when **Website appearance** is set to
+**System**. `--dry-run` shows what either step would do. On a
 first switch from Breeze, log out and back in after applying so Qt Quick
 apps start with Platinum controls.
 

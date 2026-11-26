@@ -13,14 +13,11 @@ Mirror standard icon theme paths (`<context>/<size>/<name>.svg` or `.png`, where
 `apps/scalable`, `places/scalable`, `places/16`, `actions/16`, `status/22`,
 `mimes/scalable`, `devices/scalable`):
 
-- `icons/custom/all/` — applied to **all three** themes (`WhiteSur-lavender`,
-  `WhiteSur-lavender-light`, and `WhiteSur-lavender-dark`).
-- `icons/custom/light/` — applied **only** to `WhiteSur-lavender-light`
-  (overrides `all/` for `-light`).
-- `icons/custom/dark/` — applied **only** to `WhiteSur-lavender-dark`
-  (overrides `all/` for `-dark`).
+- `icons/custom/all/` applies to both `WhiteSur-lavender` and
+  `WhiteSur-lavender-light`.
+- `icons/custom/light/` overrides `all/` in `WhiteSur-lavender-light`.
 
-Variant-only overrides in `light/` and `dark/` automatically materialize
+Overrides in `light/` automatically materialize
 symlinked directories inside the target variant so they never bleed into the
 base `WhiteSur-lavender` theme. Do not create `@2x` directories here: `@2x`
 symlinks in each built theme automatically pick up icons from the base context
@@ -47,14 +44,14 @@ directory.
      `places/22/`, `places/24/`, `actions/16/`). Replace those too if you want
      panel/list views at 16–24 px to change as well.
 2. Place your replacement at the exact same relative path under
-   `icons/custom/all/` (or `light/` / `dark/` for variant-only replacements).
+   `icons/custom/all/` (or `light/` for variant-only replacements).
 3. Rebuild or reinstall. When reviewing a future WhiteSur release with
    `icons/review-whitesur-update.sh`, the report explicitly flags any upstream
    icon that changed underneath one of your overrides.
 
 ## How to remove a custom icon
 
-1. Delete the file or alias from `icons/custom/{all,light,dark}/` (and remove
+1. Delete the file or alias from `icons/custom/{all,light}/` (and remove
    any now-empty subdirectories you created, keeping `.gitkeep` at each layer
    root).
 2. Re-run `icons/build-whitesur-lavender.sh` or `install.sh`. The original

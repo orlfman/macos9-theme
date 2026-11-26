@@ -23,12 +23,12 @@
 #        install.sh --firefox [--profile PROFILE] [--list] [--dry-run]
 #   --firefox  choose Firefox-only mode first, then pass Firefox options
 #   (default)  install or update all theme files. If Platinum is already the
-#              active global theme, also selects WhiteSur-lavender icons once
+#              active global theme, also selects WhiteSur-lavender-light icons once
 #              for KDE and GTK without touching panels, wallpaper, cursors, or
 #              other settings; otherwise leaves your active settings alone.
 #   --apply    also switch to the theme: applies the Platinum global theme
 #              (replaces your panels, selects the wallpaper, cursors, and
-#              WhiteSur-lavender icons) and sets the title bar buttons to
+#              WhiteSur-lavender-light icons) and sets the title bar buttons to
 #              close-left, zoom and collapse right. Your config files are
 #              copied first, so uninstall.sh puts them back exactly.
 #   --dry-run  only show what would be done
@@ -336,7 +336,7 @@ icons_already_tracked=0
 if [[ -f $icon_adoption && ! -L $icon_adoption ]]; then
     icons_already_tracked=1
 else
-    for icon_id in "${icon_theme_ids[@]}"; do
+    for icon_id in "${known_icon_theme_ids[@]}"; do
         icon_path=$data/icons/$icon_id
         for entry in "${manifest_entries[@]:1}"; do
             IFS=$'\t' read -r ekind epath _ <<< "$entry"
@@ -359,10 +359,10 @@ if ((!icons_already_tracked)); then
         backup_predated=1
     fi
     if ((!apply)) && [[ $active == "$lnf_id" ]] && ! is_managed_icon_id "$eff_theme"; then
-        intend_theme=$icon_base_id
+        intend_theme=$icon_default_id
     fi
     pre_states=()
-    for icon_id in "${icon_theme_ids[@]}"; do
+    for icon_id in "${known_icon_theme_ids[@]}"; do
         if [[ -e $data/icons/$icon_id || -L $data/icons/$icon_id ]]; then
             pre_states+=(manual)
         else
@@ -421,10 +421,16 @@ for wallpaper_id in "${wallpaper_ids[@]}"; do
     place_dir "$here/wallpapers/$wallpaper_id" "$data/wallpapers/$wallpaper_id"
 done
 say "Installed the Platinum wallpapers"
-place_dir "$here/plasma/look-and-feel/$lnf_id" "$data/plasma/look-and-feel/$lnf_id"
+lnf_source=$here/plasma/look-and-feel/$lnf_id
+if ((!dry_run)); then
+    cp -R "$lnf_source" "$build/$lnf_id"
+    install -m 644 "$here/colors/$scheme_name.colors" "$build/$lnf_id/contents/colors"
+    lnf_source=$build/$lnf_id
+fi
+place_dir "$lnf_source" "$data/plasma/look-and-feel/$lnf_id"
 say "Installed the global theme \"Platinum\" and its menu bar widget"
 
-# Icon themes are placed last so their 44k checksums are appended after smaller
+# Icon themes are placed last so their checksums are appended after smaller
 # targets and dropped first during uninstall.
 for icon_id in "${icon_theme_ids[@]}"; do
     place_dir "${icon_source_root:-/nonexistent}/$icon_id" "$data/icons/$icon_id"
@@ -470,13 +476,61 @@ if ((!apply)); then
         fi
     elif [[ -f $icon_adoption && ! -L $icon_adoption ]]; then
         tx_out=$(python3 -I "$icon_prefs" apply-tx "$config_home" "$home" "$icon_adoption" --active-lnf "$active" --lnf-id "$lnf_id") ||
-            die "couldn't select $icon_base_id icons for KDE and GTK"
+            die "couldn't select $icon_default_id icons for KDE and GTK"
         while IFS=$'\t' read -r ttag tmsg; do
-            if [[ $ttag == SAY ]]; then
-                notify_icons
-                say "$tmsg"
-            fi
+            case $ttag in
+                SYNC) notify_gtk_icon_config ;;
+                SAY) notify_icons; say "$tmsg" ;;
+            esac
         done <<< "$tx_out"
+    fi
+fi
+
+# Migrate the inherited base default from a prior managed install. An explicit
+# KDE choice and GTK keys changed since the old default are left alone.
+legacy_icon_path=$data/icons/$legacy_icon_id
+if ((!apply)) && [[ $active == "$lnf_id" ]]; then
+    legacy_installed=0
+    if manifest_lists dir "$legacy_icon_path"; then
+        legacy_installed=1
+    fi
+    tx_out=$(python3 -I "$icon_prefs" migrate-light "$config_home" "$home" "$icon_adoption" "$legacy_installed" "$dry_run") ||
+        die "couldn't migrate the inherited icon theme to $icon_default_id"
+    while IFS=$'\t' read -r ttag tmsg; do
+        case $ttag in
+            PLAN) plan "$tmsg" ;;
+            SYNC) notify_gtk_icon_config ;;
+            SAY) notify_icons; say "$tmsg" ;;
+        esac
+    done <<< "$tx_out"
+fi
+
+# Some previous installs have a dark variant in their manifest. Keep it while
+# selected or edited. Remove only recorded entries, using the same cleaner as
+# uninstall, so a personal file saved during the update survives.
+legacy_icon_entry="dir	$legacy_icon_path	$(real_path "$legacy_icon_path")"
+if manifest_has "$legacy_icon_entry" && [[ ! -e $legacy_icon_path && ! -L $legacy_icon_path ]]; then
+    # Finish clearing the record if an earlier run removed the tree first.
+    drop_target_sums "$legacy_icon_path"
+    manifest_drop "$legacy_icon_entry"
+elif manifest_has "$legacy_icon_entry" && [[ -d $legacy_icon_path && ! -L $legacy_icon_path ]]; then
+    if ! dark_selection=$(python3 -I "$icon_prefs" legacy-dark-selection "$config_home" "$home"); then
+        warn "couldn't read KDE or GTK icon settings. Keeping $legacy_icon_id."
+    elif [[ -n $dark_selection ]]; then
+        warn "$legacy_icon_id is still selected in $dark_selection. Keeping it installed."
+    elif ! installed_unchanged dir "$legacy_icon_path"; then
+        warn "$legacy_icon_path was edited. Keeping it installed."
+    else
+        plan "remove the retired $legacy_icon_path"
+        if ((!dry_run)); then
+            clean_out=$(python3 -I "$manifest_ops" clean-dir "$manifest" "$legacy_icon_path")
+            if [[ $clean_out == REMOVED ]]; then
+                drop_target_sums "$legacy_icon_path"
+                manifest_drop "$legacy_icon_entry"
+            else
+                warn "kept files saved in $legacy_icon_path during the update"
+            fi
+        fi
     fi
 fi
 
@@ -498,14 +552,15 @@ if ((apply)); then
             warn "Qt can't read the JPEG XL wallpapers. Install your distribution's Qt JPEG XL support (kimageformats on Arch) to display them."
         fi
     fi
-    plan "run plasma-apply-lookandfeel --apply $lnf_id --resetLayout"
+    plan "run plasma-apply-lookandfeel --apply $lnf_id --resetLayout --keep-auto"
     if ((!dry_run)); then
         if ! env QT_PLUGIN_PATH="$plugins:$deco_plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}" \
-            plasma-apply-lookandfeel --apply "$lnf_id" --resetLayout > /dev/null 2>&1; then
+            plasma-apply-lookandfeel --apply "$lnf_id" --resetLayout --keep-auto > /dev/null 2>&1; then
             die "switching to the Platinum global theme failed (plasma-apply-lookandfeel). Your config files are copied: uninstall.sh puts them back, or try install.sh --apply again"
         fi
         # Ensure a stale Theme[$d] marker in kdeglobals doesn't hide kdedefaults (#142).
         python3 -I "$icon_prefs" clear-deleted-marker "$config_home/kdeglobals"
+        notify_gtk_icon_config
         say "Switched to the Platinum global theme"
     fi
     # A global theme can't set the title bar button order (docs/FINDINGS.md).

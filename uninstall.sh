@@ -264,7 +264,7 @@ if [[ -d $backup ]]; then
                 chmod 700 "$restore_stage"
                 prep_args+=(--stage-dir "$restore_stage")
             fi
-            for icon_id in "${icon_theme_ids[@]}"; do
+            for icon_id in "${known_icon_theme_ids[@]}"; do
                 icon_path=$data/icons/$icon_id
                 if icon_can_restore_original "$icon_id"; then
                     prep_args+=(--restorable "$icon_id")
@@ -360,6 +360,10 @@ if [[ -d $backup ]]; then
         if ((!dry_run)) && [[ -n ${gtk_later//[$'\n']/} ]]; then
             printf '%s\n' "$gtk_later" | python3 -I "$here/scripts/gtk_theme.py" carry "$config_home" "$home" ||
                 die "couldn't keep your later GTK theme choice; run uninstall.sh again to finish"
+        fi
+        if ((!dry_run)) && [[ $config_root == "$config_home" && -n ${DBUS_SESSION_BUS_ADDRESS:-} ]]; then
+            python3 -I "$icon_prefs" restore-gtk-icon-dconf "$config_home" "$icon_adoption" ||
+                die "couldn't restore the previous Wayland GTK icon preference; run uninstall.sh again to finish"
         fi
         plan "move the copy that was put back to $keep/original"
         if ((!dry_run)); then
@@ -520,7 +524,7 @@ fi
 
 # Unified KDE + GTK surviving icon-selection guard (#110, #126, #127).
 managed_icon_ids=()
-for icon_id in "${icon_theme_ids[@]}"; do
+for icon_id in "${known_icon_theme_ids[@]}"; do
     path=$data/icons/$icon_id
     if [[ -d $path && ! -L $path ]] && manifest_lists dir "$path"; then
         managed_icon_ids+=("$icon_id")

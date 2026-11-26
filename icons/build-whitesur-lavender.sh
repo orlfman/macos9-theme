@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Builds WhiteSur-lavender, -light, and -dark in private staging, verifies all
-# three themes together, and publishes atomically without touching the live
+# Builds WhiteSur-lavender and -light in private staging, verifies all
+# two themes together, and publishes atomically without touching the live
 # desktop.
 #   usage: build-whitesur-lavender.sh [UPSTREAM_CLONE] [OUTPUT_DIR]
 #
@@ -22,9 +22,9 @@ usage() {
     cat <<'EOF'
 usage: build-whitesur-lavender.sh [UPSTREAM_CLONE] [OUTPUT_DIR]
 
-Builds WhiteSur-lavender, WhiteSur-lavender-light, and WhiteSur-lavender-dark
+Builds WhiteSur-lavender and WhiteSur-lavender-light
 from the reviewed upstream WhiteSur commit into private staging, verifies all
-three themes together, and publishes atomically to OUTPUT_DIR.
+two themes together, and publishes atomically to OUTPUT_DIR.
 EOF
 }
 
@@ -153,7 +153,7 @@ env -i PATH="$SAFE_PATH" LC_ALL=C HOME="$home_dir" TMPDIR="$work_tmp" \
 env -i PATH="$SAFE_PATH" LC_ALL=C HOME="$home_dir" TMPDIR="$work_tmp" \
     python3 -I "$generator" --apply-custom "$stage_dir" "$custom_dir"
 
-# Verify the complete staged trio before touching OUTPUT_DIR (#101, #102, #105-#109, #111).
+# Verify the complete staged themes before touching OUTPUT_DIR (#101, #102, #105-#109, #111).
 env -i PATH="$SAFE_PATH" LC_ALL=C HOME="$home_dir" TMPDIR="$work_tmp" \
     python3 -I "$generator" --verify "$stage_dir" "$export_dir" "$custom_dir"
 
@@ -161,5 +161,5 @@ env -i PATH="$SAFE_PATH" LC_ALL=C HOME="$home_dir" TMPDIR="$work_tmp" \
 env -i PATH="$SAFE_PATH" LC_ALL=C HOME="$home_dir" TMPDIR="$work_tmp" \
     python3 -I "$generator" --publish "$stage_dir" "$out" "$project" "$upstream"
 
-printf 'Built WhiteSur-lavender, WhiteSur-lavender-light, and WhiteSur-lavender-dark from WhiteSur %s in %s\n' \
+printf 'Built WhiteSur-lavender and WhiteSur-lavender-light from WhiteSur %s in %s\n' \
     "$pinned_commit" "$out"

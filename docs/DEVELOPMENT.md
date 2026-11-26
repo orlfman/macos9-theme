@@ -289,6 +289,21 @@ gets the Platinum Qt Quick style, that a launcher holding the session's
 environment across the uninstall still starts Qt Quick apps, and that the
 next login leaves nothing behind and Qt Quick apps get KDE's style again.
 
+### Light appearance
+
+```bash
+dev/test-install-live.sh --appearance
+```
+
+This extends the two-screen disposable install test. It reads the installed
+package through Plasma's own light/dark classifier, checks the portal and GTK
+preferences and loads the Firefox userChrome in a new test profile. Firefox
+renders a local page first with Platinum, then with BreezeDark and finally
+with Platinum again, with Website appearance set to System. The check needs
+Firefox, the KDE Settings portal and development headers for KPackage and
+KLookAndFeel.
+For a palette-only check run `python3 -I dev/light-theme.py colors/Platinum.colors`.
+
 ## Firefox (`userChrome.css` sandbox)
 
 ```bash

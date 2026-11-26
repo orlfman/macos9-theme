@@ -590,7 +590,7 @@ def write_lookandfeel(base):
     plasma/layout.js as its desktop layout. Plasma applies only the
     decoration's library and theme from a global theme, so Mac OS 9's button
     order (close left; zoom and collapse right) is the install script's job
-    (docs/FINDINGS.md). Icons use WhiteSur-lavender and cursors use
+    (docs/FINDINGS.md). Icons use WhiteSur-lavender-light and cursors use
     macOS-cursors (PLAN.md decisions 7, 8)."""
     root = base / LNF_ID
     (root / "contents/layouts").mkdir(parents=True, exist_ok=True)
@@ -609,7 +609,7 @@ def write_lookandfeel(base):
     (root / "contents/defaults").write_text(
         "[kdeglobals][KDE]\nwidgetStyle=Platinum\n\n"
         "[kdeglobals][General]\nColorScheme=Platinum\n\n"
-        "[kdeglobals][Icons]\nTheme=WhiteSur-lavender\n\n"
+        "[kdeglobals][Icons]\nTheme=WhiteSur-lavender-light\n\n"
         "[plasmarc][Theme]\nname=platinum\n\n"
         "[Wallpaper]\nImage=platinum-lavender\n\n"
         "[kcminputrc][Mouse]\ncursorTheme=macOS-cursors\n\n"

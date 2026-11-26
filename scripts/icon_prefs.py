@@ -29,8 +29,11 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-MANAGED_ICON_IDS = ("WhiteSur-lavender", "WhiteSur-lavender-light", "WhiteSur-lavender-dark")
 ICON_BASE_ID = "WhiteSur-lavender"
+ICON_LIGHT_ID = "WhiteSur-lavender-light"
+GTK_ICON_DCONF_KEY = "/org/gnome/desktop/interface/icon-theme"
+LEGACY_DARK_ID = "WhiteSur-lavender-dark"
+MANAGED_ICON_IDS = (ICON_BASE_ID, ICON_LIGHT_ID, LEGACY_DARK_ID)
 
 GTK2_RE = re.compile(r'^\s*gtk-icon-theme-name\s*=\s*"([^"]*)"\s*$')
 XSET_RE = re.compile(r'^\s*Net/IconThemeName\s+"([^"]*)"\s*$')
@@ -466,7 +469,7 @@ def line_delete_key(path: Path, pattern: re.Pattern[str], *, remove_if_empty: bo
 def required_ids_for(theme: str) -> list[str]:
     if theme == ICON_BASE_ID:
         return [ICON_BASE_ID]
-    if theme in ("WhiteSur-lavender-light", "WhiteSur-lavender-dark"):
+    if theme in (ICON_LIGHT_ID, LEGACY_DARK_ID):
         return [theme, ICON_BASE_ID]
     return [theme]
 
@@ -831,13 +834,10 @@ def cmd_capture(args: list[str]) -> None:
     out_json = Path(args[2])
     backup_predated = args[3] == "1"
     intend_theme = args[4]
-    pre_states = {
-        "WhiteSur-lavender": args[5],
-        "WhiteSur-lavender-light": args[6],
-        "WhiteSur-lavender-dark": args[7],
-    }
+    pre_states = dict(zip(MANAGED_ICON_IDS, args[5:8], strict=True))
 
     captured = read_all_current_prefs(config_home, home)
+    captured["gtk_icon_dconf"] = gtk_icon_dconf()
     data: dict[str, Any] = {
         "version": 3,
         "phase": "captured" if intend_theme else "skipped",
@@ -934,7 +934,7 @@ def cmd_apply_tx(args: list[str]) -> None:
             int_kde = intended["kde"]
             int_gtk = intended["gtk"]
 
-            # Roll back KDE ONLY if currently still holding our partial intended WhiteSur-lavender.
+            # Roll back KDE ONLY if currently still holding our partial intended icon theme.
             if not kg_file.is_symlink() and not kd_dir.is_symlink() and not kd_file.is_symlink():
                 cur_kg = kde_key_state(kg_file, "Icons", "Theme")
                 cur_kd = kde_key_state(kd_file, "Icons", "Theme")
@@ -1072,7 +1072,118 @@ def cmd_apply_tx(args: list[str]) -> None:
     # Mark complete ONLY after every write succeeded (#128).
     data["phase"] = "selected"
     save_adoption(adoption_path, data)
+    original_dconf = cap.get("gtk_icon_dconf")
+    if theme == ICON_LIGHT_ID and original_dconf is not None and gtk_icon_dconf() == original_dconf:
+        current = read_all_current_prefs(config_home, home)
+        if current["kde"]["effective_theme"] == theme and all(
+            st["value"] in ("", theme) for st in current["gtk"].values()
+        ):
+            print("SYNC")
     print(f"SAY\tSelected {theme} icons for KDE and GTK (other Platinum settings unchanged)")
+
+
+def gtk_icon_dconf() -> str | None:
+    if not shutil.which("dconf"):
+        return None
+    result = subprocess.run(["dconf", "read", GTK_ICON_DCONF_KEY], capture_output=True, text=True, check=False)
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def restore_gtk_icon_dconf(config: Path, adoption: Path) -> None:
+    # KDE's bridge publishes the adopted default. Keep a later user's value
+    # and restore the original user setting (including an unset dconf key).
+    if gtk_icon_dconf() != f"'{ICON_LIGHT_ID}'":
+        return
+    record = load_adoption(adoption) if adoption.is_file() and not adoption.is_symlink() else {}
+    previous = record.get("captured", {}).get("gtk_icon_dconf")
+    if previous is None:  # Older records only captured KDE and GTK files.
+        kde = kde_key_state(config / "kdeglobals", "Icons", "Theme")
+        defaults = kde["value"]
+        if not defaults and not kde.get("deleted_marker"):
+            defaults = kde_key_state(config / "kdedefaults/kdeglobals", "Icons", "Theme")["value"]
+        previous = "'" + defaults.replace("\\", "\\\\").replace("'", "\\'") + "'" if defaults else ""
+    if previous == f"'{ICON_LIGHT_ID}'":
+        return
+    cmd = ["dconf", "write", GTK_ICON_DCONF_KEY, previous] if previous else ["dconf", "reset", GTK_ICON_DCONF_KEY]
+    subprocess.run(cmd, check=True)
+
+
+def gtk_wayland_icon_theme() -> str:
+    if not shutil.which("gsettings"):
+        return ""
+    result = subprocess.run(
+        ["gsettings", "get", "org.gnome.desktop.interface", "icon-theme"],
+        capture_output=True, text=True, check=False,
+    )
+    return result.stdout.strip().strip("'") if result.returncode == 0 else ""
+
+
+def migrate_light(config: Path, home: Path, adoption: Path, legacy_installed: bool, dry_run: bool) -> None:
+    if not legacy_installed:
+        # A previous install may have been interrupted before placing dark.
+        if not adoption.is_file() or adoption.is_symlink():
+            return
+        record = load_adoption(adoption)
+        if record.get("phase") != "selected" or (record.get("intended") or {}).get("theme") != ICON_BASE_ID:
+            return
+    current = read_all_current_prefs(config, home)
+    kde = current["kde"]
+    inherited = kde["kdedefaults"]["value"] == ICON_BASE_ID
+    # The deleted marker was produced by older versions of this installer's
+    # icon transaction and may hide the inherited legacy value.
+    if kde["kdeglobals"]["present"] or not inherited:
+        return
+
+    defaults = config / "kdedefaults"
+    files = {
+        "gtk3": config / "gtk-3.0/settings.ini",
+        "gtk4": config / "gtk-4.0/settings.ini",
+        "gtk2": home / ".gtkrc-2.0",
+        "xsettingsd": config / "xsettingsd/xsettingsd.conf",
+    }
+    for path in (defaults, defaults / "kdeglobals", config / "kdeglobals", *files.values()):
+        if path.is_symlink():
+            die(f"refusing to write through symbolic link: {path}")
+    if dry_run:
+        print(f"PLAN\tupdate inherited {ICON_BASE_ID} icons to {ICON_LIGHT_ID}")
+        return
+
+    # Write the inherited KDE key last. Until it changes, retry only touches
+    # GTK keys still on the legacy value. Original backups are never replaced.
+    gtk = current["gtk"]
+    for key in ("gtk3", "gtk4"):
+        if gtk[key]["value"] == ICON_BASE_ID:
+            ini_set_key(files[key], "Settings", "gtk-icon-theme-name", ICON_LIGHT_ID)
+    if gtk["gtk2"]["value"] == ICON_BASE_ID:
+        line_set_key(files["gtk2"], GTK2_RE, f'gtk-icon-theme-name="{ICON_LIGHT_ID}"', create_if_missing=False)
+    if gtk["xsettingsd"]["value"] == ICON_BASE_ID:
+        line_set_key(files["xsettingsd"], XSET_RE, f'Net/IconThemeName "{ICON_LIGHT_ID}"', create_if_missing=False)
+    if kde["kdeglobals"].get("deleted_marker"):
+        kde_delete_key(config / "kdeglobals", "Icons", "Theme")
+    kde_set_key(defaults / "kdeglobals", "Icons", "Theme", ICON_LIGHT_ID)
+
+    # On Wayland kde-gtk-config publishes the icon preference through GSettings.
+    # Its notification also rewrites the GTK files, so only send it when all
+    # GTK stores still follow the old KDE default.
+    if (
+        all(st["value"] in ("", ICON_BASE_ID, ICON_LIGHT_ID) for st in gtk.values())
+        and gtk_wayland_icon_theme() == ICON_BASE_ID
+    ):
+        print("SYNC")
+    print(f"SAY\tUpdated inherited {ICON_BASE_ID} icons to {ICON_LIGHT_ID}")
+
+
+def legacy_dark_selection(config: Path, home: Path) -> None:
+    current = read_all_current_prefs(config, home)
+    sources = (
+        ("KDE", current["kde"]["effective_theme"]),
+        ("GTK 3", current["gtk"]["gtk3"]["value"]),
+        ("GTK 4", current["gtk"]["gtk4"]["value"]),
+        ("GTK 2", current["gtk"]["gtk2"]["value"]),
+        ("xsettingsd", current["gtk"]["xsettingsd"]["value"]),
+        ("GTK GSettings", gtk_wayland_icon_theme()),
+    )
+    print(", ".join(label for label, value in sources if value == LEGACY_DARK_ID))
 
 
 def cmd_read_restore_decision(adoption_path: Path) -> None:
@@ -1565,6 +1676,9 @@ def cmd_check_surviving(args: list[str]) -> None:
         if gx_st["present"] and gx_st["value"]:
             selections.append(("xsettingsd", gx_st["value"]))
 
+    if gtk_wayland_icon_theme() == LEGACY_DARK_ID:
+        selections.append(("GTK GSettings", LEGACY_DARK_ID))
+
     keep_reasons: dict[str, list[tuple[str, str]]] = {}  # req_id -> [(source, sel_theme), ...]
     for src_label, sel_theme in selections:
         if sel_theme not in MANAGED_ICON_IDS:
@@ -1618,6 +1732,12 @@ def main() -> None:
         cmd_capture(args[1:])
     elif cmd == "apply-tx" and len(args) >= 4:
         cmd_apply_tx(args[1:])
+    elif cmd == "migrate-light" and len(args) == 6:
+        migrate_light(Path(args[1]), Path(args[2]), Path(args[3]), args[4] == "1", args[5] == "1")
+    elif cmd == "restore-gtk-icon-dconf" and len(args) == 3:
+        restore_gtk_icon_dconf(Path(args[1]), Path(args[2]))
+    elif cmd == "legacy-dark-selection" and len(args) == 3:
+        legacy_dark_selection(Path(args[1]), Path(args[2]))
     elif cmd == "clear-deleted-marker" and len(args) == 2:
         cmd_clear_deleted_marker(Path(args[1]))
     elif cmd == "read-restore-decision" and len(args) == 2:

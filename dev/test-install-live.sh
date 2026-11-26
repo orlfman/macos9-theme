@@ -12,12 +12,18 @@
 # config and GTK file the GTK sync rewrote is put back byte for byte;
 # uninstall stopped the shell and a new one runs afterwards.
 #
-# usage: test-install-live.sh    (exit 1 if anything failed; ~1 minute)
+# usage: test-install-live.sh [--appearance]    (exit 1 if anything failed; ~1 minute)
 set -euo pipefail
 dev=$(dirname "$(readlink -f "$0")")
 project=$(dirname "$dev")
 
 if [[ -z ${M9_TEST_INNER:-} ]]; then
+    appearance=0
+    case ${1:-} in
+        --appearance) appearance=1 ;;
+        "") ;;
+        *) echo "usage: $0 [--appearance]" >&2; exit 2 ;;
+    esac
     root=$dev/build/test-home-live
     rm -rf "$root"
     mkdir -p "$root/home" "$root/runtime" "$root/bin" "$root/prebuilt"
@@ -32,13 +38,17 @@ EOF
     "$project/decoration/build.sh" "$root/prebuilt/decoration" > /dev/null
     "$project/style/quick/build.sh" "$root/prebuilt/quick" > /dev/null
     "$project/icons/build-whitesur-lavender.sh" "${M9_WHITESUR_UPSTREAM:-$(dirname "$project")/WhiteSur-icon-theme}" "$root/prebuilt/icons" > /dev/null
-    rm -f "$root/prebuilt/icons"/WhiteSur-lavender{,-light,-dark}/.macos9-whitesur-lavender-build
+    rm -f "$root/prebuilt/icons"/WhiteSur-lavender{,-light}/.macos9-whitesur-lavender-build
+    if ((appearance)); then
+        read -ra qt_flags <<< "$(pkg-config --cflags --libs Qt6Core)"
+        c++ -std=c++20 -fPIC -Wall -Wextra -Werror "$dev/light-theme.cpp"             -I/usr/include/KF6/KPackage -I/usr/include/KF6/KCoreAddons -I/usr/include/klookandfeel             "${qt_flags[@]}" -lKF6Package -lklookandfeel -o "$root/light-theme"
+    fi
     status=0
     env -i HOME="$root/home" USER="$USER" PATH="$root/bin:/usr/local/bin:/usr/bin" \
         XDG_CONFIG_HOME="$root/home/.config" XDG_DATA_HOME="$root/home/.local/share" \
         XDG_CACHE_HOME="$root/home/.cache" XDG_STATE_HOME="$root/home/.local/state" \
         XDG_DATA_DIRS=/usr/local/share:/usr/share XDG_CONFIG_DIRS="$root/home/.config/kdedefaults:/etc/xdg" \
-        XDG_RUNTIME_DIR="$root/runtime" M9_TEST_INNER="$root" LANG=C.UTF-8 \
+        XDG_RUNTIME_DIR="$root/runtime" M9_TEST_INNER="$root" M9_TEST_APPEARANCE="$appearance" LANG=C.UTF-8 \
         M9_PREBUILT="$root/prebuilt" XDG_SESSION_TYPE=wayland KDE_FULL_SESSION=true XDG_CURRENT_DESKTOP=KDE \
         KDE_SESSION_VERSION=6 \
         timeout 300 dbus-run-session -- kwin_wayland --virtual --output-count 2 --width 1280 --height 800 \
@@ -53,6 +63,10 @@ root=$M9_TEST_INNER
 home=$HOME
 config=$XDG_CONFIG_HOME
 export QT_QPA_PLATFORM=wayland
+if ((${M9_TEST_APPEARANCE:-0})); then
+    export QT_QPA_PLATFORMTHEME=kde
+    dbus-update-activation-environment WAYLAND_DISPLAY QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME XDG_CURRENT_DESKTOP
+fi
 exec > "$root/result.log" 2>&1
 failed=0
 passed=0
@@ -169,6 +183,9 @@ icon_theme() {
 }
 kwriteconfig6 --file kcminputrc --group Mouse --key cursorTheme Breeze_Light
 before_files=$(files_state)
+if ((${M9_TEST_APPEARANCE:-0})); then
+    before_gtk_icon=$(gsettings get org.gnome.desktop.interface icon-theme)
+fi
 
 check "install exits 0" bash -c "'$project/install.sh' > '$root/install.log' 2>&1"
 check "install alone keeps both wallpapers" same "$before_backgrounds" "$(desktop_backgrounds)"
@@ -176,12 +193,31 @@ check "install installed the cursor theme" test -r "$XDG_DATA_HOME/icons/macOS-c
 check "install installed the WhiteSur Lavender icon themes" bash -c '
     test -r "$1/icons/WhiteSur-lavender/places/scalable/folder.svg" &&
     test -r "$1/icons/WhiteSur-lavender-light/index.theme" &&
-    test -r "$1/icons/WhiteSur-lavender-dark/index.theme"
+    test ! -e "$1/icons/WhiteSur-lavender-dark"
 ' _ "$XDG_DATA_HOME"
+if ((${M9_TEST_APPEARANCE:-0})); then
+    scheme="$XDG_DATA_HOME/plasma/look-and-feel/platinum.desktop/contents/colors"
+    check "Plasma classifies installed Platinum as light from its bundled palette" "$root/light-theme" "$scheme"
+    check "bundled palette matches the standalone scheme" cmp "$scheme" "$XDG_DATA_HOME/color-schemes/Platinum.colors"
+    check "Platinum Window and View backgrounds stay light" python3 -I "$dev/light-theme.py" "$scheme"
+fi
 check "install --apply exits 0" bash -c "'$project/install.sh' --apply > '$root/apply.log' 2>&1"
 check "apply selects the Platinum cursors (macOS-cursors)" same macOS-cursors "$(cursor_theme)"
-check "apply selects the WhiteSur Lavender icons (WhiteSur-lavender)" same WhiteSur-lavender "$(icon_theme)"
+check "apply selects the WhiteSur Lavender icons (WhiteSur-lavender-light)" same WhiteSur-lavender-light "$(icon_theme)"
 sleep 6
+if ((${M9_TEST_APPEARANCE:-0})); then
+    check "the real Settings portal reports prefer-light" same "v v u 2" "$(busctl --user call         org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop org.freedesktop.portal.Settings         Read ss org.freedesktop.appearance color-scheme)"
+    check "kde-gtk-config publishes prefer-light to GSettings" same "'prefer-light'"         "$(gsettings get org.gnome.desktop.interface color-scheme)"
+    for _ in {1..30}; do
+        [[ $(gsettings get org.gnome.desktop.interface icon-theme) == "'WhiteSur-lavender-light'" ]] && break
+        sleep 0.1
+    done
+    check "kde-gtk-config selects the light icons in Wayland GTK" same "'WhiteSur-lavender-light'"         "$(gsettings get org.gnome.desktop.interface icon-theme)"
+    for version in 3 4; do
+        check "GTK $version settings have prefer-dark=false" grep -Fxq             'gtk-application-prefer-dark-theme=false' "$config/gtk-$version.0/settings.ini"
+    done
+    check "Firefox with the installed userChrome follows System light, dark and light"         python3 -I "$dev/light-theme.py" "$root" "$project"
+fi
 after_panels=$(panels)
 echo "info    after --apply: $after_panels"
 check "--apply replaced the panels with the menu bar and the dock" \
@@ -292,6 +328,10 @@ for id in platinum-ribbon platinum-lavender platinum-waves platinum-glass platin
     check "uninstall removed $id" test ! -e "$XDG_DATA_HOME/wallpapers/$id"
 done
 check "every config and GTK file is back byte for byte" same "$before_files" "$(files_state)"
+if ((${M9_TEST_APPEARANCE:-0})); then
+    check "uninstall restored the prior Wayland GTK icon preference" same "$before_gtk_icon" \
+        "$(gsettings get org.gnome.desktop.interface icon-theme)"
+fi
 check "uninstall restored the previous cursor" same Breeze_Light "$(cursor_theme)"
 check "uninstall removed the cursor theme" test ! -e "$XDG_DATA_HOME/icons/macOS-cursors"
 check "uninstall removed the WhiteSur Lavender icon themes" bash -c '

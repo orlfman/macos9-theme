@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Adds a Platinum Lavender variant (plus tracked icons/custom/ overrides) to
-a disposable WhiteSur export tree, verifies the built trio, publishes it
+a disposable WhiteSur export tree, verifies the built themes, publishes it
 safely, and reviews upstream updates.
 
 usage:
@@ -48,9 +48,8 @@ NAME = "lavender"
 THEME_IDS = (
     "WhiteSur-lavender",
     "WhiteSur-lavender-light",
-    "WhiteSur-lavender-dark",
 )
-CUSTOM_LAYERS = ("all", "light", "dark")
+CUSTOM_LAYERS = ("all", "light")
 
 # WhiteSur's purple folder paints -> measured Mac OS 9.2.2 Finder folder ramp
 # (docs/REFERENCE.md "Finder folder icons", AUDIT.md #107).
@@ -335,7 +334,7 @@ def check_png_bytes(data: bytes, label: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Tracked custom icon layer (icons/custom/{all,light,dark}/)
+# Tracked custom icon layer (icons/custom/{all,light}/)
 # ---------------------------------------------------------------------------
 
 def resolve_custom_dir(custom_arg: str | None) -> Path:
@@ -346,7 +345,7 @@ def resolve_custom_dir(custom_arg: str | None) -> Path:
 
 
 def load_and_validate_custom_layer(custom_dir: Path) -> dict[str, dict[str, tuple[str, bytes | str]]]:
-    """Validate icons/custom/{all,light,dark}/ and return per-layer entries.
+    """Validate icons/custom/{all,light}/ and return per-layer entries.
 
     Each layer maps `rel_posix` (e.g. 'apps/scalable/my-app.svg') to either
     `('file', bytes)` or `('link', target_str)`.
@@ -358,14 +357,14 @@ def load_and_validate_custom_layer(custom_dir: Path) -> dict[str, dict[str, tupl
     if custom_dir.is_symlink() or not custom_dir.is_dir():
         fail(f"CUSTOM_DIR must be a non-symlink directory: {custom_dir}")
 
-    # Only allow all/, light/, dark/, and README.md at custom root.
+    # Only allow all/, light/, and README.md at custom root.
     for entry in sorted(custom_dir.iterdir()):
         if entry.name == "README.md":
             if entry.is_symlink() or not entry.is_file():
                 fail(f"custom README.md must be a regular file: {entry}")
             continue
         if entry.name not in CUSTOM_LAYERS:
-            fail(f"unexpected entry in custom icon directory {custom_dir}: {entry.name!r} (expected all/, light/, dark/)")
+            fail(f"unexpected entry in custom icon directory {custom_dir}: {entry.name!r} (expected all/, light/)")
         if entry.is_symlink() or not entry.is_dir():
             fail(f"custom layer must be a non-symlink directory: {entry}")
 
@@ -440,8 +439,6 @@ def effective_custom_for_theme(
     eff = dict(custom["all"])
     if tid == "WhiteSur-lavender-light":
         eff.update(custom["light"])
-    elif tid == "WhiteSur-lavender-dark":
-        eff.update(custom["dark"])
     return eff
 
 
@@ -510,7 +507,7 @@ def path_traverses_symlink(theme_dir: Path, rel_parent: Path) -> bool:
 
 
 def apply_custom_layer(stage_arg: str, custom_arg: str | None = None) -> None:
-    """Apply validated icons/custom/{all,light,dark}/ onto staged themes & rebuild caches."""
+    """Apply validated icons/custom/{all,light}/ onto staged themes & rebuild caches."""
     stage_real = Path(stage_arg).resolve(strict=True)
     custom_dir = resolve_custom_dir(custom_arg)
     custom = load_and_validate_custom_layer(custom_dir)
@@ -520,69 +517,54 @@ def apply_custom_layer(stage_arg: str, custom_arg: str | None = None) -> None:
 
     base_dir = stage_real / "WhiteSur-lavender"
 
-    # Step 1: Materialize any symlinked dirs needed by variant-only light/ and dark/
-    # overrides FIRST so Step 2 applies all/ directly into those materialized dirs
-    # (preserving exact relative alias targets without chaining through base symlinks).
-    for tid, layer in (("WhiteSur-lavender-light", "light"), ("WhiteSur-lavender-dark", "dark")):
-        tdir = stage_real / tid
-        for rel_posix in sorted(custom[layer]):
-            rel_parent = Path(rel_posix).parent.as_posix()
-            materialize_symlink_dir(tdir, rel_parent, stage_real)
+    light_dir = stage_real / "WhiteSur-lavender-light"
+    light_custom = custom["light"]
 
-        # #119: Also materialize any symlinked directory containing a cross-directory
-        # alias from all/ whose resolved logical target in this variant differs from
-        # base (either overridden in light/dark or already variant-distinct upstream),
-        # so relative targets like ../../apps/scalable/foo.svg resolve inside this
-        # variant rather than hopping through ../WhiteSur-lavender/<dir> to base.
-        eff = effective_custom_for_theme(custom, tid)
-        changed = True
-        while changed:
-            changed = False
-            for rel_posix, (kind, payload) in sorted(eff.items()):
-                if kind != "link":
-                    continue
-                rel_parent = Path(rel_posix).parent
-                if not path_traverses_symlink(tdir, rel_parent):
-                    continue
-                logical_rel = resolve_logical_custom_target(eff, rel_posix)
-                target_overridden = logical_rel in custom[layer]
-                if not target_overridden:
-                    # Check if upstream itself gives this variant a distinct file at logical_rel.
-                    v_cand = tdir / logical_rel
-                    b_cand = base_dir / logical_rel
-                    if os.path.lexists(v_cand) and os.path.lexists(b_cand):
-                        try:
-                            if v_cand.resolve(strict=True) != b_cand.resolve(strict=True):
-                                target_overridden = True
-                        except OSError:
-                            target_overridden = True
-                if target_overridden:
-                    materialize_symlink_dir(tdir, rel_parent.as_posix(), stage_real)
-                    changed = True
+    # Materialize directories before copying shared overrides. A cross-directory
+    # alias also needs its own directory when light has a distinct target (#119).
+    for rel_posix in sorted(light_custom):
+        rel_parent = Path(rel_posix).parent.as_posix()
+        materialize_symlink_dir(light_dir, rel_parent, stage_real)
 
-    # Step 2: Apply all/ to base WhiteSur-lavender, plus any real (non-symlinked)
-    # matching dirs in -light and -dark. Symlinked dirs in -light and -dark
-    # automatically inherit base_dir's all/ entries.
-    for rel_posix, (kind, payload) in sorted(custom["all"].items()):
-        dest_dir = base_dir / Path(rel_posix).parent
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        write_custom_entry(base_dir / rel_posix, kind, payload)
-
-    for tid in ("WhiteSur-lavender-light", "WhiteSur-lavender-dark"):
-        tdir = stage_real / tid
-        for rel_posix, (kind, payload) in sorted(custom["all"].items()):
+    eff = effective_custom_for_theme(custom, light_dir.name)
+    changed = True
+    while changed:
+        changed = False
+        for rel_posix, (kind, payload) in sorted(eff.items()):
+            if kind != "link":
+                continue
             rel_parent = Path(rel_posix).parent
-            if not path_traverses_symlink(tdir, rel_parent):
-                (tdir / rel_parent).mkdir(parents=True, exist_ok=True)
-                write_custom_entry(tdir / rel_posix, kind, payload)
+            if not path_traverses_symlink(light_dir, rel_parent):
+                continue
+            logical_rel = resolve_logical_custom_target(eff, rel_posix)
+            target_overridden = logical_rel in light_custom
+            if not target_overridden:
+                # Check if upstream itself gives this variant a distinct file at logical_rel.
+                v_cand = light_dir / logical_rel
+                b_cand = base_dir / logical_rel
+                if os.path.lexists(v_cand) and os.path.lexists(b_cand):
+                    try:
+                        if v_cand.resolve(strict=True) != b_cand.resolve(strict=True):
+                            target_overridden = True
+                    except OSError:
+                        target_overridden = True
+            if target_overridden:
+                materialize_symlink_dir(light_dir, rel_parent.as_posix(), stage_real)
+                changed = True
 
-    # Step 3: Apply variant-only light/ and dark/ overrides on top of all/.
-    for tid, layer in (("WhiteSur-lavender-light", "light"), ("WhiteSur-lavender-dark", "dark")):
-        tdir = stage_real / tid
-        for rel_posix, (kind, payload) in sorted(custom[layer].items()):
-            write_custom_entry(tdir / rel_posix, kind, payload)
+    # Shared entries in symlinked light directories come from the base.
+    for rel_posix, (kind, payload) in sorted(custom["all"].items()):
+        rel_parent = Path(rel_posix).parent
+        (base_dir / rel_parent).mkdir(parents=True, exist_ok=True)
+        write_custom_entry(base_dir / rel_posix, kind, payload)
+        if not path_traverses_symlink(light_dir, rel_parent):
+            (light_dir / rel_parent).mkdir(parents=True, exist_ok=True)
+            write_custom_entry(light_dir / rel_posix, kind, payload)
 
-    # Step 4: Regenerate icon-theme.cache for all three staged themes so new names/aliases index cleanly.
+    for rel_posix, (kind, payload) in sorted(light_custom.items()):
+        write_custom_entry(light_dir / rel_posix, kind, payload)
+
+    # Regenerate icon-theme.cache for both staged themes so new names/aliases index cleanly.
     for tid in THEME_IDS:
         tdir = stage_real / tid
         r = subprocess.run(
@@ -598,8 +580,17 @@ def apply_custom_layer(stage_arg: str, custom_arg: str | None = None) -> None:
 # Upstream patching
 # ---------------------------------------------------------------------------
 
+def without_dark_variant(text: str) -> str:
+    text = replace_once(text, "COLOR_VARIANTS=('' '-light' '-dark')", "COLOR_VARIANTS=('' '-light')")
+    text, count = re.subn(r"(?ms)^  if \[\[ \$\{color\} == '-dark' \]\]; then\n.*?^  fi\n\n", "", text)
+    if count != 1:
+        fail(f"upstream install.sh changed: expected one dark variant block, found {count}")
+    return text
+
+
 def patch_installer_text(text: str) -> str:
     """Apply reviewed Lavender, quoting, and license-notice patches to install.sh."""
+    text = without_dark_variant(text)
     text = replace_once(
         text,
         "THEME_VARIANTS=('' '-purple' '-pink' '-red' '-orange' '-yellow' '-green' '-grey' '-nord')",
@@ -674,48 +665,6 @@ def patch_installer_text(text: str) -> str:
     ])
     text = replace_once(text, old_light_links, new_light_links)
 
-    old_dark_links = "\n".join([
-        "    cd ${dest}",
-        "    ln -s ../${name}${theme}/animations ${name}${theme}-dark/animations",
-        "    ln -s ../${name}${theme}/emotes ${name}${theme}-dark/emotes",
-        "    ln -s ../${name}${theme}/preferences ${name}${theme}-dark/preferences",
-        "    ln -s ../../${name}${theme}/categories/32 ${name}${theme}-dark/categories/32",
-        "    ln -s ../../${name}${theme}/emblems/16 ${name}${theme}-dark/emblems/16",
-        "    ln -s ../../${name}${theme}/emblems/22 ${name}${theme}-dark/emblems/22",
-        "    ln -s ../../${name}${theme}/emblems/24 ${name}${theme}-dark/emblems/24",
-        "    ln -s ../../${name}${theme}/mimes/16 ${name}${theme}-dark/mimes/16",
-        "    ln -s ../../${name}${theme}/mimes/22 ${name}${theme}-dark/mimes/22",
-        "    ln -s ../../${name}${theme}/mimes/scalable ${name}${theme}-dark/mimes/scalable",
-        "    ln -s ../../${name}${theme}/apps/scalable ${name}${theme}-dark/apps/scalable",
-        "    ln -s ../../${name}${theme}/devices/scalable ${name}${theme}-dark/devices/scalable",
-        "    ln -s ../../${name}${theme}/status/16 ${name}${theme}-dark/status/16",
-        "    ln -s ../../${name}${theme}/status/22 ${name}${theme}-dark/status/22",
-        "    ln -s ../../${name}${theme}/status/24 ${name}${theme}-dark/status/24",
-        "    ln -s ../../${name}${theme}/status/32 ${name}${theme}-dark/status/32",
-    ])
-    new_dark_links = "\n".join([
-        "    (",
-        '      cd "${dest}"',
-        '      ln -s "../${name}${theme}/animations" "${name}${theme}-dark/animations"',
-        '      ln -s "../${name}${theme}/emotes" "${name}${theme}-dark/emotes"',
-        '      ln -s "../${name}${theme}/preferences" "${name}${theme}-dark/preferences"',
-        '      ln -s "../../${name}${theme}/categories/32" "${name}${theme}-dark/categories/32"',
-        '      ln -s "../../${name}${theme}/emblems/16" "${name}${theme}-dark/emblems/16"',
-        '      ln -s "../../${name}${theme}/emblems/22" "${name}${theme}-dark/emblems/22"',
-        '      ln -s "../../${name}${theme}/emblems/24" "${name}${theme}-dark/emblems/24"',
-        '      ln -s "../../${name}${theme}/mimes/16" "${name}${theme}-dark/mimes/16"',
-        '      ln -s "../../${name}${theme}/mimes/22" "${name}${theme}-dark/mimes/22"',
-        '      ln -s "../../${name}${theme}/mimes/scalable" "${name}${theme}-dark/mimes/scalable"',
-        '      ln -s "../../${name}${theme}/apps/scalable" "${name}${theme}-dark/apps/scalable"',
-        '      ln -s "../../${name}${theme}/devices/scalable" "${name}${theme}-dark/devices/scalable"',
-        '      ln -s "../../${name}${theme}/status/16" "${name}${theme}-dark/status/16"',
-        '      ln -s "../../${name}${theme}/status/22" "${name}${theme}-dark/status/22"',
-        '      ln -s "../../${name}${theme}/status/24" "${name}${theme}-dark/status/24"',
-        '      ln -s "../../${name}${theme}/status/32" "${name}${theme}-dark/status/32"',
-        "    )",
-    ])
-    text = replace_once(text, old_dark_links, new_dark_links)
-
     if "THEME_VARIANTS[9]" in text:
         fail("patched install.sh unexpectedly contains hard-coded THEME_VARIANTS[9]")
 
@@ -761,7 +710,7 @@ def build_notice_text(pin: dict[str, Any]) -> str:
         "     status/32/start-here.svg from upstream plasma/places/24/start-here.svg\n"
         "     so start-here-kde-plasma resolves to KDE Plasma artwork at all panel sizes.\n"
         f"  3. Normalized {missing_count} upstream src/ SVGs that omitted xmlns=\"http://www.w3.org/2000/svg\".\n"
-        "  4. Applied any tracked project custom icon overrides from icons/custom/{all,light,dark}/.\n"
+        "  4. Applied any tracked project custom icon overrides from icons/custom/{all,light}/.\n"
     )
 
 
@@ -1098,7 +1047,7 @@ def open_dest_lock(dest_real: Path) -> int:
 
 
 def verify_staged_build(stage_arg: str, export_arg: str, custom_arg: str | None = None) -> None:
-    """Verify the entire staged trio before publishing (including custom icons)."""
+    """Verify the entire staged themes before publishing (including custom icons)."""
     pin = load_pin()
     stage_real = Path(stage_arg).resolve(strict=True)
     export_real = Path(export_arg).resolve(strict=True)
@@ -1183,7 +1132,7 @@ def verify_staged_build(stage_arg: str, export_arg: str, custom_arg: str | None 
                 assert isinstance(payload, str)
                 if not cpath.is_symlink():
                     fail(f"custom alias is not a symlink in {tid}/{rel_key}")
-                # Note: in -light/-dark, symlinked dir inheritance means cpath itself
+                # Note: in -light, symlinked dir inheritance means cpath itself
                 # may live in base; readlink on cpath returns the exact relative link target.
                 if os.readlink(cpath) != payload:
                     fail(f"custom alias target mismatch in {tid}/{rel_key}: got {os.readlink(cpath)!r}, expected {payload!r}")
@@ -1389,12 +1338,6 @@ def reconcile_publish_journal(dest_real: Path) -> bool:
     state = data.get("state")
     inc_name = data.get("incoming")
     rb_name = data.get("rollback")
-    raw_existed = data.get("existed_before")
-    existed_before: dict[str, bool] = (
-        {tid: bool(raw_existed.get(tid, False)) for tid in THEME_IDS}
-        if isinstance(raw_existed, dict)
-        else {tid: os.path.lexists(dest_real / rb_name / tid) for tid in THEME_IDS}
-    )
     if state not in ("staging", "switching", "rolling_back", "rolled_back", "committed"):
         fail(f"unknown publish journal state {state!r} in {journal}")
     if not _valid_txn_dirname(inc_name, ".whitesur-lavender-incoming.") or not _valid_txn_dirname(
@@ -1405,12 +1348,24 @@ def reconcile_publish_journal(dest_real: Path) -> bool:
     incoming = dest_real / inc_name
     rollback = dest_real / rb_name
 
+    raw_existed = data.get("existed_before")
+    # Older journals may still have a third tree to restore.
+    legacy_id = "WhiteSur-lavender-dark"
+    txn_ids = THEME_IDS
+    if isinstance(raw_existed, dict) and legacy_id in raw_existed:
+        txn_ids += (legacy_id,)
+    existed_before = (
+        {tid: bool(raw_existed.get(tid, False)) for tid in txn_ids}
+        if isinstance(raw_existed, dict)
+        else {tid: os.path.lexists(rollback / tid) for tid in txn_ids}
+    )
+
     if state in ("switching", "rolling_back"):
         all_placed = (
             state == "switching"
             and all(
                 is_owned_theme_dir(dest_real / tid, tid) and not os.path.lexists(incoming / tid)
-                for tid in THEME_IDS
+                for tid in txn_ids
             )
         )
         if all_placed:
@@ -1418,7 +1373,7 @@ def reconcile_publish_journal(dest_real: Path) -> bool:
         else:
             if state != "rolling_back":
                 write_publish_journal(dest_real, "rolling_back", incoming, rollback, existed_before)
-            for tid in reversed(THEME_IDS):
+            for tid in reversed(txn_ids):
                 target = dest_real / tid
                 backed = rollback / tid
                 if os.path.lexists(backed):
@@ -1470,7 +1425,7 @@ def recover_destination(dest_arg: str) -> None:
             os.close(lock_fd)
 
 
-def publish_trio(stage_arg: str, dest_arg: str, project_arg: str, upstream_arg: str) -> None:
+def publish_themes(stage_arg: str, dest_arg: str, project_arg: str, upstream_arg: str) -> None:
     pin = load_pin()
     stage_real = Path(stage_arg).resolve(strict=True)
     dest_abs = Path(os.path.abspath(dest_arg))
@@ -1678,8 +1633,15 @@ def review_upstream_update(
             blockers.append(f"install.sh patch check failed: {exc}")
             add(f"  BLOCKER: {exc}")
         if changed and old_real is not None and (old_real / "install.sh").is_file():
-            old_lines = (old_real / "install.sh").read_text(encoding="utf-8", errors="replace").splitlines()
-            new_lines = inst_bytes.decode("utf-8", errors="replace").splitlines()
+            old_text = (old_real / "install.sh").read_text(encoding="utf-8", errors="replace")
+            new_text = inst_bytes.decode("utf-8", errors="replace")
+            # Keep the full installer digest in the pin. Report the diff for
+            # the code the project builds, excluding the unused dark branch.
+            try:
+                old_text, new_text = without_dark_variant(old_text), without_dark_variant(new_text)
+            except SystemExit:
+                pass  # An anchor moved. Show the raw diff for diagnosis.
+            old_lines, new_lines = old_text.splitlines(), new_text.splitlines()
             diff = list(difflib.unified_diff(old_lines, new_lines, fromfile="pinned/install.sh", tofile="candidate/install.sh", lineterm=""))
             add(f"Unified diff ({len(diff)} lines):")
             for dl in diff[:80]:
@@ -1848,7 +1810,7 @@ def review_upstream_update(
             add(f"  BLOCKER: {xe}")
     add("")
 
-    # 7. Custom icon overrides (icons/custom/{all,light,dark}/)
+    # 7. Custom icon overrides (icons/custom/{all,light}/)
     add(f"## 7. Custom icon overrides ({custom_dir})")
     try:
         custom = load_and_validate_custom_layer(custom_dir)
@@ -1958,7 +1920,7 @@ def main(argv: list[str] | None = None) -> None:
         verify_staged_build(args[1], args[2], args[3] if len(args) == 4 else None)
         return
     if len(args) == 5 and args[0] == "--publish":
-        publish_trio(args[1], args[2], args[3], args[4])
+        publish_themes(args[1], args[2], args[3], args[4])
         return
     if args[0] == "--review-update" and len(args) in (8, 9):
         old_exp = args[8] if len(args) == 9 else None

@@ -711,7 +711,7 @@ def main() -> int:
         expect_lnf="platinum.desktop",
         expect_platinum_colors=True,
         expect_user_gtk4_rule="#ind-user { color: #aa4499; }",
-        expect_icon_cursor=("WhiteSur-lavender", "macOS-cursors"),
+        expect_icon_cursor=("WhiteSur-lavender-light", "macOS-cursors"),
     )
     re2_all_errs = ([] if ok_lnf2 else [lnf2_det]) + re2_errs
     for stack in ("gtk4", "adw"):
@@ -722,7 +722,7 @@ def main() -> int:
         "kde",
         "platinum-lnf-reapply-user-gtk4",
         "PASS" if not re2_all_errs else "FAIL",
-        f"{lnf2_det} active=platinum.desktop user-gtk4-css-preserved+@import icons=WhiteSur-lavender cursors=macOS-cursors"
+        f"{lnf2_det} active=platinum.desktop user-gtk4-css-preserved+@import icons=WhiteSur-lavender-light cursors=macOS-cursors"
         if not re2_all_errs
         else "; ".join(re2_all_errs),
     )

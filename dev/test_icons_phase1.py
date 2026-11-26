@@ -32,7 +32,7 @@ GENERATOR = PROJECT / "icons/whitesur-lavender.py"
 REVIEWER = PROJECT / "icons/review-whitesur-update.sh"
 FETCHER = PROJECT / "icons/fetch-whitesur.sh"
 PIN_FILE = PROJECT / "icons/whitesur-pin.json"
-THEME_IDS = ("WhiteSur-lavender", "WhiteSur-lavender-light", "WhiteSur-lavender-dark")
+THEME_IDS = ("WhiteSur-lavender", "WhiteSur-lavender-light")
 
 passed = 0
 failed = 0
@@ -254,14 +254,14 @@ def main() -> None:
 
         def failing_rename(src, dst):
             rename_calls["n"] += 1
-            if rename_calls["n"] == 5:
+            if rename_calls["n"] == len(THEME_IDS) * 2:
                 raise OSError("simulated mid-publish rename failure")
             return real_rename(src, dst)
 
         ws_mod.os.rename = failing_rename
         rb_threw = False
         try:
-            ws_mod.publish_trio(str(rb_stage), str(rb_dest), str(PROJECT), str(UPSTREAM))
+            ws_mod.publish_themes(str(rb_stage), str(rb_dest), str(PROJECT), str(UPSTREAM))
         except OSError:
             rb_threw = True
         finally:
@@ -269,7 +269,7 @@ def main() -> None:
 
         rb_entries = sorted(p.name for p in rb_dest.iterdir())
         check(
-            "#101 mid-publish swap failure rolls back all 3 previous themes cleanly",
+            "#101 mid-publish swap failure rolls back both previous themes cleanly",
             rb_threw
             and rb_entries == sorted(THEME_IDS)
             and (rb_dest / "WhiteSur-lavender/.rb-sentinel").read_text() == "original-v1\n",
@@ -419,11 +419,11 @@ def main() -> None:
                     root = ET.fromstring(fp.read_bytes())
                     if root.tag != "{http://www.w3.org/2000/svg}svg":
                         missing_ns += 1
-        # The pinned upstream build has 20,326 physical SVGs with an empty
+        # The pinned upstream build has 12,993 physical SVGs with an empty
         # custom layer. Each tracked custom entry can add, replace, or alias
         # away at most one physical SVG per theme, so the build must stay
         # within that margin (#287: catches a build that drops icons en masse).
-        svg_baseline = 20326
+        svg_baseline = 12993
         custom_entries = sum(
             1
             for p in (PROJECT / "icons/custom").rglob("*")
@@ -431,7 +431,7 @@ def main() -> None:
         )
         svg_margin = custom_entries * len(THEME_IDS)
         check(
-            "#111 all physical SVGs in built trio have SVG namespace",
+            "#111 all physical SVGs in built themes have SVG namespace",
             abs(total_svgs - svg_baseline) <= svg_margin and missing_ns == 0,
             f"total_svgs={total_svgs}, baseline={svg_baseline}±{svg_margin}, missing_ns={missing_ns}",
         )
@@ -582,17 +582,16 @@ def main() -> None:
         )
 
         # ------------------------------------------------------------------
-        # Tracked custom icon layer (all/, light/, dark/) + update review
+        # Tracked custom icon layer (all/, light/) + update review
         # ------------------------------------------------------------------
         custom_root = tmp_root / "custom-icons"
-        for layer in ("all", "light", "dark"):
+        for layer in ("all", "light"):
             (custom_root / layer).mkdir(parents=True)
             (custom_root / layer / ".gitkeep").write_text("")
 
         svg_all_folder = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#112233"/></svg>\n'
         svg_light_folder = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#ddeeff"/></svg>\n'
         svg_all_app = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><circle cx="32" cy="32" r="24" fill="#445566"/></svg>\n'
-        svg_dark_app = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><circle cx="32" cy="32" r="24" fill="#111111"/></svg>\n'
         svg_new_app = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="48" height="48" x="8" y="8" fill="#778899"/></svg>\n'
 
         (custom_root / "all/places/scalable").mkdir(parents=True)
@@ -603,22 +602,18 @@ def main() -> None:
         (custom_root / "all/apps/scalable/firefox.svg").write_text(svg_all_app)
         (custom_root / "all/apps/scalable/my-brand-new-app.svg").write_text(svg_new_app)
         (custom_root / "all/apps/scalable/my-brand-new-alias.svg").symlink_to("my-brand-new-app.svg")
-        (custom_root / "dark/apps/scalable").mkdir(parents=True)
-        (custom_root / "dark/apps/scalable/firefox.svg").write_text(svg_dark_app)
 
         custom_out = tmp_root / "custom-out"
         custom_env = os.environ.copy()
         custom_env["M9_ICON_CUSTOM_DIR"] = str(custom_root)
         r_cust = run([str(BUILDER), str(UPSTREAM), str(custom_out)], env=custom_env)
         check(
-            "custom layer build succeeds with all/light/dark overrides, brand-new icon, and alias",
+            "custom layer build succeeds with all/light overrides, brand-new icon, and alias",
             r_cust.returncode == 0
             and (custom_out / "WhiteSur-lavender/places/scalable/folder.svg").read_text() == svg_all_folder
-            and (custom_out / "WhiteSur-lavender-dark/places/scalable/folder.svg").read_text() == svg_all_folder
             and (custom_out / "WhiteSur-lavender-light/places/scalable/folder.svg").read_text() == svg_light_folder
             and (custom_out / "WhiteSur-lavender/apps/scalable/firefox.svg").read_text() == svg_all_app
             and (custom_out / "WhiteSur-lavender-light/apps/scalable/firefox.svg").read_text() == svg_all_app
-            and (custom_out / "WhiteSur-lavender-dark/apps/scalable/firefox.svg").read_text() == svg_dark_app
             and (custom_out / "WhiteSur-lavender/apps/scalable/my-brand-new-app.svg").read_text() == svg_new_app
             and (custom_out / "WhiteSur-lavender/apps/scalable/my-brand-new-alias.svg").is_symlink()
             and os.readlink(custom_out / "WhiteSur-lavender/apps/scalable/my-brand-new-alias.svg") == "my-brand-new-app.svg",
@@ -653,7 +648,7 @@ def main() -> None:
         # Custom validation rejections (fail before touching destination!)
         def test_bad_custom(label: str, setup_fn) -> None:
             bc = tmp_root / f"bad-cust-{hashlib.sha1(label.encode()).hexdigest()[:8]}"
-            for l in ("all", "light", "dark"):
+            for l in ("all", "light"):
                 (bc / l).mkdir(parents=True)
             setup_fn(bc)
             benv = os.environ.copy()
@@ -722,7 +717,7 @@ def main() -> None:
         bare_out = tmp_root / "bare-cache-out"
         r_bare_build = run([str(BUILDER), str(cache_path), str(bare_out)])
         check(
-            "builder builds verified trio directly from bare cache",
+            "builder builds verified themes directly from bare cache",
             r_bare_build.returncode == 0 and sorted(p.name for p in bare_out.iterdir()) == sorted(THEME_IDS),
             f"rc={r_bare_build.returncode}",
         )
@@ -848,7 +843,6 @@ def main() -> None:
         png_cust = tmp_root / "png-preflight-custom"
         (png_cust / "all/apps/16").mkdir(parents=True)
         (png_cust / "light").mkdir(parents=True)
-        (png_cust / "dark").mkdir(parents=True)
         (png_cust / "all/apps/16/dummy.png").write_bytes(b"\x89PNG\r\n\x1a\n")
         # Pass when PIL is present; block PIL via sys.modules=None in a tiny wrapper to verify message.
         r_pf_ok = run([sys.executable, "-I", str(PROJECT / "icons/whitesur-lavender.py"), "--preflight", str(png_cust)])
@@ -879,18 +873,16 @@ def main() -> None:
         )
 
         # ------------------------------------------------------------------
-        # #119: Cross-directory custom alias with light/ and dark/ target overrides
+        # #119: Cross-directory custom alias with a light/ target override
         # ------------------------------------------------------------------
         cust_119 = tmp_root / "custom-119"
-        for sub in ("all/apps/scalable", "all/places/scalable", "light/apps/scalable", "dark/apps/scalable"):
+        for sub in ("all/apps/scalable", "all/places/scalable", "light/apps/scalable"):
             (cust_119 / sub).mkdir(parents=True)
         svg_119_base = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#111111"/></svg>\n'
         svg_119_light = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#eeeeee"/></svg>\n'
-        svg_119_dark = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#333333"/></svg>\n'
         (cust_119 / "all/apps/scalable/m9-xdir-app.svg").write_text(svg_119_base)
         (cust_119 / "all/places/scalable/m9-xdir-alias.svg").symlink_to("../../apps/scalable/m9-xdir-app.svg")
         (cust_119 / "light/apps/scalable/m9-xdir-app.svg").write_text(svg_119_light)
-        (cust_119 / "dark/apps/scalable/m9-xdir-app.svg").write_text(svg_119_dark)
         out_119 = tmp_root / "out-119"
         env_119 = os.environ.copy()
         env_119["M9_ICON_CUSTOM_DIR"] = str(cust_119)
@@ -911,10 +903,9 @@ def main() -> None:
             ok_119_bytes = (
                 "#111111" in gtk_read("WhiteSur-lavender", "m9-xdir-alias")
                 and "#eeeeee" in gtk_read("WhiteSur-lavender-light", "m9-xdir-alias")
-                and "#333333" in gtk_read("WhiteSur-lavender-dark", "m9-xdir-alias")
             )
         check(
-            "#119 cross-directory custom alias resolves to exact variant bytes in base, -light, and -dark via GTK3",
+            "#119 cross-directory custom alias resolves to exact variant bytes in base and -light via GTK3",
             r_119.returncode == 0 and ok_119_bytes,
             f"rc={r_119.returncode}, ok_bytes={ok_119_bytes}",
         )
@@ -976,7 +967,7 @@ def main() -> None:
         r_132_rc1 = run([sys.executable, "-I", str(PROJECT / "icons/whitesur-lavender.py"), "--recover-dest", str(dest_132)], env=env_rec_crash)
         r_132_rc2 = run([sys.executable, "-I", str(PROJECT / "icons/whitesur-lavender.py"), "--recover-dest", str(dest_132)])
         check(
-            "#132 interrupted recovery during staging cleanup preserves all 3 restored originals on retry",
+            "#132 interrupted recovery during staging cleanup preserves both restored originals on retry",
             r_132_p1.returncode == 0
             and r_132_c1.returncode == 99
             and r_132_rc1.returncode == 98
@@ -984,6 +975,24 @@ def main() -> None:
             and sorted(p.name for p in dest_132.iterdir()) == sorted(THEME_IDS)
             and (dest_132 / "WhiteSur-lavender/marker.txt").read_text() == "v1\n",
             f"p1={r_132_p1.returncode}, c1={r_132_c1.returncode}, rc1={r_132_rc1.returncode}, rc2={r_132_rc2.returncode}",
+        )
+
+        # Recover the third tree when updating an interrupted older publisher.
+        legacy_id = "WhiteSur-lavender-dark"
+        old_incoming = dest_132 / ".whitesur-lavender-incoming.legacy"
+        old_rollback = dest_132 / ".whitesur-lavender-rollback.legacy"
+        old_incoming.mkdir()
+        (old_rollback / legacy_id).mkdir(parents=True)
+        (old_rollback / legacy_id / "personal.txt").write_text("original dark\n")
+        ws_mod.write_publish_journal(
+            dest_132, "rolling_back", old_incoming, old_rollback,
+            dict.fromkeys((*THEME_IDS, legacy_id), True),
+        )
+        ws_mod.recover_destination(str(dest_132))
+        check(
+            "an older three-tree journal recovers its dark variant",
+            (dest_132 / legacy_id / "personal.txt").read_text() == "original dark\n"
+            and not old_incoming.exists() and not old_rollback.exists(),
         )
 
         # ------------------------------------------------------------------

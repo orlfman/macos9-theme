@@ -172,7 +172,10 @@ trash_id=platinum.trash
 lnf_id=platinum.desktop
 wallpaper_ids=(platinum-ribbon platinum-lavender platinum-waves platinum-glass platinum-nebula platinum-finder-waves platinum-ripples)
 icon_base_id=WhiteSur-lavender
-icon_theme_ids=(WhiteSur-lavender WhiteSur-lavender-light WhiteSur-lavender-dark)
+icon_default_id=WhiteSur-lavender-light
+legacy_icon_id=WhiteSur-lavender-dark
+icon_theme_ids=("$icon_base_id" "$icon_default_id")
+known_icon_theme_ids=("${icon_theme_ids[@]}" "$legacy_icon_id")
 
 # Everything install.sh installs: kind and path. uninstall.sh removes
 # nothing else.
@@ -197,7 +200,7 @@ targets=(
 for wallpaper_id in "${wallpaper_ids[@]}"; do
     targets+=("dir	$data/wallpapers/$wallpaper_id")
 done
-for icon_id in "${icon_theme_ids[@]}"; do
+for icon_id in "${known_icon_theme_ids[@]}"; do
     targets+=("dir	$data/icons/$icon_id")
 done
 
@@ -237,7 +240,7 @@ active_lnf() {
 
 is_managed_icon_id() { # id
     local id
-    for id in "${icon_theme_ids[@]}"; do
+    for id in "${known_icon_theme_ids[@]}"; do
         [[ $1 == "$id" ]] && return 0
     done
     return 1
@@ -256,6 +259,17 @@ notify_icons() {
     ((dry_run)) && return 0
     if have dbus-send; then
         dbus-send --session --type=signal /KGlobalSettings org.kde.KGlobalSettings.notifyChange int32:4 int32:0 2> /dev/null || true
+    fi
+}
+
+# The inherited theme lives in kdedefaults. KDE's GTK bridge watches
+# kdeglobals and may miss the first change when there was no explicit key.
+# The byte array is exactly the five bytes of the KConfig key Theme.
+notify_gtk_icon_config() {
+    ((dry_run)) && return 0
+    if have gdbus; then
+        gdbus emit --session --object-path /kdeglobals --signal org.kde.kconfig.notify.ConfigChanged \
+            "{'Icons': [[byte 84, 104, 101, 109, 101]]}" > /dev/null 2>&1 || true
     fi
 }
 

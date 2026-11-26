@@ -1,10 +1,17 @@
 # WhiteSur Lavender
 
-Builds the Platinum Lavender folder variant (`WhiteSur-lavender`,
-`WhiteSur-lavender-light`, and `WhiteSur-lavender-dark`) plus the tracked
+Builds `WhiteSur-lavender` and `WhiteSur-lavender-light` with Platinum Lavender
+folders and the tracked
 `icons/custom/` override layer from upstream
 [WhiteSur](https://github.com/vinceliuice/WhiteSur-icon-theme) without
 modifying any upstream checkout or touching the live desktop.
+
+Platinum defaults to the light variant, which ships dark status icons at
+16–32 px. Its relative symlinks use the installed base theme for shared
+categories. Both variants are available in System Settings. The desktop
+installer retires an unchanged, unselected `WhiteSur-lavender-dark` that an
+older installer recorded in its manifest. The standalone builder leaves
+existing dark trees in its output directory untouched.
 
 ## Pinned upstream revision
 
@@ -69,29 +76,25 @@ ignore/untracked safeguards). The builder exports the pinned commit into a
 private staging directory, runs upstream's installer with a minimal explicit
 environment (`env -i`, private `HOME`/`XDG_*`/`TMPDIR`, fixed `PATH`, no
 display or session bus) and `-p` (KDE Plasma launcher), applies validated
-`icons/custom/{all,light,dark}/` overrides (materializing cross-directory
-variant aliases automatically), rebuilds icon caches, verifies all three themes
+`icons/custom/{all,light}/` overrides (materializing cross-directory
+variant aliases automatically), rebuilds icon caches, verifies both themes
 together, and publishes under a destination lock with a durable recovery
 journal (`.whitesur-lavender-publish.json`). Note: during standalone
-replacement of an existing output directory, the three theme directories are
+replacement of an existing output directory, the two theme directories are
 switched by sequential `rename()` calls, so concurrent readers inspecting the
-output directory directly can briefly see a partial trio during the switch;
+output directory directly can briefly see a partial result during the switch;
 if interrupted mid-switch, the next `--publish` (or `--recover-dest`) rolls
-back cleanly to the prior complete trio before removing staging.
+back cleanly to the previous build before removing staging.
 
 ## Tracked custom icon layer (`icons/custom/`)
 
 Place custom icons, replacements, and relative symlink aliases under
-`icons/custom/{all,light,dark}/` mirroring WhiteSur's icon theme directories
+`icons/custom/{all,light}/` mirroring WhiteSur's icon theme directories
 (e.g. `apps/scalable/`, `places/scalable/`, `places/16/`, `actions/16/`,
 `status/22/`).
 
-- `icons/custom/all/` applies to all three themes (`WhiteSur-lavender`,
-  `-light`, `-dark`).
-- `icons/custom/light/` applies only to `WhiteSur-lavender-light` (overrides
-  `all/`).
-- `icons/custom/dark/` applies only to `WhiteSur-lavender-dark` (overrides
-  `all/`).
+- `icons/custom/all/` applies to the base and light themes.
+- `icons/custom/light/` overrides `all/` in `WhiteSur-lavender-light`.
 
 See `icons/custom/README.md` for full step-by-step instructions on adding,
 replacing, aliasing, and removing icons, plus the pre-install validation rules.
