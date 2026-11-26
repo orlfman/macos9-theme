@@ -403,7 +403,7 @@ def main() -> None:
         )
 
         # ------------------------------------------------------------------
-        # #111: SVG XML & namespace check across all 20,326 physical SVGs
+        # #111: SVG XML & namespace check across all physical SVGs
         # ------------------------------------------------------------------
         total_svgs = 0
         missing_ns = 0
@@ -419,16 +419,31 @@ def main() -> None:
                     root = ET.fromstring(fp.read_bytes())
                     if root.tag != "{http://www.w3.org/2000/svg}svg":
                         missing_ns += 1
+        # The pinned upstream build has 20,326 physical SVGs with an empty
+        # custom layer. Each tracked custom entry can add, replace, or alias
+        # away at most one physical SVG per theme, so the build must stay
+        # within that margin (#287: catches a build that drops icons en masse).
+        svg_baseline = 20326
+        custom_entries = sum(
+            1
+            for p in (PROJECT / "icons/custom").rglob("*")
+            if p.suffix in (".svg", ".png") and (p.is_symlink() or p.is_file())
+        )
+        svg_margin = custom_entries * len(THEME_IDS)
         check(
             "#111 all physical SVGs in built trio have SVG namespace",
-            total_svgs == 20326 and missing_ns == 0,
-            f"total_svgs={total_svgs}, missing_ns={missing_ns}",
+            abs(total_svgs - svg_baseline) <= svg_margin and missing_ns == 0,
+            f"total_svgs={total_svgs}, baseline={svg_baseline}±{svg_margin}, missing_ns={missing_ns}",
         )
 
+        empty_custom = tmp_root / "empty-custom"
+        empty_custom.mkdir()
         sample_svg = stage_106 / "WhiteSur-lavender/places/16/folder-vbox.svg"
         orig_sample = sample_svg.read_text()
         sample_svg.write_text(orig_sample.replace(' xmlns="http://www.w3.org/2000/svg"', "", 1))
-        r_v111 = run(["python3", "-I", str(GENERATOR), "--verify", str(stage_106), str(exp_106)])
+        r_v111 = run(
+            ["python3", "-I", str(GENERATOR), "--verify", str(stage_106), str(exp_106), str(empty_custom)]
+        )
         check(
             "#111 --verify rejects staged SVG missing SVG namespace",
             r_v111.returncode != 0 and "SVG namespace" in r_v111.stderr,
