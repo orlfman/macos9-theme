@@ -132,14 +132,22 @@ entry:not(.flat):disabled {
 
 /* Active selection: measured #CCCCFF solid fill with black text */
 entry > text > selection,
-entry > text > selection:focus-within {
+entry > text > selection:focus-within,
+spinbutton:not(.vertical) > text > selection,
+spinbutton:not(.vertical) > text > selection:focus-within,
+spinbutton.vertical > text > selection,
+spinbutton.vertical > text > selection:focus-within {
   background-color: @platinum_selection;
   color: @platinum_fg;
 }
 
 /* Backdrop selection: muted readable fill (GTK text selection uses a solid fill) */
 entry > text > selection:backdrop,
-entry > text > selection:focus-within:backdrop {
+entry > text > selection:focus-within:backdrop,
+spinbutton:not(.vertical) > text > selection:backdrop,
+spinbutton:not(.vertical) > text > selection:focus-within:backdrop,
+spinbutton.vertical > text > selection:backdrop,
+spinbutton.vertical > text > selection:focus-within:backdrop {
   background-color: @platinum_selection_backdrop;
   color: @platinum_fg;
 }

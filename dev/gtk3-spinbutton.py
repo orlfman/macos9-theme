@@ -25,6 +25,12 @@ off.set_value(1)
 off.set_sensitive(False)
 tall = Gtk.SpinButton.new_with_range(0, 10, 1)
 tall.set_orientation(Gtk.Orientation.VERTICAL)
+# Spin button packed in a header bar (#271): gap shadows must not clip its down arrow.
+bar = Gtk.HeaderBar(show_close_button=True, title="Spin")
+hb_spin = Gtk.SpinButton.new_with_range(0, 100, 1)
+hb_spin.set_value(42)
+bar.pack_start(hb_spin)
+box.pack_start(bar, False, False, 0)
 for s in (spin, off, tall):
     s.set_halign(Gtk.Align.START)
     box.pack_start(s, False, False, 0)
@@ -74,6 +80,14 @@ def check():
             at = find(shot, art, (b.x, b.y, b.x + b.width, b.y + b.height))
             ok &= at is not None
             print(f"{'ok' if at else 'FAIL'}    gtk3-spin-{name} at={at}")
+        # Spin button inside a header bar (#271): both arrow boxes intact.
+        hx, hy = hb_spin.translate_coordinates(window, 0, 0)
+        ha = hb_spin.get_allocation()
+        for name in ("vscroll-down", "arrow-box-up"):
+            art = Image.open(theme / f"gtk-3.0/assets/{name}.png").convert("RGBA")
+            at = find(shot, art, (hx, hy, hx + ha.width, hy + ha.height))
+            ok &= at is not None
+            print(f"{'ok' if at else 'FAIL'}    gtk3-headerbar-spin-{name} at={at}")
         code[0] = 0 if ok else 1
     finally:
         Gtk.main_quit()

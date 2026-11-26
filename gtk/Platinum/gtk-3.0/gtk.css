@@ -1181,6 +1181,7 @@ notebook > header > tabs > arrow.down:active {
  * so the tab keeps its measured height instead of growing 7 px. */
 notebook > header > tabs > tab button,
 notebook > header > tabs > tab button:hover,
+notebook > header > tabs > tab button:active,
 notebook > header > tabs > tab button:disabled {
   min-width: 16px;
   min-height: 16px;
@@ -1946,7 +1947,7 @@ headerbar > box.right {
 headerbar > button:not(.titlebutton),
 headerbar > entry,
 headerbar > spinbutton,
-headerbar :not(.linked) > button:not(.titlebutton),
+headerbar :not(.linked):not(spinbutton) > button:not(.titlebutton),
 headerbar :not(.linked) > entry,
 headerbar :not(.linked) > spinbutton,
 headerbar .linked {
@@ -1956,7 +1957,7 @@ headerbar .linked {
 headerbar:backdrop > button:not(.titlebutton),
 headerbar:backdrop > entry,
 headerbar:backdrop > spinbutton,
-headerbar:backdrop :not(.linked) > button:not(.titlebutton),
+headerbar:backdrop :not(.linked):not(spinbutton) > button:not(.titlebutton),
 headerbar:backdrop :not(.linked) > entry,
 headerbar:backdrop :not(.linked) > spinbutton,
 headerbar:backdrop .linked {

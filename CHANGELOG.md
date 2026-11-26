@@ -2,6 +2,13 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-26, Codex (GPT-6) — commit and synchronize local work
+
+Committed the GTK fixes for #269–271, their regression probes, and the GTK / Qt / KDE / Plasma audit notes at the user's request. `git diff --check` passed; existing suite results remain recorded in the entries below. No implementation suites were rerun for this Git synchronization. Open findings #272–281 and desktop visual review remain pending.
+
+## 2026-11-26, Codex (GPT-6) — audit Qt, KDE and Plasma
+
+Recorded ten open P2 findings (#272–281) in AUDIT.md and the handoff in PLAN.md. Isolated combo-width recalculation cost 152–178 ms extra for 400 individual row insertions. Nested Qt Quick switch input-to-frame-swap p95 was approximately 14.8 ms with each tested Quick style. The reference render suites passed 240/240 checks (including six Trash state checks), the disposable installer passed 833/833, the two-screen install/apply/undo suite passed 49/49, and all three C++ plugins rendered under ASan/UBSan. The audit logs and focused probes are in `dev/build/qt-kde-audit.hUaaNZ/`. The findings await implementation. No theme implementation changes or commits in this audit.
 
 
 
@@ -12,6 +19,14 @@ Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
 
 
+
+
+## 2026-11-25, Antigravity (Gemini 4 Neon) — fix #269–271 (GTK 4 spin selection, GTK 3 tab close active & headerbar spin)
+
+- `gtk/Platinum/gtk-4.0/controls.css`: styled `spinbutton:not(.vertical) > text > selection` and `spinbutton.vertical > text > selection` (active and `:backdrop`) in Platinum Lavender `#CCCCFF` / `#DCDCEF` (#269; verified `583` `#CCCCFF` px, `0` stock blue).
+- `gtk/Platinum/gtk-3.0/gtk.css`: included `notebook > header > tabs > tab button:active` in the flat-icon reset block so pressed tab close buttons keep flat icon sizing with no `push-pressed.png` bevel (#270); excluded `:not(spinbutton)` from `headerbar :not(.linked):not(spinbutton) > button:not(.titlebutton)` so header-bar gap shadows don't clip spin-button down arrows (#271).
+- Tests: added pressed tab close button height/bevel checks to `dev/gtk3-notebook-arrows.py` and a header-bar `GtkSpinButton` check to `dev/gtk3-spinbutton.py`.
+- Results: `dev/check-gtk3-headerbar.sh` 19/19, `dev/check-gtk3.sh broadway` 47/47, `dev/check-gtk3-m3b1.sh broadway` 38/38, `dev/check-gtk3-m3b2.sh broadway` 63/63, `dev/check-gtk4.sh broadway` 160/160, `dev/check-adw.sh broadway` 78/78. Nothing committed. Claims released.
 
 ## 2026-11-25, Claude (Opus 5.5) — equal libadwaita window-box insets (#268)
 

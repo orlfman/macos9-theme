@@ -26,24 +26,30 @@ book.set_action_widget(plus, Gtk.PackType.END)
 plus.show()
 # Two notebooks, one with a close button in its tab (Audacious's playlist
 # tabs): the button must not make the tab row taller (#265).
-def tab_row_height(with_close):
+def tab_row_height(with_close, pressed=False):
     nb = Gtk.Notebook()
     tab = Gtk.Box(spacing=0)
     tab.pack_start(Gtk.Label(label="Music Library"), False, False, 0)
+    btn = None
     if with_close:
-        tab.pack_start(Gtk.Button.new_from_icon_name("window-close-symbolic", Gtk.IconSize.MENU), False, False, 0)
+        btn = Gtk.Button.new_from_icon_name("window-close-symbolic", Gtk.IconSize.MENU)
+        if pressed:
+            btn.set_state_flags(Gtk.StateFlags.ACTIVE, False)
+        tab.pack_start(btn, False, False, 0)
     tab.show_all()
     page = Gtk.Label(label="page")
     nb.append_page(page, tab)
-    return nb, page
+    return nb, page, btn
 
 
-plain_book, plain_page = tab_row_height(False)
-close_book, close_page = tab_row_height(True)
+plain_book, plain_page, _ = tab_row_height(False)
+close_book, close_page, _ = tab_row_height(True)
+pressed_book, pressed_page, pressed_btn = tab_row_height(True, pressed=True)
 column = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
 column.pack_start(book, False, False, 0)
 column.pack_start(plain_book, False, False, 0)
 column.pack_start(close_book, False, False, 0)
+column.pack_start(pressed_book, False, False, 0)
 window = Gtk.OffscreenWindow()
 window.add(column)
 window.set_size_request(300, 300)
@@ -91,13 +97,22 @@ def check():
         ok &= fits
         print(f"{'ok' if fits else 'FAIL'}    gtk3-notebook-action-button-above-pane bottom={bottom} pane_top={pane_top}")
         rows = []
-        for nb, page in ((plain_book, plain_page), (close_book, close_page)):
+        for nb, page in ((plain_book, plain_page), (close_book, close_page), (pressed_book, pressed_page)):
             _x, ny = nb.translate_coordinates(window, 0, 0)
             _x, py = page.translate_coordinates(window, 0, 0)
             rows.append(py - ny)
-        same = rows[0] == rows[1]
+        same = rows[0] == rows[1] == rows[2]
         ok &= same
-        print(f"{'ok' if same else 'FAIL'}    gtk3-notebook-close-button-keeps-tab-height plain={rows[0]} with_close={rows[1]}")
+        print(f"{'ok' if same else 'FAIL'}    gtk3-notebook-close-button-keeps-tab-height plain={rows[0]} with_close={rows[1]} pressed={rows[2]}")
+        # Pressed close button must not regain the push-button bevel (#270).
+        full = Image.open(out).convert("RGB")
+        bx, by = pressed_btn.translate_coordinates(window, 0, 0)
+        bw, bh = pressed_btn.get_allocated_width(), pressed_btn.get_allocated_height()
+        pressed_crop = full.crop((bx, by, bx + bw, by + bh))
+        push_px = sum(1 for px in pressed_crop.getdata() if px == (0x66, 0x66, 0x66))
+        no_push = push_px == 0
+        ok &= no_push
+        print(f"{'ok' if no_push else 'FAIL'}    gtk3-notebook-close-button-pressed-no-bevel push_px={push_px}")
         code[0] = 0 if ok else 1
     finally:
         Gtk.main_quit()
