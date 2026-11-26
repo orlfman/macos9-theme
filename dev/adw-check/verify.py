@@ -6,6 +6,8 @@ import pathlib
 import re
 import sys
 
+PROJECT = pathlib.Path(__file__).resolve().parents[2]
+
 root, mode = pathlib.Path(sys.argv[1]), sys.argv[2]
 fails = 0
 
@@ -96,14 +98,68 @@ def nodes(name):
         return []
     return re.findall(r"^TREE( *)(\S+) (\d+)x(\d+) @(-?\d+)$", path.read_text(), re.M)
 
-closes = [int(x) for _, n, w, h, x in nodes("layer-gallery") if n.startswith("button.image-button.close")]
-check(bool(closes) and closes[0] == 0,
-      f"main window close box at the frame's column 4 (x={closes[:1]})")
+# Equal insets (user decision #268): as many columns between the outer black
+# edge and the close box on the left as between the last box and the edge
+# on the right, measured on the boxes' top row.
+def box_insets(png):
+    from PIL import Image
+    img = Image.open(root / f"{png}.png").convert("RGB")
+    for y in range(4, 40):
+        row = [img.getpixel((x, y))[0] for x in range(img.width)]
+        if row.count(0x22) > 12:
+            break
+    edge_l = next(i for i, v in enumerate(row) if v < 0x20)
+    edge_r = len(row) - 1 - next(i for i, v in enumerate(reversed(row)) if v < 0x20)
+    while row[edge_r - 1] < 0x20:  # black edge plus shadow column
+        edge_r -= 1
+    first = next(i for i in range(edge_l + 1, len(row)) if row[i] == 0x88)
+    last = max(i for i in range(len(row)) if row[i] == 0xFF and row[i - 1] == 0x22 and i < edge_r)
+    return first - edge_l - 1, edge_r - last - 1
+
+
+left, right = box_insets("layer-gallery")
+check(left == right, f"window boxes equally far from both edges (left {left}, right {right})")
 prefs = nodes("layer-prefs")
 sheet = next((int(x) for _, n, *_, x in prefs if n.startswith("sheet")), None)
 dclose = [int(x) for _, n, *_, x in prefs if n.startswith("button.image-button.close")]
-check(sheet is not None and len(dclose) >= 2 and dclose[-1] - sheet == 4,
-      f"dialog close box 4 px inside its frame (sheet {sheet}, box {dclose[-1:]})")
+# The frame's 4 px border plus the same 8 px as in windows (#268).
+check(sheet is not None and len(dclose) >= 2 and dclose[-1] - sheet == 12,
+      f"dialog close box as far in as in windows (sheet {sheet}, box {dclose[-1:]})")
+
+# Spin buttons (#267): the field, then the Platinum scroll arrow buttons
+# (down for -, up for +), drawn pixel for pixel; libadwaita's stock look
+# has none of them.
+def find_art(name, png):
+    from PIL import Image
+    hay = Image.open(root / png).convert("RGB")
+    art = Image.open(PROJECT / f"gtk/Platinum/gtk-3.0/assets/{name}.png").convert("RGBA")
+    hw, hh = hay.size
+    aw, ah = art.size
+    hp, ap = hay.load(), art.load()
+    solid = [(i, j, ap[i, j][:3]) for j in range(ah) for i in range(aw) if ap[i, j][3] == 255]
+    for y in range(hh - ah + 1):
+        for x in range(hw - aw + 1):
+            if all(hp[x + i, y + j] == rgb for i, j, rgb in solid):
+                return x, y
+    return None
+
+
+if (root / "layer-gallery.png").is_file():
+    for name in ("vscroll-down", "arrow-box-up", "arrow-box-down-disabled", "arrow-box-up-disabled"):
+        at = find_art(name, "layer-gallery.png")
+        stock = find_art(name, "stock-gallery.png")
+        check(at is not None and stock is None, f"spin button {name} arrow drawn in Platinum (at {at})")
+    # Face columns between the field's outer edge and the down arrow, measured
+    # in pixels across the arrow's middle row.
+    at = find_art("vscroll-down", "layer-gallery.png")
+    gap = None
+    if at:
+        from PIL import Image
+        img = Image.open(root / "layer-gallery.png").convert("RGB")
+        gap = 0
+        while img.getpixel((at[0] - 1 - gap, at[1] + 8)) == (0xDD, 0xDD, 0xDD):
+            gap += 1
+    check(gap == 2, f"spin button arrows start 2 px right of the field (gap {gap})")
 
 # Both parentless alert kinds are the movable alert (#257): a white body
 # and, in the 22-row strip, alternating light and dark pinstripe rows.

@@ -1,7 +1,7 @@
 #!/bin/bash
 # GTK 3 header bar stripe gaps with Lutris-like app widgets (#261) and the
-# popover menu (#262), and notebook tab scroll arrows (#263), in a
-# disposable HOME and Broadway display.
+# popover menu (#262), notebook tab scroll arrows (#263) and spin buttons
+# (#267), in a disposable HOME and Broadway display.
 # SPDX-License-Identifier: BSD-2-Clause
 set -euo pipefail
 dev=$(dirname "$(realpath "$0")")
@@ -22,5 +22,7 @@ rc=0
 timeout 60 python3 -I "$dev/gtk3-headerbar-gaps.py" "$root/headerbar.png" 2> "$root/stderr.log" | tee "$root/verdict.log" || rc=1
 timeout 60 python3 -I "$dev/gtk3-popover-menu.py" "$root/popover.png" 2>> "$root/stderr.log" | tee -a "$root/verdict.log" || rc=1
 timeout 60 python3 -I "$dev/gtk3-notebook-arrows.py" "$root/notebook.png" "$root/home/.local/share/themes/Platinum" \
+    2>> "$root/stderr.log" | tee -a "$root/verdict.log" || rc=1
+timeout 60 python3 -I "$dev/gtk3-spinbutton.py" "$root/spin.png" "$root/home/.local/share/themes/Platinum" \
     2>> "$root/stderr.log" | tee -a "$root/verdict.log" || rc=1
 exit "$rc"

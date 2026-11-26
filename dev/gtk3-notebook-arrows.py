@@ -69,12 +69,12 @@ def check():
         window.get_pixbuf().savev(out, "png", [], [])
         shot = Image.open(out).convert("RGB").crop((0, 0, 300, 40))
         ok = True
-        for name in ("hscroll-left", "hscroll-right"):
+        for name in ("arrow-box-left", "hscroll-right"):
             art = Image.open(theme / f"gtk-3.0/assets/{name}.png").convert("RGBA")
             at = find(shot, art)
             ok &= at is not None
             print(f"{'ok' if at else 'FAIL'}    gtk3-notebook-arrow-{name} at={at}")
-            if name == "hscroll-left" and at:
+            if name == "arrow-box-left" and at:
                 # the edge the scroll bar's trough normally supplies
                 edge = [shot.getpixel((at[0] + 15, at[1] + j)) for j in range(16)]
                 closed = all(px == (0, 0, 0) for px in edge)

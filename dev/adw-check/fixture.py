@@ -112,6 +112,23 @@ def controls():
 
     selected = Gtk.Entry(text="Selected text")
     box.append(selected)
+
+    # Plain GTK 4 spin buttons: normal, disabled, vertical (#267).
+    spins = Gtk.Box(spacing=12)
+    spin = Gtk.SpinButton.new_with_range(-1, 1, 0.01)
+    spin.set_digits(2)
+    spin.set_value(-0.24)
+    spin.set_name("spin")
+    off = Gtk.SpinButton.new_with_range(0, 2, 0.01)
+    off.set_digits(2)
+    off.set_value(1)
+    off.set_sensitive(False)
+    tall = Gtk.SpinButton.new_with_range(0, 10, 1)
+    tall.set_orientation(Gtk.Orientation.VERTICAL)
+    for s in (spin, off, tall):
+        s.set_valign(Gtk.Align.START)
+        spins.append(s)
+    box.append(spins)
     box.append(row_group())
     return box, suggested, selected
 
@@ -137,8 +154,10 @@ class EmptySnapshot(Exception):
 
 
 def render(win):
-    w, h = win.get_width(), win.get_height()
     paintable = Gtk.WidgetPaintable(widget=win)
+    # The paintable's own size (the window's frame margin included): drawn
+    # at any other size GTK scales it, which blurs every pixel (#267).
+    w, h = paintable.get_intrinsic_width(), paintable.get_intrinsic_height()
     snap = Gtk.Snapshot()
     paintable.snapshot(snap, w, h)
     node = snap.to_node()

@@ -16,6 +16,9 @@ fixture() { # run-name mode
 if [[ $mode == broadway ]]; then
     export GDK_BACKEND=broadway BROADWAY_DISPLAY=:5 GSK_RENDERER=cairo
     gtk4-broadwayd -u "$XDG_RUNTIME_DIR/http5" :5 > broadway.log 2>&1 &
+    broadway=$!
+    # dbus-run-session doesn't stop it; without this every run leaked one.
+    trap 'kill "$broadway" 2> /dev/null || true' EXIT
     for _ in {1..40}; do
         [[ -S $XDG_RUNTIME_DIR/broadway6.socket ]] && break
         sleep 0.05
