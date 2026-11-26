@@ -453,7 +453,9 @@ void Decoration::paintTitle(QPainter *painter)
     // text; still too wide: drop it and keep the icon (as Mac OS 9 does).
     const QString caption = window()->caption();
     QFont font = settings()->font();
-    const int room = stripeR - stripeL + 1 - 2 * StripeGap;
+    // Reserve equal space on both sides so a centered title clears each group.
+    const int titleInset = std::max(stripeL, W - 1 - stripeR) + StripeGap;
+    const int room = W - 2 * titleInset;
     QString text = caption;
     qreal textWidth = 0;
     if (!text.isEmpty()) {

@@ -1,7 +1,8 @@
 // Loads decoration.qml, pins isPinned windows and puts buttons into hover and
 // press states by sending the decoration real pointer events, then saves the
 // window to a PNG.
-// Usage: decoshot decoration.qml out.png
+// Usage: decoshot decoration.qml out.png [step1.png ...]
+// For multiple captures, the QML window updates its preview on captureStep changes.
 #include <KDecoration3/Decoration>
 #include <KDecoration3/DecorationButton>
 
@@ -25,14 +26,36 @@ static KDecoration3::DecorationButton *findButton(KDecoration3::Decoration *deco
     return nullptr;
 }
 
+static void capture(QQuickWindow *window, const QStringList &outputs, qsizetype step)
+{
+    if (!window->grabWindow().save(outputs.at(step))) {
+        qWarning() << "grab failed:" << outputs.at(step);
+        QCoreApplication::exit(3);
+        return;
+    }
+    if (step + 1 == outputs.size()) {
+        QCoreApplication::quit();
+        return;
+    }
+    if (!window->setProperty("captureStep", int(step + 1))) {
+        qWarning() << "the QML window needs a captureStep property";
+        QCoreApplication::exit(2);
+        return;
+    }
+    // Process the capability change's queued layout before grabbing again.
+    QMetaObject::invokeMethod(window, [window, outputs, step] {
+        capture(window, outputs, step + 1);
+    }, Qt::QueuedConnection);
+}
+
 int main(int argc, char **argv)
 {
     QApplication app(argc, argv);
     if (argc < 3) {
-        qWarning() << "usage: decoshot file.qml out.png";
+        qWarning() << "usage: decoshot file.qml out.png [step1.png ...]";
         return 1;
     }
-    const QString out = QString::fromLocal8Bit(argv[2]);
+    const QStringList outputs = app.arguments().mid(2);
     QQmlApplicationEngine engine;
     engine.load(QUrl::fromLocalFile(QString::fromLocal8Bit(argv[1])));
     if (engine.rootObjects().isEmpty()) {
@@ -89,10 +112,7 @@ int main(int argc, char **argv)
                 qInfo() << item->objectName() << "pinned:" << pin->isChecked();
             }
         }
-        if (!window->grabWindow().save(out)) {
-            qWarning() << "grab failed";
-        }
-        QCoreApplication::quit();
+        capture(window, outputs, 0);
     });
     return app.exec();
 }

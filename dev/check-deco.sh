@@ -2,8 +2,8 @@
 # Offscreen software check for the Platinum KDecoration3 plugin: verifies
 # reference frame/pinstripe crops against reference/window-document-active.png
 # and reference/dialog-get-info.png, plus disabled button hiding, pinstripe
-# extension across 3 -> 2 -> 1 -> 0 buttons, and live capability restoration
-# (#281, #282).
+# extension across 3 -> 2 -> 1 -> 0 buttons, caption clearance, and live
+# capability restoration (#281, #282, #284-286).
 #
 # usage: check-deco.sh        (exit 1 if anything fails)
 set -euo pipefail
@@ -11,6 +11,7 @@ dev=$(dirname "$(readlink -f "$0")")
 project=$(dirname "$dev")
 cd "$project"
 
+mkdir -p "$dev/build"
 out=$(mktemp -d "$dev/build/deco-check.XXXXXX")
 trap 'rm -rf -- "$out"' EXIT
 
@@ -32,6 +33,7 @@ Window {
     height: 600
     visible: true
     color: "#63639c"
+    property int captureStep: 0
 
     KDecoration.Bridge {
         id: bridgeItem
@@ -51,7 +53,6 @@ Window {
         property bool closeable: true
         property bool maximizable: true
         property bool minimizable: true
-        property bool restoreDynamic: false
         property int hoverButton: -1
         property int pressButton: -1
 
@@ -61,6 +62,8 @@ Window {
         settings: settingsItem
         drawBackground: true
 
+        onMaximizableChanged: if (client) client.maximizable = maximizable
+
         Component.onCompleted: {
             client.caption = caption;
             client.iconName = "drive-harddisk";
@@ -69,14 +72,6 @@ Window {
             client.closeable = closeable;
             client.maximizable = maximizable;
             client.minimizable = minimizable;
-            if (restoreDynamic) {
-                Qt.callLater(function () {
-                    client.maximizable = false;
-                    Qt.callLater(function () {
-                        client.maximizable = true;
-                    });
-                });
-            }
         }
     }
 
@@ -88,14 +83,21 @@ Window {
     Preview { objectName: "one-box"; x: 10; y: 250; maximizable: false; minimizable: false }
     // 0 boxes (all disabled): stripes run 4..348
     Preview { objectName: "zero-boxes"; x: 420; y: 250; closeable: false; maximizable: false; minimizable: false }
-    // Dynamic toggle (true -> false -> true): restores three-boxes pixel for pixel
-    Preview { objectName: "restored"; x: 10; y: 490; height: 80; restoreDynamic: true }
+    Preview { x: 10; y: 490; height: 80; maximizable: root.captureStep !== 1 }
+    Preview {
+        x: 420
+        y: 490
+        width: 231
+        height: 80
+        maximizable: false
+        caption: "MMMMMMMMMMMMM"
+    }
 }
 QML
 
 shot=$out/deco.png
 "$dev/run.sh" platinum breeze env QT_QUICK_BACKEND=software \
-    "$out/decoshot" "$out/preview.qml" "$shot" > "$out/deco.log" 2>&1
+    "$out/decoshot" "$out/preview.qml" "$shot" "$out/disabled.png" "$out/restored.png"
 
 python3 -I - "$shot" "$out" << 'PY'
 import subprocess, sys
@@ -140,7 +142,8 @@ x3, y3 = find_window(10, 10)
 x2, y2 = find_window(420, 10)
 x1, y1 = find_window(10, 250)
 x0, y0 = find_window(420, 250)
-xr, yr = find_window(10, 490)
+xd, yd = find_window(10, 490)
+xn, yn = find_window(420, 490, 230)
 
 # 1-2. Reference pixel comparisons against Mac OS 9.2.2 captures.
 diff_ref("side frame matches window-document-active", "window-document-active.png@426,432,6,20", f"{x3},{y3 + 22},6,20")
@@ -165,10 +168,25 @@ left0 = min(dx for dx, px in enumerate(row0) if px == (255, 255, 255) and dx >= 
 right0 = max(dx for dx, px in enumerate(row0) if px == (255, 255, 255) and dx <= 349)
 report("all boxes disabled extends pinstripes to both 4 px outer insets", left0 == 4 and right0 == 348, f"left={left0} right={right0}")
 
-# 7. Dynamic toggle restores exact active title bar pixel for pixel.
-tb3 = im.crop((x3, y3, x3 + 353, y3 + 22))
-tbr = im.crop((xr, yr, xr + 353, yr + 22))
-report("toggling maximizable off and back on restores title bar pixel for pixel", tb3.tobytes() == tbr.tobytes())
+# 7-9. Compare three captures of the same preview with the static controls.
+def title_bar(image, x, y):
+    return image.crop((x, y, x + 353, y + 22)).tobytes()
+
+initial = title_bar(im, xd, yd)
+disabled = title_bar(Image.open(f"{out}/disabled.png").convert("RGB"), xd, yd)
+restored = title_bar(Image.open(f"{out}/restored.png").convert("RGB"), xd, yd)
+report("before toggle: title bar matches the three-box preview", initial == title_bar(im, x3, y3))
+report("after disabling maximize: title bar matches the two-box preview",
+       disabled != initial and disabled == title_bar(im, x2, y2))
+report("after re-enabling maximize: title bar matches the initial capture", restored == initial)
+
+# 10. The 230 px frame's first box starts at 197. The title needs 5 px
+# before its pinstripe limit (191) as well as the gap before the box.
+caption_ink = [x for x in range(130, 197) for y in range(4, 16)
+               if im.getpixel((xn + x, yn + y)) == (0, 0, 0)]
+last_ink = max(caption_ink, default=-1)
+report("centered caption stays clear of asymmetric title-bar boxes",
+       130 <= last_ink <= 186, f"rightmost caption ink={last_ink}, box starts at 197")
 
 print(f"\n{total - failed} of {total} decoration checks passed")
 sys.exit(1 if failed else 0)
