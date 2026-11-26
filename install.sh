@@ -527,8 +527,30 @@ if ((apply)); then
     esac
 fi
 
+# libadwaita ignores named GTK themes; the one desktop-wide stylesheet it
+# loads is the user's ~/.config/gtk-4.0/gtk.css. While Platinum is the
+# global theme, that file imports the Platinum layer (PLAN.md decision 15):
+# one marked line at the top, the rest of the file left alone. uninstall.sh
+# removes it; the copy of your config files from before the switch has
+# the file as it was.
+if ((apply)) || [[ $active == "$lnf_id" ]]; then
+    adw_css=$config_home/gtk-4.0/gtk.css
+    adw_args=(add "$adw_css" "$gtk_theme_dir/gtk-4.0/libadwaita.css")
+    ((dry_run)) && adw_args+=(--dry-run)
+    if adw_out=$(python3 -I "$here/scripts/gtk_theme.py" adw-import "${adw_args[@]}" 2>&1); then
+        if [[ $adw_out == added ]]; then
+            plan "add the Platinum libadwaita import to the top of $adw_css"
+            say "libadwaita apps use Platinum: added one import line to the top of $adw_css (uninstall.sh removes it)"
+        fi
+    else
+        warn "couldn't add the libadwaita import ($adw_out); libadwaita apps keep their own look"
+    fi
+fi
+
 if ((dry_run)); then
     note "Dry run done."
+elif ((!apply)) && [[ $active == "$lnf_id" ]]; then
+    say "Done. Platinum is already your global theme: restart running apps to load the update."
 elif ((!apply)); then
     say "Done. Log out and back in once, then run install.sh --apply to switch."
 else

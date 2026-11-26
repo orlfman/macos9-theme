@@ -1,11 +1,14 @@
-"""Validate the GTK 3 and GTK 4 packages, make GTK 4 stand alone, and read
-widget-theme selections for uninstall."""
+"""Validate the GTK 3 and GTK 4 packages, make GTK 4 stand alone, read
+widget-theme selections for uninstall, and add or remove the libadwaita
+layer's import in the user stylesheet."""
 # SPDX-License-Identifier: BSD-2-Clause
 import os
 from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
+import urllib.parse
 
 
 def validate(root: Path) -> None:
@@ -176,6 +179,66 @@ def selected(config: Path, home: Path, backup: Path | None) -> str:
     return "GSettings" if value.strip() == "'Platinum'" else ""
 
 
+ADW_MARK = "/* macos9-theme: Platinum for libadwaita apps (install.sh adds this, uninstall.sh removes it) */"
+ADW_IMPORT = re.compile(r'@import url\("file://[^"]*/gtk-4\.0/libadwaita\.css"\);')
+
+
+def adw_lines(text: str) -> tuple[list[str], int]:
+    """The stylesheet's lines without our marked import, and how many were ours."""
+    lines, out, ours, i = text.splitlines(), [], 0, 0
+    while i < len(lines):
+        if lines[i] == ADW_MARK and i + 1 < len(lines) and ADW_IMPORT.fullmatch(lines[i + 1]):
+            ours += 1
+            i += 2
+            continue
+        out.append(lines[i])
+        i += 1
+    return out, ours
+
+
+def adw_write(css: Path, lines: list[str], mode: int) -> None:
+    # A fresh temporary file (O_CREAT | O_EXCL, never an existing name or
+    # link) in the same folder, then an atomic rename over the stylesheet (#254).
+    fd, name = tempfile.mkstemp(prefix=f".{css.name}.", suffix=".macos9-theme.tmp", dir=css.parent)
+    try:
+        with os.fdopen(fd, "w") as out:
+            out.write("".join(line + "\n" for line in lines))
+            os.fchmod(out.fileno(), mode)
+        os.replace(name, css)
+    except BaseException:
+        Path(name).unlink(missing_ok=True)
+        raise
+
+
+def adw_import(action: str, css: Path, layer: Path | None = None, dry_run: bool = False) -> str:
+    """add: put our marked import first in ~/.config/gtk-4.0/gtk.css (once);
+    remove: take out only our marked import. Never writes through a link."""
+    if css.is_symlink() or (css.exists() and not css.is_file()):
+        raise ValueError(f"{css} is not a regular file; not changing it")
+    text = css.read_text() if css.exists() else ""
+    rest, ours = adw_lines(text)
+    if action == "add":
+        assert layer is not None
+        # UTF-8 percent-encoding, as GTK decodes file:// URLs (#255).
+        url = "file://" + urllib.parse.quote(str(layer), safe="/._-~")
+        wanted = [ADW_MARK, f'@import url("{url}");']
+        if text.splitlines()[:2] == wanted and ours == 1:
+            return "unchanged"
+        if not dry_run:
+            css.parent.mkdir(parents=True, exist_ok=True)
+            mode = css.stat().st_mode & 0o7777 if css.exists() else 0o644
+            adw_write(css, wanted + rest, mode)
+        return "added"
+    if not ours:
+        return "absent"
+    if not dry_run:
+        if any(line.strip() for line in rest):
+            adw_write(css, rest, css.stat().st_mode & 0o7777)
+        else:
+            css.unlink()  # only our lines were in it (#258)
+    return "removed"
+
+
 if __name__ == "__main__":
     try:
         if sys.argv[1] == "validate":
@@ -184,6 +247,11 @@ if __name__ == "__main__":
             self_contain(Path(sys.argv[2]))
         elif sys.argv[1] == "later-choices":
             print(later_choices(Path(sys.argv[2]), Path(sys.argv[3]), Path(sys.argv[4])), end="")
+        elif sys.argv[1] == "adw-import":
+            # adw-import add|remove <gtk.css> [<libadwaita.css>] [--dry-run]
+            args = [a for a in sys.argv[2:] if a != "--dry-run"]
+            print(adw_import(args[0], Path(args[1]), Path(args[2]) if len(args) > 2 else None,
+                             "--dry-run" in sys.argv))
         elif sys.argv[1] == "carry":
             carry(Path(sys.argv[2]), Path(sys.argv[3]), sys.stdin.read())
         else:

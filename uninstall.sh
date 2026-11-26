@@ -599,6 +599,28 @@ if ((${#gtk_kept[@]})); then
     warn "Keeping the Platinum GTK theme ($gtk_selection). Choose another GTK style or resolve the unreadable settings, then rerun uninstall.sh."
 fi
 
+# The libadwaita import (install.sh) goes with the GTK 4 theme: take out our
+# marked line unless the GTK 4 theme stays installed. A restored config
+# copy normally has no such line already; this also covers a file the
+# restore left alone.
+adw_keep=0
+for gtk_target in "${gtk_kept[@]}"; do
+    [[ $gtk_target == "$gtk_theme_dir/gtk-4.0" || $gtk_target == "$gtk_theme_dir" ]] && adw_keep=1
+done
+adw_css=$config_home/gtk-4.0/gtk.css
+if ((!adw_keep)) && [[ -e $adw_css || -L $adw_css ]]; then
+    adw_args=(remove "$adw_css")
+    ((dry_run)) && adw_args+=(--dry-run)
+    if adw_out=$(python3 -I "$here/scripts/gtk_theme.py" adw-import "${adw_args[@]}" 2>&1); then
+        if [[ $adw_out == removed ]]; then
+            plan "remove the Platinum libadwaita import from $adw_css"
+            say "Removed the Platinum libadwaita import from $adw_css"
+        fi
+    else
+        warn "couldn't remove the libadwaita import from $adw_css ($adw_out); delete its macos9-theme lines by hand"
+    fi
+fi
+
 # A terminal profile can select the palette independently of the global theme.
 # Check the configuration which survives uninstall, including inactive profiles.
 terminal_palette_selection() {
