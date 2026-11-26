@@ -2,6 +2,24 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-26, Claude Code (Opus 5.5) — audit light-theme work, fix #291
+
+Audited Codex's light-theme changes (AUDIT.md, one P3 finding). Fixed #291: `dev/test-install.sh` now runs the palette light check on every run and checks that the installed global theme bundles `colors/Platinum.colors` byte for byte. Fresh runs on the working tree: icons 81/81 and `dev/test-install.sh` 855/855. Deleted the stale, git-ignored `dev/build/icons/WhiteSur-lavender-dark` (32 MB) at the user's request. Not rerun: the nested `--appearance` live test and the GTK, libadwaita, Plasma and Trash suites. Everything is uncommitted. Desktop reinstall and visual review are pending.
+
+## 2026-11-26, Codex (GPT-6) — register Platinum as a light global theme
+
+Bundled the canonical Platinum palette for Plasma's light-theme picker and
+used `--keep-auto` when applying. Switched the default icons to
+`WhiteSur-lavender-light` and kept the base dependency visible. Upgrades move
+inherited settings to the light icons and retire unchanged, unselected
+managed dark trees. The installer refreshes Wayland GTK's icon choice and
+undo restores the captured preference. Firefox System followed the real
+portal for light, dark and light with the installed userChrome. The nested
+appearance suite passed 59/59, icons passed 81/81, and 853 installer
+checks passed across the full run and corrected fixture replays. GTK,
+libadwaita, Plasma and Trash results are in AUDIT.md. Working-tree changes
+await desktop reinstall and visual review.
+
 ## 2026-11-26, Codex (GPT-6) — restore WhiteSur's small Trash icons
 
 Removed the six 16, 22 and 24 px custom aliases in `icons/custom/all/places/` so the built themes use WhiteSur's small empty and full Trash artwork. The user's scalable pair still supplies the default Platinum dock. Icon suite 80/80. Verified KDE and GTK 3 lookups for both states in all three variants offscreen. The working-tree change awaits a desktop reinstall and visual review.

@@ -3,6 +3,73 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+**#291 fixed and verified, 2026-11-26 (Claude Code, Opus 5.5, uncommitted).** `dev/test-install.sh` runs `dev/light-theme.py` on `colors/Platinum.colors` before the first scenario and checks after install that the global theme bundles that palette byte for byte. Full run 855/855. The guard's command fails on palettes with Window 191 or View 150 (rc=1, as above), which `check` counts as a failure.
+
+## 2026-11-26, Claude Code (Opus 5.5) — audit Codex's light-theme work
+
+Audited the uncommitted working tree on `7bb5a82` against `docs/LIGHT-THEME-PLAN.md`: builder, generator, `scripts/icon_prefs.py`, `install.sh`, `uninstall.sh`, `scripts/common.sh`, global theme defaults, `dev/light-theme.{py,cpp}`, the test changes and the docs. One finding.
+
+- Icons: `whitesur-lavender.py` removes upstream's dark variant from `COLOR_VARIANTS` and its `-dark` block, and fails if that anchor moves. A fresh build produced exactly `WhiteSur-lavender` and `-light`. The new #111 baseline is independent: 20,326 (old trio) − 7,333 dark SVGs = 12,993. Journals from the old three-tree publisher still recover their dark tree.
+- Install and upgrade: retiring dark uses the manifest and checksums. A selected or edited dark is kept. The inherited-base migration skips an explicit `kdeglobals [Icons]` choice. The changed test expectations are justified (a manual dark copy is no longer displaced, because none is installed; the seed `kdeglobals` now carries automatic-switching keys). The upgrade fixtures build the real `7bb5a82` installer. Live desktop (read-only): `[Icons]` comes from `kdedefaults` only, GTK 3/4 and GSettings say `WhiteSur-lavender`, and dark is in the manifest. So the reinstall takes the tested migration path: KDE and GTK move to `-light` and the unselected dark is retired.
+- Light signal: `dev/light-theme.py` uses Qt's `qGray` formula. Platinum gives 221/255. Mutants with Window 191 and View 150 each fail it. FINDINGS cites the 6.8.3 sources for the classifier, the portal and kde-gtk-config.
+- **#291 · P3 · fixed and verified (Claude Code, working tree) · Palette guard only runs in the optional live test.** `dev/test-install-live.sh:198–203` runs `dev/light-theme.py` only with `M9_TEST_APPEARANCE` (`--appearance`), which needs nested Plasma, Firefox and KDE headers. Plan A1 asked for a check on every run. A color edit below gray 192 passes `dev/test-install.sh`. Fix: run `python3 -I dev/light-theme.py colors/Platinum.colors` in `dev/test-install.sh`.
+- Note (documented, not a finding): the standalone builder leaves an older `WhiteSur-lavender-dark` in its output directory (`icons/README.md`). The installer only places the two current IDs, so it never reaches the desktop. On the user's request the stale 32 MB copy in `dev/build/icons` (a standalone build from 2026-11-22, ignored by git, no links into it, unused by `install.sh`, which builds in its own temporary directory) was deleted.
+
+Checks run fresh in one pass on the current tree: icons 81/81 (#111 12,993 ± 4) and `dev/test-install.sh` 853/853 (19 min 55 s). Not rerun: the nested `--appearance` live test, GTK/libadwaita, Plasma and Trash suites (Codex's results above). Not seen on the live desktop.
+
+## 2026-11-26, Codex (GPT-6) — audit and execute the light-theme plan
+
+Audited Claude's draft and the working tree based on `7bb5a82` against
+Plasma, kde-gtk-config and xdg-desktop-portal-kde 6.8.3.
+
+- **#288 · P2 · fixed and verified.** Plasma classifies Global Themes from
+  their palette. The draft conflated package classification with the
+  user's automatic switching slots. The installer bundles the canonical
+  color scheme in the package, and Plasma's own classifier reports Light.
+  `--keep-auto` preserves the mode, and both slots retain their existing
+  values in a disposable install.
+- **#289 · P2 · fixed and verified.** The desktop installer strips WhiteSur's
+  build stamp, so checking for it would leave older managed dark packages
+  installed. Retirement uses the install manifest and recorded checksums.
+  The legacy fixture removes unselected owned dark, keeps the selected or
+  edited tree, preserves manually installed copies, and migrates inherited
+  base selections. Standalone publish recovery still restores a prior dark
+  tree from a three-variant journal. An interrupted removal with the tree
+  already absent clears the obsolete ownership record on retry.
+- **#290 · P2 · fixed and verified.** First apply selected light icons in
+  KDE while Wayland GTK still reported Breeze. The installer now notifies
+  kde-gtk-config when it changes the inherited icon default. Nested
+  uninstall restores the previous Wayland GTK icon setting and the exact
+  GTK files. A separate nested Wayland probe passed plain adoption, undo,
+  legacy migration, and retention when GSettings alone still selected dark.
+
+The appearance test passed 59/59 in nested Plasma. Platinum's Window and
+View grays are 221 and 255. The guard rejected a Window gray of 191.
+The frontend Settings portal reported prefer-light, GSettings reported
+`prefer-light`, and the GTK 3/4 settings each reported `prefer-dark=false`.
+Firefox 161.0 with the installed Platinum userChrome rendered the System
+appearance test page light, dark and light as the palette changed.
+
+WhiteSur passed 81/81. The two trees contain 12,993 physical SVGs. The tested
+16 px and 24 px status icon uses `#363636` in light and `#F2F2F2` in base.
+KDE passed 48 light-variant Trash lookup and render checks at 1×, 1.5× and 2×.
+Plasma 19/19, Trash 11/11, GTK discovery 41/41, GTK 3 Broadway 47/47, 38/38
+and 63/63, GTK 4 160/160 Broadway and 234/234 Wayland, and libadwaita
+78/78 Broadway and 118/118 Wayland. GTK 3 and GTK 4 also passed their
+47/47 and 160/160 Broadway suites with the app-level dark flag set and
+confirmed in the running fixtures. Logs are in `dev/build/light-theme-audit/`
+and `dev/build/test-home-live/`.
+
+The disposable installer covered 853 checks across the full run and
+targeted replays. The first full run passed 850. Its two seed assertions
+passed with the corrected automatic-switching fixture, and the missing
+backup case passed with the corrected expectation that selected light
+and its base dependency are both retained. The current working tree
+includes the corrected fixture assertions.
+
+The desktop installation and visual review are pending. Tests ran in
+disposable homes and sessions.
+
 ## 2026-11-26, Claude Code (Opus 5.5) — audit restored small WhiteSur Trash icons
 
 Audited the working tree on `3e0dae6`: Codex removed the six 16/22/24 px aliases from `icons/custom/all/places/` and updated the docs. No findings. Own build from pin `73d8040` into a scratch directory. In `WhiteSur-lavender` and `-light`, `places/{16,22,24}/user-trash{,-full}.svg` are byte-identical to upstream `src/places/`. In `-dark`, the only difference is `#363636` → `#dedede`, upstream's own dark rule (`install.sh:162`). `places/scalable` is still the user's pair in all three variants. GTK 3 lookup: 16, 22 and 24 px pick WhiteSur's fixed icons, and 26 px and up pick the user's scalable icon (`places/scalable` MinSize=32). The `platinum.trash` dock icon is the slot minus a quarter (`main.qml:136`), so it's 32 px in the default 43 px slot and uses the user's art. Only a panel shrunk until the icon is 25 px or less would switch to WhiteSur's 24 px icon. The icon suite passed 80/80, and #111 counted exactly 20,326 within its margin of ±6. Removed the three directories the alias removal left empty (`icons/custom/README.md` "How to remove"). Not seen on the live desktop.

@@ -775,3 +775,35 @@ portals, Platinum colors applied with `plasma-apply-colorscheme`; evidence
   of `~/.config/gtk-4.0/gtk.css` and appends `@import 'colors.css';` after the
   user's own rules. `dev/test-install.sh`'s `fake_gtk_sync` overwrites the
   file instead (a harsher stand-in); a later install puts the line back.
+
+
+## Platinum light appearance (2026-11-26, Codex GPT-6)
+
+Plasma 6.8.3's Global Theme model gets the variant from
+`KLookAndFeel::colorSchemeVariant`. It reads package `contents/colors`, then
+looks up the scheme named by `[kdeglobals][General] ColorScheme` if the
+package has no palette. A Window `BackgroundNormal` with `qGray >= 192`
+classifies as Light. Platinum's Window and View grays are 221 and 255.
+The installer copies the canonical `Platinum.colors` into the global theme
+package and also installs it in `color-schemes/`. Plasma reads the bundled
+palette without a custom metadata field.
+[KDE global theme classification](https://github.com/KDE/plasma-workspace/blob/v6.8.3/libklookandfeel/klookandfeel.cpp#L45-L82)
+
+Plasma filters its light and dark pickers by that variant. Daytime and
+nighttime assignments are the user's `[KDE] DefaultLightLookAndFeel` and
+`DefaultDarkLookAndFeel` settings. `AutomaticLookAndFeel` controls the mode.
+The installer uses KDE's `--keep-auto` when applying Platinum. Selection for
+the daytime slot is available in System Settings.
+[KDE light/dark picker](https://github.com/KDE/plasma-workspace/blob/v6.8.3/kcms/lookandfeel/ui/LookAndFeelSelector.qml#L72-L100)
+[KDE application tool](https://github.com/KDE/plasma-workspace/blob/v6.8.3/kcms/lookandfeel/tool/lnftool.cpp#L95-L110)
+
+The KDE portal uses the active Qt Window palette role and kde-gtk-config
+uses `kdeglobals [Colors:Window] BackgroundNormal`. Both use the same
+threshold as the package picker. The portal reports `2` for light, and
+kde-gtk-config writes GSettings `prefer-light` and GTK 3/4
+`gtk-application-prefer-dark-theme=false`. The light appearance test drives
+Firefox's Website appearance **System** with the real Settings portal and
+Platinum's installed userChrome. BreezeDark provides the dark control.
+[KDE portal](https://github.com/KDE/xdg-desktop-portal-kde/blob/v6.8.3/src/settings.cpp#L259-L272)
+[kde-gtk-config palette rule](https://github.com/KDE/kde-gtk-config/blob/v6.8.3/kded/configvalueprovider.cpp#L193-L201)
+[kde-gtk-config preference publishing](https://github.com/KDE/kde-gtk-config/blob/v6.8.3/kded/gtkconfig.cpp#L286-L301)
