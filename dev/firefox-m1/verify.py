@@ -166,7 +166,15 @@ def main() -> int:
 
     rep = json.loads(report_path.read_text(encoding="utf-8"))
     st = rep["startup"]
-    s.check("firefox-version-recorded", st["appVersion"].startswith("160."), f"version={st['appVersion']} nova={st['novaEnabled']}")
+    # Tested range comes from firefox/version.json, so a Firefox update only
+    # needs that file bumped once the suites pass on the new major.
+    ver_cfg = json.loads((pathlib.Path(__file__).resolve().parents[2] / "firefox" / "version.json").read_text(encoding="utf-8"))
+    app_major = int(st["appVersion"].split(".")[0])
+    s.check(
+        "firefox-version-recorded",
+        int(ver_cfg["tested_major_min"]) <= app_major <= int(ver_cfg["tested_major_max"]),
+        f"version={st['appVersion']} tested={ver_cfg['tested_major_min']}..{ver_cfg['tested_major_max']} nova={st['novaEnabled']}",
+    )
     s.check("ssd-titlebar-active", st["inTitlebar"] == 0 and "customtitlebar" not in rep["dom_inventory"]["rootAttrs"], f"inTitlebar={st['inTitlebar']} rootAttrs={list(rep['dom_inventory']['rootAttrs'].keys())}")
 
     nodes = rep["dom_inventory"]["nodes"]

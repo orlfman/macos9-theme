@@ -4,7 +4,7 @@ Optional Firefox `userChrome.css` theme inspired by Internet Explorer 5 for Mac
 on Mac OS 9.2.2, using the measured Platinum Lavender palette instead of IE's
 aqua/teal (see `PLAN.md` decision 14 and `docs/FIREFOX-PLAN.md`).
 
-**Production-ready on Linux.** Verified with Firefox 160.0.1 using Firefox’s System theme in light, normal-contrast mode, including Private Browsing windows.
+**Production-ready on Linux.** Verified with Firefox 161.0 (and 160.0.1) using Firefox’s System theme in light, normal-contrast mode, including Private Browsing windows.
 
 ## Scope and rules
 

@@ -1,7 +1,7 @@
 {
-  "tested_version": "160.0.1",
+  "tested_version": "161.0",
   "tested_major_min": 160,
-  "tested_major_max": 160,
+  "tested_major_max": 161,
   "application_ini_paths": [
     "/usr/lib/firefox/application.ini",
     "/usr/lib64/firefox/application.ini"
