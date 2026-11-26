@@ -362,3 +362,37 @@ breeze` runs the nested KWin and screenshots two Breeze-decorated windows.
 `tools/compare.py` reproduces hand measurements from earlier sessions (the
 selected bevel button column, the 12×12 check box) and reports 0 / 120
 differing pixels for identical / normal-vs-pressed check box crops.
+
+## libadwaita check (GTK Milestone 5)
+
+`dev/check-adw.sh [broadway|plasma]` runs a stock PyGObject
+`AdwApplication` (`dev/adw-check/fixture.py`, no app CSS) in a disposable
+HOME/XDG tree and private bus. `plasma` adds virtual KWin, both Settings
+portals and Platinum colors. Each run logs `AdwStyleManager` state and renders
+the window itself to a PNG (gallery, narrow 360 px, alert dialog, keyboard
+focus, disabled, high contrast). Then the runs repeat as `layer-*` with the theme's
+`gtk-4.0/libadwaita.css` imported from `~/.config/gtk-4.0/gtk.css`; in
+`plasma` mode FFmpeg Converter GTK, Mission Center, Faugus Launcher and a
+zenity alert are screenshotted stock and layered (`*-app-*.png`).
+`dev/adw-check/montage.py <run> [modes]` puts stock over layer.
+`dev/adw-check/verify.py` checks state, counts #CCCCFF/#DDDDDD pixels,
+that high contrast is identical to stock, and that the layer adds no GTK
+criticals. `GTK4_CHECK_ADW_LAYER=1 dev/check-gtk4.sh` runs the plain GTK 4
+suite with the layer imported too. To look at it yourself:
+`dev/live-adw.sh` (live-test.sh's nested KWin with the layer in its
+sandbox).
+Today: broadway 73/73, plasma 113/113 (also checks both parentless alert kinds, the header bar edges and close boxes 4 px in, with the user's `close:maximize,minimize` layout).
+
+## GTK 3 header bar gaps
+
+`dev/check-gtk3-headerbar.sh` (Broadway, disposable home) renders a GTK 3
+header bar laid out like Lutris's (stretched start box around one button,
+linked search box as title, nested end box with a linked pair and a menu
+button) and checks that the pinstripes show in exactly two open stretches,
+none within 6 px of a widget (#261), then a Lutris-style popover menu
+(`dev/gtk3-popover-menu.py`: face, black outline, highlight, separator,
+check mark; #262) and a narrow notebook whose tab scroll arrows must be the
+Platinum scroll arrows pixel for pixel, the left one closed on its right,
+with a tab-row "+" button that stays above the pane
+and a tab with a close button no taller than a plain one
+(`dev/gtk3-notebook-arrows.py`, #263–265). Today: all ok.

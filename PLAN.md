@@ -2,6 +2,24 @@
 
 ## Status
 
+**#265 fixed 2026-11-25 (uncommitted):** GTK 3 tab close buttons no longer make tabs taller (Audacious). GTK 3 suites pass. **Waits on the user:** `./install.sh` and a look.
+
+**#264 fixed and #263 follow-up 2026-11-25 (uncommitted):** GTK 3 tab-row action buttons (Audacious "+") stay above the pane as small bevel buttons; left tab arrow closed. GTK 3 suites pass. **Waits on the user:** `./install.sh` and a look.
+
+**#263 fixed 2026-11-25 (uncommitted):** GTK 3 tab scroll arrows (Audacious) drawn as Platinum scroll arrows. GTK 3 suites pass. **Waits on the user:** `./install.sh` and a look.
+
+**#262 fixed 2026-11-25 (uncommitted):** GTK 3 popover menus (Lutris) drawn as Platinum menus. GTK 3 suites pass. **Waits on the user:** `./install.sh` and a look.
+
+**#261 fixed 2026-11-25 (uncommitted):** GTK 3 header bar stripes only in the gaps between app widgets (Lutris). GTK 3 suites pass (m3b2 64/64 / 63/63). **Waits on the user:** `./install.sh` and a look.
+
+**#260 fixed 2026-11-25 (uncommitted):** libadwaita close boxes now 4 px in (main windows and framed floating dialogs). check-adw 113/113 / 73/73. **Waits on the user:** `./install.sh` and a look.
+
+**#254–259 fixed 2026-11-25 (uncommitted).** Gemini's libadwaita findings (confirmed parts) and the GTK 4 combo box (#259). test-install 833/833, check-gtk4 234/234 / 160/160, check-adw 100/100 / 64/64. **Waits on the user:** `./install.sh` and a look at pavucontrol, zenity and libadwaita header bars; decision on #254's linked-folder half.
+
+**libadwaita Platinum layer ready for live testing, 2026-11-25 (uncommitted).** Colors + shapes for unmodified libadwaita apps (decision 15): `gtk-4.0/libadwaita.css`, imported by one marked line at the top of `~/.config/gtk-4.0/gtk.css` that `install.sh` adds on `--apply` or on a reinstall while Platinum is the global theme, and `uninstall.sh` removes (unless the GTK 4 theme stays installed). Real kded keeps the line first and appends its own import. `test-install` 830/830, `test-install-live` 49/49, `check-adw` plasma 86/86 / broadway 54/54, plain GTK 4 222/222 / 149/149, style 135/135, plasma 19/19, quick 29/29. **Waits on the user:** live testing (plain `./install.sh` reinstall adds the line on the current desktop) and findings. Next: fixes from that, remaining Adw widgets, 150/200 %.
+
+**Firefox 161.0 verified, 2026-11-25 (uncommitted).** No theme changes needed; tested range raised to 160..161 (#253). Selector check 37/37 + 2/2, M1 46/46, M3 36/36, M4 43/43, M5 32/32, M6 85/85. Waits on the user: a quick look in their real Firefox.
+
 GTK uninstall fixes #249–250 passed independent re-audit. Preserving an unset GTK style key and resuming an interrupted config restore remain open (#251–252).
 
 The GTK 3-to-4 installer upgrade and undo passed the handoff audit. Codex's #249–252 fixed 2026-11-25 (uncommitted): undo keeps GTK theme choices made (or keys removed) after `--apply`, also across an interrupted undo, and an exported `GTK_THEME=Platinum` keeps the theme. `test-install` 810/811 + fixed scenario 9/9, `test-install-live` 47/47.
@@ -195,7 +213,7 @@ and the Qt size grip.
 Fonts are settled (SF). Publication questions include #25 and the theme name.
 
 **Before finishing any change, run the suites** (expected results are kept
-in `docs/AUDIT-REQUEST.md`; today 135/135, 19/19, 367/367, 37/37, 29/29):
+in `docs/AUDIT-REQUEST.md`; today 135/135, 19/19, 833/833, 49/49, 29/29):
 `dev/check-style.sh`, `dev/check-plasma.sh`, `dev/test-install.sh`,
 `dev/test-install-live.sh`, `dev/check-quick.sh` (DEVELOPMENT.md says what
 each covers). Audit rounds: Codex appends to AUDIT.md; verify each finding,
@@ -216,10 +234,10 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | plasma     | plasma/                   | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); main screen only (decision 10); resizable menu bar ends and divider (AUDIT 23), with complete divider dots and pixel comparisons across four panel heights (AUDIT 69–70); #98 table reader verified; global theme defaults updated to `Theme=WhiteSur-lavender` (#110); default dock ends with the own `platinum.trash` widget (color empty/full icons sized like the dock apps; 2026-11-24) |
 | icons      | icons/                    | nobody | #101–109, #111, #116, #118–121, #123, #132, #134, #135, #137, #143 committed on `main` against pinned `2026-09-10` (`73d8040da51a9ed74e47c7366e7e9ff437601a5c`); external pin (`icons/whitesur-pin.json`), tracked custom layer (`icons/custom/{all,light,dark}/` + cross-dir variant aliases), read-only update review (`icons/review-whitesur-update.sh`), mandatory-`flock` full-`fsck` bare-git cache (`icons/fetch-whitesur.sh` with safe user-owned symlinked `~/.cache`), recovery-safe journaled publish, archive + linked-worktree safeguards, and disposable suite (`dev/test_icons_phase1.py`, 80/80); full-copy + custom layer retained |
 | cursors    | cursors/                  | nobody | bundled black cursors (`macOS-cursors`) installed and selected by the global theme, verified in nested Plasma; discovery, selection and undo verified (#78–#84). No cursors of our own (decision 8, user). |
-| gtk        | gtk/                      | nobody | GTK 3 and GTK 4 install and removal verified (`dev/test-install.sh` 771/771, `dev/test-install-live.sh` 47/47). GTK 4 passes 222/222 Wayland and 149/149 Broadway (#240–248 fixed and verified). Next: user review on desktop, automatic GTK selection, then libadwaita. |
-| firefox    | firefox/                  | nobody | Production-ready on Linux. Normal and private collapsed tabs verified on Firefox 160.0.1 (M4 36/36, #211–212). |
+| gtk        | gtk/                      | nobody | GTK 3 and GTK 4 install and removal verified (`dev/test-install.sh` 771/771, `dev/test-install-live.sh` 47/47). GTK 4 passes 222/222 Wayland and 149/149 Broadway (#240–248 fixed and verified). Next: user review on desktop, automatic GTK selection. libadwaita colors + shapes layer (`gtk-4.0/libadwaita.css`, decision 15) installed with the theme (import line in `~/.config/gtk-4.0/gtk.css`, install/undo tested); user live testing pending. |
+| firefox    | firefox/                  | nobody | Production-ready on Linux. Verified on Firefox 161.0 (all suites, #253) and 160.0.1. |
 | extras     | extras/, wallpapers/      | nobody | Pastel Ribbon Landscape, Lavender Desktop Pattern (default), Platinum Waves, Platinum Glass, Platinum Nebula, Finder Waves and Retro Lavender Ripples packaged with the global theme (the last five added 2026-11-25, user-supplied). Platinum Lavender terminal palette verified in disposable Kwi and Konsole and included in install and undo (#173–176 fixed). Plasma Login Manager, splash and lock screen remain. |
-| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's four audits (#4-#14, #27-#31, #34-#42 fixed); Qt Quick style & pass-through (#59–65); wallpapers (#75–77); bundled cursors (#78–84); WhiteSur Lavender #110, #112–115, #117–118, #122, #124–131, #133, #135–136, #138–143 committed on `main` (`dev/test-install.sh` 702/702 with real `XDG_CONFIG_DIRS` cascade; `dev/test-install-live.sh` 40/40 in user's terminal); live plain reinstall completed and visually approved by user; desktop uninstall untested; terminal palette audit #173–176 fixed, install/undo verified at 727/727 |
+| packaging  | install.sh, uninstall.sh, packaging/ | nobody | install.sh / uninstall.sh rebuilt after Codex's four audits (#4-#14, #27-#31, #34-#42 fixed); Qt Quick style & pass-through (#59–65); wallpapers (#75–77); bundled cursors (#78–84); WhiteSur Lavender #110, #112–115, #117–118, #122, #124–131, #133, #135–136, #138–143 committed on `main` (`dev/test-install.sh` 702/702 with real `XDG_CONFIG_DIRS` cascade; `dev/test-install-live.sh` 40/40 in user's terminal); live plain reinstall completed and visually approved by user; desktop uninstall untested; terminal palette audit #173–176 fixed, install/undo verified at 727/727; libadwaita import line add/remove (decision 15, `gtk_theme.py adw-import`, 2026-11-25) |
 
 ## Goal
 
@@ -324,6 +342,13 @@ Open decisions need the user. Record the answer here with the date.
     Platinum colors and bevels still come from docs/REFERENCE.md; IE5 pixels
     are not a comparison target, and further IE5 captures are optional.
     Plan: docs/FIREFOX-PLAN.md.
+15. **libadwaita.** **Decided 2026-11-25 (user):** Platinum colors and
+    shapes for unmodified libadwaita apps, through the one desktop-wide hook
+    libadwaita loads: the user stylesheet `~/.config/gtk-4.0/gtk.css`
+    imports `gtk-4.0/libadwaita.css` (the plain GTK 4 rules plus
+    `adw-colors.css` and `adw-widgets.css`). Light, normal-contrast only.
+    Consequence: while the import is there, plain GTK 4 apps also look
+    Platinum whatever GTK theme is selected (docs/FINDINGS.md).
 
 ## Components
 

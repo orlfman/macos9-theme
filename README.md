@@ -51,7 +51,14 @@ exported `GTK_THEME=Platinum` counts as selecting it.
 
 GTK 4 apps that draw their own title bar (a header bar) get the Platinum
 window frame and title bar; other GTK 4 windows use the window decoration.
-libadwaita apps (most GNOME apps) use their own styling and are not themed.
+libadwaita apps (most GNOME apps) ignore GTK themes. While Platinum is the
+global theme (`./install.sh --apply`, or a reinstall after you switched in
+System Settings), the installer adds one marked `@import` line to the top of
+`~/.config/gtk-4.0/gtk.css` so they get Platinum colors and controls too,
+in light mode at normal contrast; dark mode and high contrast keep
+libadwaita's own look. The rest of that file is left alone, and
+`./uninstall.sh` takes the line out. While the line is there, plain GTK 4
+apps also look Platinum whichever GTK theme is selected.
 GTK 4 scroll bars have no arrow buttons, and alert buttons are spread evenly
 across the bottom rather than grouped on the right.
 
@@ -169,7 +176,7 @@ Plasma, choose another cursor theme and rerun the uninstaller to remove it.
 
 Platinum Lavender gives Firefox an Internet Explorer 5 for Mac layout, with a
 lavender address bar, beveled tabs, and a classic status bar. It is
-production-ready and tested on Firefox 160.0.1 on Linux. Use Firefox’s
+production-ready and tested on Firefox 161.0 (and 160.0.1) on Linux. Use Firefox’s
 **System theme** with a light, normal-contrast desktop appearance. Private
 Browsing windows in the same profile use the same styling.
 

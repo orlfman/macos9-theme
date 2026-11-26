@@ -711,3 +711,67 @@ Verified in isolated nested `kwin_wayland --virtual` via `dev/firefox-test.sh` a
   An additional unrestricted Platinum run completed with GTK's GL renderer.
   The installed theme sets no popup viewport limit. Live-desktop behavior here
   has not been verified.
+
+## libadwaita 1.10 appearance on Plasma (2026-11-25, Claude / Opus 5.5)
+
+Verified with `dev/check-adw.sh plasma` (virtual KWin, KDE + GTK Settings
+portals, Platinum colors applied with `plasma-apply-colorscheme`; evidence
+`dev/build/adw-m5-plasma.ggGJhV`) and `dev/check-adw.sh broadway` (no portal). Fixture: stock
+`AdwApplicationWindow`, zero application CSS (`dev/adw-check/fixture.py`).
+
+- The portal advertises `color-scheme=2` (prefer light), `contrast=0`,
+  `reduced-motion=0` and `accent-color=(0.8, 0.8, 1.0)`. libadwaita
+  reports `system_supports_accent_colors=1` and snaps the accent to
+  `ADW_ACCENT_COLOR_PURPLE` `rgb(145,65,172)` (#9141AC). Exact Lavender is
+  not reachable through the accent setting: `AdwAccentColor` has nine fixed
+  values and purple is the nearest. Without the portal (Broadway) the accent
+  is the default blue `rgb(53,132,228)`.
+- The named theme stays ignored: with `gtk-theme=Platinum` in GSettings and
+  `settings.ini`, every run reports `gtk-theme-name=Adwaita-empty`.
+- High contrast (`org.gnome.desktop.a11y.interface high-contrast`) reaches
+  `AdwStyleManager` (`adw_hc=1`) on both backends.
+- The one desktop-wide hook that styles unmodified libadwaita apps is the user
+  stylesheet `~/.config/gtk-4.0/gtk.css` (PRIORITY_USER, above libadwaita and
+  application CSS; also loaded by every plain GTK 4 app). libadwaita 1.10
+  draws from CSS custom properties (`--window-bg-color`, `--accent-bg-color`,
+  `--accent-color`, `--headerbar-*`, `--card-*`, `--dialog-*`, ...; 478
+  `var(--` uses in the library), so redefining them on `:root` recolors the
+  whole app. GTK 4.24 honours `@media (prefers-color-scheme: light) and (not
+  (prefers-contrast: more))`, which keeps dark and high-contrast preferences
+  on libadwaita's own palette. The spike `dev/adw-check/layer.css` rendered
+  10,182 px of exact #CCCCFF and 205,823 px of #DDDDDD in the gallery (stock:
+  0 and 0) with no CSS warnings.
+- Colors only: shapes (rounded pill buttons, switches, rounded cards and
+  dialogs, header-bar height) stay libadwaita's under that layer. Platinum
+  shapes would need selector rules in the same user stylesheet, which also
+  apply to plain GTK 4 apps on top of the named Platinum theme.
+- `kded6` keeps existing rules in `~/.config/gtk-4.0/gtk.css` and appends its
+  `@import 'colors.css';` (see the GTK discovery section above), so a layer
+  there survives color-scheme changes; the installer would own one import
+  line in a user file.
+- Fixture notes: `AdwBreakpoint` needs `width-request`/`height-request` on
+  the window; `GtkWidgetPaintable` of a window snapshots to nothing until a
+  frame has painted (render from the frame clock's `after-paint`).
+- (2026-11-25, Platinum layer) Rules in the user stylesheet beat libadwaita's
+  whatever their specificity: GTK orders by provider priority first. So the
+  plain GTK 4 Platinum files can be imported unchanged; what needs extra
+  rules is only what they leave unset (libadwaita's switch, boxed lists,
+  destructive colors, alert sheet, framed image buttons).
+- The user stylesheet applies regardless of the selected GTK theme: with the
+  layer imported, plain GTK 4 apps under `gtk-theme=Adwaita` render
+  Platinum too (`GTK4_CHECK_ADW_LAYER=1 dev/check-gtk4.sh plasma`: the two
+  Adwaita-control checks fail, all Platinum checks pass).
+- `-gtk-icon-size: 0` on a switch's on/off images logs
+  `gtk_icon_theme_lookup_by_gicon: assertion 'size > 0'` on every snapshot
+  (200 per FFmpeg Converter launch); use a small positive size.
+- Node names: `AdwAlertDialog` in a window is `dialog.alert.floating >
+  widget > floating-sheet > dimming, sheet.background`; without a parent it
+  is `window.csd.alert.dialog-window > dialog.alert`. Header-bar packing
+  boxes are `box.start` / `box.end` (`headerbar > windowhandle > box >
+  widget > box.start`). Boxed lists: `list.boxed-list > row`. Switch:
+  `switch > image, image, slider`.
+- (2026-11-25, real kded in `dev/test-install-live.sh`) After `install.sh
+  --apply`, Plasma's GTK sync keeps a marked `@import` line we put at the top
+  of `~/.config/gtk-4.0/gtk.css` and appends `@import 'colors.css';` after the
+  user's own rules. `dev/test-install.sh`'s `fake_gtk_sync` overwrites the
+  file instead (a harsher stand-in); a later install puts the line back.

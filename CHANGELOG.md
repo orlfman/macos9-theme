@@ -2,6 +2,93 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+
+
+
+
+
+
+
+## 2026-11-25, Claude (Opus 5.5) — GTK 3 tab close buttons (#265)
+
+- Audacious's playlist tabs were taller than other GTK 3 tabs because their close button had the push-button bevel. Buttons inside tabs are now just the icon, as on the Qt tabs (`gtk/Platinum/gtk-3.0/gtk.css`).
+- New tab-height check in `dev/gtk3-notebook-arrows.py` (fails without the fix). GTK 3 suites pass.
+- Screenshot in `reference/testing/` (#265). Needs `./install.sh`. Nothing committed; gtk claim released.
+
+## 2026-11-25, Claude (Opus 5.5) — GTK 3 tab row: left arrow edge, action buttons (#263 follow-up, #264)
+
+- Left tab scroll arrow gets the right black edge its scroll-bar art lacks. Buttons apps put in the tab row (Audacious's "+") stay out of the 3 px pane overlap and are drawn as the small Platinum bevel button (`gtk/Platinum/gtk-3.0/gtk.css`).
+- `dev/gtk3-notebook-arrows.py`: action widget, closed edge and above-pane checks (fail without the fix). GTK 3 suites pass.
+- Screenshots in `reference/testing/` (#263, #264). Needs `./install.sh`. Nothing committed; gtk claim released.
+
+## 2026-11-25, Claude (Opus 5.5) — GTK 3 tab scroll arrows (#263)
+
+- User report (Audacious settings): empty boxes beside the tabs when the window is narrow. They are GTK 3 notebook scroll arrows whose icons don't exist in WhiteSur; now drawn with the Platinum scroll-bar arrow art, sharp and 1:1 (`gtk/Platinum/gtk-3.0/gtk.css`).
+- New `dev/gtk3-notebook-arrows.py` in `dev/check-gtk3-headerbar.sh` (pixel-exact arrows; fails on the old rules). GTK 3 suites pass.
+- Screenshot in `reference/testing/` (#263). Needs `./install.sh`. Nothing committed; gtk claim released.
+
+## 2026-11-25, Claude (Opus 5.5) — GTK 3 popover menus (#262)
+
+- User report (Lutris "…" menu): GTK 3 popovers had no frame or highlight. `gtk/Platinum/gtk-3.0/gtk.css` now draws `popover.background` and its `modelbutton` items as the Platinum menu (face, black outline, Lavender highlight, menu check/radio, separator). GTK's popover arrow stays.
+- New `dev/gtk3-popover-menu.py`, run by `dev/check-gtk3-headerbar.sh` (outline and highlight fail without the fix). GTK 3 suites pass.
+- Screenshot in `reference/testing/` (#262). Needs `./install.sh`. Nothing committed; gtk claim released.
+
+## 2026-11-25, Claude (Opus 5.5) — GTK 3 header bar stripes only in the gaps (#261)
+
+- User report (Lutris, GTK 3): stripes between the header bar buttons. GTK 3 widgets in a header bar are 6 px apart with nothing behind them; now face-colored 6 px side shadows on app widgets close those gaps and the bar-end scraps, while the window boxes keep the measured 5 px to the stripes (`gtk/Platinum/gtk-3.0/gtk.css`).
+- New check `csd-headerbar-stripes-only-in-gaps` (`dev/gtk3-m3b2/verify.py`), proved on the old evidence. GTK 3 suites: 51/51, 39/39, 64/64 Wayland; 47/47, 38/38, 63/63 Broadway.
+- Follow-up after the user's second Lutris screenshot: shadows moved from the bar's direct children to every button, entry and linked group at any depth (Lutris's boxes are stretched or nested). New `dev/check-gtk3-headerbar.sh` (Lutris-like bar; fails on the first rule, passes now). GTK 3 suites unchanged and passing.
+- Screenshots in `reference/testing/` (#261). Needs `./install.sh` on the desktop. Nothing committed; gtk claim released (the follow-up edits were made after release; noted in AUDIT).
+
+## 2026-11-25, Claude (Opus 5.5) — libadwaita close box spacing (#260)
+
+- User report: close boxes too close to the edge in libadwaita apps, worst in About/Preferences dialogs. Main windows: libadwaita's content inset put the frame's inner bevel and black line beside the header bar, so the box sat at column 6 against that line; now column 4, as the Mac OS 9 reference and the decoration (`adw-widgets.css`, `dialog-host` margin 0). Floating non-alert dialogs: libadwaita's rounded unframed sheet now gets the Platinum document frame, box 4 px in.
+- `dev/check-adw.sh`: user's button layout, `prefs` mode, close-box position checks (proved to fail without the fix). plasma 113/113, broadway 73/73.
+- Screenshots filed in `reference/testing/` (#260, not committed there yet). The user's installed copy needs `./install.sh`. Nothing committed; gtk claim released.
+
+## 2026-11-25, Claude (Opus 5.5) — fix #254–259 (libadwaita audit + GTK 4 combo boxes)
+
+- Verified Gemini's #254–258 (AUDIT "verification" entry), then fixed every confirmed part; added the user's #259.
+- `scripts/gtk_theme.py`: temp file via `mkstemp` (#254), UTF-8 percent-encoded import URL (#255), file removed when only our lines were in it (#258).
+- `gtk/Platinum/gtk-4.0/adw-widgets.css`: AdwHeaderBar wrappers and insets (#256, boxes now at the bar's edges), movable alert also for `AdwMessageDialog`/zenity (#257), switch focus ring off in inactive windows (#258).
+- `gtk/Platinum/gtk-4.0/menus-lists.css`: `GtkComboBox` drawn as the Platinum pop-up menu, same height as a drop-down (#259).
+- Tests: `dev/adw-check` (msgdialog mode, alert and header-edge checks, x positions in the node dump), `dev/gtk4-check` (enabled/disabled combo box against the drop-down reference crops, height, open list; the menus window reserves its height because the nested KWin drops the Vulkan client on resize), `dev/test-install.sh` helper checks.
+- Results: test-install 833/833; check-gtk4 plasma 234/234, broadway 160/160 (with the layer 232/234, the two expected Adwaita-control checks); check-adw plasma 100/100, broadway 64/64. Not rerun: test-install-live, check-style, check-plasma, check-quick (none of their files changed).
+- Open: #254's linked-folder half (user decision), Mission Center's empty title gap (CSS limit), combo boxes with an entry, pavucontrol's lock/check buttons (unchecked). The user's installed copy needs `./install.sh` to get these. Nothing committed; claims released.
+
+## 2026-11-25, Claude (Opus 5.5) — Firefox 161.0 re-check
+
+- Firefox updated to 161.0 today (pacman 16:40). Diffed the 160.0.1 and 161.0 `omni.ja` trees and ran every Firefox suite on 161: no selector, part, class, attribute or custom property our stylesheets use changed, and the renders look as on 160 (AUDIT "Firefox 161.0 re-check").
+- #253: `firefox/version.json` now records tested `161.0`, range 160..161 (was 160 only, which made the selector check return 3, failed M5 31/32, and would make the installer warn). `dev/firefox-m1/verify.py` reads the tested range from `version.json` instead of hard-coding `160.` (M1 was 45/46). `firefox/README.md` and the README Firefox paragraph say 161.0 (and 160.0.1).
+- Results on 161.0: selector check 37/37 `#id`, 2/2 `::part()`; M1 46/46, M3 36/36, M4 43/43, M5 32/32, M6 85/85.
+- No theme CSS changed. Not seen on the user's desktop: after the next Firefox start with the installed theme, a glance at the toolbar, tabs, sidebar, address suggestions, app menu, tab context menu (new "Add tab to group" item) and Settings is all that's left. Nothing committed; firefox and shared claims released. The GTK/libadwaita session's uncommitted work was not touched (only appended to the shared logs).
+
+## 2026-11-25, Claude (Opus 5.5) — install the libadwaita layer for live testing
+
+- `scripts/gtk_theme.py adw-import add|remove <gtk.css> [<libadwaita.css>] [--dry-run]`: a marked two-line import at the top of the user stylesheet; idempotent, atomic write, keeps mode and the rest of the file, refuses links, percent-encodes the path.
+- `install.sh`: adds the import on `--apply` or on a reinstall while Platinum is the global theme (after the config copy is taken; a warning, not a failure, if it can't). `uninstall.sh`: after the config restore, removes our line unless the GTK 4 theme is kept (Platinum still selected).
+- Tests: `dev/test-install.sh` 829/829 (new: import first and user rules kept after `--apply`, re-added once after the GTK sync stand-in, removed on undo; plain install with another theme adds nothing; reinstall while Platinum is active adds it once and a third reinstall leaves the file byte-identical; a linked `gtk.css` is refused before any change). `dev/test-install-live.sh` 49/49 with real kded (line stays first, user rules kept, kded appends `colors.css`).
+- README: libadwaita paragraph. PLAN status, GTK-PLAN, FINDINGS updated. Packaging, gtk and shared claims released.
+- Follow-up: a plain reinstall while Platinum is already the global theme no longer ends with "log out and run install.sh --apply"; it says Platinum is active and to restart running apps (`install.sh`, new check; `dev/test-install.sh` 830/830). The user ran `./install.sh` twice: the first run added the line, the second left the file unchanged and printed the new message.
+- On the user's desktop (read only): Platinum active, GTK theme Platinum, backup taken at apply, `~/.config/gtk-4.0/gtk.css` = kded's one import line. A plain `./install.sh` will add our line there. Not run by me. Nothing committed.
+
+## 2026-11-25, Claude (Opus 5.5) — libadwaita Platinum layer (colors + shapes)
+
+User chose colors + shapes (PLAN.md decision 15).
+- `gtk/Platinum/gtk-4.0/libadwaita.css`: loaded through an `@import` in `~/.config/gtk-4.0/gtk.css`; imports `adw-colors.css` (libadwaita variables in the Platinum palette, moved from the spike `dev/adw-check/layer.css`, now deleted), the five plain GTK 4 component files and `adw-widgets.css` (destructive = push button, switch = Platinum check box, boxed lists/cards = black-framed white list box, AdwAlertDialog in a window or parentless = movable alert with white body and no dimming, framed icon buttons = Help-toolbar bevel button). Light + normal contrast only.
+- Harness: `dev/check-adw.sh` now tests the real layer, a parentless alert, real apps (FFmpeg Converter GTK, Mission Center, Faugus Launcher, zenity; stock vs layer screenshots), criticals and HC identity; `dev/adw-check/montage.py`; `dev/live-adw.sh` to review in a nested KWin window; `GTK4_CHECK_ADW_LAYER=1 dev/check-gtk4.sh`.
+- Results: check-adw plasma 86/86, broadway 54/54; plain GTK 4 222/222 and 149/149 (with layer 220/222 plasma: Adwaita controls turn Platinum, by design); test-install 811/811; style 135/135; plasma 19/19; quick 29/29.
+- Docs: docs/GTK-PLAN.md Milestone 5 feature table, docs/FINDINGS.md (priority over specificity, layer ignores selected theme, node names, icon-size criticals), docs/DEVELOPMENT.md.
+- Not done: user review (`dev/live-adw.sh`), installer support for the import line (claim packaging; undo must remove only our line, kded keeps the rest), 150/200 %, remaining Adw widgets (view switcher, tab bar, sidebar, toasts, banners, preferences/about dialogs), spin-button arrows. Nothing committed. Claims released.
+
+## 2026-11-25, Claude (Opus 5.5) — start libadwaita (GTK Milestone 5)
+
+- Added `dev/check-adw.sh` + `dev/adw-check/{fixture.py,session.sh,verify.py}`: stock PyGObject `AdwApplication` (no app CSS) in a disposable home, Broadway or virtual KWin with both Settings portals and Platinum colors. Renders gallery, narrow (360 px breakpoint), alert dialog, keyboard focus, disabled and high contrast to PNG and logs `AdwStyleManager`.
+- Result: libadwaita ignores the Platinum named theme, follows light and high contrast, and turns our `#CCCCFF` accent into its fixed purple #9141AC (nearest of nine). Details in `docs/FINDINGS.md` and the Milestone 5 table in `docs/GTK-PLAN.md`.
+- Spike `dev/adw-check/layer.css`: Platinum colors through libadwaita's CSS variables in `~/.config/gtk-4.0/gtk.css`, guarded to light + normal contrast. Window #DDDDDD, cards white, lavender accent with black text, #CC0000 destructive; shapes stay Adwaita. Not installed anywhere.
+- Checks: plasma 60/60, broadway 38/38. Other suites not rerun (no theme, installer or style file changed).
+- Not done: the user's choice of scope (purple only / colors layer / colors + Platinum shapes), FFmpeg Converter GTK under the layer, installer support for the layer (packaging claim), user review. Claims released.
+
 ## 2026-11-25, Codex (GPT-6.2 Sol) — re-audit GTK uninstall selection
 
 Verified the original selection regressions and reproduced two follow-ups. Undo can recreate a deliberately cleared theme key or lose a later theme choice if interrupted during config restoration (#251–252).

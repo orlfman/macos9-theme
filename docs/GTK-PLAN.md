@@ -136,6 +136,63 @@ bar equals a progress bar filled 3 px less.
 The installer packages GTK 4 alongside GTK 3 (see below). Remaining: user
 review on the desktop, automatic selection, then libadwaita (step 5).
 
+## Milestone 5 libadwaita (started 2026-11-25)
+
+Harness: `dev/check-adw.sh` (DEVELOPMENT.md). Result per feature, Plasma
+path, unmodified app, no layer:
+
+| Feature | Reaches libadwaita | On screen |
+|---|---|---|
+| Named theme (Platinum) | no (`Adwaita-empty`) | Adwaita shapes and colors |
+| Light/dark preference | yes (portal `color-scheme`) | light |
+| Accent | yes, snapped to 9 values | purple #9141AC, not Lavender |
+| High contrast | yes (`adw_hc=1`) | libadwaita HC |
+| Focus, destructive, disabled, header bar, alert dialog, narrow breakpoint | stock behaviour | Adwaita look, accent purple |
+
+**Scope decided 2026-11-25 (user): colors and shapes** (PLAN.md decision 15).
+
+`gtk-4.0/libadwaita.css` is loaded from the user stylesheet with
+`@import url("file://<theme dir>/gtk-4.0/libadwaita.css");`. Inside the
+light, normal-contrast media block it imports `adw-colors.css` (libadwaita's
+CSS variables in the Platinum palette), the five plain GTK 4 component files,
+and `adw-widgets.css` (libadwaita-only shapes). At user priority every rule
+wins over libadwaita regardless of specificity; only properties our rules
+leave unset keep libadwaita's values.
+
+| libadwaita feature | Under the layer |
+|---|---|
+| Push, suggested (default ring), destructive, pill buttons | Platinum push / default buttons; destructive is a plain push button |
+| Framed icon buttons | small square bevel button (Help toolbar, normal measured, pressed derived) |
+| Header bar (`AdwHeaderBar`, `AdwToolbarView`) | plain GTK 4 Platinum title bar (pinstripes, boxes at the edges, #256); an empty title widget leaves a plain gap in the stripes (no `:empty` in GTK CSS) |
+| Entry, check, radio, progress, scale, dropdown | plain GTK 4 Platinum controls |
+| Switch | the Platinum check box (as the Qt Quick style) |
+| Boxed lists, cards (`AdwPreferencesGroup`, rows) | list box: 1 px black frame on white, square |
+| `AdwAlertDialog` (in window or parentless), `AdwMessageDialog` (zenity) | the movable alert, white body, no dimming (#257) |
+| Floating dialogs (`AdwPreferencesDialog`, `AdwAboutDialog`) | document window frame, close box 4 px in (#260); bottom sheets not done |
+| Spin button +/- | stock round buttons (also unstyled in plain GTK 4) |
+| View switcher, tab bar, sidebar, toasts, banners, status pages, `AdwPreferencesDialog`, `AdwAboutDialog` | colors only, not yet checked |
+| Dark, high contrast | libadwaita's own (verified identical to stock) |
+
+Checked: `dev/check-adw.sh` fixture runs and real apps (FFmpeg Converter GTK,
+Mission Center, Faugus Launcher, zenity). FFmpeg Converter's path fields are
+its own breadcrumb widget and stay app-drawn. Plain GTK 4 with the layer:
+`GTK4_CHECK_ADW_LAYER=1 dev/check-gtk4.sh`, broadway 149/149; plasma 220/222,
+the two failures being the Adwaita-control comparisons that the layer turns
+Platinum (the consequence in decision 15). Not checked: 150 %/200 %, Flatpak,
+user review. Installed (2026-11-25): `install.sh` adds a marked
+`@import` line at the top of `~/.config/gtk-4.0/gtk.css` on `--apply`, or on a
+reinstall while Platinum is the global theme (`gtk_theme.py adw-import add`,
+idempotent, keeps the file's mode and other rules, refuses links; the config
+preflight already stops on a linked `gtk.css`). `uninstall.sh` restores the
+pre-switch copy and then removes our line if still there, unless the GTK 4
+theme stays installed because Platinum is still selected. With the real kded
+GTK sync the line stays first and kded appends `@import 'colors.css';`
+(`test-install-live`). Next: the user's live findings.
+
+Plain GTK 4 `GtkComboBox` (gtkmm apps such as pavucontrol) is drawn as the
+pop-up menu like `GtkDropDown` (#259, `menus-lists.css`); combo boxes with an
+entry are not styled yet.
+
 ## Installer contract for milestone 6
 
 GTK 3 and GTK 4 file packaging and manifest-based undo are implemented in the main scripts. The installed `gtk-4.0` folder stands alone: `scripts/gtk_theme.py self-contain` copies the GTK 3 artwork and palette it uses into `gtk-4.0/assets/gtk3/` and `gtk-4.0/palette.css` and rewrites its links. A selection in any GTK store, or an inherited `GTK_THEME`, keeps both toolkit folders on uninstall. Undo carries forward a widget-theme name chosen after `--apply`: Plasma's GTK sync never changes that name, so a value that differs from the pre-install copy is the user's, including a removed key (`gtk_theme.py later-choices`/`carry`, #249, #251); a missing key the sync fills in with the name the other stores already held is not. The list is saved to `$state/gtk-later-choices` before any file is put back and reused when an interrupted undo is resumed (#252). Launching an app with `GTK_THEME=Platinum` loads the installed theme. Automatic selection is still pending.
