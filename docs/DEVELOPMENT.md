@@ -381,7 +381,7 @@ criticals. `GTK4_CHECK_ADW_LAYER=1 dev/check-gtk4.sh` runs the plain GTK 4
 suite with the layer imported too. To look at it yourself:
 `dev/live-adw.sh` (live-test.sh's nested KWin with the layer in its
 sandbox).
-Today: broadway 73/73, plasma 113/113 (also checks both parentless alert kinds, the header bar edges and close boxes 4 px in, with the user's `close:maximize,minimize` layout).
+Today: broadway 78/78, plasma 118/118 (also checks both parentless alert kinds, the header bar edges and close boxes 4 px in, with the user's `close:maximize,minimize` layout).
 
 ## GTK 3 header bar gaps
 
@@ -395,4 +395,6 @@ check mark; #262) and a narrow notebook whose tab scroll arrows must be the
 Platinum scroll arrows pixel for pixel, the left one closed on its right,
 with a tab-row "+" button that stays above the pane
 and a tab with a close button no taller than a plain one
-(`dev/gtk3-notebook-arrows.py`, #263–265). Today: all ok.
+(`dev/gtk3-notebook-arrows.py`, #263–265), and spin buttons with the
+Platinum arrow boxes 2 px right of the field (`dev/gtk3-spinbutton.py`,
+#267). Today: 16/16.

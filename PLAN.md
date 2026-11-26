@@ -2,6 +2,10 @@
 
 ## Status
 
+**#268 done 2026-11-25 (uncommitted):** libadwaita window boxes equally inset on both sides (user decision). **Waits on the user:** `./install.sh`.
+
+**#267 done 2026-11-25 (uncommitted):** Platinum spin buttons for GTK 3, GTK 4 and libadwaita (entry field + arrow boxes). All GTK suites and test-install 833/833 pass. **Waits on the user:** `./install.sh` and a look.
+
 **#266 fixed 2026-11-25 (uncommitted):** Kwi's taller tabs now reach the terminal (style `drawTab`). check-tabs 51/51, style 135/135, quick 29/29, plasma 19/19. **Waits on the user:** `./install.sh`, restart Kwi, and a look.
 
 **#265 fixed 2026-11-25 (uncommitted):** GTK 3 tab close buttons no longer make tabs taller (Audacious). GTK 3 suites pass. **Waits on the user:** `./install.sh` and a look.

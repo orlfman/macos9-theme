@@ -11,6 +11,19 @@ Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
 
 
+
+
+## 2026-11-25, Claude (Opus 5.5) — equal libadwaita window-box insets (#268)
+
+- User decision: libadwaita's close box now sits as far from the left edge as the zoom/collapse boxes from the right (8 px margin, `adw-widgets.css`). Check updated; check-adw 118/118 and 78/78. Needs `./install.sh`. Nothing committed; gtk claim released.
+
+## 2026-11-25, Claude (Opus 5.5) — Platinum spin buttons for GTK 3, GTK 4 and libadwaita (#267)
+
+- Spin buttons get the Platinum entry field plus Platinum arrow boxes (down for −, up for +) 2 px right of it; disabled arrows are flat gray boxes. Closest Mac OS 9 look, since GTK can't stack the arrows like the little-arrows control (`gtk/Platinum/gtk-3.0/gtk.css`, `gtk/Platinum/gtk-4.0/controls.css`).
+- New generated art: standalone up/left arrow boxes with all four edges (the scroll-bar art lacks the edge the trough supplies; user spotted it) and disabled boxes (`gtk/gen-assets.py`). The GTK 3 tab arrow uses the new left box.
+- Harness: libadwaita fixture renders were slightly scaled (fixed, renders now pixel-exact); `check-adw.sh` leaked a Broadway server per run (fixed, leftovers stopped). New `dev/gtk3-spinbutton.py`.
+- check-adw 118/118 and 78/78, GTK 4 160/160 and 234/234, GTK 3 suites, GTK 3 app checks 16/16, test-install 833/833. Screenshot in `reference/testing/` (#267). Needs `./install.sh`. Nothing committed; gtk claim released.
+
 ## 2026-11-25, Claude (Opus 5.5) — Kwi tabs join the terminal (#266)
 
 - Kwi's Qt Quick tabs are taller than the measured 24-row Platinum tab, and the style painted only 24 rows, leaving 9 rows of toolbar color between the tab and the terminal. `drawTab` now repeats the last tab row for taller tabs so the pane rows meet the terminal; standard tabs unchanged (`style/platinum/platinumstyle.cpp`).

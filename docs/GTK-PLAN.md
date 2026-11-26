@@ -169,7 +169,7 @@ leave unset keep libadwaita's values.
 | Boxed lists, cards (`AdwPreferencesGroup`, rows) | list box: 1 px black frame on white, square |
 | `AdwAlertDialog` (in window or parentless), `AdwMessageDialog` (zenity) | the movable alert, white body, no dimming (#257) |
 | Floating dialogs (`AdwPreferencesDialog`, `AdwAboutDialog`) | document window frame, close box 4 px in (#260); bottom sheets not done |
-| Spin button +/- | stock round buttons (also unstyled in plain GTK 4) |
+| Spin button +/- | Platinum entry field + Platinum arrow boxes side by side (#267; GTK can't stack them like the little arrows) |
 | View switcher, tab bar, sidebar, toasts, banners, status pages, `AdwPreferencesDialog`, `AdwAboutDialog` | colors only, not yet checked |
 | Dark, high contrast | libadwaita's own (verified identical to stock) |
 
