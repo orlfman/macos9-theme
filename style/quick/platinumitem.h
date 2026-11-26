@@ -40,10 +40,8 @@ class PlatinumItem : public QQuickPaintedItem
     // slice of the panel first, as QMenu paints rows over its panel (the
     // text then blends with the same pixels).
     Q_PROPERTY(QRectF panel MEMBER m_panel NOTIFY panelChanged)
-    // Sliders: the orientation, and a thumb's visual position (0..1 along
-    // the groove, as Qt Quick's visualPosition).
+    // Sliders: the groove and thumb orientation.
     Q_PROPERTY(bool horizontal MEMBER m_horizontal NOTIFY horizontalChanged)
-    Q_PROPERTY(qreal position MEMBER m_position NOTIFY positionChanged)
     // Drawers: the window edge it slides from (Qt::Edge); its other sides
     // lie outside the window, so only the open side's frame is drawn.
     Q_PROPERTY(int edge MEMBER m_edge NOTIFY edgeChanged)
@@ -89,7 +87,6 @@ Q_SIGNALS:
     void shortcutColumnChanged();
     void panelChanged();
     void horizontalChanged();
-    void positionChanged();
     void edgeChanged();
     void drawsTextChanged();
     void activeChanged();
@@ -110,6 +107,5 @@ private:
     int m_shortcutColumn = 0;
     QRectF m_panel;
     bool m_horizontal = true;
-    qreal m_position = 0;
     int m_edge = Qt::LeftEdge;
 };

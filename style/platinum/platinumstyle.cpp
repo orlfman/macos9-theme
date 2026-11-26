@@ -240,7 +240,7 @@ void drawWithMark(QPainter *p, int x, int y, const Sprite &base, const Sprite &w
  * Vertical sliders are drawn transposed (derived, not captured).
  */
 struct SliderLayout {
-    QRect groove, handle, ticks;
+    QRect groove, handle, ticksAbove, ticksBelow;
 };
 
 SliderLayout sliderLayout(const QRect &r, const QStyleOptionSlider *o, bool horizontal)
@@ -253,9 +253,15 @@ SliderLayout sliderLayout(const QRect &r, const QStyleOptionSlider *o, bool hori
                           : QRect(r.x() + across, r.y() + along, acrossSize, alongSize);
     };
     SliderLayout l;
-    l.groove = make(0, SliderGrooveTop, length, SliderGrooveHeight);
-    l.handle = make(SliderInset + pos, 0, SliderThumbWidth, SliderThumbHeight);
-    l.ticks = make(0, SliderThumbHeight, length, SliderTickHeight);
+    const int top = (o->tickPosition & QSlider::TicksAbove) ? SliderTickHeight : 0;
+    l.groove = make(0, top + SliderGrooveTop, length, SliderGrooveHeight);
+    l.handle = make(SliderInset + pos, top, SliderThumbWidth, SliderThumbHeight);
+    if (o->tickPosition & QSlider::TicksAbove) {
+        l.ticksAbove = make(0, 0, length, SliderTickHeight);
+    }
+    if (o->tickPosition & QSlider::TicksBelow) {
+        l.ticksBelow = make(0, top + SliderThumbHeight, length, SliderTickHeight);
+    }
     return l;
 }
 
@@ -272,9 +278,17 @@ void progressColumn(QPainter *p, int x, int y, const int (&col)[14], int width =
     }
 }
 
-void drawProgress(QPainter *p, const QRect &rect, qint64 value, qint64 minimum, qint64 maximum)
+bool isBusyProgress(int minimum, int maximum)
+{
+    return minimum == 0 && maximum == 0;
+}
+
+void drawProgress(QPainter *p, const QStyleOptionProgressBar *option)
 {
     using namespace Progress;
+    const QRect rect = option->rect;
+    const qint64 value = option->progress, minimum = option->minimum, maximum = option->maximum;
+    const bool reversed = (option->direction == Qt::RightToLeft) != option->invertedAppearance;
     const int W = rect.width();
     const int x0 = rect.x();
     const int y = rect.y() + (rect.height() - ProgressHeight) / 2;
@@ -288,7 +302,12 @@ void drawProgress(QPainter *p, const QRect &rect, qint64 value, qint64 minimum, 
     const int inner = W - 4;
     const int left = x0 + 2;
 
-    if (maximum <= minimum) {
+    // Keep the frame's lighting fixed and reverse the track within it.
+    const auto trackX = [=](int column, int run) {
+        return left + (reversed ? inner - column - run : column);
+    };
+
+    if (isBusyProgress(option->minimum, option->maximum)) {
         // Barber pole: 8 px Lavender / 8 px gray stripes slanting one pixel
         // per row, moving 4 px right every 0.2 s (progress-indeterminate-*.png).
         static const int lav[10] = {0x000088, 0x333399, 0x6666CC, 0x9999FF, 0xCCCCFF, 0x9999FF, 0x6666CC, 0x333399, 0x000088, 0x000055};
@@ -303,7 +322,7 @@ void drawProgress(QPainter *p, const QRect &rect, qint64 value, qint64 minimum, 
             for (int c = 0; c < inner;) {
                 const int stripe = (c - r - phase + 32) % 16;
                 const int run = std::min(inner - c, 8 - stripe % 8);
-                p->fillRect(QRect(left + c, y + 2 + r, run, 1), QColor::fromRgb(QRgb(stripe < 8 ? grey[r] : lav[r])));
+                p->fillRect(QRect(trackX(c, run), y + 2 + r, run, 1), QColor::fromRgb(QRgb(stripe < 8 ? grey[r] : lav[r])));
                 c += run;
             }
         }
@@ -311,7 +330,12 @@ void drawProgress(QPainter *p, const QRect &rect, qint64 value, qint64 minimum, 
     }
 
     const qint64 range = maximum - minimum;
-    const int fill = int(std::clamp<qint64>((value - minimum) * inner / range, 0, inner));
+    int fill = 0;
+    if (value >= maximum) {
+        fill = inner;
+    } else if (value > minimum) {
+        fill = int((value - minimum) * inner / range);
+    }
     // Fill columns: start, start, middle..., end, end, end.
     const int (*ends[])[14] = {&FillStart0, &FillStart1, &FillEnd0, &FillEnd1, &FillEnd2};
     for (int c = 0; c < fill;) {
@@ -322,7 +346,7 @@ void drawProgress(QPainter *p, const QRect &rect, qint64 value, qint64 minimum, 
             col = ends[5 - fill + c];
         }
         const int run = col == &FillMid ? fill - 3 - c : 1;
-        progressColumn(p, left + c, y, *col, run);
+        progressColumn(p, trackX(c, run), y, *col, run);
         c += run;
     }
     // Then the divider, the trough's 2-column shadow, the trough, and its
@@ -331,7 +355,7 @@ void drawProgress(QPainter *p, const QRect &rect, qint64 value, qint64 minimum, 
         const int k = c - fill;
         const int(&col)[14] = c == inner - 1 && k > 2 ? TroughRight : k == 0 ? Divider : k == 1 ? TroughShadow0 : k == 2 ? TroughShadow1 : TroughMid;
         const int run = k >= 3 && c < inner - 1 ? inner - 1 - c : 1;
-        progressColumn(p, left + c, y, col, run);
+        progressColumn(p, trackX(c, run), y, col, run);
         c += run;
     }
 }
@@ -472,6 +496,19 @@ void drawMenuItemBevel(QPainter *p, const QRect &r, bool first, bool last, const
     if (last) {
         p->fillRect(QRect(r.left() + 1, r.bottom(), r.width() - 1, 1), dark);
     }
+}
+
+bool isMenuSection(const QStyleOptionMenuItem *item)
+{
+    return item->menuItemType == QStyleOptionMenuItem::Separator
+        && (!item->text.isEmpty() || !item->icon.isNull());
+}
+
+QFont menuSectionFont(const QStyleOptionMenuItem *item)
+{
+    QFont font = item->font;
+    font.setBold(true);
+    return font;
 }
 
 void drawMenuCheck(QPainter *p, int x, int y, const QColor &color)
@@ -815,7 +852,8 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption *option, con
     }
     if (type == CT_Slider) {
         if (const auto *s = qstyleoption_cast<const QStyleOptionSlider *>(option)) {
-            const int thick = SliderThumbHeight + ((s->tickPosition & QSlider::TicksBelow) ? SliderTickHeight : 0);
+            const int sides = (s->tickPosition == QSlider::TicksBothSides) ? 2 : (s->tickPosition != QSlider::NoTicks);
+            const int thick = SliderThumbHeight + sides * SliderTickHeight;
             return s->orientation == Qt::Horizontal ? QSize(size.width(), thick) : QSize(thick, size.height());
         }
     }
@@ -842,18 +880,22 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption *option, con
     }
     if (type == CT_MenuItem) {
         if (const auto *mi = qstyleoption_cast<const QStyleOptionMenuItem *>(option)) {
-            if (mi->menuItemType == QStyleOptionMenuItem::Separator) {
+            const bool section = isMenuSection(mi);
+            if (mi->menuItemType == QStyleOptionMenuItem::Separator && !section) {
                 return QSize(10, MenuSeparatorHeight);
             }
-            // QMenu passes the label width and adds the shortcut column
-            // width itself.
+            // QMenu passes the label width for actions and adds the
+            // shortcut column itself. Sections supply their own label size.
             const bool icon = !mi->icon.isNull();
-            int w = (icon ? MenuIconTextLeft : MenuTextLeft) + size.width() + MenuTextRight + 1;
+            const QFontMetrics fm = section ? QFontMetrics(menuSectionFont(mi)) : mi->fontMetrics;
+            const int labelWidth = section ? fm.size(Qt::TextSingleLine | Qt::TextShowMnemonic, mi->text).width() : size.width();
+            int w = (icon ? MenuIconTextLeft : MenuTextLeft) + labelWidth + MenuTextRight + 1;
             // (Qt Quick, no widget: the caller says so on styleObject.)
             if (menuHasShortcuts(widget) || (!widget && option->styleObject && option->styleObject->property("_platinum_shortcuts").toBool())) {
                 w += MenuShortcutGap;
             }
-            return QSize(w, icon ? MenuIconItemHeight : MenuItemHeight);
+            const int minHeight = icon ? MenuIconItemHeight : MenuItemHeight;
+            return QSize(w, std::max(minHeight, fm.height()));
         }
     }
     if (type == CT_MenuBarItem) {
@@ -1031,7 +1073,7 @@ QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex *o
             case SC_SliderHandle:
                 return l.handle;
             case SC_SliderTickmarks:
-                return l.ticks;
+                return l.ticksAbove.united(l.ticksBelow);
             default:
                 break;
             }
@@ -1148,8 +1190,8 @@ void Style::drawSlider(const QStyleOptionSlider *o, QPainter *p, const QWidget *
         }
         drawSprite(p, g.right() - gr.w + 1, g.y(), gr);
     }
-    // Tick marks under the thumb's center for each interval.
-    if ((o->subControls & SC_SliderTickmarks) && (o->tickPosition & QSlider::TicksBelow) && enabled) {
+    // Tick marks centered on the thumb's travel, on the requested sides.
+    if ((o->subControls & SC_SliderTickmarks) && o->tickPosition != QSlider::NoTicks && enabled) {
         const int travel = std::max(0, r.width() - 2 * SliderInset - SliderThumbWidth);
         // 64-bit, and at least 3 px apart: never more ticks than pixels.
         const qint64 range = qint64(o->maximum) - o->minimum;
@@ -1160,13 +1202,20 @@ void Style::drawSlider(const QStyleOptionSlider *o, QPainter *p, const QWidget *
         if (range > 0 && qint64(travel) * interval / range < 3) {
             interval = range * 3 / std::max(1, travel) + 1;
         }
+        const auto drawTick = [p](int x, int cap, int stem) {
+            p->fillRect(QRect(x - 1, cap, 2, 1), White);
+            p->fillRect(QRect(x - 1, stem, 1, SliderTickHeight - 1), White);
+            p->fillRect(QRect(x, stem, 1, SliderTickHeight - 1), Black);
+            p->fillRect(QRect(x + 1, stem, 1, SliderTickHeight - 1), gray(0x88));
+        };
         for (qint64 v = o->minimum; v <= o->maximum; v += interval) {
             const int cx = r.x() + SliderInset + QStyle::sliderPositionFromValue(o->minimum, o->maximum, int(v), travel, o->upsideDown) + SliderThumbWidth / 2;
-            const int ty = l.ticks.y();
-            p->fillRect(QRect(cx - 1, ty, 2, 1), White);
-            p->fillRect(QRect(cx - 1, ty + 1, 1, SliderTickHeight - 1), White);
-            p->fillRect(QRect(cx, ty + 1, 1, SliderTickHeight - 1), Black);
-            p->fillRect(QRect(cx + 1, ty + 1, 1, SliderTickHeight - 1), gray(0x88));
+            if (!l.ticksAbove.isEmpty()) {
+                drawTick(cx, l.ticksAbove.bottom(), l.ticksAbove.top());
+            }
+            if (!l.ticksBelow.isEmpty()) {
+                drawTick(cx, l.ticksBelow.top(), l.ticksBelow.top() + 1);
+            }
             if (v > o->maximum - interval) {
                 break;
             }
@@ -1201,47 +1250,68 @@ void Style::drawSpinBox(const QStyleOptionSpinBox *sb, QPainter *painter, const 
     // Not captured: the pressed half. Drawn like a pressed push button
     // (#555555 highlight, #666666 fill, #777777 / #888888 shadow, white
     // arrow) inside that half, keeping the outline.
-    const bool upPressed = (sb->activeSubControls & SC_SpinBoxUp) && (sb->state & State_Sunken);
-    const bool downPressed = (sb->activeSubControls & SC_SpinBoxDown) && (sb->state & State_Sunken);
+    const bool upEnabled = enabled && (sb->stepEnabled & QAbstractSpinBox::StepUpEnabled);
+    const bool downEnabled = enabled && (sb->stepEnabled & QAbstractSpinBox::StepDownEnabled);
+    const bool sunken = sb->state & State_Sunken;
+    const bool upPressed = upEnabled && sunken && (sb->activeSubControls & SC_SpinBoxUp);
+    const bool downPressed = downEnabled && sunken && (sb->activeSubControls & SC_SpinBoxDown);
+    const bool plusMinus = sb->buttonSymbols == QAbstractSpinBox::PlusMinus;
     for (int row = 0; row < SpinArrowsHeight; ++row) {
         const int *source = Sprites::SpinArrows.data.data() + row * SpinArrowsWidth;
-        if (!(row < SpinArrowsHeight / 2 ? upPressed : downPressed)) {
+        const bool pressed = row < SpinArrowsHeight / 2 ? upPressed : downPressed;
+        if (!pressed && !plusMinus) {
             drawRow(painter, up.x(), up.y() + row, source, SpinArrowsWidth);
             continue;
         }
-        int pressedRow[SpinArrowsWidth];
+        int pixels[SpinArrowsWidth];
         for (int col = 0; col < SpinArrowsWidth; ++col) {
-            const int v = source[col];
-            const bool inside = col >= 3 && col <= SpinArrowsWidth - 4 && row >= 2 && row <= SpinArrowsHeight - 3;
+            const bool arrow = source[col] == 0x000000 && col >= 3 && col <= SpinArrowsWidth - 4
+                && row >= 2 && row <= SpinArrowsHeight - 3;
+            const int v = plusMinus && arrow ? 0xDDDDDD : source[col];
             int out = v;
-            switch (v) {
-            case 0xFFFFFF:
-                out = 0x555555;
-                break;
-            case 0xDDDDDD:
-                out = 0x666666;
-                break;
-            case 0xBBBBBB:
-            case 0xAAAAAA:
-                out = 0x777777;
-                break;
-            case 0x777777:
-                out = 0x888888;
-                break;
-            case 0x000000:
-                out = inside ? 0xFFFFFF : 0x000000;
-                break;
-            default:
-                break;
+            if (pressed) {
+                switch (v) {
+                case 0xFFFFFF:
+                    out = 0x555555;
+                    break;
+                case 0xDDDDDD:
+                    out = 0x666666;
+                    break;
+                case 0xBBBBBB:
+                case 0xAAAAAA:
+                    out = 0x777777;
+                    break;
+                case 0x777777:
+                    out = 0x888888;
+                    break;
+                case 0x000000:
+                    out = arrow ? 0xFFFFFF : 0x000000;
+                    break;
+                default:
+                    break;
+                }
             }
-            pressedRow[col] = out;
+            pixels[col] = out;
         }
-        drawRow(painter, up.x(), up.y() + row, pressedRow, SpinArrowsWidth);
+        drawRow(painter, up.x(), up.y() + row, pixels, SpinArrowsWidth);
     }
-    if (!enabled) {
-        // Not captured: disabled arrows, washed out (#DDDDDD at half
-        // strength over the inside).
-        painter->fillRect(QRect(up.x() + 1, up.y() + 1, SpinArrowsWidth - 2, SpinArrowsHeight - 2), QColor(0xDD, 0xDD, 0xDD, 128));
+    if (plusMinus) {
+        // Match the measured arrows' width and center each glyph in its half.
+        const int x = up.x() + SpinArrowsWidth / 2;
+        const int plusY = up.y() + 6;
+        const int minusY = up.y() + SpinArrowsHeight - 1 - 6;
+        painter->fillRect(QRect(x - 3, plusY, 7, 1), upPressed ? White : Black);
+        painter->fillRect(QRect(x, plusY - 3, 1, 7), upPressed ? White : Black);
+        painter->fillRect(QRect(x - 3, minusY, 7, 1), downPressed ? White : Black);
+    }
+    // Use the existing disabled wash on each unavailable half.
+    const QRect inside = QRect(up.topLeft(), QSize(SpinArrowsWidth, SpinArrowsHeight)).adjusted(1, 1, -1, -1);
+    const QColor wash(0xDD, 0xDD, 0xDD, 128);
+    if (!upEnabled) {
+        painter->fillRect(inside.intersected(up), wash);
+    }
+    if (!downEnabled) {
+        painter->fillRect(inside.intersected(up.translated(0, SpinArrowsHeight / 2)), wash);
     }
     painter->restore();
 }
@@ -1454,7 +1524,7 @@ void Style::drawControl(ControlElement element, const QStyleOption *option, QPai
             painter->save();
             painter->setRenderHint(QPainter::Antialiasing, false);
             // Mac OS 9 progress bars have no text.
-            drawProgress(painter, pb->rect, pb->progress, pb->minimum, pb->maximum);
+            drawProgress(painter, pb);
             painter->restore();
             return;
         }
@@ -1528,7 +1598,8 @@ void Style::drawControl(ControlElement element, const QStyleOption *option, QPai
             const auto *combo = qobject_cast<const QComboBox *>(widget);
             const QObject *context = widget ? nullptr : option->styleObject;
             const bool inCombo = combo || (context && context->property("_platinum_combo").toBool());
-            if (mi->menuItemType == QStyleOptionMenuItem::Separator) {
+            const bool section = isMenuSection(mi);
+            if (mi->menuItemType == QStyleOptionMenuItem::Separator && !section) {
                 // 6 rows: two of menu, a #888888 line, a white line, two of menu.
                 if (inCombo) {
                     drawMenuItemBevel(painter, r, false, false, White, gray(0xDD), gray(0x99));
@@ -1539,8 +1610,8 @@ void Style::drawControl(ControlElement element, const QStyleOption *option, QPai
                 painter->restore();
                 return;
             }
-            const bool enabled = mi->state & State_Enabled;
-            const bool selected = enabled && (mi->state & State_Selected);
+            const bool enabled = section || (mi->state & State_Enabled);
+            const bool selected = !section && enabled && (mi->state & State_Selected);
             // First / last item: on the menu's top / bottom bevel row. In a
             // QMenu the items start 1 px down (inside the black line); in a
             // pop-up's list (widget = the QComboBox) they start at 0.
@@ -1591,7 +1662,7 @@ void Style::drawControl(ControlElement element, const QStyleOption *option, QPai
             if (!proxy()->styleHint(SH_UnderlineShortcut, option, widget)) {
                 flags |= Qt::TextHideMnemonic;
             }
-            painter->setFont(mi->font);
+            painter->setFont(section ? menuSectionFont(mi) : mi->font);
             const int left = r.x() + (icon ? MenuIconTextLeft : MenuTextLeft);
             proxy()->drawItemText(painter, QRect(left, r.y(), r.right() - left, r.height()), flags, pal, true, text, QPalette::WindowText);
             if (!shortcut.isEmpty()) {
@@ -1939,7 +2010,7 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption *option, 
 // even when no subsequent paint occurs.
 static void updateBusyTimer(QProgressBar *bar)
 {
-    const bool busy = bar->isVisible() && bar->minimum() == bar->maximum();
+    const bool busy = bar->isVisible() && isBusyProgress(bar->minimum(), bar->maximum());
     auto *timer = bar->findChild<QTimer *>(QStringLiteral("platinum-barber-pole"), Qt::FindDirectChildrenOnly);
     if (!busy) {
         if (timer) {
@@ -1952,7 +2023,7 @@ static void updateBusyTimer(QProgressBar *bar)
         timer->setObjectName(QStringLiteral("platinum-barber-pole"));
         timer->setInterval(100);
         QObject::connect(timer, &QTimer::timeout, bar, [bar, timer] {
-            if (bar->isVisible() && bar->minimum() == bar->maximum()) {
+            if (bar->isVisible() && isBusyProgress(bar->minimum(), bar->maximum())) {
                 bar->update();
             } else {
                 timer->stop();

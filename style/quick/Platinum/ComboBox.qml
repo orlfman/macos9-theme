@@ -40,7 +40,9 @@ KDE.ComboBox {
     // for the longest item if that's more (QComboBox::showPopup; finding
     // 53). The rows stretch to it. As tall as its rows (KDE's list adds 1 px).
     readonly property int platinumListWidthHint: {
-        if (!platinum || !popup) return 0;
+        // The closed control only needs its own width. Measure the list
+        // on opening and keep tracking live edits while it is visible.
+        if (!platinum || !popup || !popup.visible) return 0;
         const texts = [];
         // Observe delegate text so same-count model edits also invalidate the hint.
         for (let i = 0; i < popup.count; ++i) {

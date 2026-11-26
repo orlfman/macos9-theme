@@ -117,7 +117,6 @@ PlatinumItem::PlatinumItem(QQuickItem *parent)
     connect(this, &PlatinumItem::shortcutColumnChanged, this, resizeAndUpdate);
     connect(this, &PlatinumItem::panelChanged, this, repaint);
     connect(this, &PlatinumItem::horizontalChanged, this, resizeAndUpdate);
-    connect(this, &PlatinumItem::positionChanged, this, repaint);
     connect(this, &PlatinumItem::edgeChanged, this, repaint);
     connect(this, &PlatinumItem::textChanged, this, &PlatinumItem::drawsTextChanged);
     connect(this, &PlatinumItem::elementTypeChanged, this, &PlatinumItem::drawsTextChanged);
@@ -362,15 +361,14 @@ void PlatinumItem::paint(QPainter *painter)
         opt.styleObject = this;
         style->drawPrimitive(QStyle::PE_PanelMenu, &opt, painter, nullptr);
     } else if (is(m_type, "slidergroove") || is(m_type, "sliderthumb")) {
-        // One part of a QSlider drawing: the groove, or a thumb at its
-        // position (the groove's travel as the style lays it out).
+        // A QSlider groove or one thumb in a rectangle positioned by QML.
         QStyleOptionSlider opt;
         opt.rect = r;
         opt.palette = QApplication::palette("QSlider");
         opt.orientation = m_horizontal ? Qt::Horizontal : Qt::Vertical;
         opt.minimum = 0;
-        opt.maximum = 10000;
-        opt.sliderPosition = opt.sliderValue = qRound(std::clamp<qreal>(m_position, 0, 1) * 10000);
+        opt.maximum = 1;
+        opt.sliderPosition = opt.sliderValue = 0;
         opt.upsideDown = false;
         opt.state = QStyle::State_None;
         if (isEnabled()) {
