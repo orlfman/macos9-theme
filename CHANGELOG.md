@@ -10,6 +10,13 @@ Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
 
 
+
+## 2026-11-25, Claude (Opus 5.5) — Kwi tabs join the terminal (#266)
+
+- Kwi's Qt Quick tabs are taller than the measured 24-row Platinum tab, and the style painted only 24 rows, leaving 9 rows of toolbar color between the tab and the terminal. `drawTab` now repeats the last tab row for taller tabs so the pane rows meet the terminal; standard tabs unchanged (`style/platinum/platinumstyle.cpp`).
+- `dev/tabs-quick.qml` + `dev/check-tabs.sh`: Kwi-height header/footer check (fails without the fix). check-tabs 51/51, check-style 135/135, check-quick 29/29, check-plasma 19/19; warning-free; ASan/UBSan clean.
+- Screenshots in `reference/testing/` (#266). Needs `./install.sh` and a Kwi restart. Nothing committed; style claim released.
+
 ## 2026-11-25, Claude (Opus 5.5) — record the user's decision on #254
 
 - #254's linked-folder half accepted by the user (AUDIT.md): a symlinked `~/.config/gtk-4.0` keeps being written through, as by the existing backup/restore and Plasma's GTK sync. Optional hardening for a public release noted there. Not committed.

@@ -1,6 +1,6 @@
 # Platinum bottom tabs for Kwi
 
-**Status:** Implemented 2026-11-24 by Claude (Opus 5.5) for Kwi and Konsole bottom tabs; see CHANGELOG.md and AUDIT.md. Checked offscreen (`dev/check-tabs.sh` 50/50 after Codex's #236–237 and Gemini's #238–239, including a Qt Quick footer fixture) and in nested KWin with Kwi and Konsole at 100%. 150% and 200% nested checks, tab dragging and overflow scrolling were not exercised.
+**Status:** Implemented 2026-11-24 by Claude (Opus 5.5) for Kwi and Konsole bottom tabs; see CHANGELOG.md and AUDIT.md. Checked offscreen (`dev/check-tabs.sh` 50/50 after Codex's #236–237 and Gemini's #238–239, including a Qt Quick footer fixture) and in nested KWin with Kwi and Konsole at 100%. 150% and 200% nested checks, tab dragging and overflow scrolling were not exercised. **2026-11-25:** Kwi's tabs are 33 px, taller than the 24-row art; the face now repeats its last tab row so the pane rows meet the terminal (AUDIT.md #266).
 
 ## Feasibility
 

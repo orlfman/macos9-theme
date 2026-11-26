@@ -3,6 +3,8 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+**User report #266, 2026-11-25.** Kwi's taller Qt Quick tabs didn't reach the terminal; fixed in the style (Claude), user look pending.
+
 **#254 linked-folder half accepted, 2026-11-25 (user decision).** No open parts of #254 remain.
 
 **User report #265, 2026-11-25.** GTK 3 tabs with a close button grew 5–7 px taller; fixed (Claude), user look pending.
@@ -51,6 +53,13 @@ Audited Claude's uncommitted libadwaita work over `8397a0d` (`gtk/Platinum/gtk-4
 - **#257 · P2 · open (visual/accuracy) — `zenity` does not get the movable alert frame or white body.** `gtk/Platinum/gtk-4.0/adw-widgets.css:212-229` vs `dev/build/adw-m5-plasma.RNHZNa/layer-app-zenity.png`. `adw-widgets.css:212` targets `window.csd.alert.dialog-window`, which does not match `zenity`'s window classes; `zenity` falls back to the document CSD frame with a `#DDDDDD` body and no 22-row pinstriped drag strip.
 - **#258 · P3 · open (correctness) — `switch:focus-visible` lacks `:not(:backdrop)` and `adw_import("remove")` leaves a 0-byte `gtk.css` behind.** `gtk/Platinum/gtk-4.0/adw-widgets.css:79-82` draws the `#6666CC` focus outline in inactive windows unlike every other Platinum GTK 4 focus ring (`controls.css`, `tabs-ranges.css`, `windows.css`, `adw-widgets.css:198`). `scripts/gtk_theme.py:224-225` writes a 0-byte empty `gtk.css` when removing our lines leaves no other content instead of unlinking it.
 - **Limits:** Broadway Cairo and nested virtual KWin Vulkan at 1× only (no 150%/200%, no Flatpak, no live desktop test); no GTK or installer files were modified in this audit.
+
+## 2026-11-25, Claude (Opus 5.5) — user report #266: Kwi tabs don't join the terminal
+
+- **#266 · P2 · fixed.** Reported on the live desktop: `reference/testing/kwi-top-tab-short-face.png`, `kwi-bottom-tab-short-face.png`, compared with `konsole-tabs-join-pane.png` (Konsole's QTabBar, correct). Measured in Kwi's top-tab shot at the current tab: the top line, highlight and 21 rows of `#EEEEEE` face, then 9 rows of `#DDDDDD` (Kwi's toolbar background) before the terminal; the bottom-tab shot is the mirror. Cause: `drawTab` (`style/platinum/platinumstyle.cpp`) painted exactly the 24 measured rows (21 tab rows plus the pane's top 3), but Kwi's `TerminalTabButton` is taller (it reserves room for a progress bar, 33 px here), so the rest of the tab rectangle showed the toolbar and the pane rows sat mid-tab. Kwi's own 1 px separator and its gap for the selected tab (upstream `Main.qml`, `tabFrame`) were already correct.
+- Fix: a taller tab repeats the last measured tab row (both sides already upright) before the 3 pane rows, so the face fills the rectangle and the pane rows meet the terminal; tabs of the measured height are unchanged (Konsole, Qt Widgets: `check-style` 135/135, mirrored bottom tabs 0 px different). Planned in `docs/KWI-TABS-PLAN.md` ("stretch or fill the interior if a taller control needs coverage").
+- Checks: `dev/tabs-quick.qml` gains Kwi-height (33 px, 100 px wide) header and footer bars; new check in `dev/check-tabs.sh`: the center columns of a normal and the current tab equal the measured rows with the last tab row repeated and the pane rows at the edge, and the tall footer is the tall header flipped. Fails with the committed style (rows past 24 unpainted), passes now. `check-tabs` 51/51, `check-style` 135/135, `check-quick` 29/29, `check-plasma` 19/19; build warning-free; the tab fixture rendered clean under ASan/UBSan (style plugin and renderer built with `-fsanitize=address,undefined`, 0 reports).
+- Limits: Kwi itself not run here (fixture mirrors its tab height); beyond the last tab Kwi draws its own 1 px separator, while under non-current tabs the Platinum pane edge is 3 rows (the seam can't be made continuous from the style, as the plan anticipated); 150/200 % not checked; not seen on the user's desktop yet.
 
 ## 2026-11-25, user decision on #254 (recorded by Claude, Opus 5.5)
 
