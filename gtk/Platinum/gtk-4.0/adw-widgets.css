@@ -319,3 +319,13 @@ dialog.floating:not(.alert) floating-sheet > sheet {
 dialog.floating:not(.alert) floating-sheet > sheet:backdrop {
   border-image: -gtk-scaled(url("assets/csd-frame-inactive.png"), url("assets/csd-frame-inactive@2.png")) 3 8 8 7 / 3px 8px 8px 7px stretch;
 }
+
+/* --- Equal insets for the window boxes (user decision, 2026-11-25, #268).
+ * Each window button is 21 px wide with its 13 px box at the button's left,
+ * so the right-hand boxes end up 12 px from the outer edge while the close
+ * box on the left sat 4 px in (the measured Mac OS 9 position the
+ * decoration keeps). The user prefers both sides equal, as in GTK 3 header
+ * bars: the left group gets the same 8 px. --- */
+headerbar > windowhandle > box > widget > box.start > windowcontrols.start:not(.empty) {
+  margin-left: 8px;
+}

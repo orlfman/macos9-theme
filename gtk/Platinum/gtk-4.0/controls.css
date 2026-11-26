@@ -298,3 +298,124 @@ checkbutton > radio:indeterminate:disabled {
   background-image: linear-gradient(@platinum_border_disabled, @platinum_border_disabled),
     -gtk-scaled(url("../gtk-3.0/assets/radio-off-disabled.png"), url("../gtk-3.0/assets/radio-off-disabled@2.png"));
 }
+
+/* --- Spin buttons (#267). Mac OS 9's "little arrows" are one control with
+ * the up arrow stacked on the down arrow, 2 px right of the field
+ * (docs/REFERENCE.md "Little arrows"); GTK lays the two buttons side by
+ * side and CSS can't stack them. Closest Platinum look: the field is the
+ * Platinum entry, and each button is a Platinum scroll bar arrow button
+ * (down for -, up for +), 2 px from the field. A vertical spin button
+ * (up above, down below the field) uses the same art. --- */
+spinbutton,
+spinbutton:focus-within,
+spinbutton:disabled {
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+  background: none;
+  border-spacing: 0;
+}
+
+spinbutton > text {
+  min-height: 20px;
+  min-width: 18px;
+  padding: 0 3px;
+  margin: 0;
+  color: @platinum_fg;
+  caret-color: @platinum_fg;
+  background-color: @platinum_base;
+  background-clip: padding-box;
+  border-style: solid;
+  border-width: 3px;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+  border-image: -gtk-scaled(url("../gtk-3.0/assets/entry-normal.png"), url("../gtk-3.0/assets/entry-normal@2.png")) 4 / 4px stretch;
+}
+
+spinbutton:focus-within > text {
+  border-image: -gtk-scaled(url("../gtk-3.0/assets/entry-focused.png"), url("../gtk-3.0/assets/entry-focused@2.png")) 4 / 4px stretch;
+}
+
+spinbutton:focus-within:backdrop > text {
+  border-image: -gtk-scaled(url("../gtk-3.0/assets/entry-normal.png"), url("../gtk-3.0/assets/entry-normal@2.png")) 4 / 4px stretch;
+}
+
+spinbutton:disabled > text {
+  color: @platinum_fg_disabled;
+  background-color: @platinum_bg;
+  border-image: -gtk-scaled(url("../gtk-3.0/assets/entry-disabled.png"), url("../gtk-3.0/assets/entry-disabled@2.png")) 4 / 4px stretch;
+}
+
+spinbutton > button,
+spinbutton > button:hover,
+spinbutton > button:focus,
+spinbutton > button:backdrop {
+  min-width: 16px;
+  min-height: 16px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  border-image: none;
+  box-shadow: none;
+  outline: none;
+  color: transparent;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: round(down, calc(50% + 0px), 1px) round(down, calc(50% + 0px), 1px);
+  transition: none;
+}
+
+/* The text box ends one column past the entry art's outer edge: 1 px of
+ * margin leaves the measured 2 px between the field and the arrows. */
+spinbutton.horizontal > button.down {
+  margin-left: 1px;
+}
+
+spinbutton > button > image {
+  opacity: 0;
+}
+
+spinbutton > button.down {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/vscroll-down.png"), url("../gtk-3.0/assets/vscroll-down@2.png"));
+  background-size: 16px 16px;
+}
+
+spinbutton > button.down:active {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/vscroll-down-pressed.png"), url("../gtk-3.0/assets/vscroll-down-pressed@2.png"));
+}
+
+/* The scroll bar's up arrow has no bottom line (the trough is its edge
+ * there): the standalone box has all four. */
+spinbutton > button.up {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/arrow-box-up.png"), url("../gtk-3.0/assets/arrow-box-up@2.png"));
+  background-size: 16px 16px;
+}
+
+spinbutton > button.up:active {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/arrow-box-up-pressed.png"), url("../gtk-3.0/assets/arrow-box-up-pressed@2.png"));
+}
+
+/* The disabled art is already Mac OS 9's gray look: no extra fading on top
+ * (libadwaita dims disabled widgets with filter: opacity()). */
+spinbutton:disabled,
+spinbutton:disabled > text,
+spinbutton > button:disabled {
+  filter: none;
+  opacity: 1;
+}
+
+/* At a limit, or when the whole control is disabled: flat gray boxes, as
+ * Mac OS 9 draws disabled controls (derived). */
+spinbutton > button.down:disabled {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/arrow-box-down-disabled.png"), url("../gtk-3.0/assets/arrow-box-down-disabled@2.png"));
+}
+
+spinbutton > button.up:disabled {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/arrow-box-up-disabled.png"), url("../gtk-3.0/assets/arrow-box-up-disabled@2.png"));
+}

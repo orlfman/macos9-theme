@@ -538,6 +538,22 @@ def make_vscroll_arrow(up: bool, pressed: bool, trim_bottom: bool = False) -> Im
     return im.crop((0, 0, 16, 15)) if trim_bottom else im
 
 
+def make_arrow_box_disabled(up: bool) -> Image.Image:
+    """Disabled standalone arrow box (#267), drawn as Mac OS 9 draws disabled
+    controls (docs/REFERENCE.md "Check box, disabled"): flat, only a #888888
+    frame and arrow on #DDDDDD, no bevel. Derived."""
+    im = Image.new("RGBA", (16, 16), rgba(0xDDDDDD))
+    px = im.load()
+    for i in range(16):
+        px[i, 0] = px[i, 15] = px[0, i] = px[15, i] = rgba(0x888888)
+    cx = 7
+    for i in range(4):
+        half = i if up else (3 - i)
+        for x in range(cx - half, cx + 2 + half):
+            px[x, 6 + i] = rgba(0x888888)
+    return im
+
+
 def make_progress_assets(prog: dict[str, list[int]]) -> dict[str, Image.Image]:
     """Build determinate & indeterminate horizontal/vertical progressbar assets from progress.h."""
     def cols_to_img(cols: list[list[int]], r0: int = 0, r1: int = 14) -> Image.Image:
@@ -924,6 +940,10 @@ def main() -> int:
     vscroll_grip = make_vscroll_grip()
     vscroll_up = make_vscroll_arrow(up=True, pressed=False, trim_bottom=True)
     vscroll_up_p = make_vscroll_arrow(up=True, pressed=True, trim_bottom=True)
+    # Standalone arrow buttons (spin buttons, tab scroll arrows): the up box
+    # with its own bottom line; in a scroll bar the trough supplies it.
+    arrow_box_up = make_vscroll_arrow(up=True, pressed=False, trim_bottom=False)
+    arrow_box_up_p = make_vscroll_arrow(up=True, pressed=True, trim_bottom=False)
     vscroll_dn = make_vscroll_arrow(up=False, pressed=False, trim_bottom=False)
     vscroll_dn_p = make_vscroll_arrow(up=False, pressed=True, trim_bottom=False)
     tab_top_normal = make_tab_image(tabs["Normal"])
@@ -1021,6 +1041,12 @@ def main() -> int:
         "vscroll-up-pressed": vscroll_up_p,
         "vscroll-down": vscroll_dn,
         "vscroll-down-pressed": vscroll_dn_p,
+        "arrow-box-up": arrow_box_up,
+        "arrow-box-up-pressed": arrow_box_up_p,
+        "arrow-box-up-disabled": make_arrow_box_disabled(up=True),
+        "arrow-box-down-disabled": make_arrow_box_disabled(up=False),
+        "arrow-box-left": arrow_box_up.transpose(tr),
+        "arrow-box-left-pressed": arrow_box_up_p.transpose(tr),
         "hscroll-left": vscroll_up.transpose(tr),
         "hscroll-left-pressed": vscroll_up_p.transpose(tr),
         "hscroll-right": vscroll_dn.transpose(tr),
