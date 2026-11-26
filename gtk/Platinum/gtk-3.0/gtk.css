@@ -576,6 +576,95 @@ menu > separator,
   background-image: linear-gradient(to bottom, #888888 0, #888888 1px, #ffffff 1px, #ffffff 2px);
 }
 
+/* --- Popovers (GtkPopover with GtkModelButtons, e.g. Lutris's menus): GTK 3
+ * themes don't inherit Adwaita, so without these they had no background or
+ * frame at all. Drawn as the Platinum menu above: #DDDDDD face, 1 px black
+ * outline, items edge to edge, the Lavender highlight, the menu check and
+ * radio marks and the menu separator. The popover arrow keeps GTK's shape
+ * in the same colors. --- */
+popover.background {
+  padding: 1px 0;
+  color: @platinum_fg;
+  background-color: @platinum_bg;
+  background-image: none;
+  border: 1px solid #000000;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+popover.background:backdrop {
+  background-color: @platinum_bg;
+}
+
+popover modelbutton.flat {
+  min-height: 16px;
+  padding: 1px 8px 1px 4px;
+  margin: 0;
+  color: @platinum_fg;
+  background-color: transparent;
+  background-image: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+}
+
+popover modelbutton.flat:hover {
+  color: #ffffff;
+  background-color: @platinum_accent_dark;
+  box-shadow: inset 1px 0 0 0 @platinum_focus, inset -1px 0 0 0 #000088;
+}
+
+popover modelbutton.flat:disabled {
+  color: @platinum_fg_disabled;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+popover modelbutton check,
+popover modelbutton radio {
+  min-width: 9px;
+  min-height: 8px;
+  margin: 0 6px 0 0;
+  padding: 0;
+  border: none;
+  background-color: transparent;
+  background-image: none;
+  -gtk-icon-source: none;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+popover modelbutton check:checked {
+  background-image: -gtk-scaled(url("assets/menu-check-normal.png"), url("assets/menu-check-normal@2.png"));
+}
+
+popover modelbutton:hover check:checked {
+  background-image: -gtk-scaled(url("assets/menu-check-hover.png"), url("assets/menu-check-hover@2.png"));
+}
+
+popover modelbutton:disabled check:checked {
+  background-image: -gtk-scaled(url("assets/menu-check-disabled.png"), url("assets/menu-check-disabled@2.png"));
+}
+
+popover modelbutton radio:checked {
+  background-image: -gtk-scaled(url("assets/menu-radio-normal.png"), url("assets/menu-radio-normal@2.png"));
+}
+
+popover modelbutton:hover radio:checked {
+  background-image: -gtk-scaled(url("assets/menu-radio-hover.png"), url("assets/menu-radio-hover@2.png"));
+}
+
+popover separator {
+  min-height: 2px;
+  min-width: 1px;
+  margin: 2px 0;
+  padding: 0;
+  border: none;
+  background-color: transparent;
+  background-image: linear-gradient(to bottom, #888888 0, #888888 1px, #ffffff 1px, #ffffff 2px);
+}
+
 /* --- Pop-up menus / ComboBox (measured PopupBody + PopupArrow) --- */
 combobox > box.linked > button.combo,
 combobox button.combo {
@@ -962,20 +1051,120 @@ notebook > header > tabs > tab:focus:not(:backdrop) {
   outline-offset: -4px;
 }
 
+/* Tab scroll arrows (shown when the tabs don't fit, e.g. Audacious's
+ * settings). Mac OS 9 had no scrolling tabs; the closest Platinum control
+ * is the horizontal scroll bar's arrow buttons, drawn from the same art.
+ * The icon theme isn't used: WhiteSur has no pan-left/pan-right-symbolic,
+ * which left these as empty boxes. arrow.down scrolls back (left). */
 notebook > header > tabs > arrow {
-  min-width: 14px;
-  min-height: 14px;
-  padding: 2px;
-  color: @platinum_fg;
-  background-color: @platinum_bg;
+  min-width: 16px;
+  min-height: 16px;
+  margin: 0;
+  /* GTK 3 centers backgrounds on half pixels in an odd-sized box and has
+   * no round(): anchor the art to the content box's whole-pixel corner. */
+  padding: 4px 0 0 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  color: transparent;
+  -gtk-icon-source: none;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-origin: content-box;
+  background-position: left top;
+}
+
+/* The scroll bar's left arrow has no right edge (the trough's outline is
+ * its edge there): add that black column as a second layer, art-sized. */
+notebook > header > tabs > arrow.down,
+notebook > header > tabs > arrow.down:active {
+  min-width: 16px;
+  background-size: 15px 16px, 1px 16px;
+  background-position: left top, 15px 0;
+}
+
+notebook > header > tabs > arrow.up,
+notebook > header > tabs > arrow.up:active {
+  background-size: 16px 16px;
 }
 
 notebook > header > tabs > arrow.down {
-  -gtk-icon-source: -gtk-icontheme("pan-left-symbolic");
+  background-image: -gtk-scaled(url("assets/hscroll-left.png"), url("assets/hscroll-left@2.png")), linear-gradient(#000000, #000000);
+}
+
+notebook > header > tabs > arrow.down:active {
+  background-image: -gtk-scaled(url("assets/hscroll-left-pressed.png"), url("assets/hscroll-left-pressed@2.png")), linear-gradient(#000000, #000000);
+}
+
+/* Buttons inside a tab (close buttons, e.g. Audacious's playlist tabs):
+ * as on the Qt tabs (Kwi, Konsole), just the icon, no push-button bevel,
+ * so the tab keeps its measured height instead of growing 7 px. */
+notebook > header > tabs > tab button,
+notebook > header > tabs > tab button:hover,
+notebook > header > tabs > tab button:disabled {
+  min-width: 16px;
+  min-height: 16px;
+  margin: -2px 0 -2px 4px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  border-image: none;
+  box-shadow: none;
+  outline: none;
+  background-color: transparent;
+  background-image: none;
+}
+
+notebook > header > tabs > tab button:active {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Buttons an app puts in the tab row (GtkNotebook action widgets, e.g.
+ * Audacious's "+" for a new playlist): the header overlaps the pane by
+ * 3 px so the current tab joins it, and a full push button filled that
+ * strip too, cutting into the pane. Keep them out of it, and draw them as
+ * the small square bevel button of Help's toolbar (docs/REFERENCE.md
+ * "Bevel buttons (sizes)"; pressed derived), which fits the tab row. */
+notebook > header.top > button,
+notebook > header.top > box > button {
+  min-width: 16px;
+  min-height: 16px;
+  margin: 1px 2px 4px 2px;
+  padding: 1px;
+  color: @platinum_fg;
+  background-color: #cccccc;
+  background-image: none;
+  border-style: solid;
+  border-width: 1px;
+  border-color: #666666 #333333 #333333 #666666;
+  border-radius: 0;
+  border-image: none;
+  box-shadow: inset 1px 1px #ffffff, inset -1px -1px #888888;
+  outline: none;
+}
+
+notebook > header.top > button:active,
+notebook > header.top > box > button:active {
+  color: #ffffff;
+  background-color: #666666;
+  border-color: #333333 #444444 #444444 #333333;
+  box-shadow: inset 1px 1px #555555, inset -1px -1px #777777;
+}
+
+notebook > header.top > button:disabled,
+notebook > header.top > box > button:disabled {
+  color: @platinum_fg_disabled;
+  background-color: @platinum_bg;
+  border-color: @platinum_border_disabled;
+  box-shadow: none;
 }
 
 notebook > header > tabs > arrow.up {
-  -gtk-icon-source: -gtk-icontheme("pan-right-symbolic");
+  background-image: -gtk-scaled(url("assets/hscroll-right.png"), url("assets/hscroll-right@2.png"));
+}
+
+notebook > header > tabs > arrow.up:active {
+  background-image: -gtk-scaled(url("assets/hscroll-right-pressed.png"), url("assets/hscroll-right-pressed@2.png"));
 }
 
 /* --- Scales / Sliders (measured controls-general-controls.png & controls-memory.png) --- */
@@ -1661,6 +1850,51 @@ headerbar > box.left,
 headerbar > box.right {
   background-color: @platinum_bg_alt;
   padding: 0 3px;
+}
+
+/* GTK 3 packs an app's header bar widgets (buttons, a search entry, often
+ * inside plain boxes) 6 px apart, a spacing CSS can't change, and boxes
+ * paint no background, so the stripes showed between neighbouring
+ * buttons. As in the GTK 4 bar, the widgets sit on the plain face and the
+ * stripes show only in the gaps: face-colored 6 px shadows left and right
+ * of every button, entry and linked group at any depth (not of plain
+ * boxes, which may be stretched wide around a single button). Horizontal
+ * only, so the bar's top and bottom lines stay; 6 px also covers the
+ * bar's 6 px end padding. Linked groups get it as a whole, since a
+ * button's left shadow would paint over its linked neighbour. None of
+ * these draws its own box-shadow in this theme. */
+headerbar > button:not(.titlebutton),
+headerbar > entry,
+headerbar > spinbutton,
+headerbar :not(.linked) > button:not(.titlebutton),
+headerbar :not(.linked) > entry,
+headerbar :not(.linked) > spinbutton,
+headerbar .linked {
+  box-shadow: 6px 0 0 0 @platinum_bg_alt, -6px 0 0 0 @platinum_bg_alt;
+}
+
+headerbar:backdrop > button:not(.titlebutton),
+headerbar:backdrop > entry,
+headerbar:backdrop > spinbutton,
+headerbar:backdrop :not(.linked) > button:not(.titlebutton),
+headerbar:backdrop :not(.linked) > entry,
+headerbar:backdrop :not(.linked) > spinbutton,
+headerbar:backdrop .linked {
+  box-shadow: none;
+}
+
+/* The window boxes keep the measured 5 px to the stripes (their own 3 px
+ * padding) and only cover the bar's end padding outside them. */
+headerbar > box.left {
+  box-shadow: -6px 0 0 0 @platinum_bg_alt;
+}
+
+headerbar > box.right {
+  box-shadow: 6px 0 0 0 @platinum_bg_alt;
+}
+
+headerbar:backdrop > * {
+  box-shadow: none;
 }
 
 headerbar:backdrop > box.left,
