@@ -1,0 +1,286 @@
+# KDE Global Menu French translation.
+# SPDX-License-Identifier: GPL-2.0-or-later
+msgid ""
+msgstr ""
+"Project-Id-Version: KDE Global Menu\n"
+"PO-Revision-Date: 2026-08-20 23:30+0530\n"
+"Last-Translator: KDE Global Menu contributors\n"
+"Language-Team: French\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "&File"
+msgstr "&Fichier"
+
+msgid "&Edit"
+msgstr "&Édition"
+
+msgid "&View"
+msgstr "&Affichage"
+
+msgid "&Go"
+msgstr "A&ller"
+
+msgid "&Tools"
+msgstr "Ou&tils"
+
+msgid "&Settings"
+msgstr "&Configuration"
+
+msgid "&Help"
+msgstr "&Aide"
+
+msgid "Create New"
+msgstr "Créer"
+
+msgid "Folder…"
+msgstr "Dossier…"
+
+msgid "Text File…"
+msgstr "Fichier texte…"
+
+msgid "HTML File…"
+msgstr "Fichier HTML…"
+
+msgid "Link to Location (URL)…"
+msgstr "Lien vers un emplacement (URL)…"
+
+msgid "Basic Link to File or Directory…"
+msgstr "Lien vers un fichier ou un dossier…"
+
+msgid "Link to Application…"
+msgstr "Lien vers une application…"
+
+msgid "Restart Plasma Shell…"
+msgstr "Redémarrer Plasma Shell…"
+
+msgid "Close Window"
+msgstr "Fermer la fenêtre"
+
+msgid "Force Quit Window…"
+msgstr "Forcer la fermeture de la fenêtre…"
+
+msgid "Lock Screen"
+msgstr "Verrouiller l’écran"
+
+msgid "Show Logout Screen…"
+msgstr "Afficher l’écran de déconnexion…"
+
+msgid "Open Default Browser"
+msgstr "Ouvrir le navigateur par défaut"
+
+msgid "Clipboard History"
+msgstr "Historique du presse-papiers"
+
+msgid "Desktop and Wallpaper…"
+msgstr "Bureau et fond d’écran…"
+
+msgid "Display Configuration…"
+msgstr "Configuration de l’affichage…"
+
+msgid "Peek at Desktop"
+msgstr "Aperçu du bureau"
+
+msgid "Restore Windows"
+msgstr "Restaurer les fenêtres"
+
+msgid "Overview"
+msgstr "Vue d’ensemble"
+
+msgid "Activities"
+msgstr "Activités"
+
+msgid "Home Folder"
+msgstr "Dossier personnel"
+
+msgid "Documents"
+msgstr "Documents"
+
+msgid "Downloads"
+msgstr "Téléchargements"
+
+msgid "Trash"
+msgstr "Corbeille"
+
+msgid "Root Filesystem"
+msgstr "Système de fichiers racine"
+
+msgid "Network"
+msgstr "Réseau"
+
+msgid "Recent Locations"
+msgstr "Emplacements récents"
+
+msgid "Find Files"
+msgstr "Rechercher des fichiers"
+
+msgid "Run Command"
+msgstr "Exécuter une commande"
+
+msgid "Open Terminal"
+msgstr "Ouvrir un terminal"
+
+msgid "System Monitor"
+msgstr "Moniteur système"
+
+msgid "Disk Usage"
+msgstr "Utilisation des disques"
+
+msgid "Partition Manager"
+msgstr "Gestionnaire de partitions"
+
+msgid "System Settings"
+msgstr "Configuration du système"
+
+msgid "Power Management"
+msgstr "Gestion de l’énergie"
+
+msgid "Date and Time"
+msgstr "Date et heure"
+
+msgid "Region and Language"
+msgstr "Région et langue"
+
+msgid "Bluetooth"
+msgstr "Bluetooth"
+
+msgid "KDE Help Center"
+msgstr "Centre d’aide KDE"
+
+msgid "Search"
+msgstr "Rechercher"
+
+msgid "Search…"
+msgstr "Rechercher…"
+
+msgid "An item named %1 already exists."
+msgstr "Un élément nommé %1 existe déjà."
+
+msgid "Application Launchers (*.desktop)"
+msgstr "Lanceurs d’applications (*.desktop)"
+
+msgid "Basic Link"
+msgstr "Lien simple"
+
+msgid "Basic Link to File or Directory"
+msgstr "Lien vers un fichier ou un dossier"
+
+msgid "Bluetooth…"
+msgstr "Bluetooth…"
+
+msgid "Create New Folder"
+msgstr "Créer un dossier"
+
+msgid "Create New HTML File"
+msgstr "Créer un fichier HTML"
+
+msgid "Create New Text File"
+msgstr "Créer un fichier texte"
+
+msgid "Date and Time…"
+msgstr "Date et heure…"
+
+msgid "Enter a name without path separators."
+msgstr "Saisissez un nom sans séparateurs de chemin."
+
+msgid "Enter a valid URL."
+msgstr "Saisissez une URL valide."
+
+msgid "Existing file or directory:"
+msgstr "Fichier ou dossier existant :"
+
+msgid "Find Files…"
+msgstr "Rechercher des fichiers…"
+
+msgid "Force Quit Window"
+msgstr "Forcer la fermeture de la fenêtre"
+
+msgid "KDE Community"
+msgstr "Communauté KDE"
+
+msgid "KDE Global Menu Documentation"
+msgstr "Documentation de KDE Global Menu"
+
+msgid "KDE Global Menu Issues"
+msgstr "Signalements de KDE Global Menu"
+
+msgid "Link to Application"
+msgstr "Lien vers une application"
+
+msgid "Link to Location"
+msgstr "Lien vers un emplacement"
+
+msgid "Location URL:"
+msgstr "URL de l’emplacement :"
+
+msgid "Manage Disk Usage"
+msgstr "Gérer l’utilisation des disques"
+
+msgid "Name:"
+msgstr "Nom :"
+
+msgid "New Folder"
+msgstr "Nouveau dossier"
+
+msgid "New HTML File.html"
+msgstr "Nouveau fichier HTML.html"
+
+msgid "New Link.desktop"
+msgstr "Nouveau lien.desktop"
+
+msgid "New Text File.txt"
+msgstr "Nouveau fichier texte.txt"
+
+msgid "Power Management…"
+msgstr "Gestion de l’énergie…"
+
+msgid "Region and Language…"
+msgstr "Région et langue…"
+
+msgid "Restart Plasma Shell"
+msgstr "Redémarrer Plasma Shell"
+
+msgid "Restart Plasma Shell now? Panels and desktop widgets will briefly disappear."
+msgstr "Redémarrer Plasma Shell maintenant ? Les panneaux et les composants graphiques du bureau disparaîtront brièvement."
+
+msgid "Run Command…"
+msgstr "Exécuter une commande…"
+
+msgid "Terminal"
+msgstr "Terminal"
+
+msgid "The Desktop folder is not available."
+msgstr "Le dossier Bureau n’est pas disponible."
+
+msgid "The application link could not be created."
+msgstr "Impossible de créer le lien vers l’application."
+
+msgid "The folder could not be created."
+msgstr "Impossible de créer le dossier."
+
+msgid "The link could not be created. Check the name and target."
+msgstr "Impossible de créer le lien. Vérifiez le nom et la cible."
+
+msgid "The selected target does not exist."
+msgstr "La cible sélectionnée n’existe pas."
+
+msgid "This will force the selected window to close. Continue?"
+msgstr "La fermeture de la fenêtre sélectionnée sera forcée. Continuer ?"
+
+msgid "Use single button for application menu"
+msgstr "Utiliser un seul bouton pour le menu de l’application"
+
+msgid "Show full application menu"
+msgstr "Afficher le menu complet de l’application"
+
+msgid "Show menus for apps on different screens"
+msgstr "Afficher les menus des applications sur les autres écrans"
+
+msgid "Appearance"
+msgstr "Apparence"
+
+msgctxt "@info:usagetip"
+msgid "Open a menu"
+msgstr "Ouvrir un menu"
