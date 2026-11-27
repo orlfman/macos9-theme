@@ -246,6 +246,26 @@ auditing doesn't give you the right to edit a component you haven't claimed.
 - The user picks the theme's installable names (theme IDs, package names).
   Descriptive names are fine (see above).
 
+## README
+
+`README.md` is for people who want to install and use the theme: everyday
+Linux users, not developers or agents. Write it that way (the user's
+request, 2026-11-27):
+
+- Say what something does and how to use it: the command, what changes
+  on their desktop, and how to undo it. Leave out internals such as cache
+  folders, lookup order, pins, checksums, test hooks and finding numbers.
+  Those belong in `CHANGELOG.md`, `AUDIT.md`, `PLAN.md`, `docs/` or code
+  comments.
+- Keep it short and plain, the way a person would explain it to a
+  friend. Don't make it sound AI-written: no stacked headings for one
+  paragraph, no "seamlessly", "robust", "ensure", "leverage", no em
+  dashes, no bold on every other phrase, no padded summaries.
+- Keep what users need to know: anything that is optional, needs a
+  download, or comes with someone else's terms (for example the Big Sur
+  sounds are Apple's and for personal use only).
+- The "Extras and tweaks" section on Big Sur system sounds is the model.
+
 ## General rules
 
 - Commit and push only when the user asks. Never create, delete, or change
