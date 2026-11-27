@@ -142,7 +142,9 @@ DesktopFallback::DesktopFallback(DesktopFallbackActionRunner *runner, const QStr
         QAction *action = addAction(goMenu, label, iconName);
         action->setEnabled(dolphinAvailable && url.isValid() && !url.isEmpty());
         connect(action, &QAction::triggered, action, [this, dolphin, url] {
-            m_runner->startProgram(dolphin, {url.toString(QUrl::FullyEncoded)});
+            // The panel can open a new window without needing a Wayland
+            // activation token for an existing Dolphin window.
+            m_runner->startProgram(dolphin, {QStringLiteral("--new-window"), url.toString(QUrl::FullyEncoded)});
         });
     };
     addLocation(i18n("Home Folder"), localLocation(QDir::homePath()), QStringLiteral("user-home"));

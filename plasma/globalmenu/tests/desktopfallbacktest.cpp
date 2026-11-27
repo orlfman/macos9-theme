@@ -107,7 +107,8 @@ void DesktopFallbackTest::fileAndGoActions()
         action->trigger();
         QCOMPARE(runner.programCalls.size(), callsBefore + 1);
         QCOMPARE(runner.programCalls.last().program, QStringLiteral("dolphin"));
-        QCOMPARE(runner.programCalls.last().arguments, QStringList{destination.toString(QUrl::FullyEncoded)});
+        const QStringList arguments{QStringLiteral("--new-window"), destination.toString(QUrl::FullyEncoded)};
+        QCOMPARE(runner.programCalls.last().arguments, arguments);
     }
 }
 
