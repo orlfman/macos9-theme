@@ -288,7 +288,8 @@ else
             XDG_STATE_HOME="$probe_home/state" XDG_RUNTIME_DIR="$probe_home/runtime" \
             QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software \
             QT_PLUGIN_PATH="$build/global-menu/plugins" \
-            dbus-run-session -- plasmawindowed --smoke-test platinum.globalmenu > "$build/global-menu-load.log" 2>&1; then
+            dbus-run-session --config-file="$here/plasma/probe-bus.conf" -- \
+            plasmawindowed --smoke-test platinum.globalmenu > "$build/global-menu-load.log" 2>&1; then
             cat "$build/global-menu-load.log" >&2
             die "Platinum Global Menu failed its isolated load check; nothing was installed"
         fi
