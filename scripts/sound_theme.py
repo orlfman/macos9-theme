@@ -25,6 +25,7 @@ DIGEST = "074ed200fb8ebd5285f2ca0a8be20c481d41999bf944423371baabf4a83563a9"
 TREE_DIGEST = "da5ee4833e61118e996dd516f818e144601b2398f4cbe92ba9f514108631ff1f"
 GROUP = "Sounds"
 KEY = "Theme"
+ENABLE = "Enable"
 THEME = "bigsur"
 
 
@@ -51,7 +52,7 @@ def stage_checkout(checkout, stage):
     back to the pinned download instead of failing (an updated clone)."""
     try:
         files, digest = read_tree(checkout)
-    except ValueError as error:
+    except (OSError, ValueError) as error:
         print(f"not using {checkout}: {error}", file=sys.stderr)
         return False
     if digest != TREE_DIGEST:
@@ -152,23 +153,23 @@ def capture_undo(config, marker):
     if record:
         record.pop("undo", None)
         record["undo"] = undo_state(config, record)
+        record["undo_enable"] = kde_key_state(config, GROUP, ENABLE)
         save_record(marker, record)
 
 
-def add_deleted_marker(config):
-    """Put `Theme[$d]` back inside the existing [Sounds] group, or add the
-    group at the end when there is none (no second [Sounds] heading)."""
+def add_deleted_marker(config, key):
+    """Restore a deleted key inside the existing sound settings group."""
     contents = config.read_text(encoding="utf-8") if config.exists() else ""
     lines = contents.splitlines()
     header = f"[{GROUP}]"
     for index, line in enumerate(lines):
         if line.strip() == header:
-            lines.insert(index + 1, f"{KEY}[$d]")
+            lines.insert(index + 1, f"{key}[$d]")
             break
     else:
         if lines and lines[-1].strip():
             lines.append("")
-        lines += [header, f"{KEY}[$d]"]
+        lines += [header, f"{key}[$d]"]
     atomic_write_text(config, "\n".join(lines) + "\n")
 
 
@@ -183,15 +184,23 @@ def restore(config, marker, dry_run):
         else:
             print("restore the previous KDE sound theme default")
         return
-    current = kde_key_state(config, GROUP, KEY)
-    if not state_matches(current, previous) or current["deleted_marker"] != previous["deleted_marker"]:
-        if previous["present"]:
-            kde_set_key(config, GROUP, KEY, previous["value"])
-        else:
-            kde_delete_key(config, GROUP, KEY, remove_if_empty_file=not previous["file_exists"])
-            if previous["deleted_marker"]:
-                add_deleted_marker(config)
+    restore_key(config, KEY, previous)
+    # Older in-progress uninstalls recorded only Theme.
+    if "undo_enable" in record:
+        restore_key(config, ENABLE, record["undo_enable"])
     marker.unlink()
+
+
+def restore_key(config, key, previous):
+    current = kde_key_state(config, GROUP, key)
+    if state_matches(current, previous) and current["deleted_marker"] == previous["deleted_marker"]:
+        return
+    if previous["present"]:
+        kde_set_key(config, GROUP, key, previous["value"])
+    else:
+        kde_delete_key(config, GROUP, key, remove_if_empty_file=not previous["file_exists"])
+        if previous["deleted_marker"]:
+            add_deleted_marker(config, key)
 
 
 def main():

@@ -301,7 +301,7 @@ notify_sound_theme() {
     ((dry_run)) && return 0
     if have gdbus; then
         gdbus emit --session --object-path /kdeglobals --signal org.kde.kconfig.notify.ConfigChanged \
-            "{'Sounds': [[byte 84, 104, 101, 109, 101]]}" > /dev/null 2>&1 || true
+            "{'Sounds': [[byte 84, 104, 101, 109, 101], [69, 110, 97, 98, 108, 101]]}" > /dev/null 2>&1 || true
     fi
 }
 

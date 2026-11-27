@@ -2930,6 +2930,7 @@ else
     check "  installs all 44 sounds" bash -c '[[ $(find "$1/stereo" -name "*.oga" | wc -l) -eq 44 ]]' _ "$sound_dir"
     check "  selects Big Sur" bash -c '[[ $(kreadconfig6 --file "$1/kdeglobals" --group Sounds --key Theme) == bigsur ]]' _ "$config"
     check "  keeps the user's mute setting" bash -c '[[ $(kreadconfig6 --file "$1/kdeglobals" --group Sounds --key Enable) == false ]]' _ "$config"
+    mv "$sound_dir" "$root/sound-fixture/first-installed-pack"
     check "a repeat works offline from the cache" run sound-again env M9_SOUND_URL="file://$root/sound-fixture/missing.zip" "$project/install.sh" --apply --sound-theme
     check "  and keeps Big Sur selected" bash -c '[[ $(kreadconfig6 --file "$1/kdeglobals" --group Sounds --key Theme) == bigsur ]]' _ "$config"
     check "uninstall --dry-run names the earlier sound theme" run sound-undo-dry "$project/uninstall.sh" --dry-run
@@ -2940,12 +2941,15 @@ else
     check "  keeps the project cache" cmp "$sound_zip" "$sound_cache"
     check "  leaves no record" no_record_left
 
-    fresh_sounds "Big Sur sounds: a later choice and an added file survive undo"
+    fresh_sounds "Big Sur sounds: a later choice, mute change and added file survive undo"
+    kwriteconfig6 --file "$config/kdeglobals" --group Sounds --key Enable true
     check "install with sounds" run sound-later-install env M9_SOUND_URL="file://$sound_zip" "$project/install.sh" --apply --sound-theme
     kwriteconfig6 --file "$config/kdeglobals" --group Sounds --key Theme freedesktop
+    kwriteconfig6 --file "$config/kdeglobals" --group Sounds --key Enable false
     printf 'mine\n' > "$sound_dir/custom.oga"
     check "uninstall succeeds" run sound-later-undo "$project/uninstall.sh"
     check "  keeps the later sound theme" bash -c '[[ $(kreadconfig6 --file "$1/kdeglobals" --group Sounds --key Theme) == freedesktop ]]' _ "$config"
+    check "  keeps the later mute setting" bash -c '[[ $(kreadconfig6 --file "$1/kdeglobals" --group Sounds --key Enable) == false ]]' _ "$config"
     check "  keeps the added file" grep -Fxq mine "$sound_dir/custom.oga"
     check "  removes the release's own files" test ! -e "$sound_dir/stereo/trash-empty.oga"
 
@@ -2962,7 +2966,11 @@ else
     fresh_sounds "Big Sur sounds: a pre-installed identical pack is used and kept"
     mkdir -p "$data/sounds"
     python3 -I -c 'import sys, zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])' "$sound_zip" "$data/sounds"
-    check "install with sounds" run sound-preinstalled env M9_SOUND_URL="file://$sound_zip" "$project/install.sh" --apply --sound-theme
+    check "dry run can reuse the verified pack" run sound-preinstalled-dry env M9_SOUND_URL="file://$root/sound-fixture/missing.zip" "$project/install.sh" --apply --sound-theme --dry-run
+    check "  reports reuse" grep -Fq "reuse the installed Big Sur sound theme" "$root/$n-sound-preinstalled-dry.log"
+    check "  plans no download" bash -c '! grep -Fq "download Big Sur" "$1"' _ "$root/$n-sound-preinstalled-dry.log"
+    check "install with sounds works offline using the verified pack" run sound-preinstalled env M9_SOUND_URL="file://$root/sound-fixture/missing.zip" "$project/install.sh" --apply --sound-theme
+    check "  needs no release cache" test ! -e "$sound_cache"
     check "  selects Big Sur" bash -c '[[ $(kreadconfig6 --file "$1/kdeglobals" --group Sounds --key Theme) == bigsur ]]' _ "$config"
     check "uninstall succeeds" run sound-preinstalled-undo "$project/uninstall.sh"
     check "  keeps the pack that was there first" test -f "$sound_dir/stereo/trash-empty.oga"
@@ -2976,6 +2984,17 @@ else
     check "install falls back to the pinned release" run sound-clone env M9_SOUND_URL="file://$sound_zip" "$project/install.sh" --apply --sound-theme
     check "  says it skipped the clone" grep -Fq "isn't Big Sur 1.0.2" "$root/$n-sound-clone.log"
     check "  and caches the pinned archive" cmp "$sound_zip" "$sound_cache"
+
+    fresh_sounds "Big Sur sounds: an unreadable clone falls back to the pinned release"
+    mkdir -p "$clone"
+    printf 'unreadable upstream\n' > "$clone/index.theme"
+    chmod 000 "$clone/index.theme"
+    check "dry run skips the unreadable clone" run sound-unreadable-dry env M9_SOUND_URL="file://$sound_zip" "$project/install.sh" --apply --sound-theme --dry-run
+    check "  and plans to use the pinned release" grep -Fq "download Big Sur 1.0.2" "$root/$n-sound-unreadable-dry.log"
+    check "install uses the pinned release" run sound-unreadable env M9_SOUND_URL="file://$sound_zip" "$project/install.sh" --apply --sound-theme
+    check "  reports why the clone was skipped" grep -Fq "Permission denied" "$root/$n-sound-unreadable.log"
+    check "  and caches the pinned archive" cmp "$sound_zip" "$sound_cache"
+    chmod 644 "$clone/index.theme"
 
     fresh_sounds "Big Sur sounds: a corrupt cached archive is rejected"
     mkdir -p "$(dirname "$sound_cache")"
@@ -2999,6 +3018,18 @@ printf '[KDE]\nwidgetStyle=Breeze\n\n[Sounds]\nTheme=bigsur\n' > "$root/sound-ma
 printf '%s\n' "$sound_record" > "$root/sound-marker.json"
 check "restore into a group that empties" python3 -I "$project/scripts/sound_theme.py" restore "$root/sound-marker-kdeglobals" "$root/sound-marker.json"
 check "  still has one [Sounds] heading with the marker" bash -c '[[ $(grep -cFx "[Sounds]" "$1") -eq 1 ]] && grep -Fxq "Theme[\$d]" "$1"' _ "$root/sound-marker-kdeglobals"
+
+fresh "Big Sur sounds: a removed mute key survives an interrupted config restore"
+cfg=$root/sound-mute-kdeglobals
+marker=$root/sound-mute.json
+printf '[Sounds]\nTheme=bigsur\n' > "$cfg"
+printf '%s\n' '{"previous": {"file_exists": true, "present": true, "value": "oxygen", "deleted_marker": false}}' > "$marker"
+check "capture the removed Enable key" python3 -I "$project/scripts/sound_theme.py" capture-undo "$cfg" "$marker"
+# Simulate the full backup replacing kdeglobals before an interruption.
+printf '[Sounds]\nTheme=oxygen\nEnable=false\n' > "$cfg"
+check "resume sound restore from the captured state" python3 -I "$project/scripts/sound_theme.py" restore "$cfg" "$marker"
+check "  keeps Enable absent" bash -c '! grep -q "^Enable" "$1"' _ "$cfg"
+check "  keeps the restored sound theme" grep -Fxq "Theme=oxygen" "$cfg"
 
 echo
 if ((failed)); then

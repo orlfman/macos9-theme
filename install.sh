@@ -230,11 +230,15 @@ check_unfinished_uninstall() {
 check_unfinished_uninstall
 check_target_parents
 check_backup_links
+reuse_sound_theme=0
 if ((sound_theme)); then
     # An existing sounds/bigsur must already be the pinned release; checked
     # from its contents, so a dry run and an offline run see it too.
     check_sound_theme_dir "nothing was changed"
-    if ((dry_run)); then
+    if [[ -d $sound_theme_dir ]]; then
+        reuse_sound_theme=1
+        plan "reuse the installed Big Sur sound theme at $sound_theme_dir"
+    elif ((dry_run)); then
         sound_plan=$(python3 -I "$sound_theme_tool" prepare "$sound_theme_root" "") ||
             die "couldn't verify the Big Sur sound theme; nothing was installed"
         plan "$sound_plan"
@@ -261,6 +265,9 @@ reconcile_displaced
 # Again under the lock, after recovering an interrupted run.
 if ((sound_theme)); then
     check_sound_theme_dir "the existing sound theme was kept"
+    if ((reuse_sound_theme)) && [[ ! -d $sound_theme_dir ]]; then
+        die "the Big Sur sound theme disappeared during preflight; rerun the installer"
+    fi
 fi
 
 # Build the plugins and WhiteSur Lavender icons in a temporary folder before
@@ -655,8 +662,14 @@ if ((apply)); then
         set_menu_layout_mode reset || die "couldn't record the panel layout change"
     fi
     layout_args+=(--keep-auto)
-    if ((sound_theme)) && [[ ! -d $sound_theme_dir ]]; then
-        place_dir "$build/sound-theme/bigsur" "$sound_theme_dir"
+    if ((sound_theme)); then
+        if [[ ! -e $sound_theme_dir && ! -L $sound_theme_dir ]]; then
+            ((reuse_sound_theme == 0)) ||
+                die "the installed Big Sur sound theme disappeared; rerun the installer"
+            place_dir "$build/sound-theme/bigsur" "$sound_theme_dir"
+        else
+            check_sound_theme_dir "the existing sound theme was kept"
+        fi
     fi
     plan "run plasma-apply-lookandfeel ${layout_args[*]}"
     if ((!dry_run)); then

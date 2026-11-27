@@ -140,18 +140,19 @@ Apply Platinum with the optional Big Sur sound theme:
 ./install.sh --apply --sound-theme
 ```
 
-The installer first checks for a cached release archive, either in
-`reference/sounds/` or `build/sound-themes/`. It can also use a matching
-upstream checkout in `build/upstreams/macos-bigsur-sound-theme-linux/`.
-If none are present, it downloads the pinned release into
-`build/sound-themes/` for reuse on subsequent runs.
-The pack is installed for the current user and selected in Plasma's System
-Sounds settings. It includes its own event assignments. See the
+If the current user already has the pinned release installed, the installer
+verifies and reuses it. Otherwise it checks for a cached release archive in
+`reference/sounds/` or `build/sound-themes/`, then checks the local upstream
+checkout in `build/upstreams/macos-bigsur-sound-theme-linux/`. If no cached
+archive or matching checkout is available, it downloads the pinned release
+into `build/sound-themes/` for reuse on subsequent runs. The installer selects Big Sur in Plasma's
+System Sounds settings. It includes its own event assignments. See the
 [upstream release and personal-use terms](https://github.com/gxanshu/macos-bigsur-sound-theme-linux/releases/tag/1.0.2).
 
 Use `--dry-run` to preview the steps. Uninstall restores your previous
-sound selection if Big Sur is still selected and keeps any later choice.
-It removes the sound files it installed and keeps the project cache.
+sound selection if Big Sur is still selected and preserves any later choice
+and your current mute setting. It removes the sound files it installed and
+keeps the project cache.
 
 ### Wallpapers
 
