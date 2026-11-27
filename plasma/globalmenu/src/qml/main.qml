@@ -4,8 +4,8 @@
     SPDX-FileCopyrightText: 2016 Kai Uwe Broulik <kde@privat.broulik.de>
 
     SPDX-License-Identifier: GPL-2.0-or-later
-// Modified by the Platinum theme on 2026-11-26.
 */
+// Modified by the Platinum theme on 2026-11-26.
 pragma ComponentBehavior: Bound
 
 import QtQuick

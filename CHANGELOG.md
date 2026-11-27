@@ -2,6 +2,10 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-26, Codex (GPT-6) — align the global menu QML change notice
+
+Moved the dated change notice in `plasma/globalmenu/src/qml/main.qml` below the license block. Verified that moving the notice accounts for the entire QML diff. Committed and pushed at the user's request.
+
 ## 2026-11-26, Claude Code (Opus 5.5) — review Platinum Global Menu steps 1–2
 
 - Reviewed Codex's six local commits (`55e2523`–`e737850`): exact subtree import, patches match PLAN step 2, fresh Release build warning-free with 9/9 tests, and the #319 test fails when the fix is removed. Details in `AUDIT.md`; no new findings. Only AUDIT.md and this entry changed; committed and pushed as `d460aea` with Codex's notes.
