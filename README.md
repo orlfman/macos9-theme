@@ -242,10 +242,6 @@ A few things worth knowing:
 Not affiliated with Apple in any way. No Apple images, fonts or sounds are
 included.
 
-The small parts of the application style (bevels, arrows, the check mark and
-similar) are pixel tables measured from screenshots of Mac OS 9. They're going
-to be redrawn from scratch (tracked as finding 25 in [AUDIT.md](AUDIT.md)).
-
 - Icons: built from [WhiteSur](https://github.com/vinceliuice/WhiteSur-icon-theme)
   by vinceliuice (GPL 3.0), see [icons/README.md](icons/README.md)
 - Cursors: Apple Cursor v2.0.1 by ful1e5 (GPL 3.0), see
