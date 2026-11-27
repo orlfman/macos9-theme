@@ -746,6 +746,37 @@ def main(root, wayland):
                    if PARSER_DIAGNOSTIC.search(line) and not (wayland and COMPOSITOR_TIMING.search(line.strip()))]
     record(not diagnostics, "gtk-css-and-runtime-diagnostics", " | ".join(diagnostics) or "0")
 
+    links, switches = read_report(root / "switches-links.txt")
+    for off, on in (("switch-off", "switch-on"),
+                    ("switch-off-disabled", "switch-on-disabled")):
+        before, after = switches[off][:4], switches[on][:4]
+        record(before == after and before[2:] == (14, 12),
+               off + "-stable-allocation", f"{before} → {after}")
+    stretched = crop(Image.open(root / "switches.png").convert("RGB"), switches["switch-stretched"])
+    record(stretched.size == (14, 20) and
+           color_count(stretched.crop((0, 0, 14, 4)), (221, 221, 221)) == 56,
+           "switch-disabled-transparent", f"{stretched.width}×{stretched.height}")
+    if wayland:
+        record(links.get("link-focus-changed") == "1", "link-real-wayland-backdrop")
+    for name, expected in (
+        ("link-active", "rgb(0,0,255)"),
+        ("link-backdrop", "rgb(0,0,255)"),
+        ("link-visited", "rgb(0,0,255)"),
+        ("link-visited-backdrop", "rgb(0,0,255)"),
+        ("link-disabled", "rgb(119,119,119)"),
+        ("link-disabled-backdrop", "rgb(119,119,119)"),
+        ("row-link", "rgb(0,0,255)"),
+        ("row-link-backdrop", "rgb(0,0,255)"),
+        ("row-flat", "rgb(0,0,0)"),
+        ("row-flat-backdrop", "rgb(0,0,0)"),
+        ("row-flat-disabled", "rgb(119,119,119)"),
+        ("row-flat-disabled-backdrop", "rgb(119,119,119)"),
+        ("row-link-hover", "rgb(0,0,255)"),
+        ("row-link-press", "rgb(0,0,255)"),
+        ("row-link-visited", "rgb(0,0,255)"),
+    ):
+        record(links.get(name) == expected, name, links.get(name, "missing"))
+
     for name, ref, rx, ry, width, height, edge, bottom, safe_width in CHROME_BANDS:
         ox, oy, w, h, *_ = samples.get(name, (0, 0, 0, 0))
         if (w, h) != (width, height):

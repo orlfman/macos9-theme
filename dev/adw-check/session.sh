@@ -87,7 +87,9 @@ JS
 fi
 
 # 1. Stock: Platinum desktop settings, no user CSS beyond what exists.
-for m in gallery narrow dialog focus disabled alertwin msgdialog prefs; do
+modes=(gallery narrow dialog focus disabled alertwin msgdialog prefs selections selections-border
+    bars-wrapped bars-closed bars-open bars-custom bars-wrapped-search bars-opaque bars-margin)
+for m in "${modes[@]}"; do
     fixture "stock-$m" "$m"
 done
 
@@ -102,7 +104,7 @@ capture_apps stock
 #    user stylesheet, the one desktop-wide CSS libadwaita loads (FINDINGS.md).
 layer="$XDG_DATA_HOME/themes/Platinum/gtk-4.0/libadwaita.css"
 printf '@import url("file://%s");\n' "$layer" > "$XDG_CONFIG_HOME/gtk-4.0/gtk.css"
-for m in gallery narrow dialog focus disabled alertwin msgdialog prefs; do
+for m in "${modes[@]}"; do
     fixture "layer-$m" "$m"
 done
 gsettings set org.gnome.desktop.a11y.interface high-contrast true

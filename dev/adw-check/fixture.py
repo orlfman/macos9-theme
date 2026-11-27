@@ -11,6 +11,15 @@
 #          prefs    floating AdwPreferencesDialog (header bar, close box)
 #          msgdialog the deprecated AdwMessageDialog (zenity 4)
 #          alertwin AdwAlertDialog with no parent (its own window, as zenity)
+#          selections raised toolbar view + listbox/sidebar/grid/flow/textview/link (#292, #293)
+#          selections-border same controls with the solid toolbar separators (#298)
+#          bars-wrapped   selections-border with the header bar inside a GtkBox (#303)
+#          bars-closed    selections-border, header + closed GtkSearchBar (#303, #304)
+#          bars-open      selections-border, header + open GtkSearchBar (#304)
+#          bars-custom    selections-border, header + plain custom box + closed GtkSearchBar (#305)
+#          bars-wrapped-search selections-border, header + open GtkSearchBar inside a GtkBox (#305)
+#          bars-opaque    selections-border, header + `.toolbar` box with an opaque #EEEEEE application background, 4 px CSS and 4 px widget bottom margins (#307, #309–311)
+#          bars-margin    selections-border, header + plain box with a 4 px GtkWidget bottom margin (#311)
 #
 # Zero application CSS: whatever appears comes from libadwaita, the desktop
 # settings it reads (portal color scheme, accent, contrast) and the user's
@@ -30,6 +39,9 @@ from gi.repository import Adw, Gdk, GLib, Graphene, Gtk  # noqa: E402
 MODE, OUT = sys.argv[1], sys.argv[2]
 WIDTH = 360 if MODE == "narrow" else 720
 HEIGHT = 560
+BARS = MODE in ("bars-wrapped", "bars-closed", "bars-open", "bars-custom",
+                "bars-wrapped-search", "bars-opaque", "bars-margin")
+SELECTIONS = MODE in ("selections", "selections-border") or BARS
 
 
 def state(app):
@@ -133,6 +145,51 @@ def controls():
     return box, suggested, selected
 
 
+def find_top_bar(w):
+    """The raised top bar's revealer, or None."""
+    if w.get_css_name() == "revealer" and w.has_css_class("top-bar"):
+        return w
+    c = w.get_first_child()
+    while c:
+        r = find_top_bar(c)
+        if r:
+            return r
+        c = c.get_next_sibling()
+    return None
+
+
+def top_bar_layout(window):
+    """The raised top bar's children as `name:height`, a box's own children in
+    brackets, so the verifier can tell which layout was rendered (#308)."""
+    def find(w):
+        if w.get_css_name() == "revealer" and w.has_css_class("top-bar"):
+            return w
+        c = w.get_first_child()
+        while c:
+            r = find(c)
+            if r:
+                return r
+            c = c.get_next_sibling()
+        return None
+    bar = find(window)
+    if bar is None:
+        return "none"
+    box = bar.get_first_child().get_first_child()  # revealer > windowhandle > box
+    parts = []
+    c = box.get_first_child()
+    while c:
+        inner = ""
+        if c.get_css_name() == "box":
+            names, g = [], c.get_first_child()
+            while g:
+                names.append("%s:%d" % (g.get_css_name(), g.get_height()))
+                g = g.get_next_sibling()
+            inner = "[" + ",".join(names) + "]"
+        parts.append("%s%s:%d" % (c.get_css_name(), inner, c.get_height()))
+        c = c.get_next_sibling()
+    return " ".join(parts)
+
+
 def dump(widget, depth=0, out=None):
     """CSS node tree (name, classes, allocation) for picking selectors."""
     out = out if out is not None else []
@@ -175,6 +232,65 @@ def render(win):
                                          tex.get_height(), scale), flush=True)
 
 
+def selections_body():
+    """Widgets exercising #292 (selections & links) under a raised toolbar (#293)."""
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8,
+                  margin_top=8, margin_bottom=8,
+                  margin_start=8, margin_end=8)
+    lb = Gtk.ListBox()
+    r1 = Gtk.ListBoxRow()
+    r1.set_child(Gtk.Label(label="ListBox Selected Row", xalign=0,
+                           margin_top=4, margin_bottom=4, margin_start=6))
+    lb.append(r1)
+    lb.select_row(r1)
+    box.append(lb)
+
+    sb = Gtk.ListBox()
+    sb.add_css_class("navigation-sidebar")
+    sr1 = Gtk.ListBoxRow()
+    sr1.set_child(Gtk.Label(label="Sidebar Selected Row", xalign=0,
+                            margin_top=4, margin_bottom=4, margin_start=6))
+    sb.append(sr1)
+    sb.select_row(sr1)
+    box.append(sb)
+
+    model = Gtk.StringList.new(["Grid Selected", "Grid Other"])
+    sel = Gtk.SingleSelection(model=model, selected=0)
+    factory = Gtk.SignalListItemFactory()
+    factory.connect(
+        "setup",
+        lambda _f, item: item.set_child(
+            Gtk.Label(margin_top=6, margin_bottom=6,
+                      margin_start=10, margin_end=10)))
+    factory.connect(
+        "bind",
+        lambda _f, item: item.get_child().set_label(
+            item.get_item().get_string()))
+    gv = Gtk.GridView(model=sel, factory=factory)
+    box.append(gv)
+
+    fb = Gtk.FlowBox()
+    fb.append(Gtk.Label(label="FlowBox Selected",
+                        margin_top=6, margin_bottom=6,
+                        margin_start=10, margin_end=10))
+    fb_child = fb.get_child_at_index(0)
+    fb.select_child(fb_child)
+    box.append(fb)
+
+    tv = Gtk.TextView()
+    tv.set_size_request(-1, 32)
+    buf = tv.get_buffer()
+    buf.set_text("Selected text view content")
+    buf.select_range(buf.get_start_iter(), buf.get_end_iter())
+    box.append(tv)
+
+    link = Gtk.LinkButton(uri="https://example.com", label="Platinum Link",
+                          halign=Gtk.Align.START)
+    box.append(link)
+    return box, tv, {"lb": r1, "sb": sr1, "gv": gv, "fb": fb_child,
+                     "tv": tv, "link": link}
+
+
 def activate(app):
     win = Adw.ApplicationWindow(application=app, title="Adw Fixture",
                                 default_width=WIDTH, default_height=HEIGHT)
@@ -182,13 +298,70 @@ def activate(app):
     header.pack_start(Gtk.Button(icon_name="list-add-symbolic"))
     menu = Gtk.MenuButton(icon_name="open-menu-symbolic")
     header.pack_end(menu)
-    body, suggested, selected = controls()
-    if MODE == "disabled":
-        body.set_sensitive(False)
-    scroller = Gtk.ScrolledWindow(child=body, vexpand=True)
-    view = Adw.ToolbarView(content=scroller)
-    view.add_top_bar(header)
-    win.set_content(view)
+    sel_widgets = {}
+    if SELECTIONS:
+        body, focus_tv, sel_widgets = selections_body()
+        suggested = selected = None
+        view = Adw.ToolbarView(content=body)
+        style = (Adw.ToolbarStyle.RAISED_BORDER if MODE == "selections-border" or BARS
+                 else Adw.ToolbarStyle.RAISED)
+        bottom = Gtk.Box()
+        bottom.append(Gtk.Label(label="Bottom toolbar", margin_start=8, margin_bottom=4, margin_top=4))
+        view.set_top_bar_style(style)
+        view.set_bottom_bar_style(style)
+        if MODE == "bars-wrapped":
+            wrap = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+            wrap.append(header)
+            view.add_top_bar(wrap)
+        else:
+            view.add_top_bar(header)
+        if MODE in ("bars-closed", "bars-open"):
+            search = Gtk.SearchBar(child=Gtk.SearchEntry(),
+                                   search_mode_enabled=MODE == "bars-open")
+            view.add_top_bar(search)
+            sel_widgets.update(search=search)
+        if MODE == "bars-custom":
+            custom = Gtk.Box(spacing=6)
+            custom.append(Gtk.Button(label="Custom bar"))
+            view.add_top_bar(custom)
+            view.add_top_bar(Gtk.SearchBar(child=Gtk.SearchEntry()))
+            sel_widgets.update(extra=custom)
+        if MODE == "bars-opaque":
+            # The one application CSS in the fixture: an app's opaque toolbar.
+            css = Gtk.CssProvider()
+            # #EEEEEE so the verifier can see the bar is really opaque (#310);
+            # the margin is the app's own, which the layer drops (#309).
+            css.load_from_string(".toolbar { background-color: #eeeeee; margin-bottom: 4px; }")
+            Gtk.StyleContext.add_provider_for_display(
+                Gdk.Display.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+            # Plus a GtkWidget margin, which CSS can't clear (#311).
+            opaque = Gtk.Box(spacing=6, margin_bottom=4)
+            opaque.add_css_class("toolbar")
+            opaque.append(Gtk.Button(label="Opaque bar"))
+            view.add_top_bar(opaque)
+            sel_widgets.update(extra=opaque)
+        if MODE == "bars-margin":
+            spaced = Gtk.Box(spacing=6, margin_bottom=4)
+            spaced.append(Gtk.Button(label="Spaced bar"))
+            view.add_top_bar(spaced)
+            sel_widgets.update(extra=spaced)
+        if MODE == "bars-wrapped-search":
+            wrap = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+            wrap.append(Gtk.SearchBar(child=Gtk.SearchEntry(), search_mode_enabled=True))
+            view.add_top_bar(wrap)
+            sel_widgets.update(extra=wrap)
+        view.add_bottom_bar(bottom)
+        sel_widgets.update(header=header, bottom=bottom)
+        win.set_content(view)
+    else:
+        body, suggested, selected = controls()
+        focus_tv = None
+        if MODE == "disabled":
+            body.set_sensitive(False)
+        scroller = Gtk.ScrolledWindow(child=body, vexpand=True)
+        view = Adw.ToolbarView(content=scroller)
+        view.add_top_bar(header)
+        win.set_content(view)
 
     bp = Adw.Breakpoint.new(Adw.BreakpointCondition.parse("max-width: 400sp"))
     bp.add_setter(header, "show-title", False)
@@ -200,13 +373,16 @@ def activate(app):
         state(app)
         if MODE == "live":
             return False
-        if MODE == "focus":
-            suggested.grab_focus()
-            win.set_focus_visible(True)
-        selected.grab_focus()
-        selected.select_region(0, 8)
-        if MODE == "focus":
-            suggested.grab_focus()
+        if SELECTIONS:
+            focus_tv.grab_focus()
+        else:
+            if MODE == "focus":
+                suggested.grab_focus()
+                win.set_focus_visible(True)
+            selected.grab_focus()
+            selected.select_region(0, 8)
+            if MODE == "focus":
+                suggested.grab_focus()
         if MODE == "alertwin":
             # Parentless, as zenity shows it: libadwaita gives it a window.
             win.set_visible(False)
@@ -270,6 +446,23 @@ def activate(app):
             try:
                 if MODE in ("gallery", "dialog", "alertwin", "msgdialog", "prefs"):
                     print("\n".join(dump(shown)), flush=True)
+                if SELECTIONS:
+                    print("TOPBAR " + top_bar_layout(shown), flush=True)
+                    # The bar's bounds and the widget margin, so the verifier
+                    # can tell a margin was really applied (#312).
+                    bar = find_top_bar(shown)
+                    if bar is not None:
+                        sel_widgets.setdefault("topbar", bar)
+                    if "extra" in sel_widgets:
+                        print("MARGIN extra %d" % sel_widgets["extra"].get_margin_bottom(),
+                              flush=True)
+                    for name, widget in sel_widgets.items():
+                        ok, b = widget.compute_bounds(shown)
+                        if ok:
+                            print("BOX %s %d %d %d %d" % (
+                                name, int(b.get_x()), int(b.get_y()),
+                                int(b.get_width()), int(b.get_height())),
+                                flush=True)
                 render(shown)
                 app.quit()
             except EmptySnapshot:

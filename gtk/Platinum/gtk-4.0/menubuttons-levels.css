@@ -6,23 +6,46 @@
  * groups, toolbars and OSD boxes, keep GTK's look and its own arrow. */
 window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd),
 :not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd) {
-  min-height: var(--platinum-push-min);
-  min-width: var(--platinum-push-min);
-  padding: var(--platinum-push-padding);
+  min-height: 12px;
+  min-width: 12px;
+  padding: 0 8px;
   margin: 0;
   font-weight: normal;
-  color: var(--platinum-push-fg);
-  background-color: var(--platinum-push-bg);
+  color: @platinum_fg;
+  background-color: @platinum_bg;
   background-clip: padding-box;
   background-image: none;
   border: solid transparent;
-  border-width: var(--platinum-push-border);
+  border-width: 4px;
   border-radius: 0;
-  border-image: var(--platinum-push-image);
+  border-image: -gtk-scaled(url("assets/push-normal.png"), url("assets/push-normal@2.png")) 5 / 5px stretch;
   box-shadow: none;
-  outline: var(--platinum-push-outline);
+  outline: none;
   outline-offset: -1px;
   transition: none;
+}
+
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):active,
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button.keyboard-activating:not(.flat):not(.circular):not(.osd),
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):checked,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):active,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button.keyboard-activating:not(.flat):not(.circular):not(.osd),
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):checked {
+  color: #ffffff;
+  background-color: #666666;
+  border-image: -gtk-scaled(url("assets/push-pressed.png"), url("assets/push-pressed@2.png")) 5 / 5px stretch;
+}
+
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):disabled,
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):disabled {
+  color: @platinum_fg_disabled;
+  background-color: @platinum_bg;
+  border-image: -gtk-scaled(url("../gtk-3.0/assets/push-disabled.png"), url("../gtk-3.0/assets/push-disabled@2.png")) 4 / 4px stretch;
+}
+
+window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):focus-visible:not(:backdrop),
+:not(.toolbar):not(.osd) > :not(.toolbar):not(.osd):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd):focus-visible:not(:backdrop) {
+  outline: 1px solid @platinum_focus;
 }
 
 window:root:not(.osd):not(.toolbar):not(.linked) > menubutton:not(.flat):not(.circular):not(.osd) > button:not(.flat):not(.circular):not(.osd) label,

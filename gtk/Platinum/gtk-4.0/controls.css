@@ -16,73 +16,169 @@ label > selection:focus-within:backdrop {
   background-color: @platinum_selection_backdrop;
 }
 
-/* State variables are private to the theme. Only framed push buttons below
- * consume them. GTK also uses button nodes for stock navigation and tools. */
-button {
-  --platinum-push-min: 12px;
-  --platinum-push-padding: 0 8px;
-  --platinum-push-border: 4px;
-  --platinum-push-normal: -gtk-scaled(url("assets/push-normal.png"), url("assets/push-normal@2.png")) 5 / 5px stretch;
-  --platinum-push-pressed: -gtk-scaled(url("assets/push-pressed.png"), url("assets/push-pressed@2.png")) 5 / 5px stretch;
-  --platinum-push-disabled: -gtk-scaled(url("../gtk-3.0/assets/push-disabled.png"), url("../gtk-3.0/assets/push-disabled@2.png")) 4 / 4px stretch;
-  --platinum-push-image: var(--platinum-push-normal);
-  --platinum-push-fg: @platinum_fg;
-  --platinum-push-bg: @platinum_bg;
-  --platinum-push-outline: none;
+/* --- Links (docs/REFERENCE.md "Link text": #0000FF, no visited variant) --- */
+link,
+link:hover,
+link:active,
+link:visited,
+button.link,
+button.link:hover,
+button.link:active,
+button.link:visited,
+button.link:backdrop,
+*:selected link,
+*:selected button.link {
+  color: @platinum_link;
 }
 
-button.default,
-button.suggested-action {
-  --platinum-push-min: 10px;
-  --platinum-push-padding: 0 5px;
-  --platinum-push-border: 6px 8px;
-  --platinum-push-normal: -gtk-scaled(url("../gtk-3.0/assets/push-default.png"), url("../gtk-3.0/assets/push-default@2.png")) 8 / 8px stretch;
-  --platinum-push-pressed: -gtk-scaled(url("../gtk-3.0/assets/push-default-pressed.png"), url("../gtk-3.0/assets/push-default-pressed@2.png")) 8 / 8px stretch;
-  --platinum-push-disabled: -gtk-scaled(url("../gtk-3.0/assets/push-default-disabled.png"), url("../gtk-3.0/assets/push-default-disabled@2.png")) 8 / 8px stretch;
+/* GTK pales selected links on hover, press and visit (0,3,1: #EBF3FC,
+ * #D1E1F5, #A1BAD8), unreadable on lavender. These tie it and win by
+ * coming later (#302). */
+*:selected link:hover,
+*:selected link:active,
+*:selected link:visited,
+*:selected button.link:hover,
+*:selected button.link:active,
+*:selected button.link:visited {
+  color: @platinum_link;
 }
 
-button:active,
-button.keyboard-activating,
-button:checked {
-  --platinum-push-image: var(--platinum-push-pressed);
-  --platinum-push-fg: #ffffff;
-  --platinum-push-bg: #666666;
+link:disabled,
+button.link:disabled,
+button.link:disabled:backdrop,
+*:selected link:disabled,
+*:selected button.link:disabled {
+  color: @platinum_fg_disabled;
 }
 
-button:disabled {
-  --platinum-push-image: var(--platinum-push-disabled);
-  --platinum-push-fg: @platinum_fg_disabled;
-  --platinum-push-bg: @platinum_bg;
-}
-
-button:focus-visible:not(:backdrop) {
-  --platinum-push-outline: 1px solid @platinum_focus;
-}
-
-/* Include direct window children. GTK's toolbar also flattens buttons one
- * box down. Keep linked groups, stack switchers and composite internals stock. */
+/* --- Framed push buttons (#294: direct rules without inherited button
+ * custom properties so GTK does not re-evaluate 8+ image variables on
+ * every button node during focus/:backdrop restyles).
+ * Include direct window children. GTK's toolbar also flattens buttons one
+ * box down. Keep linked groups, stack switchers and composite internals stock. --- */
 window:root:not(.osd):not(.toolbar):not(.linked) >
   button:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font),
 :not(.toolbar):not(.osd) >
   :not(.toolbar):not(.osd):not(.linked):not(stackswitcher):not(menubutton):not(dropdown):not(spinbutton):not(windowcontrols):not(header) >
   button:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font) {
-  min-height: var(--platinum-push-min);
-  min-width: var(--platinum-push-min);
-  padding: var(--platinum-push-padding);
+  min-height: 12px;
+  min-width: 12px;
+  padding: 0 8px;
   font-weight: normal;
   margin: 0;
-  color: var(--platinum-push-fg);
-  background-color: var(--platinum-push-bg);
+  color: @platinum_fg;
+  background-color: @platinum_bg;
   background-clip: padding-box;
   background-image: none;
   border: solid transparent;
-  border-width: var(--platinum-push-border);
+  border-width: 4px;
   border-radius: 0;
-  border-image: var(--platinum-push-image);
+  border-image: -gtk-scaled(url("assets/push-normal.png"), url("assets/push-normal@2.png")) 5 / 5px stretch;
   box-shadow: none;
-  outline: var(--platinum-push-outline);
+  outline: none;
   outline-offset: -1px;
   transition: none;
+}
+
+window:root:not(.osd):not(.toolbar):not(.linked) >
+  button.default:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font),
+window:root:not(.osd):not(.toolbar):not(.linked) >
+  button.suggested-action:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font),
+:not(.toolbar):not(.osd) >
+  :not(.toolbar):not(.osd):not(.linked):not(stackswitcher):not(menubutton):not(dropdown):not(spinbutton):not(windowcontrols):not(header) >
+  button.default:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font),
+:not(.toolbar):not(.osd) >
+  :not(.toolbar):not(.osd):not(.linked):not(stackswitcher):not(menubutton):not(dropdown):not(spinbutton):not(windowcontrols):not(header) >
+  button.suggested-action:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font) {
+  min-height: 10px;
+  min-width: 10px;
+  padding: 0 5px;
+  border-width: 6px 8px;
+  border-image: -gtk-scaled(url("../gtk-3.0/assets/push-default.png"), url("../gtk-3.0/assets/push-default@2.png")) 8 / 8px stretch;
+}
+
+window:root:not(.osd):not(.toolbar):not(.linked) >
+  button:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):active,
+window:root:not(.osd):not(.toolbar):not(.linked) >
+  button.keyboard-activating:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font),
+window:root:not(.osd):not(.toolbar):not(.linked) >
+  button:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):checked,
+:not(.toolbar):not(.osd) >
+  :not(.toolbar):not(.osd):not(.linked):not(stackswitcher):not(menubutton):not(dropdown):not(spinbutton):not(windowcontrols):not(header) >
+  button:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):active,
+:not(.toolbar):not(.osd) >
+  :not(.toolbar):not(.osd):not(.linked):not(stackswitcher):not(menubutton):not(dropdown):not(spinbutton):not(windowcontrols):not(header) >
+  button.keyboard-activating:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font),
+:not(.toolbar):not(.osd) >
+  :not(.toolbar):not(.osd):not(.linked):not(stackswitcher):not(menubutton):not(dropdown):not(spinbutton):not(windowcontrols):not(header) >
+  button:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):checked {
+  color: #ffffff;
+  background-color: #666666;
+  border-image: -gtk-scaled(url("assets/push-pressed.png"), url("assets/push-pressed@2.png")) 5 / 5px stretch;
+}
+
+window:root:not(.osd):not(.toolbar):not(.linked) >
+  button.default:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):active,
+window:root:not(.osd):not(.toolbar):not(.linked) >
+  button.default.keyboard-activating:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font),
+window:root:not(.osd):not(.toolbar):not(.linked) >
+  button.default:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):checked,
+window:root:not(.osd):not(.toolbar):not(.linked) >
+  button.suggested-action:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):active,
+window:root:not(.osd):not(.toolbar):not(.linked) >
+  button.suggested-action.keyboard-activating:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font),
+window:root:not(.osd):not(.toolbar):not(.linked) >
+  button.suggested-action:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):checked,
+:not(.toolbar):not(.osd) >
+  :not(.toolbar):not(.osd):not(.linked):not(stackswitcher):not(menubutton):not(dropdown):not(spinbutton):not(windowcontrols):not(header) >
+  button.default:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):active,
+:not(.toolbar):not(.osd) >
+  :not(.toolbar):not(.osd):not(.linked):not(stackswitcher):not(menubutton):not(dropdown):not(spinbutton):not(windowcontrols):not(header) >
+  button.default.keyboard-activating:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font),
+:not(.toolbar):not(.osd) >
+  :not(.toolbar):not(.osd):not(.linked):not(stackswitcher):not(menubutton):not(dropdown):not(spinbutton):not(windowcontrols):not(header) >
+  button.default:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):checked,
+:not(.toolbar):not(.osd) >
+  :not(.toolbar):not(.osd):not(.linked):not(stackswitcher):not(menubutton):not(dropdown):not(spinbutton):not(windowcontrols):not(header) >
+  button.suggested-action:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):active,
+:not(.toolbar):not(.osd) >
+  :not(.toolbar):not(.osd):not(.linked):not(stackswitcher):not(menubutton):not(dropdown):not(spinbutton):not(windowcontrols):not(header) >
+  button.suggested-action.keyboard-activating:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font),
+:not(.toolbar):not(.osd) >
+  :not(.toolbar):not(.osd):not(.linked):not(stackswitcher):not(menubutton):not(dropdown):not(spinbutton):not(windowcontrols):not(header) >
+  button.suggested-action:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):checked {
+  border-image: -gtk-scaled(url("../gtk-3.0/assets/push-default-pressed.png"), url("../gtk-3.0/assets/push-default-pressed@2.png")) 8 / 8px stretch;
+}
+
+window:root:not(.osd):not(.toolbar):not(.linked) >
+  button:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):disabled,
+:not(.toolbar):not(.osd) >
+  :not(.toolbar):not(.osd):not(.linked):not(stackswitcher):not(menubutton):not(dropdown):not(spinbutton):not(windowcontrols):not(header) >
+  button:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):disabled {
+  color: @platinum_fg_disabled;
+  background-color: @platinum_bg;
+  border-image: -gtk-scaled(url("../gtk-3.0/assets/push-disabled.png"), url("../gtk-3.0/assets/push-disabled@2.png")) 4 / 4px stretch;
+}
+
+window:root:not(.osd):not(.toolbar):not(.linked) >
+  button.default:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):disabled,
+window:root:not(.osd):not(.toolbar):not(.linked) >
+  button.suggested-action:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):disabled,
+:not(.toolbar):not(.osd) >
+  :not(.toolbar):not(.osd):not(.linked):not(stackswitcher):not(menubutton):not(dropdown):not(spinbutton):not(windowcontrols):not(header) >
+  button.default:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):disabled,
+:not(.toolbar):not(.osd) >
+  :not(.toolbar):not(.osd):not(.linked):not(stackswitcher):not(menubutton):not(dropdown):not(spinbutton):not(windowcontrols):not(header) >
+  button.suggested-action:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):disabled {
+  border-image: -gtk-scaled(url("../gtk-3.0/assets/push-default-disabled.png"), url("../gtk-3.0/assets/push-default-disabled@2.png")) 8 / 8px stretch;
+}
+
+window:root:not(.osd):not(.toolbar):not(.linked) >
+  button:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):focus-visible:not(:backdrop),
+:not(.toolbar):not(.osd) >
+  :not(.toolbar):not(.osd):not(.linked):not(stackswitcher):not(menubutton):not(dropdown):not(spinbutton):not(windowcontrols):not(header) >
+  button:not(.flat):not(.image-button):not(.arrow-button):not(.combo):not(.destructive-action):not(.circular):not(.link):not(.osd):not(.sidebar-button):not(.color):not(.font):focus-visible:not(:backdrop) {
+  outline: 1px solid @platinum_focus;
 }
 
 window:root:not(.osd):not(.toolbar):not(.linked) >
@@ -133,6 +229,8 @@ entry:not(.flat):disabled {
 /* Active selection: measured #CCCCFF solid fill with black text */
 entry > text > selection,
 entry > text > selection:focus-within,
+textview > text > selection,
+textview > text > selection:focus-within,
 spinbutton:not(.vertical) > text > selection,
 spinbutton:not(.vertical) > text > selection:focus-within,
 spinbutton.vertical > text > selection,
@@ -144,6 +242,8 @@ spinbutton.vertical > text > selection:focus-within {
 /* Backdrop selection: muted readable fill (GTK text selection uses a solid fill) */
 entry > text > selection:backdrop,
 entry > text > selection:focus-within:backdrop,
+textview > text > selection:backdrop,
+textview > text > selection:focus-within:backdrop,
 spinbutton:not(.vertical) > text > selection:backdrop,
 spinbutton:not(.vertical) > text > selection:focus-within:backdrop,
 spinbutton.vertical > text > selection:backdrop,
@@ -305,6 +405,64 @@ checkbutton:active > radio:indeterminate {
 checkbutton > radio:indeterminate:disabled {
   background-image: linear-gradient(@platinum_border_disabled, @platinum_border_disabled),
     -gtk-scaled(url("../gtk-3.0/assets/radio-off-disabled.png"), url("../gtk-3.0/assets/radio-off-disabled@2.png"));
+}
+
+/* --- Switches: drawn as the Platinum check box, as the Qt Quick style
+ * does (style/quick/Platinum/Switch.qml). Mac OS 9 has no switch.
+ * Note (#295): GTK 4 GtkSwitch never sets GTK_STATE_FLAG_ACTIVE on press,
+ * so no pressed-box rule applies here. --- */
+switch {
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-off.png"), url("../gtk-3.0/assets/check-off@2.png"));
+  transition: none;
+}
+
+switch:checked {
+  background-color: transparent;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-on.png"), url("../gtk-3.0/assets/check-on@2.png"));
+}
+
+switch:disabled {
+  background-color: transparent;
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-off-disabled.png"), url("../gtk-3.0/assets/check-off-disabled@2.png"));
+}
+
+switch:checked:disabled {
+  background-image: -gtk-scaled(url("../gtk-3.0/assets/check-on-disabled.png"), url("../gtk-3.0/assets/check-on-disabled@2.png"));
+}
+
+switch:focus-visible:not(:backdrop) {
+  outline: 1px solid @platinum_focus;
+  outline-offset: 1px;
+}
+
+/* Match GTK's state selectors so the hidden slider keeps the same allocation. */
+switch > slider,
+switch:hover > slider,
+switch:checked > slider,
+switch:disabled > slider,
+row:selected switch > slider,
+switch > image {
+  min-width: 7px;
+  min-height: 12px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  outline: none;
+  background: none;
+  opacity: 0;
+  -gtk-icon-size: 7px;
 }
 
 /* --- Spin buttons (#267). Mac OS 9's "little arrows" are one control with

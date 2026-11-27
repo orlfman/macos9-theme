@@ -1453,11 +1453,119 @@ windows(gboolean wayland)
     return ok && closed;
 }
 
+static gboolean
+switches_links(gboolean wayland)
+{
+    GtkWidget *window = window_new("Platinum GTK 4 switches and links");
+    GtkWidget *body = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    gtk_window_set_child(GTK_WINDOW(window), body);
+    gtk_window_set_default_size(GTK_WINDOW(window), 240, 180);
+    GtkWidget *row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
+    gtk_box_append(GTK_BOX(body), row);
+
+    GtkWidget *normal = gtk_switch_new();
+    GtkWidget *disabled = gtk_switch_new();
+    gtk_widget_set_sensitive(disabled, FALSE);
+    gtk_widget_set_valign(normal, GTK_ALIGN_START);
+    gtk_widget_set_valign(disabled, GTK_ALIGN_START);
+    gtk_box_append(GTK_BOX(row), normal);
+    gtk_box_append(GTK_BOX(row), disabled);
+
+    GtkWidget *stretched = gtk_switch_new();
+    gtk_widget_set_sensitive(stretched, FALSE);
+    gtk_widget_set_halign(stretched, GTK_ALIGN_START);
+    gtk_widget_set_size_request(stretched, -1, 20);
+    gtk_box_append(GTK_BOX(body), stretched);
+
+    const char *uri = "https://example.invalid/";
+    GtkWidget *link = gtk_link_button_new_with_label(uri, "Platinum Link");
+    GtkWidget *visited = gtk_link_button_new_with_label(uri, "Visited Link");
+    GtkWidget *unavailable = gtk_link_button_new_with_label(uri, "Disabled Link");
+    gtk_link_button_set_visited(GTK_LINK_BUTTON(visited), TRUE);
+    gtk_widget_set_sensitive(unavailable, FALSE);
+    gtk_box_append(GTK_BOX(body), link);
+    gtk_box_append(GTK_BOX(body), visited);
+    gtk_box_append(GTK_BOX(body), unavailable);
+
+    /* Flat buttons in a selected list row keep Platinum text colors, not
+     * GTK's white-on-blue-selection rule (#300). */
+    GtkWidget *list = gtk_list_box_new();
+    GtkWidget *cells = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+    GtkWidget *row_link = gtk_link_button_new_with_label(uri, "Row Link");
+    GtkWidget *row_flat = gtk_button_new_with_label("Flat");
+    GtkWidget *row_off = gtk_button_new_with_label("Off");
+    gtk_widget_add_css_class(row_flat, "flat");
+    gtk_widget_add_css_class(row_off, "flat");
+    gtk_widget_set_sensitive(row_off, FALSE);
+    gtk_box_append(GTK_BOX(cells), row_link);
+    gtk_box_append(GTK_BOX(cells), row_flat);
+    gtk_box_append(GTK_BOX(cells), row_off);
+    /* Hover, press and visited selected links stay link blue (#302). */
+    GtkWidget *row_hover = gtk_link_button_new_with_label(uri, "Hover");
+    GtkWidget *row_press = gtk_link_button_new_with_label(uri, "Press");
+    GtkWidget *row_visited = gtk_link_button_new_with_label(uri, "Visited");
+    gtk_link_button_set_visited(GTK_LINK_BUTTON(row_visited), TRUE);
+    gtk_box_append(GTK_BOX(cells), row_hover);
+    gtk_box_append(GTK_BOX(cells), row_press);
+    gtk_box_append(GTK_BOX(cells), row_visited);
+    gtk_list_box_append(GTK_LIST_BOX(list), cells);
+    gtk_list_box_select_row(GTK_LIST_BOX(list), gtk_list_box_get_row_at_index(GTK_LIST_BOX(list), 0));
+    gtk_box_append(GTK_BOX(body), list);
+    gtk_window_present(GTK_WINDOW(window));
+    settle(350);
+
+    gboolean ok = snapshot(window, "switches.png");
+    ok &= report_widget("switch-off", normal, window);
+    ok &= report_widget("switch-off-disabled", disabled, window);
+    ok &= report_widget("switch-stretched", stretched, window);
+    report_label_color("link-active", gtk_button_get_child(GTK_BUTTON(link)));
+    report_label_color("link-visited", gtk_button_get_child(GTK_BUTTON(visited)));
+    report_label_color("link-disabled", gtk_button_get_child(GTK_BUTTON(unavailable)));
+    report_label_color("row-link", gtk_button_get_child(GTK_BUTTON(row_link)));
+    report_label_color("row-flat", gtk_button_get_child(GTK_BUTTON(row_flat)));
+    report_label_color("row-flat-disabled", gtk_button_get_child(GTK_BUTTON(row_off)));
+    gtk_widget_set_state_flags(row_hover, GTK_STATE_FLAG_PRELIGHT, FALSE);
+    gtk_widget_set_state_flags(row_press, GTK_STATE_FLAG_PRELIGHT | GTK_STATE_FLAG_ACTIVE, FALSE);
+    report_label_color("row-link-hover", gtk_button_get_child(GTK_BUTTON(row_hover)));
+    report_label_color("row-link-press", gtk_button_get_child(GTK_BUTTON(row_press)));
+    report_label_color("row-link-visited", gtk_button_get_child(GTK_BUTTON(row_visited)));
+
+    gtk_switch_set_active(GTK_SWITCH(normal), TRUE);
+    gtk_switch_set_active(GTK_SWITCH(disabled), TRUE);
+    ok &= snapshot(window, "switches-checked.png");
+    ok &= report_widget("switch-on", normal, window);
+    ok &= report_widget("switch-on-disabled", disabled, window);
+
+    GtkWidget *other = NULL;
+    if (wayland) {
+        other = window_new("Platinum GTK 4 link deactivation witness");
+        gboolean was_active = gtk_window_is_active(GTK_WINDOW(window));
+        gtk_window_set_default_size(GTK_WINDOW(other), 160, 80);
+        gtk_window_present(GTK_WINDOW(other));
+        settle(450);
+        printf("link-focus-changed=%d\n", was_active &&
+               gtk_window_is_active(GTK_WINDOW(other)) && !gtk_window_is_active(GTK_WINDOW(window)));
+    } else {
+        gtk_widget_set_state_flags(window, GTK_STATE_FLAG_BACKDROP, FALSE);
+    }
+    report_label_color("link-backdrop", gtk_button_get_child(GTK_BUTTON(link)));
+    report_label_color("link-visited-backdrop", gtk_button_get_child(GTK_BUTTON(visited)));
+    report_label_color("link-disabled-backdrop", gtk_button_get_child(GTK_BUTTON(unavailable)));
+    report_label_color("row-link-backdrop", gtk_button_get_child(GTK_BUTTON(row_link)));
+    report_label_color("row-flat-backdrop", gtk_button_get_child(GTK_BUTTON(row_flat)));
+    report_label_color("row-flat-disabled-backdrop", gtk_button_get_child(GTK_BUTTON(row_off)));
+
+    if (other)
+        gtk_window_destroy(GTK_WINDOW(other));
+    gtk_window_destroy(GTK_WINDOW(window));
+    return ok;
+}
+
 int
 main(int argc, char **argv)
 {
     if (argc != 2) {
-        fprintf(stderr, "usage: %s chrome|gallery|contrast|composites|menus|ranges\n", argv[0]);
+        fprintf(stderr, "usage: %s chrome|gallery|contrast|composites|menus|ranges|windows|switches-links\n", argv[0]);
         return 2;
     }
 
@@ -1482,6 +1590,8 @@ main(int argc, char **argv)
         return windows(g_str_equal(backend, "GdkWaylandDisplay")) ? 0 : 1;
     if (g_str_equal(argv[1], "ranges"))
         return ranges(g_str_equal(backend, "GdkWaylandDisplay")) ? 0 : 1;
+    if (g_str_equal(argv[1], "switches-links"))
+        return switches_links(g_str_equal(backend, "GdkWaylandDisplay")) ? 0 : 1;
     if (g_str_equal(argv[1], "chrome"))
         return chrome() ? 0 : 1;
     if (g_str_equal(argv[1], "gallery"))

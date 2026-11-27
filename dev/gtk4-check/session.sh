@@ -55,6 +55,7 @@ fi
 ./fixture menus > menus.txt
 ./fixture ranges > ranges.txt
 ./fixture windows > windows.txt
+./fixture switches-links > switches-links.txt
 
 if [[ $mode == plasma ]]; then
     # KWin confirms that the screenshot is of the launched app's active window.

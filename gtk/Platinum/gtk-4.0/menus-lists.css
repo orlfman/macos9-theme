@@ -254,15 +254,72 @@ listview.view, columnview.view {
 }
 listview.view > row:selected,
 listview.view:not(:focus-within) > row:selected,
-columnview.view > listview > row:selected {
+columnview.view > listview > row:selected,
+list > row:selected,
+list > row:selected:hover,
+list > row:selected:active,
+list > row:selected:focus,
+list.navigation-sidebar > row:selected,
+list.navigation-sidebar > row:selected:hover,
+list.navigation-sidebar > row:selected:active,
+.navigation-sidebar > row:selected,
+.navigation-sidebar > row:selected:hover,
+.navigation-sidebar > row:selected:active,
+gridview > child:selected,
+gridview > child:selected:hover,
+gridview > child:selected:active,
+flowbox > flowboxchild:selected,
+flowbox > flowboxchild:selected:hover,
+flowbox > flowboxchild:selected:active {
   background-color: @platinum_selection;
   color: @platinum_fg;
+  box-shadow: none;
 }
 listview.view > row:selected:backdrop,
 listview.view:not(:focus-within) > row:selected:backdrop,
-columnview.view > listview > row:selected:backdrop {
+columnview.view > listview > row:selected:backdrop,
+list > row:selected:backdrop,
+list > row:selected:hover:backdrop,
+list > row:selected:active:backdrop,
+list > row:selected:focus:backdrop,
+list.navigation-sidebar > row:selected:backdrop,
+list.navigation-sidebar > row:selected:hover:backdrop,
+list.navigation-sidebar > row:selected:active:backdrop,
+.navigation-sidebar > row:selected:backdrop,
+.navigation-sidebar > row:selected:hover:backdrop,
+.navigation-sidebar > row:selected:active:backdrop,
+gridview > child:selected:backdrop,
+gridview > child:selected:hover:backdrop,
+gridview > child:selected:active:backdrop,
+flowbox > flowboxchild:selected:backdrop,
+flowbox > flowboxchild:selected:hover:backdrop,
+flowbox > flowboxchild:selected:active:backdrop {
   background-color: @platinum_selection_backdrop;
   color: @platinum_fg;
+  box-shadow: none;
+}
+
+/* GTK whitens flat and sidebar buttons in a selected row for its blue
+ * selection (0,5,2, and 0,6,2 inactive). On the lavender selection they keep
+ * black text and icons; links stay link blue, disabled ones gray (#300).
+ * The selectors copy GTK's, including its `:not(disabled)`, so they tie its
+ * specificity and win by coming later; the link and disabled rules tie each
+ * other and the last one wins. */
+row:selected button.sidebar-button:not(:active):not(:checked):not(:hover):not(disabled),
+row:selected button.flat:not(:active):not(:checked):not(:hover):not(disabled),
+row:selected button.sidebar-button:not(:active):not(:checked):not(:hover):not(disabled):backdrop,
+row:selected button.flat:not(:active):not(:checked):not(:hover):not(disabled):backdrop {
+  color: @platinum_fg;
+}
+row:selected button.flat.link:not(:active):not(:checked):not(:hover):not(disabled),
+row:selected button.flat.link:not(:active):not(:checked):not(:hover):not(disabled):backdrop {
+  color: @platinum_link;
+}
+row:selected button.sidebar-button:not(:active):not(:checked):not(:hover):not(disabled):disabled,
+row:selected button.flat:not(:active):not(:checked):not(:hover):not(disabled):disabled,
+row:selected button.sidebar-button:not(:active):not(:checked):not(:hover):not(disabled):disabled:backdrop,
+row:selected button.flat:not(:active):not(:checked):not(:hover):not(disabled):disabled:backdrop {
+  color: @platinum_fg_disabled;
 }
 columnview.view > header > button,
 columnview.view > header > button:hover,

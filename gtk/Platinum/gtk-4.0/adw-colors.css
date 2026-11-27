@@ -28,15 +28,26 @@
   --sidebar-bg-color: #eeeeee;
   --sidebar-fg-color: #000000;
   --sidebar-backdrop-color: #eeeeee;
+  --sidebar-border-color: #888888;
+  --sidebar-shade-color: transparent;
   --secondary-sidebar-bg-color: #eeeeee;
   --secondary-sidebar-fg-color: #000000;
+  --secondary-sidebar-backdrop-color: #eeeeee;
+  --secondary-sidebar-border-color: #888888;
+  --secondary-sidebar-shade-color: transparent;
   --card-bg-color: #ffffff;
   --card-fg-color: #000000;
+  --card-shade-color: transparent;
   --dialog-bg-color: #dddddd;
   --dialog-fg-color: #000000;
   --popover-bg-color: #ffffff;
   --popover-fg-color: #000000;
+  --popover-shade-color: transparent;
   --thumbnail-bg-color: #ffffff;
   --thumbnail-fg-color: #000000;
+  --headerbar-shade-color: transparent;
+  --headerbar-darker-shade-color: #000000;
+  --shade-color: transparent;
+  --scrollbar-outline-color: transparent;
   --border-color: #888888;
 }

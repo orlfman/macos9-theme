@@ -807,3 +807,23 @@ Platinum's installed userChrome. BreezeDark provides the dark control.
 [KDE portal](https://github.com/KDE/xdg-desktop-portal-kde/blob/v6.8.3/src/settings.cpp#L259-L272)
 [kde-gtk-config palette rule](https://github.com/KDE/kde-gtk-config/blob/v6.8.3/kded/configvalueprovider.cpp#L193-L201)
 [kde-gtk-config preference publishing](https://github.com/KDE/kde-gtk-config/blob/v6.8.3/kded/gtkconfig.cpp#L286-L301)
+
+## GTK 4 `GtkSwitch` has no `:active` press state (2026-11-26, #295)
+
+In GTK 4 (`gtk/gtkswitch.c`), `GtkSwitch` click and pan gesture handlers only
+claim or deny sequences and toggle `GTK_STATE_FLAG_CHECKED`; they never set
+`GTK_STATE_FLAG_ACTIVE`. CSS selectors `switch:active` and
+`switch:checked:active` therefore never match, so GTK 4 / libadwaita switches
+styled as Platinum check boxes cannot show a pressed check-box state (unlike
+the Qt Quick `Switch.qml`).
+
+### libadwaita toolbar edges under the Platinum layer (2026-11-26, Claude Code / Opus 5.5)
+
+Verified on libadwaita 1.10.0, GTK 4.24.2, Broadway and nested KWin.
+
+- The Platinum header bar's black bottom edge is the header's own last row (its frame image). Any separator libadwaita adds under a `RAISED_BORDER` top bar therefore doubles it when a header is the lowest visible thing, including a header wrapped in another widget.
+- A closed `GtkSearchBar` is still a visible node with 0 px height, so `:last-child` can't tell "header is the bottom bar" from "a search bar follows". A border inside `searchbar > revealer > box` is hidden while the bar is closed.
+- With more than one bar, libadwaita adds `.collapse-spacing` to the top or bottom bar box and pads it 3 px above and below (stock too). Under Platinum that moved the title bar 3 px off the window frame.
+- GTK's `*:selected button.link:hover|:active` (0,3,1) and `row:selected button.flat:not(…)` (0,5,2) selected-row colors outrank plain Platinum rules in the named theme; the user-stylesheet layer wins regardless.
+- (2026-11-26, #311) `GtkWidget:margin-*` (set in code or UI files) is applied on top of CSS margins and CSS can't clear it; a stylesheet rule that needs a widget's edge to meet its parent's edge must not depend on margins being zero.
+- (2026-11-26, #311) In a `RAISED_BORDER` top bar, a closed `GtkSearchBar`, an `AdwBanner` with `revealed=False` and an auto-hidden `AdwTabBar` don't count for `:last-child`; the bar above them matches it (verified by line probes, libadwaita 1.10.0). The top bar doesn't clip its children: an outset shadow on an open bar shows below it.
