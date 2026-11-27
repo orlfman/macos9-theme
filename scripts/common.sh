@@ -169,6 +169,12 @@ env_script=$config_home/plasma-workspace/env/macos9-theme.sh
 
 scheme_name=Platinum
 gtk_theme_dir=$data/themes/Platinum
+sound_theme_dir=$data/sounds/bigsur
+sound_theme_tool=$here/scripts/sound_theme.py
+# Where the Big Sur archive cache and upstream clone are looked for. Only
+# dev/test-install.sh sets M9_SOUND_ROOT (a throwaway folder).
+sound_theme_root=${M9_SOUND_ROOT:-$here}
+sound_theme_state=$state/sound-theme.json
 terminal_scheme=PlatinumLavender.colorscheme
 terminal_scheme_path=$data/konsole/$terminal_scheme
 plasma_theme=platinum
@@ -279,6 +285,23 @@ notify_gtk_icon_config() {
     if have gdbus; then
         gdbus emit --session --object-path /kdeglobals --signal org.kde.kconfig.notify.ConfigChanged \
             "{'Icons': [[byte 84, 104, 101, 109, 101]]}" > /dev/null 2>&1 || true
+    fi
+}
+
+# An existing sounds/bigsur folder must be the pinned release, byte for byte.
+check_sound_theme_dir() { # what happens when it isn't
+    [[ -e $sound_theme_dir || -L $sound_theme_dir ]] || return 0
+    [[ -d $sound_theme_dir && ! -L $sound_theme_dir ]] ||
+        die "$sound_theme_dir is in the way of the Big Sur sound theme; $1"
+    python3 -I "$sound_theme_tool" check-installed "$sound_theme_dir" ||
+        die "$sound_theme_dir isn't the pinned Big Sur release; $1"
+}
+
+notify_sound_theme() {
+    ((dry_run)) && return 0
+    if have gdbus; then
+        gdbus emit --session --object-path /kdeglobals --signal org.kde.kconfig.notify.ConfigChanged \
+            "{'Sounds': [[byte 84, 104, 101, 109, 101]]}" > /dev/null 2>&1 || true
     fi
 }
 

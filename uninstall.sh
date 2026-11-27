@@ -49,6 +49,7 @@ source "$here/scripts/global-menu.sh"
 # shellcheck source=scripts/apple-menu-icon.sh
 source "$here/scripts/apple-menu-icon.sh"
 dry_run=$dry
+targets+=("dir"$'\t'"$sound_theme_dir")
 
 refuse_root
 need_pkg python3:python sha256sum:coreutils flock:util-linux kreadconfig6:kconfig kwriteconfig6:kconfig
@@ -260,6 +261,11 @@ if [[ -d $backup ]]; then
         # touching the first file so install.sh refuses unfinished undos (#140)
         # and retry always resumes restoring regardless of LookAndFeelPackage (#124).
         if ((!dry_run)); then
+            if [[ ! -e $uninstall_marker && ! -L $uninstall_marker ]] &&
+                [[ -e $sound_theme_state || -L $sound_theme_state ]]; then
+                python3 -I "$sound_theme_tool" capture-undo "$config_home/kdeglobals" "$sound_theme_state" ||
+                    die "couldn't save your current sound theme before restoring the configuration"
+            fi
             printf 'uninstall\n' > "$uninstall_marker"
             if [[ -f $icon_adoption && ! -L $icon_adoption ]]; then
                 python3 -I "$icon_prefs" begin-restore "$icon_adoption" ||
@@ -431,6 +437,18 @@ if [[ -d $backup ]]; then
             fi
         fi
         say "The theme isn't active, so your config files were left as they are (the copy from install time is in $keep/unused)"
+    fi
+fi
+
+if [[ -e $sound_theme_state || -L $sound_theme_state ]]; then
+    if ((dry_run)); then
+        sound_plan=$(python3 -I "$sound_theme_tool" preview-restore "$config_home/kdeglobals" "$sound_theme_state") ||
+            die "couldn't read the previous sound theme"
+        [[ -z $sound_plan ]] || plan "$sound_plan"
+    else
+        python3 -I "$sound_theme_tool" restore "$config_home/kdeglobals" "$sound_theme_state" ||
+            die "couldn't put back the previous sound theme; run uninstall.sh again to finish"
+        notify_sound_theme
     fi
 fi
 

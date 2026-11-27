@@ -132,6 +132,27 @@ has new upstream commits available for review.
 
 ## Extras and tweaks
 
+### Big Sur system sounds
+
+Apply Platinum with the optional Big Sur sound theme:
+
+```bash
+./install.sh --apply --sound-theme
+```
+
+The installer first checks for a cached release archive, either in
+`reference/sounds/` or `build/sound-themes/`. It can also use a matching
+upstream checkout in `build/upstreams/macos-bigsur-sound-theme-linux/`.
+If none are present, it downloads the pinned release into
+`build/sound-themes/` for reuse on subsequent runs.
+The pack is installed for the current user and selected in Plasma's System
+Sounds settings. It includes its own event assignments. See the
+[upstream release and personal-use terms](https://github.com/gxanshu/macos-bigsur-sound-theme-linux/releases/tag/1.0.2).
+
+Use `--dry-run` to preview the steps. Uninstall restores your previous
+sound selection if Big Sur is still selected and keeps any later choice.
+It removes the sound files it installed and keeps the project cache.
+
 ### Wallpapers
 
 The default is Lavender Desktop Pattern. The other six are Pastel Ribbon

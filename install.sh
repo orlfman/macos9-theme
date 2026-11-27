@@ -19,7 +19,7 @@
 # updates preserve any icon theme you pick afterwards). uninstall.sh removes
 # everything this installed and puts back anything it moved aside.
 #
-# usage: install.sh [--apply [--apple-menu-icon]] [--dry-run]
+# usage: install.sh [--apply [--apple-menu-icon] [--sound-theme]] [--dry-run]
 #        install.sh --firefox [--profile PROFILE] [--list] [--dry-run]
 #   --firefox  choose Firefox-only mode first, then pass Firefox options
 #   (default)  install or update all theme files. If Platinum is already the
@@ -35,6 +35,9 @@
 #              with --apply: show the icon theme's folder-apple (Apple's logo,
 #              shipped by WhiteSur) on the Apple-menu stand-in instead of the
 #              neutral default. Off unless you ask; uninstall puts the old icon back.
+#   --sound-theme
+#              with --apply: install and select Big Sur system sounds. Reuse
+#              the project cache or fetch the pinned release on the first run.
 #   --dry-run  only show what would be done
 #   -h, --help show this help
 #
@@ -59,11 +62,13 @@ usage() {
 
 apply=0
 apple_icon=0
+sound_theme=0
 dry=0
 for arg in "$@"; do
     case $arg in
         --apply) apply=1 ;;
         --apple-menu-icon) apple_icon=1 ;;
+        --sound-theme) sound_theme=1 ;;
         --dry-run) dry=1 ;;
         -h | --help) usage; exit 0 ;;
         *) usage >&2; exit 2 ;;
@@ -80,6 +85,14 @@ dry_run=$dry
 if ((apple_icon && !apply)); then
     usage >&2
     die "--apple-menu-icon only works together with --apply; nothing was changed"
+fi
+
+if ((sound_theme && !apply)); then
+    usage >&2
+    die "--sound-theme only works together with --apply; nothing was changed"
+fi
+if ((sound_theme)); then
+    targets+=("dir"$'\t'"$sound_theme_dir")
 fi
 
 refuse_root
@@ -217,6 +230,20 @@ check_unfinished_uninstall() {
 check_unfinished_uninstall
 check_target_parents
 check_backup_links
+if ((sound_theme)); then
+    # An existing sounds/bigsur must already be the pinned release; checked
+    # from its contents, so a dry run and an offline run see it too.
+    check_sound_theme_dir "nothing was changed"
+    if ((dry_run)); then
+        sound_plan=$(python3 -I "$sound_theme_tool" prepare "$sound_theme_root" "") ||
+            die "couldn't verify the Big Sur sound theme; nothing was installed"
+        plan "$sound_plan"
+    else
+        [[ -n $build ]] || build=$(mktemp -d)
+        python3 -I "$sound_theme_tool" prepare "$sound_theme_root" "$build/sound-theme" ||
+            die "couldn't obtain the Big Sur sound theme; nothing was installed"
+    fi
+fi
 if ((!dry_run && !use_prebuilt_icons && whitesur_need_fetch)); then
     # Fetch into cache (with its own per-cache flock) before creating $state/lock,
     # so an offline miss leaves $HOME completely unchanged (#116, #122).
@@ -231,6 +258,10 @@ check_record_paths
 resume_panel_shell || die "couldn't restart Plasma's shell after the previous panel operation"
 remove_temporaries
 reconcile_displaced
+# Again under the lock, after recovering an interrupted run.
+if ((sound_theme)); then
+    check_sound_theme_dir "the existing sound theme was kept"
+fi
 
 # Build the plugins and WhiteSur Lavender icons in a temporary folder before
 # installing anything.
@@ -624,6 +655,9 @@ if ((apply)); then
         set_menu_layout_mode reset || die "couldn't record the panel layout change"
     fi
     layout_args+=(--keep-auto)
+    if ((sound_theme)) && [[ ! -d $sound_theme_dir ]]; then
+        place_dir "$build/sound-theme/bigsur" "$sound_theme_dir"
+    fi
     plan "run plasma-apply-lookandfeel ${layout_args[*]}"
     if ((!dry_run)); then
         if ! env QT_PLUGIN_PATH="$plugins:$deco_plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}" \
@@ -698,6 +732,16 @@ if ((apply)) || [[ $active == "$lnf_id" ]]; then
         fi
     else
         warn "couldn't add the libadwaita import ($adw_out); libadwaita apps keep their own look"
+    fi
+fi
+
+if ((sound_theme)); then
+    plan "select the Big Sur system sound theme"
+    if ((!dry_run)); then
+        python3 -I "$sound_theme_tool" select "$config_home/kdeglobals" "$sound_theme_state" ||
+            die "couldn't select the Big Sur sound theme; rerun install.sh --apply --sound-theme"
+        notify_sound_theme
+        say "Selected Big Sur system sounds"
     fi
 fi
 
