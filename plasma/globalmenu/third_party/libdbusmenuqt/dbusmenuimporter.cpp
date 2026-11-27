@@ -2,6 +2,8 @@
     SPDX-FileCopyrightText: 2009 Canonical
     SPDX-FileContributor: Aurelien Gateau <aurelien.gateau@canonical.com>
 
+    Modified by the Platinum theme on 2026-11-26.
+
     SPDX-License-Identifier: LGPL-2.0-or-later
 */
 #include "dbusmenuimporter.h"
@@ -370,6 +372,8 @@ void DBusMenuImporter::slotGetLayoutFinished(QDBusPendingCallWatcher *watcher)
     for (QAction *action : menu->actions()) {
         int id = action->property(DBUSMENU_PROPERTY_ID).toInt();
         if (!newDBusMenuItemIds.contains(id)) {
+            // menuUpdated is emitted before deferred deletion runs.
+            menu->removeAction(action);
             action->deleteLater();
             if (action->menu()) {
                 action->menu()->deleteLater();

@@ -92,8 +92,10 @@ public:
             DBusMenuLayoutItem root;
             root.id = parentId;
             if (parentId == 0) {
-                root.children.append(item(1, QStringLiteral("_File"), true));
-                root.children.append(item(2, QStringLiteral("_About")));
+                if (includeRoot) {
+                    root.children.append(item(1, QStringLiteral("_File"), true));
+                    root.children.append(item(2, QStringLiteral("_About")));
+                }
             } else if (parentId == 1 && includeOpen) {
                 root.children.append(item(10, QStringLiteral("_Open")));
             }
@@ -127,6 +129,7 @@ public:
     }
 
     int getLayoutCalls = 0;
+    bool includeRoot = true;
     bool includeOpen = true;
     QList<int> aboutToShowIds;
     QList<Event> events;
@@ -212,6 +215,20 @@ void AppMenuModelTest::fallbackApplicationFallback()
     QTRY_VERIFY_WITH_TIMEOUT(removedAction.isNull(), 5000);
     QTRY_VERIFY_WITH_TIMEOUT(model.m_currentSearchActions.isEmpty(), 5000);
     QVERIFY(QMetaObject::invokeMethod(searchBar, "returnPressed"));
+
+    // A live exporter can remove the entire top-level menu and repopulate
+    // it without changing the service, object path or focused window.
+    fakeMenu.includeRoot = false;
+    changed.setArguments({QVariant::fromValue(3u), 0});
+    QVERIFY(connection.send(changed));
+    QTRY_VERIFY_WITH_TIMEOUT(model.usingDesktopFallback(), 5000);
+    QCOMPARE(model.rowCount(), 2);
+
+    fakeMenu.includeRoot = true;
+    changed.setArguments({QVariant::fromValue(4u), 0});
+    QVERIFY(connection.send(changed));
+    QTRY_VERIFY_WITH_TIMEOUT(!model.usingDesktopFallback(), 5000);
+    QCOMPARE(model.rowCount(), 3);
 
     model.updateApplicationMenu(QString(), QString());
     QTRY_VERIFY_WITH_TIMEOUT(model.usingDesktopFallback(), 5000);
