@@ -20,13 +20,11 @@ private Q_SLOTS:
         }
         DesktopFallback fallback;
         const auto headings = fallback.menu()->actions();
-        QCOMPARE(headings.size(), 7);
+        QCOMPARE(headings.size(), 2);
         QCOMPARE(headings.first()->text(), french ? QStringLiteral("&Fichier") : QStringLiteral("&File"));
         QCOMPARE(i18n("Search…"), french ? QStringLiteral("Rechercher…") : QStringLiteral("Search…"));
-        QCOMPARE(i18n("Find Files…"), french ? QStringLiteral("Rechercher des fichiers…") : QStringLiteral("Find Files…"));
-        QCOMPARE(i18n("This will force the selected window to close. Continue?"), french
-            ? QStringLiteral("La fermeture de la fenêtre sélectionnée sera forcée. Continuer ?")
-            : QStringLiteral("This will force the selected window to close. Continue?"));
+        QCOMPARE(headings.last()->text(), french ? QStringLiteral("A&ller") : QStringLiteral("&Go"));
+        QCOMPARE(i18n("New Dolphin Window"), french ? QStringLiteral("Nouvelle fenêtre Dolphin") : QStringLiteral("New Dolphin Window"));
         QCOMPARE(i18nc("@info:usagetip", "Open a menu"), french ? QStringLiteral("Ouvrir un menu") : QStringLiteral("Open a menu"));
     }
 };

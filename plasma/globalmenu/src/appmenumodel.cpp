@@ -3,6 +3,8 @@
     SPDX-FileCopyrightText: 2016 Chinmoy Ranjan Pradhan <chinmoyrp65@gmail.com>
     SPDX-FileCopyrightText: 2026 ChathurangaBW
 
+    Modified by the Platinum theme on 2026-11-26.
+
     SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL
 */
 
@@ -57,10 +59,6 @@ AppMenuModel::AppMenuModel(QObject *parent)
                     || roles.contains(TaskManager::AbstractTasksModel::ApplicationMenuServiceName) || roles.isEmpty()) {
                     onActiveWindowChanged();
                 }
-                if (roles.contains(TaskManager::AbstractTasksModel::IsWindow)
-                    || roles.contains(TaskManager::AbstractTasksModel::IsClosable) || roles.isEmpty()) {
-                    updateFallbackWindowActions();
-                }
             });
     connect(m_tasksModel, &TaskManager::TasksModel::activityChanged, this, &AppMenuModel::onActiveWindowChanged);
     connect(m_tasksModel, &TaskManager::TasksModel::virtualDesktopChanged, this, &AppMenuModel::onActiveWindowChanged);
@@ -76,7 +74,6 @@ AppMenuModel::AppMenuModel(QObject *parent)
 
     showDesktopFallback();
     onActiveWindowChanged();
-    updateFallbackWindowActions();
 
     m_serviceWatcher->setConnection(QDBusConnection::sessionBus());
     connect(m_serviceWatcher, &QDBusServiceWatcher::serviceUnregistered, this, [this](const QString &serviceName) {
@@ -85,8 +82,7 @@ AppMenuModel::AppMenuModel(QObject *parent)
         }
     });
 
-    // Preserve KDE's native Wayland menu-search behavior for real application
-    // menus. The desktop fallback itself remains exactly seven top-level menus.
+    // Preserve KDE's native Wayland menu search for exported application menus.
     if (KWindowSystem::isPlatformWayland()) {
         initializeSearch();
     }
@@ -266,35 +262,6 @@ void AppMenuModel::onActiveWindowChanged()
     const QString objectPath = m_tasksModel->data(activeTaskIndex, TaskManager::AbstractTasksModel::ApplicationMenuObjectPath).toString();
     const QString serviceName = m_tasksModel->data(activeTaskIndex, TaskManager::AbstractTasksModel::ApplicationMenuServiceName).toString();
     updateApplicationMenu(serviceName, objectPath);
-    updateFallbackWindowActions();
-}
-
-void AppMenuModel::updateFallbackWindowActions()
-{
-    const QModelIndex activeTaskIndex = m_tasksModel->activeTask();
-    const bool isWindow = activeTaskIndex.isValid()
-        && m_tasksModel->data(activeTaskIndex, TaskManager::AbstractTasksModel::IsWindow).toBool();
-    const bool canClose = isWindow
-        && m_tasksModel->data(activeTaskIndex, TaskManager::AbstractTasksModel::IsClosable).toBool();
-
-    m_desktopFallback->setActiveWindowActions(
-        canClose,
-        [this] {
-            const QModelIndex activeTask = m_tasksModel->activeTask();
-            if (activeTask.isValid()
-                && m_tasksModel->data(activeTask, TaskManager::AbstractTasksModel::IsWindow).toBool()
-                && m_tasksModel->data(activeTask, TaskManager::AbstractTasksModel::IsClosable).toBool()) {
-                m_tasksModel->requestClose(activeTask);
-            }
-        },
-        isWindow,
-        [this] {
-            QDBusMessage message = QDBusMessage::createMethodCall(QStringLiteral("org.kde.KWin"),
-                                                                   QStringLiteral("/KWin"),
-                                                                   QStringLiteral("org.kde.KWin"),
-                                                                   QStringLiteral("killWindow"));
-            QDBusConnection::sessionBus().asyncCall(message);
-        });
 }
 
 QHash<int, QByteArray> AppMenuModel::roleNames() const

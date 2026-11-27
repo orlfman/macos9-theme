@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2026 ChathurangaBW
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Modified by the Platinum theme on 2026-11-26.
 
 #include "appmenumodel.h"
 #include "dbusmenutypes_p.h"
@@ -152,7 +153,7 @@ void AppMenuModelTest::fallbackApplicationFallback()
     AppMenuModel model;
     QVERIFY(model.menuAvailable());
     QVERIFY(model.usingDesktopFallback());
-    QCOMPARE(model.rowCount(), 7);
+    QCOMPARE(model.rowCount(), 2);
 
     // This is a model/importer integration test, not an active-window test.
     // In a headless session LibTaskManager has no real active task and may emit
@@ -165,12 +166,7 @@ void AppMenuModelTest::fallbackApplicationFallback()
 
     const QStringList desktopHeadings = {
         QStringLiteral("File"),
-        QStringLiteral("Edit"),
-        QStringLiteral("View"),
         QStringLiteral("Go"),
-        QStringLiteral("Tools"),
-        QStringLiteral("Settings"),
-        QStringLiteral("Help"),
     };
     for (int row = 0; row < desktopHeadings.size(); ++row) {
         QCOMPARE(plainLabel(model.data(model.index(row, 0), AppMenuModel::MenuRole).toString()), desktopHeadings.at(row));
@@ -219,7 +215,7 @@ void AppMenuModelTest::fallbackApplicationFallback()
 
     model.updateApplicationMenu(QString(), QString());
     QTRY_VERIFY_WITH_TIMEOUT(model.usingDesktopFallback(), 5000);
-    QTRY_COMPARE_WITH_TIMEOUT(model.rowCount(), 7, 5000);
+    QTRY_COMPARE_WITH_TIMEOUT(model.rowCount(), 2, 5000);
 
     connection.unregisterObject(QString::fromLatin1(menuPath), QDBusConnection::UnregisterNode);
 }

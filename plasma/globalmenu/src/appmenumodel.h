@@ -2,6 +2,8 @@
     SPDX-FileCopyrightText: 2016 Chinmoy Ranjan Pradhan <chinmoyrp65@gmail.com>
     SPDX-FileCopyrightText: 2026 ChathurangaBW
 
+    Modified by the Platinum theme on 2026-11-26.
+
     SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL
 */
 
@@ -87,7 +89,6 @@ private:
     void connectApplicationActions();
     void removeSearchActionsFromMenu();
     void insertSearchActionsIntoMenu(const QString &filter = QString());
-    void updateFallbackWindowActions();
 
     bool m_menuAvailable = false;
     bool m_allScreens = true;
