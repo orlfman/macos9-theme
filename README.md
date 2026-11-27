@@ -35,15 +35,15 @@ desktop.
 ## What you need
 
 - KDE Plasma 6.8
-- A few build tools, because the window decoration and the application style
-  are small C++ plugins that get compiled on your machine
+- Build tools for the application style, window decoration, and Platinum
+  Global Menu. These plugins are compiled on your machine.
 
 I built and tested this on Arch (CachyOS), so these are Arch package names. It
 should work on other distros if you can find the equivalents, but I haven't
 tried it.
 
 ```bash
-sudo pacman -S --needed base-devel git python qt6-base qt6-declarative kcoreaddons kdecoration kconfig util-linux libxml2 librsvg gtk-update-icon-cache python-gobject gtk3 kimageformats
+sudo pacman -S --needed base-devel git python cmake ninja gettext extra-cmake-modules libplasma plasma-workspace ki18n kwindowsystem qt6-base qt6-declarative kcoreaddons kdecoration kconfig util-linux libxml2 librsvg gtk-update-icon-cache python-gobject gtk3 kimageformats
 ```
 
 `kimageformats` is what lets Plasma open the wallpapers (they're JPEG XL).
@@ -81,8 +81,8 @@ Everything goes into your home folder. No sudo, nothing touched in `/usr`.
    This builds the plugins and puts all the theme files in place. It doesn't
    change how your desktop looks yet.
 
-3. **Log out and back in.** A small login script is what lets Qt find the
-   new style and window decoration, so this step matters.
+3. **Log out and back in.** The login script lets Plasma and Qt find the
+   new global menu, window decoration, and application style.
 
 4. Switch to it:
 
@@ -90,7 +90,7 @@ Everything goes into your home folder. No sudo, nothing touched in `/usr`.
    ./install.sh --apply
    ```
 
-   Heads up, this **replaces your panels** with the menu bar and the dock. It
+   On the first switch, this **replaces your panels** with the menu bar and the dock. It
    also sets the wallpaper, icons and cursors, and moves the close box to the
    left. Your current config gets backed up first, and the uninstaller puts
    it all back exactly how it was. Only your main screen gets the menu bar
@@ -117,8 +117,13 @@ git pull
 ```
 
 **Run `./install.sh` again after every Plasma update too.** The window
-decoration is built for one specific version of KDE's decoration library.
-Until it gets rebuilt, KWin quietly falls back to Breeze title bars.
+decoration and global menu are built against the KDE libraries on your
+machine. Until the decoration is rebuilt, KWin falls back to Breeze title bars.
+
+If your Platinum panel still has the stock Global Menu, log out and back in
+after installing, then run `./install.sh --apply` while Platinum is active.
+Plasma restarts briefly during the swap and keeps the panel layout and widget
+settings.
 
 ## Extras and tweaks
 
@@ -200,9 +205,11 @@ pick one directly, and `--dry-run`. There's more in the
 ./uninstall.sh
 ```
 
-This puts back your old panels, colors, style, icons and so on. Plasma's
-shell gets restarted while it does that, so don't panic when your panels
-blink out for a second. Log out and back in afterwards.
+This restores the backed-up colors, style, and icons. A first switch with
+`--apply` also restores the old panels. If you upgraded the menu in place on
+an existing Platinum layout, uninstall puts the stock widget in its current
+slot if it is still present. Plasma's shell restarts during the restore. Log
+out and back in afterwards.
 
 A few things worth knowing:
 

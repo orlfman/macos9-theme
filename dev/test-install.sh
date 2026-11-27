@@ -39,6 +39,7 @@ EOF
     "$project/style/build.sh" "$root/prebuilt/style" > /dev/null
     "$project/decoration/build.sh" "$root/prebuilt/decoration" > /dev/null
     "$project/style/quick/build.sh" "$root/prebuilt/quick" > /dev/null
+    "$project/plasma/build-global-menu.sh" "$root/prebuilt/global-menu" > /dev/null
     upstream_src="${M9_WHITESUR_UPSTREAM:-$(dirname "$project")/WhiteSur-icon-theme}"
     mkdir -p "$root/prebuilt-real/icons" "$root/prebuilt/icons"
     "$project/icons/build-whitesur-lavender.sh" "$upstream_src" "$root/prebuilt-real/icons" > /dev/null
@@ -48,7 +49,7 @@ EOF
     "$legacy_project/icons/build-whitesur-lavender.sh" "$upstream_src" "$root/legacy-icons" > /dev/null
     mv "$root/legacy-icons/WhiteSur-lavender-dark" "$root/prebuilt-real/icons/"
     rm -f "$root/prebuilt-real/icons"/WhiteSur-lavender{,-light,-dark}/.macos9-whitesur-lavender-build
-    cp -R "$root/prebuilt/style" "$root/prebuilt/decoration" "$root/prebuilt/quick" "$root/prebuilt-real/"
+    cp -R "$root/prebuilt/style" "$root/prebuilt/decoration" "$root/prebuilt/quick" "$root/prebuilt/global-menu" "$root/prebuilt-real/"
     # Build tiny valid 3-theme icon fixture mirroring WhiteSur Lavender's symlink structure (~18 entries).
     python3 -I - "$root/prebuilt-real/icons" "$root/prebuilt/icons" << 'PYEND'
 import shutil, sys
@@ -259,16 +260,20 @@ check "the Kwi and Konsole palette is installed byte for byte" cmp \
     "$project/extras/terminal/PlatinumLavender.colorscheme" "$terminal_palette"
 check "the global theme bundles the Platinum palette byte for byte" cmp \
     "$project/colors/Platinum.colors" "$data/plasma/look-and-feel/platinum.desktop/contents/colors"
-check "the record lists the 24 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 24
+check "the record lists the 26 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 26
 check "Kirigami's plugin link for the Qt Quick style points at KDE's" \
     bash -c "[[ \$(readlink '$home/.local/lib/macos9-theme/style/kf6/kirigami/platform/Platinum.so') == */kf6/kirigami/platform/org.kde.desktop.so ]]"
+check "the applet and translation are installed byte for byte" bash -c '
+    cmp "$1/global-menu/plugins/plasma/applets/platinum.globalmenu.so" "$2/.local/lib/macos9-theme/global-menu/plasma/applets/platinum.globalmenu.so" &&
+    cmp "$1/global-menu/plasma_applet_platinum.globalmenu.mo" "$3/locale/fr/LC_MESSAGES/plasma_applet_platinum.globalmenu.mo"
+' _ "$M9_PREBUILT" "$home" "$data"
 check "install alone leaves the config files alone" same "$seed" "$(config_state)"
 check "install already copied the config files (taken: install)" grep -qx install "$state/backup/TAKEN"
 plugins=$home/.local/lib/macos9-theme
-check "the login script adds both plugin folders" \
-    bash -c "unset QT_PLUGIN_PATH; source '$config/plasma-workspace/env/macos9-theme.sh'; [[ \$QT_PLUGIN_PATH == '$plugins/style:$plugins/decoration' ]]"
+check "the login script adds the three plugin folders" \
+    bash -c "unset QT_PLUGIN_PATH; source '$config/plasma-workspace/env/macos9-theme.sh'; [[ \$QT_PLUGIN_PATH == '$plugins/style:$plugins/decoration:$plugins/global-menu' ]]"
 check "the login script doesn't add them twice" \
-    bash -c "QT_PLUGIN_PATH=/x; for i in 1 2; do source '$config/plasma-workspace/env/macos9-theme.sh'; done; [[ \$QT_PLUGIN_PATH == '$plugins/style:$plugins/decoration:/x' ]]"
+    bash -c "QT_PLUGIN_PATH=/x; for i in 1 2; do source '$config/plasma-workspace/env/macos9-theme.sh'; done; [[ \$QT_PLUGIN_PATH == '$plugins/style:$plugins/decoration:$plugins/global-menu:/x' ]]"
 check "the login script runs in plain sh" sh -c ". '$config/plasma-workspace/env/macos9-theme.sh' && [ -n \"\$QT_PLUGIN_PATH\" ]"
 env_script=$config/plasma-workspace/env/macos9-theme.sh
 quick_vars() { # runs the login script in sh with the given setup, prints the Qt Quick variables
@@ -277,7 +282,7 @@ quick_vars() { # runs the login script in sh with the given setup, prints the Qt
 check "with Breeze as the widget style, the Qt Quick style stays off" bash -c "[[ \$($(declare -f quick_vars); env_script='$env_script'; quick_vars) == 'style= qml=' ]]"
 sed 's|readlink -f \(.[^ ]*libkdecorations3.so[^ ]*\)|readlink -f /nonexistent|' "$config/plasma-workspace/env/macos9-theme.sh" > "$root/env-upgraded.sh"
 check "after a KDecoration upgrade it leaves the decoration out" \
-    bash -c "unset QT_PLUGIN_PATH; source '$root/env-upgraded.sh'; [[ \$QT_PLUGIN_PATH == '$plugins/style' ]]"
+    bash -c "unset QT_PLUGIN_PATH; source '$root/env-upgraded.sh'; [[ \$QT_PLUGIN_PATH == '$plugins/style:$plugins/global-menu' ]]"
 if [[ -x $M9_PROJECT_BUILD/styleshot ]]; then
     check "the installed style plugin loads" bash -c "QT_PLUGIN_PATH='$plugins/style' QT_STYLE_OVERRIDE=Platinum \
         '$M9_PROJECT_BUILD/styleshot' '$root/styleshot.png' 2> /dev/null | grep -qx 'style platinum'"
@@ -285,8 +290,8 @@ else
     echo "skip    the installed style plugin loads (build dev/build/styleshot first: dev/check-style.sh)"
 fi
 check "a second plain install exits 0" run install-2 "$project/install.sh"
-check "the record still lists 24 targets, nothing moved aside" \
-    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 24 ]] && ! grep -q '^displaced' '$state/installed'"
+check "the record still lists 26 targets, nothing moved aside" \
+    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 26 ]] && ! grep -q '^displaced' '$state/installed'"
 
 check "--apply exits 0" run apply env QT_PLUGIN_PATH="$plugins/style:$plugins/decoration" "$project/install.sh" --apply
 check "--apply preserves automatic switching and both assigned themes" bash -c '
@@ -1093,7 +1098,7 @@ rm -rf "$weird"
 mkdir -p "$weird"
 odd() { env -u XDG_CONFIG_HOME -u XDG_DATA_HOME -u XDG_STATE_HOME -u XDG_CACHE_HOME HOME="$weird" "$@"; }
 check "install exits 0" bash -c "$(declare -f odd); weird=\$1; odd '$project/install.sh' > '$root/weird.log' 2>&1" _ "$weird"
-check "  the login script adds the odd path" bash -c "unset QT_PLUGIN_PATH; source \"\$1/.config/plasma-workspace/env/macos9-theme.sh\"; [[ \$QT_PLUGIN_PATH == \"\$1/.local/lib/macos9-theme/style:\$1/.local/lib/macos9-theme/decoration\" ]]" _ "$weird"
+check "  the login script adds the odd path" bash -c "unset QT_PLUGIN_PATH; source \"\$1/.config/plasma-workspace/env/macos9-theme.sh\"; [[ \$QT_PLUGIN_PATH == \"\$1/.local/lib/macos9-theme/style:\$1/.local/lib/macos9-theme/decoration:\$1/.local/lib/macos9-theme/global-menu\" ]]" _ "$weird"
 check "uninstall exits 0" bash -c "$(declare -f odd); weird=\$1; odd '$project/uninstall.sh' > '$root/weird-un.log' 2>&1" _ "$weird"
 check "  and removed everything it installed (after the next login)" bash -c "[[ -f \"\$1/.config/plasma-workspace/env/macos9-theme-cleanup.sh\" ]] && sh -c '. \"\$1\"' _ \"\$1/.config/plasma-workspace/env/macos9-theme-cleanup.sh\" &&
     [[ -z \$(find \"\$1\" -path '*/macos9-theme-uninstalled-*' -prune -o -type f -print) ]]" _ "$weird"
@@ -1534,7 +1539,7 @@ fresh "#110 automatic WhiteSur fetch/cache, offline/corrupt/wrong-commit handlin
 no_icon_prebuilt=$root/prebuilt-cpp-only
 rm -rf "$no_icon_prebuilt"
 mkdir -p "$no_icon_prebuilt"
-cp -R "$M9_PREBUILT/style" "$M9_PREBUILT/decoration" "$M9_PREBUILT/quick" "$no_icon_prebuilt/"
+cp -R "$M9_PREBUILT/style" "$M9_PREBUILT/decoration" "$M9_PREBUILT/quick" "$M9_PREBUILT/global-menu" "$no_icon_prebuilt/"
 
 custom_test_dir=$root/test-custom-icons
 rm -rf "$custom_test_dir"
@@ -2799,6 +2804,41 @@ check "install displaces the previous terminal palette" run terminal-install "$p
 check "uninstall restores a selected compatible original" run terminal-restore "$project/uninstall.sh"
 check "original palette restored byte for byte" same "$original_palette" "$(sha256sum "$terminal_palette")"
 
+fresh "Platinum Global Menu preflight fails before changing the home"
+mkdir -p "$root/no-menu-cmake"
+printf '#!/bin/sh\necho "Missing ECM in fixture" >&2\nexit 1\n' > "$root/no-menu-cmake/cmake"
+chmod +x "$root/no-menu-cmake/cmake"
+before=$(snapshot)
+if env -u M9_PREBUILT PATH="$root/no-menu-cmake:$PATH" "$project/install.sh" --apply > "$root/menu-preflight.log" 2>&1; then
+    fail "failed CMake configure is reported"
+else
+    check "failed CMake configure names the build prerequisites" grep -Fq 'extra-cmake-modules' "$root/menu-preflight.log"
+fi
+check "global menu configure failure leaves the home alone" same "$before" "$(snapshot)"
+
+fresh "in-place menu uninstall preserves a menu removed by the user"
+layout=$config/plasma-org.kde.plasma.desktop-appletsrc
+printf '[Containments][3]\nplugin=org.kde.panel\n[Containments][3][Applets][11]\nplugin=org.kde.plasma.appmenu\n' > "$layout"
+check "install with an earlier stock layout to restore" run menu-restore-setup "$project/install.sh" --apply
+printf 'in-place\n' > "$state/global-menu-layout"
+printf '[Containments][3]\nplugin=org.kde.panel\n[Containments][3][Applets][14]\nplugin=org.kde.plasma.digitalclock\n' > "$layout"
+cp "$layout" "$root/panel-with-menu-removed"
+check "uninstall with an in-place menu already removed" run menu-removed-undo "$project/uninstall.sh"
+check "uninstall preserves the panel without resurrecting its old menu" cmp "$root/panel-with-menu-removed" "$layout"
+check "uninstall clears the global menu layout marker" test ! -e "$state/global-menu-layout"
+
+fresh "a complete restore keeps the earlier applet and its panel"
+layout=$config/plasma-org.kde.plasma.desktop-appletsrc
+previous_menu=$home/.local/lib/macos9-theme/global-menu/plasma/applets/platinum.globalmenu.so
+mkdir -p "$(dirname "$previous_menu")"
+printf 'previous applet fixture\n' > "$previous_menu"
+printf '[Containments][3]\nplugin=org.kde.panel\n[Containments][3][Applets][11]\nplugin=platinum.globalmenu\n' > "$layout"
+cp "$layout" "$root/previous-menu-layout"
+check "install backs up the previous applet and layout" run menu-previous-apply "$project/install.sh" --apply
+printf '[Containments][4]\nplugin=org.kde.panel\n' > "$layout"
+check "full restore succeeds when the original applet had the same ID" run menu-previous-undo "$project/uninstall.sh"
+check "full restore keeps the earlier applet" grep -Fxq 'previous applet fixture' "$previous_menu"
+check "full restore puts back the original layout byte for byte" cmp "$root/previous-menu-layout" "$layout"
 
 echo
 if ((failed)); then

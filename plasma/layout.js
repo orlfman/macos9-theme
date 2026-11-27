@@ -1,7 +1,7 @@
 // The Mac OS 9 menu bar as a Plasma layout (Plasma's desktop scripting API).
 // Replaces every panel with one 20 px top panel:
 //   Kicker (cascading menu; the Apple menu's place, neutral icon)
-//   global menu (appmenu)
+//   Platinum Global Menu, with Plasma's stock menu as the recovery choice
 //   spacer
 //   system tray, clock
 //   Window List (the Application menu's place: active window icon + name)
@@ -37,7 +37,17 @@ apple.currentConfigGroup = ["General"];
 apple.writeConfig("icon", "start-here-kde-plasma");
 apple.writeConfig("useCustomButtonImage", false);
 
-bar.addWidget("org.kde.plasma.appmenu");
+var menu;
+if (knownWidgetTypes.indexOf("platinum.globalmenu") >= 0) {
+    try {
+        menu = bar.addWidget("platinum.globalmenu");
+    } catch (error) {
+        print("Could not add Platinum Global Menu: " + error);
+    }
+}
+if (!menu || menu.type !== "platinum.globalmenu") {
+    bar.addWidget("org.kde.plasma.appmenu");
+}
 bar.addWidget("org.kde.plasma.panelspacer");
 bar.addWidget("org.kde.plasma.systemtray");
 

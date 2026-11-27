@@ -5,7 +5,7 @@
 #     plugins, built here) in ~/.local/lib/macos9-theme, and the Platinum
 #     style for Qt Quick apps (menus, tooltips, switches; KDE's style for
 #     the rest) next to them
-#   - a Plasma login script that lets Qt and KWin find them
+#   - Platinum Global Menu and a Plasma login script for the plugins
 #     (~/.config/plasma-workspace/env/macos9-theme.sh)
 #   - the Platinum color scheme, Plasma style, menu bar piece widget,
 #     the Platinum Lavender terminal palette for Kwi and Konsole,
@@ -27,9 +27,10 @@
 #              for KDE and GTK without touching panels, wallpaper, cursors, or
 #              other settings; otherwise leaves your active settings alone.
 #   --apply    also switch to the theme: applies the Platinum global theme
-#              (replaces your panels, selects the wallpaper, cursors, and
+#              (sets up its panels on the first switch, selects the wallpaper, cursors, and
 #              WhiteSur-lavender-light icons) and sets the title bar buttons to
-#              close-left, zoom and collapse right. Your config files are
+#              close-left, zoom and collapse right. If Platinum is already active,
+#              it can upgrade the global menu in place. Your config files are
 #              copied first, so uninstall.sh puts them back exactly.
 #   --dry-run  only show what would be done
 #   -h, --help show this help
@@ -66,6 +67,8 @@ done
 
 # shellcheck source=scripts/common.sh
 source "$here/scripts/common.sh"
+# shellcheck source=scripts/global-menu.sh
+source "$here/scripts/global-menu.sh"
 dry_run=$dry
 
 refuse_root
@@ -101,8 +104,17 @@ preflight_plugin_build() {
         die "missing required C++/Qt/KDE build prerequisites: ${joined%; }. Install the missing Arch package(s) and try again; nothing was changed"
     fi
 }
+build=""
+trap '[[ -z $build ]] || rm -rf -- "$build"' EXIT
 if [[ -z ${M9_PREBUILT:-} ]]; then
     preflight_plugin_build
+    need_pkg cmake:cmake ninja:ninja msgfmt:gettext plasmawindowed:plasma-workspace \
+        dbus-run-session:dbus timeout:coreutils
+    build=$(mktemp -d)
+    if ! "$here/plasma/build-global-menu.sh" "$build/global-menu" --configure-only > "$build/global-menu-configure.log" 2>&1; then
+        cat "$build/global-menu-configure.log" >&2
+        die "couldn't configure Platinum Global Menu. Check the CMake development files (Arch packages: extra-cmake-modules, libplasma, plasma-workspace, ki18n, kwindowsystem, kconfig, qt6-base and qt6-declarative); nothing was changed"
+    fi
 fi
 
 # Verify the exact reviewed archive before touching the installation, even
@@ -202,16 +214,17 @@ if ((!dry_run && !use_prebuilt_icons && whitesur_need_fetch)); then
 fi
 take_lock
 check_unfinished_uninstall
+read_menu_layout_mode
 manifest_load
 check_record_paths
+resume_panel_shell || die "couldn't restart Plasma's shell after the previous panel operation"
 remove_temporaries
 reconcile_displaced
 
 # Build the plugins and WhiteSur Lavender icons in a temporary folder before
 # installing anything.
 if ((dry_run)); then
-    build=/nonexistent
-    plan "build the application style and the window decoration"
+    plan "build the application style, window decoration and Platinum Global Menu"
     if ((use_prebuilt_icons)); then
         plan "stage prebuilt WhiteSur Lavender icon themes"
     else
@@ -221,8 +234,7 @@ if ((dry_run)); then
         plan "build and verify WhiteSur Lavender icon themes from $whitesur_upstream"
     fi
 else
-    build=$(mktemp -d)
-    trap 'rm -rf "${build:-/nonexistent}"' EXIT
+    [[ -n $build ]] || build=$(mktemp -d)
     # Package GTK 3 and GTK 4 with the shared palette and metadata for
     # named-theme lookup. GTK 4 gets its own copy of the GTK 3 artwork and the
     # palette it uses, so each toolkit folder stands alone.
@@ -245,10 +257,40 @@ else
     fi
     if [[ -n ${M9_PREBUILT:-} ]]; then # tests only: dev/test-install.sh builds once
         cp -R "$M9_PREBUILT/style" "$M9_PREBUILT/decoration" "$M9_PREBUILT/quick" "$build/"
+        mkdir "$build/global-menu"
+        cp -R "$M9_PREBUILT/global-menu/plugins" "$M9_PREBUILT/global-menu/plasma_applet_platinum.globalmenu.mo" "$build/global-menu/" ||
+            die "Platinum Global Menu build artifacts are missing; nothing was installed"
     else
         "$here/style/build.sh" "$build/style" > /dev/null || die "building the application style failed (needs Qt 6 development files); nothing was installed"
         "$here/decoration/build.sh" "$build/decoration" > /dev/null || die "building the window decoration failed (needs KDecoration 3 development files); nothing was installed"
         "$here/style/quick/build.sh" "$build/quick" > /dev/null || die "building the Qt Quick style failed (needs Qt 6 Quick development files); nothing was installed"
+        if ! "$here/plasma/build-global-menu.sh" "$build/global-menu" --build-configured > "$build/global-menu-build.log" 2>&1; then
+            cat "$build/global-menu-build.log" >&2
+            die "building Platinum Global Menu failed; nothing was installed"
+        fi
+    fi
+    menu_binary=$build/global-menu/plugins/plasma/applets/platinum.globalmenu.so
+    menu_catalog=$build/global-menu/plasma_applet_platinum.globalmenu.mo
+    [[ -s $menu_binary && -s $menu_catalog ]] || die "Platinum Global Menu build artifacts are missing; nothing was installed"
+    if [[ -z ${M9_PREBUILT:-} ]]; then
+        if ! ldd -r "$menu_binary" > "$build/global-menu-links.log" 2>&1 ||
+            grep -Eq 'not found|undefined symbol' "$build/global-menu-links.log"; then
+            cat "$build/global-menu-links.log" >&2
+            die "Platinum Global Menu has unresolved shared-library dependencies; nothing was installed"
+        fi
+        probe_home=$build/global-menu-probe
+        mkdir -m 700 -p "$probe_home/runtime"
+        if ! timeout 25 env -u DISPLAY -u WAYLAND_DISPLAY -u QT_STYLE_OVERRIDE \
+            -u QT_QUICK_CONTROLS_STYLE -u QML_IMPORT_PATH -u QML2_IMPORT_PATH \
+            HOME="$probe_home" XDG_CONFIG_HOME="$probe_home/config" XDG_CONFIG_DIRS=/etc/xdg \
+            XDG_DATA_HOME="$probe_home/data" XDG_CACHE_HOME="$probe_home/cache" \
+            XDG_STATE_HOME="$probe_home/state" XDG_RUNTIME_DIR="$probe_home/runtime" \
+            QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software \
+            QT_PLUGIN_PATH="$build/global-menu/plugins" \
+            dbus-run-session -- plasmawindowed --smoke-test platinum.globalmenu > "$build/global-menu-load.log" 2>&1; then
+            cat "$build/global-menu-load.log" >&2
+            die "Platinum Global Menu failed its isolated load check; nothing was installed"
+        fi
     fi
 fi
 
@@ -281,6 +323,9 @@ if ((!dry_run)); then
 macos9_theme_path=$(sh_quote "$plugins")
 if true$guard; then
     macos9_theme_path=\$macos9_theme_path:$(sh_quote "$deco_plugins")
+fi
+if [ -f $(sh_quote "$global_menu_plugin") ]; then
+    macos9_theme_path=\$macos9_theme_path:$(sh_quote "$global_menu_plugins")
 fi
 case ":\${QT_PLUGIN_PATH:-}:" in
     *":\$macos9_theme_path:"*) ;;
@@ -382,6 +427,9 @@ remove_passthrough
 place_file "$build/style/plugins/styles/platinumstyle.so" "$plugins/styles/platinumstyle.so" 755
 place_file "$build/decoration/plugins/org.kde.kdecoration3/platinum.so" "$deco_plugins/org.kde.kdecoration3/platinum.so" 755
 say "Installed the application style and the window decoration into $libdir"
+place_file "$build/global-menu/plugins/plasma/applets/platinum.globalmenu.so" "$global_menu_plugin" 755
+place_file "$build/global-menu/plasma_applet_platinum.globalmenu.mo" "$global_menu_catalog" 644
+say "Installed Platinum Global Menu into $global_menu_plugins"
 place_file "$build/env.sh" "$env_script" 644
 say "Installed the login script $env_script"
 if [[ -n $kde_quick_version ]]; then
@@ -552,16 +600,45 @@ if ((apply)); then
             warn "Qt can't read the JPEG XL wallpapers. Install your distribution's Qt JPEG XL support (kimageformats on Arch) to display them."
         fi
     fi
-    plan "run plasma-apply-lookandfeel --apply $lnf_id --resetLayout --keep-auto"
+    layout_args=(--apply "$lnf_id")
+    if [[ $active != "$lnf_id" ]]; then
+        layout_args+=(--resetLayout)
+        set_menu_layout_mode reset || die "couldn't record the panel layout change"
+    fi
+    layout_args+=(--keep-auto)
+    plan "run plasma-apply-lookandfeel ${layout_args[*]}"
     if ((!dry_run)); then
         if ! env QT_PLUGIN_PATH="$plugins:$deco_plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}" \
-            plasma-apply-lookandfeel --apply "$lnf_id" --resetLayout --keep-auto > /dev/null 2>&1; then
+            plasma-apply-lookandfeel "${layout_args[@]}" > /dev/null 2>&1; then
             die "switching to the Platinum global theme failed (plasma-apply-lookandfeel). Your config files are copied: uninstall.sh puts them back, or try install.sh --apply again"
         fi
         # Ensure a stale Theme[$d] marker in kdeglobals doesn't hide kdedefaults (#142).
         python3 -I "$icon_prefs" clear-deleted-marker "$config_home/kdeglobals"
         notify_gtk_icon_config
         say "Switched to the Platinum global theme"
+    fi
+    if [[ $active == "$lnf_id" ]]; then
+        if ((dry_run)); then
+            plan "if available in Plasma, switch the existing global menu widget in place"
+        else
+            case $(global_menu_discovery) in
+                ready)
+                    pending_menu=$(panel_menu migrate --check) || die "couldn't inspect Plasma's panel layout"
+                    if [[ $pending_menu != 0 ]] || shell_has_panel_menu org.kde.plasma.appmenu; then
+                        switch_panel_menu migrate || die "couldn't finish the global menu panel change; run install.sh --apply again"
+                    fi
+                    ;;
+                missing)
+                    pending_menu=$(panel_menu restore --check) || die "couldn't inspect Plasma's panel layout"
+                    if [[ $pending_menu != 0 ]] || shell_has_panel_menu platinum.globalmenu; then
+                        switch_panel_menu restore || die "couldn't restore the stock Global Menu; run install.sh --apply again"
+                    fi
+                    note "Plasma still needs to discover Platinum Global Menu. Log out and back in, then run install.sh --apply again."
+                    ;;
+            esac
+        fi
+    elif ((!dry_run)) && [[ $(global_menu_discovery) == missing ]]; then
+        note "This session uses the stock Global Menu. Log out and back in, then run install.sh --apply to switch it in place."
     fi
     # A global theme can't set the title bar button order (docs/FINDINGS.md).
     plan "set the title bar buttons in kwinrc: close on the left, zoom and collapse on the right"

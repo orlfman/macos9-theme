@@ -44,6 +44,8 @@ done
 
 # shellcheck source=scripts/common.sh
 source "$here/scripts/common.sh"
+# shellcheck source=scripts/global-menu.sh
+source "$here/scripts/global-menu.sh"
 dry_run=$dry
 
 refuse_root
@@ -54,13 +56,21 @@ if [[ ! -e $state && ! -L $state ]]; then
     exit 0
 fi
 take_lock
+read_menu_layout_mode
 manifest_load
 check_record_paths
+menu_will_remove=0
+if manifest_lists file "$global_menu_plugin" &&
+    { [[ ! -e $global_menu_plugin && ! -L $global_menu_plugin ]] || installed_file "$global_menu_plugin"; }; then
+    panel_menu restore --check > /dev/null || die "couldn't inspect the panel layout; nothing was removed"
+    menu_will_remove=1
+fi
+menu_layout_checked=0
 remove_temporaries
 reconcile_displaced
 # A shell an earlier run stopped and couldn't start again (finding 38).
 shell_failed=0
-if ! shell_resume; then
+if ! resume_panel_shell; then
     warn "$shell_failed_message"
     shell_failed=1
 fi
@@ -70,7 +80,7 @@ if [[ ! -d $backup && ${#manifest_entries[@]} -eq 0 ]]; then
     ((shell_resumed)) || note "Nothing to remove: there's no install record in $state."
     if ((!dry_run)); then
         # What an earlier run stopped just before removing.
-        rm -f "$state/lock" "$icon_adoption" "$restore_decision_file" "$uninstall_marker" "$gtk_later_file"
+        rm -f "$state/lock" "$icon_adoption" "$restore_decision_file" "$uninstall_marker" "$gtk_later_file" "$menu_layout_mode_file"
         rmdir "$state" 2> /dev/null || true
     fi
     exit 0
@@ -301,6 +311,11 @@ if [[ -d $backup ]]; then
                 mkdir -p "$(dirname "$keep/current/$base/$name")"
                 cp -a "$path" "$keep/current/$base/$name"
             fi
+            if [[ $menu_layout_mode == in-place && $base == config && $root == "$config_home" ]] &&
+                [[ $path == "$panel_layout" || $name == plasmashellrc ]]; then
+                plan "preserve the current $path"
+                continue
+            fi
             okey="$base	$name"
             if ((!dry_run)) && [[ -n ${restore_overlay[$okey]:-} ]]; then
                 overlay_applied[$okey]=1
@@ -365,6 +380,19 @@ if [[ -d $backup ]]; then
             python3 -I "$icon_prefs" restore-gtk-icon-dconf "$config_home" "$icon_adoption" ||
                 die "couldn't restore the previous Wayland GTK icon preference; run uninstall.sh again to finish"
         fi
+        # A full restore owns the original layout, including any applet
+        # the user installed before Platinum. Only rewrite a surviving layout.
+        menu_layout_checked=1
+        if ((menu_will_remove)) && [[ $menu_layout_mode == in-place || $config_root != "$config_home" ]]; then
+            if ((dry_run)); then
+                plan "restore any remaining Platinum Global Menu slots to the stock widget"
+            else
+                pending_menu=$(panel_menu restore) || die "couldn't restore the stock Global Menu; run uninstall.sh again"
+                if [[ $pending_menu != 0 ]]; then
+                    say "Restored the stock Global Menu in the current panel layout"
+                fi
+            fi
+        fi
         plan "move the copy that was put back to $keep/original"
         if ((!dry_run)); then
             mkdir -p "$keep"
@@ -394,6 +422,20 @@ if [[ -d $backup ]]; then
             fi
         fi
         say "The theme isn't active, so your config files were left as they are (the copy from install time is in $keep/unused)"
+    fi
+fi
+
+# If no full config restore ran, the menu may still be on a customized panel.
+# Re-check the live session as it may have edits not yet saved to disk.
+if ((menu_will_remove && !menu_layout_checked)); then
+    pending_menu=$(panel_menu restore --check) || die "couldn't inspect Plasma's panel layout"
+    if [[ $pending_menu != 0 ]] || shell_has_panel_menu platinum.globalmenu; then
+        if ((dry_run)); then
+            plan "restore the stock Global Menu in the current panel layout"
+        else
+            printf 'uninstall\n' > "$uninstall_marker"
+            switch_panel_menu restore || die "couldn't restore the stock Global Menu; run uninstall.sh again"
+        fi
     fi
 fi
 
@@ -451,7 +493,7 @@ local_wallpaper_path() {
 
 declare -A kept_packages=()
 wallpaper_config=$config_home/plasma-org.kde.plasma.desktop-appletsrc
-if ((restored && dry_run)) && [[ $config_root == "$config_home" && ! -L $wallpaper_config ]]; then
+if ((restored && dry_run)) && [[ $menu_layout_mode != in-place && $config_root == "$config_home" && ! -L $wallpaper_config ]]; then
     wallpaper_config=$backup/config/plasma-org.kde.plasma.desktop-appletsrc
 fi
 wallpaper_targets=()
@@ -870,12 +912,12 @@ if ((left)); then
 fi
 
 if ((!dry_run)); then
-    rm -f "$manifest" "$state/lock" "$icon_adoption" "$restore_decision_file" "$uninstall_marker" "$gtk_later_file"
+    rm -f "$manifest" "$state/lock" "$icon_adoption" "$restore_decision_file" "$uninstall_marker" "$gtk_later_file" "$menu_layout_mode_file"
     rmdir "$state" 2> /dev/null || true
 else
     plan "remove the install record $manifest"
 fi
-say "Removed the Platinum style (widgets and Qt Quick), decoration, color scheme, Plasma style, global theme, wallpapers, cursors, icons, GTK 3 and GTK 4 theme, terminal palette and login script"
+say "Removed the Platinum style (widgets and Qt Quick), decoration, color scheme, Plasma style, global theme, global menu, wallpapers, cursors, icons, GTK 3 and GTK 4 theme, terminal palette and login script"
 if ((shell_failed)); then
     warn "$shell_failed_message"
     exit 1

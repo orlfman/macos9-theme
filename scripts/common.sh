@@ -132,6 +132,9 @@ icon_prefs=$here/scripts/icon_prefs.py
 libdir=$home/.local/lib/macos9-theme
 plugins=$libdir/style
 deco_plugins=$libdir/decoration
+global_menu_plugins=$libdir/global-menu
+global_menu_plugin=$global_menu_plugins/plasma/applets/platinum.globalmenu.so
+global_menu_catalog=$data/locale/fr/LC_MESSAGES/plasma_applet_platinum.globalmenu.mo
 # The Qt Quick Controls style (style/quick), and the link Kirigami finds its
 # color and size plugin by (named after the style, pointing at KDE's).
 quick_qml=$libdir/qml
@@ -182,6 +185,8 @@ known_icon_theme_ids=("${icon_theme_ids[@]}" "$legacy_icon_id")
 targets=(
     "file	$plugins/styles/platinumstyle.so"
     "file	$deco_plugins/org.kde.kdecoration3/platinum.so"
+    "file	$global_menu_plugin"
+    "file	$global_menu_catalog"
     "file	$env_script"
     "file	$data/color-schemes/$scheme_name.colors"
     "file	$terminal_scheme_path"
@@ -1013,7 +1018,7 @@ remove_passthrough() {
 
 shell_how=""
 shell_resumed=0
-# Written while uninstall.sh has the shell stopped; a later run starts it
+# Written while a panel operation has the shell stopped; a later run starts it
 # again if this one couldn't (finding 38).
 shell_marker=$state/shell-stopped
 
@@ -1073,7 +1078,8 @@ shell_start() {
         direct)
             plan "start Plasma's shell again"
             ((dry_run)) && return 0
-            setsid -f plasmashell > /dev/null 2>&1 < /dev/null || return 1
+            # The long-lived shell must not inherit the installer's flock.
+            setsid -f plasmashell > /dev/null 2>&1 < /dev/null 9>&- || return 1
             for ((i = 0; i < 100; i++)); do
                 shell_running_on_bus && break
                 sleep 0.2
@@ -1100,10 +1106,10 @@ shell_resume() {
         ((dry_run)) || rm -f "$shell_marker"
         return 0
     fi
-    plan "start Plasma's shell, which an earlier uninstall.sh stopped"
+    plan "start Plasma's shell, which an earlier panel operation stopped"
     shell_start || return 1
     shell_resumed=1
-    say "Started Plasma's shell again (an earlier uninstall.sh had stopped it)"
+    say "Started Plasma's shell again (an earlier panel operation had stopped it)"
 }
 
 shell_failed_message="couldn't start Plasma's shell again. Run uninstall.sh again to retry, or start it yourself: systemctl --user start plasma-plasmashell.service (or: setsid -f plasmashell)"

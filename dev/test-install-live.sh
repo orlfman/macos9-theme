@@ -37,6 +37,7 @@ EOF
     "$project/style/build.sh" "$root/prebuilt/style" > /dev/null
     "$project/decoration/build.sh" "$root/prebuilt/decoration" > /dev/null
     "$project/style/quick/build.sh" "$root/prebuilt/quick" > /dev/null
+    "$project/plasma/build-global-menu.sh" "$root/prebuilt/global-menu" > /dev/null
     "$project/icons/build-whitesur-lavender.sh" "${M9_WHITESUR_UPSTREAM:-$(dirname "$project")/WhiteSur-icon-theme}" "$root/prebuilt/icons" > /dev/null
     rm -f "$root/prebuilt/icons"/WhiteSur-lavender{,-light}/.macos9-whitesur-lavender-build
     if ((appearance)); then
@@ -119,6 +120,33 @@ shell_pid() {
     dbus-send --session --print-reply --dest=org.freedesktop.DBus / org.freedesktop.DBus.GetConnectionUnixProcessID \
         string:org.kde.plasmashell 2> /dev/null | awk '/uint32/ { print $2 }'
 }
+restart_plasma_at_login() {
+    kquitapp6 plasmashell > /dev/null 2>&1 || return 1
+    for _ in {1..100}; do
+        on_bus org.kde.plasmashell || break
+        sleep 0.2
+    done
+    ! on_bus org.kde.plasmashell || return 1
+    (
+        unset QT_PLUGIN_PATH
+        source "$config/plasma-workspace/env/macos9-theme.sh"
+        exec plasmashell --no-respawn
+    ) > "$root/plasmashell-login.log" 2>&1 &
+    wait_bus org.kde.plasmashell 30 || return 1
+    sleep 3
+}
+knows_platinum_menu() {
+    shell_js 'print(knownWidgetTypes.indexOf("platinum.globalmenu") >= 0 ? "ready" : "missing")'
+}
+menu_slot() {
+    shell_js 'var slots = [];
+    panels().forEach(function (p) { p.widgets().forEach(function (w) {
+        if (w.type !== "org.kde.plasma.appmenu" && w.type !== "platinum.globalmenu") return;
+        w.currentConfigGroup = ["Appearance"];
+        slots.push([p.id, w.id, w.index, w.type, w.readConfig("compactView", false), w.readConfig("allScreens", true)].join(":"));
+    }); });
+    print(slots.sort().join(" "));'
+}
 # The config and GTK files a switch may change (the shell's own layout
 # files aside: they're compared through the running shell).
 files_state() {
@@ -188,6 +216,7 @@ if ((${M9_TEST_APPEARANCE:-0})); then
 fi
 
 check "install exits 0" bash -c "'$project/install.sh' > '$root/install.log' 2>&1"
+check "a running pre-install shell cannot discover the staged menu" same missing "$(knows_platinum_menu)"
 check "install alone keeps both wallpapers" same "$before_backgrounds" "$(desktop_backgrounds)"
 check "install installed the cursor theme" test -r "$XDG_DATA_HOME/icons/macOS-cursors/cursors/left_ptr"
 check "install installed the WhiteSur Lavender icon themes" bash -c '
@@ -224,6 +253,7 @@ check "--apply replaced the panels with the menu bar and the dock" \
     bash -c "[[ '$after_panels' == *':top:20'* && '$after_panels' == *':bottom:52'* && '$after_panels' != *'left'* ]]"
 applied_widgets=$(widgets)
 echo "info    dock widgets after --apply: $applied_widgets"
+check "the new layout uses stock Global Menu before the next login" grep -Fq 'org.kde.plasma.appmenu' <<< "$applied_widgets"
 check "--apply puts the Platinum Trash at the dock's end" \
     bash -c "[[ '$applied_widgets' == *'bottom=org.kde.plasma.icontasks,platinum.trash'* && '$applied_widgets' != *'org.kde.plasma.trash'* ]]"
 check "--apply switches both screens to image wallpaper" same \
@@ -281,6 +311,14 @@ check "  once, with the user's rules kept" bash -c "
 after_files=$(files_state)
 check "install.sh again after the switch exits 0 (an update; no links in the copied folders)" \
     bash -c "'$project/install.sh' > '$root/install-2.log' 2>&1"
+check "restart with the generated login script" restart_plasma_at_login
+check "Plasma discovers the user-scope binary after login" same ready "$(knows_platinum_menu)"
+check "a new layout in a ready shell uses Platinum Global Menu" \
+    shell_js "$(cat "$project/plasma/layout.js")"
+ready_slot=$(menu_slot)
+check "the fresh ready layout loads only the Platinum menu" \
+    grep -Eq '^[0-9]+:[0-9]+:[0-9]+:platinum\.globalmenu:false:true$' <<< "$ready_slot"
+check "the loaded menu owns the app-menu service" wait_bus org.kde.kappmenuview 6
 # A Qt Quick app started with the login script's environment (as after the
 # next login) gets the Platinum Qt Quick style.
 cat > "$root/quick-probe.qml" << 'QML'
@@ -372,6 +410,61 @@ shell_js 'desktops().forEach(function (d) { d.wallpaperPlugin = "org.kde.color";
 check "picker-only uninstall can finish after changing the wallpapers" bash -c "'$project/uninstall.sh' > '$root/picker-undo-2.log' 2>&1"
 check "both no-longer-selected packages are removed" bash -c "[[ ! -e '$XDG_DATA_HOME/wallpapers/platinum-ribbon' &&
     ! -e '$XDG_DATA_HOME/wallpapers/platinum-lavender' ]]"
+
+# A Platinum layout from before the bundled menu. The selected theme and
+# panel are already the user's, so --apply changes only the menu slot.
+kwriteconfig6 --file kdeglobals --group KDE --key LookAndFeelPackage platinum.desktop
+shell_js 'var bar = new Panel;
+    bar.location = "top"; bar.height = 37;
+    bar.addWidget("org.kde.plasma.digitalclock");
+    var menu = bar.addWidget("org.kde.plasma.appmenu");
+    menu.currentConfigGroup = ["Appearance"];
+    menu.writeConfig("compactView", true); menu.writeConfig("allScreens", false);
+    bar.addWidget("org.kde.plasma.panelspacer");' > "$root/old-platinum-bar.log"
+sleep 1
+legacy_slot=$(menu_slot)
+legacy_panels=$(panels)
+check "the customized stock slot has its settings" grep -Eq ':org\.kde\.plasma\.appmenu:true:false$' <<< "$legacy_slot"
+check "install for an existing Platinum panel" bash -c "'$project/install.sh' > '$root/custom-install.log' 2>&1"
+check "restart the existing layout with its login script" restart_plasma_at_login
+check "the previous menu remains until explicitly applied" same "$legacy_slot" "$(menu_slot)"
+
+# Interrupt the swap after the layout reaches disk and before the shell
+# comes back. The next apply resumes the stopped shell and the same slot.
+mkdir "$root/restart-failure"
+printf '#!/bin/sh\nexit 1\n' > "$root/restart-failure/setsid"
+chmod +x "$root/restart-failure/setsid"
+if PATH="$root/restart-failure:$PATH" "$project/install.sh" --apply > "$root/custom-interrupted.log" 2>&1; then
+    fail "the interrupted migration is reported"
+else
+    check "the interrupted migration is reported" grep -Fq 'finish the global menu panel change' "$root/custom-interrupted.log"
+fi
+check "the interrupted migration records the stopped shell" grep -Fxq direct "$XDG_STATE_HOME/macos9-theme/shell-stopped"
+check "retry completes the interrupted migration" bash -c "'$project/install.sh' --apply > '$root/custom-apply.log' 2>&1"
+check "in-place apply preserves panel positions and heights" same "$legacy_panels" "$(panels)"
+check "in-place apply keeps the applet ID, index, and settings" same \
+    "${legacy_slot/org.kde.plasma.appmenu/platinum.globalmenu}" "$(menu_slot)"
+check "the migrated menu owns the app-menu service" wait_bus org.kde.kappmenuview 6
+check "the in-place restore policy survives retry" grep -Fxq in-place "$XDG_STATE_HOME/macos9-theme/global-menu-layout"
+check "the restarted shell does not hold the installer lock" flock -n "$XDG_STATE_HOME/macos9-theme/lock" true
+
+# Move the menu after migration and change an unrelated widget before undo.
+shell_js 'var top = panels().filter(function (p) { return p.location === "top"; })[0];
+    var target = panels().filter(function (p) { return p.location === "left"; })[0];
+    target.addWidget(top.widgets("platinum.globalmenu")[0]);
+    var clock = top.widgets("org.kde.plasma.digitalclock")[0];
+    clock.currentConfigGroup = ["Appearance"]; clock.writeConfig("showSeconds", 2);' > "$root/custom-move.log"
+sleep 2
+moved_slot=$(menu_slot)
+moved_widgets=$(widgets)
+check "the menu is now in a different panel" bash -c '[[ ${1%%:*} != ${2%%:*} ]]' _ "$moved_slot" "$legacy_slot"
+check "in-place uninstall succeeds" bash -c "'$project/uninstall.sh' > '$root/custom-uninstall.log' 2>&1"
+check "in-place uninstall leaves the moved slot in place as stock" same \
+    "${moved_slot/platinum.globalmenu/org.kde.plasma.appmenu}" "$(menu_slot)"
+check "in-place uninstall keeps the other widgets and later clock change" same \
+    "${moved_widgets/platinum.globalmenu/org.kde.plasma.appmenu}" "$(widgets)"
+check "in-place uninstall removes the menu binary" test ! -e "$home/.local/lib/macos9-theme/global-menu/plasma/applets/platinum.globalmenu.so"
+check "in-place uninstall removes its catalog" test ! -e "$XDG_DATA_HOME/locale/fr/LC_MESSAGES/plasma_applet_platinum.globalmenu.mo"
 
 check "nothing touched a real systemd session" bash -c "! grep -qv 'is-active' '$root/systemctl.log' 2> /dev/null"
 
