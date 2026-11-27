@@ -2,7 +2,9 @@
 
 ## Status
 
-**Platinum Global Menu prototype, 2026-11-26 (Codex GPT-6).** Steps 1–2 are complete through `e737850`. The pinned subtree and Platinum's File + Go menu passed the 20 px nested Wayland trial on two outputs, including all seven commands. The empty-export regression (#319) is fixed. Eight applet tests passed in Release and under ASan/UBSan. Next is step 3, user-scope installation and discovery. [Bundled global menu plan](#plan-bundled-global-menu)
+**Platinum Global Menu installation and panel migration, 2026-11-26 (Codex GPT-6, `98311fe`).** Steps 3–4 are implemented. The installer builds, checks and installs the user-scope applet and catalog (#318). Plasma uses stock before discovery, then can swap a customized panel in place. The installer suite passed 862/862 in a test snapshot. Nested install and undo passed 74/74, including a restart failure and recovery (#320). The desktop review is pending. Step 5 covers compatibility after a Plasma update and checking upstream for fixes. [Bundled global menu plan](#plan-bundled-global-menu)
+
+**Platinum Global Menu prototype, 2026-11-26 (Codex GPT-6).** Steps 1–2 are complete through `e737850`. The pinned subtree and Platinum's File + Go menu passed the 20 px nested Wayland trial on two outputs, including all seven commands. The empty-export regression (#319) is fixed. Eight applet tests passed in Release and under ASan/UBSan. [Bundled global menu plan](#plan-bundled-global-menu)
 
 **Global menu fallback research, 2026-11-26 (Codex GPT-6).** Plasma 6.8.3 has no fallback setting. A replacement applet can show File and Go on the desktop and for apps without menus, then switch to the focused app’s exported menu. The closest existing applet built and passed three focused suites and an offscreen load. The next check is the applet in Platinum’s top panel under nested Wayland. [Research and prototype plan](docs/GLOBAL-MENU-FALLBACK.md)
 
@@ -292,7 +294,7 @@ One row per component. `nobody` = free. See AGENTS.md "Working together".
 | colors     | colors/                   | nobody     | Platinum.colors done and bundled in Global Theme. Palette check guards the two light backgrounds |
 | decoration | decoration/               | nobody | plugin works in nested KWin; frame pixel exact; only the three Mac OS 9 boxes are created (AUDIT 20); audit #86, #90, #96 and #99 verified. Disabled title-bar boxes hidden and pinstripes extended to remaining boxes (#281, #282). Centered captions clear asymmetric boxes (#284; `dev/check-deco.sh` 10/10) |
 | style      | style/                    | nobody | batches 1-7 + tooltips done (pixel exact); audit fixes #15-#19, #32 (keyboard focus ring, mixed check box, polish symmetry, RTL fallback, 64-bit scroll math, reversed scroll bars); Qt Quick style in style/quick: menus, menu bar, combo list, tooltips, switches (AUDIT 3, check-quick 29/29; installed by install.sh); also dialogs (measured modal frame), drawers, range sliders; combo lists track live model edits (#63); compact tab close indicator and selected state verified in Kwi (#71–74); editable combo styled and verified in KDE file picker (#224); open: size grip; audit #85, #87–89, #91–94, #97 and #100 verified; #95 open; bottom tabs (Konsole, Kwi) drawn as the top tabs upside down, `dev/check-tabs.sh` 51/51 (2026-11-25, Codex #236–237 and Gemini #238–239 fixed; taller Kwi tabs #266). Widget and Quick fixes #272–277 and #279–280 verified |
-| plasma     | plasma/, macos9-applet-bar/ | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); main screen only (decision 10); resizable menu bar ends and divider (AUDIT 23), with complete divider dots and pixel comparisons across four panel heights (AUDIT 69–70); #98 table reader verified; Platinum is classified Light and defaults to `WhiteSur-lavender-light` (#288–290); default dock ends with the own `platinum.trash` widget (color empty/full icons sized like the dock apps; 2026-11-24). Reserved-character Trash paths verified (#278). [Control Strip proposal](macos9-applet-bar/CONTROL-STRIP-DESIGN.md) is ready for a tray-move prototype. |
+| plasma     | plasma/, macos9-applet-bar/ | nobody | menu bar, global theme, dock done (headless); selection text contrast fixed (AUDIT 22); main screen only (decision 10); resizable menu bar ends and divider (AUDIT 23), with complete divider dots and pixel comparisons across four panel heights (AUDIT 69–70); #98 table reader verified; Platinum is classified Light and defaults to `WhiteSur-lavender-light` (#288–290); default dock ends with the own `platinum.trash` widget (color empty/full icons sized like the dock apps; 2026-11-24). Reserved-character Trash paths verified (#278). [Control Strip proposal](macos9-applet-bar/CONTROL-STRIP-DESIGN.md) is ready for a tray-move prototype. Platinum Global Menu builds and migrates in the installer, with nested undo verified. |
 | icons      | icons/                    | nobody | #101–109, #111, #116, #118–121, #123, #132, #134, #135, #137, #143 committed on `main` against pinned `2026-09-10` (`73d8040da51a9ed74e47c7366e7e9ff437601a5c`); external pin (`icons/whitesur-pin.json`), tracked custom layer (`icons/custom/{all,light}/` + cross-dir variant aliases), read-only update review (`icons/review-whitesur-update.sh`), mandatory-`flock` full-`fsck` bare-git cache (`icons/fetch-whitesur.sh` with safe user-owned symlinked `~/.cache`), recovery-safe journaled publish, archive + linked-worktree safeguards, and disposable suite (`dev/test_icons_phase1.py`, 80/80); full-copy + custom layer retained; base and light built. Retired dark is supported on upgrade and undo. Custom scalable Trash and upstream small sizes verified |
 | cursors    | cursors/                  | nobody | bundled black cursors (`macOS-cursors`) installed and selected by the global theme, verified in nested Plasma; discovery, selection and undo verified (#78–#84). No cursors of our own (decision 8, user). |
 | gtk        | gtk/                      | nobody | GTK 3 and GTK 4 install and removal verified (`dev/test-install.sh` 833/833, `dev/test-install-live.sh` 49/49). GTK 4 passes 178/178 Broadway (plain and with layer) and 253/253 nested Plasma. `check-adw` passes 183/183 Broadway and 259/259 nested Plasma. GTK 3 app checks 19/19. #292–299 verified. #300–301 cover the standard cases. Next in GTK is desktop review and automatic GTK selection. libadwaita colors + shapes layer (`gtk-4.0/libadwaita.css`, decision 15) installed with the theme (import line in `~/.config/gtk-4.0/gtk.css`, install/undo tested); user live testing pending. |
@@ -521,6 +523,8 @@ other part of the theme. No private working repo and no patch files.
   CI, release and packaging files (`.github/`, `packaging/`, `install.sh`,
   `scripts/`) stay as imported and unused; the theme's `install.sh` builds
   `plasma/globalmenu/` itself.
+- **Local commits authorized for all global menu steps (user, 2026-11-26).**
+  Push on the user's request, as with the rest of the repository.
 - `plasma/globalmenu/` belongs to the `plasma` claim.
 
 Record the upstream URL and full commit. Keep the upstream `LICENSE`, copyright and
@@ -560,11 +564,7 @@ so that workflow calls for a standalone repo with an upstream remote.
    Platinum restores the fallback in that case (#319). The native and
    fallback open-title columns each match all 20 reference pixels.
    [Plasma test harness](docs/DEVELOPMENT.md#the-plasma-style-and-the-menu-bar)
-2. **Import the subtree, then patch the applet.** **Commits allowed (user,
-   2026-11-26):** for this step the agent may commit the `git subtree add`
-   import and the `globalmenu:` patch commits without asking again, an
-   exception to AGENTS.md "Commit and push only when the user asks". Pushing
-   still needs the user's OK. Rename it to the user's
+2. **Import the subtree, then patch the applet.** Rename it to the user's
    chosen name: display name **Platinum Global Menu** (`KPlugin.Name` in
    `metadata.json`), plugin ID `platinum.globalmenu` (the
    `plasma_add_applet` target and `KPlugin.Id`), translation domain
@@ -605,7 +605,12 @@ so that workflow calls for a standalone repo with an upstream remote.
    `kconfig` to `preflight_plugin_build` (`install.sh:82–102`) so a
    missing package stops the install before anything changes, and add the
    new packages to the README's "What you need" line.
-   [Theme plugin installation](install.sh#L263-L291) · [Upstream applet target](https://github.com/ChathurangaBW/global-menu-KDE/blob/4a24e4dfed7eac640023e1b28d06321f65385e2b/src/CMakeLists.txt#L1-L17) · [Native applet layout](https://github.com/KDE/libplasma/blob/v6.8.3/PlasmaMacros.cmake#L54-L70) · [Upstream first-login note](https://github.com/ChathurangaBW/global-menu-KDE/blob/4a24e4dfed7eac640023e1b28d06321f65385e2b/docs/INSTALL.md#L45-L49)
+   **Done 2026-11-26.** CMake configures before any install writes. The
+   staged binary passes a dependency check and an isolated offscreen load
+   before publication. The manifest owns the native plugin and French
+   catalog. A pre-install shell kept using stock, and a shell started
+   with the generated login script discovered and loaded Platinum.
+   [Theme login script](install.sh#L307-L333) · [Upstream applet target](https://github.com/ChathurangaBW/global-menu-KDE/blob/4a24e4dfed7eac640023e1b28d06321f65385e2b/src/CMakeLists.txt#L1-L17) · [Native applet layout](https://github.com/KDE/libplasma/blob/v6.8.3/PlasmaMacros.cmake#L54-L70) · [Upstream first-login note](https://github.com/ChathurangaBW/global-menu-KDE/blob/4a24e4dfed7eac640023e1b28d06321f65385e2b/docs/INSTALL.md#L45-L49)
 4. **Switch the panel and make the change reversible.** Change
    `plasma/layout.js` and regenerate the look-and-feel copy so new layouts
    choose Platinum's ID once it can load. Use stock as the recovery choice
@@ -618,7 +623,13 @@ so that workflow calls for a standalone repo with an upstream remote.
    stock widget in the current managed slot before removing the plugin.
    Respect a later choice to move or remove the menu, and leave other
    applets and their settings alone. Exercise this path without a layout
-   reset. [Theme layout source](plasma/layout.js#L35-L43) · [Plasma widget ordering](https://github.com/KDE/plasma-workspace/blob/v6.8.3/shell/scripting/widget.cpp#L90-L144)
+   reset. **Done 2026-11-26.** A first `--apply` saves and resets the
+   original layout. On an active Platinum layout, `--apply` can migrate a
+   single stock menu without resetting panels. The swap changes only the
+   plugin ID in Plasma's saved applet group while the shell is stopped.
+   An interrupted restart can be retried. Undo reverts a moved menu in
+   its current slot and honors later removal. Full undo restores the
+   original layout and any pre-existing plugin. [Theme layout source](plasma/layout.js#L35-L51) · [Panel migration helper](scripts/global_menu_layout.py)
 5. **Rebuild and verify updates.** Build the applet along with the style
    and decoration on each install or reinstall. Track the Plasma and Qt
    packages the applet builds against because it links to LibPlasma and

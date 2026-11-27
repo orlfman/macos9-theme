@@ -2,6 +2,12 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-26, Codex (GPT-6) — integrate Platinum Global Menu into install and undo
+
+- Steps 3–4 are in `98311fe`. The installer configures and stages the applet before publishing it and its French catalog in user scope. It checks linked libraries and loads the staged applet offscreen. The README documents first-login discovery and the new build requirements (#318).
+- A new layout uses the stock menu until the running shell discovers the applet. Applying while Platinum is active can migrate a customized panel in place. The saved applet ID, position and settings are preserved. Uninstall honors later moves or removal and restores original layouts from a full backup.
+- Nested install and undo passed 74/74, including a restart failure and the fix for a leaked installer lock (#320). The full offscreen installer suite passed 862/862 in a test snapshot, and Plasma artwork passed 19/19. Production build, failed-build preservation, and the removed-menu and pre-existing-applet restore cases passed in disposable homes. Desktop review and the step-5 compatibility checks are pending. [Bundled global menu plan](PLAN.md#plan-bundled-global-menu)
+
 ## 2026-11-26, Codex (GPT-6) — align the global menu QML change notice
 
 Moved the dated change notice in `plasma/globalmenu/src/qml/main.qml` below the license block. Verified that moving the notice accounts for the entire QML diff. Committed and pushed at the user's request.

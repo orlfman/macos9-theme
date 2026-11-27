@@ -26,12 +26,11 @@
 #              active global theme, also selects WhiteSur-lavender-light icons once
 #              for KDE and GTK without touching panels, wallpaper, cursors, or
 #              other settings; otherwise leaves your active settings alone.
-#   --apply    also switch to the theme: applies the Platinum global theme
-#              (sets up its panels on the first switch, selects the wallpaper, cursors, and
-#              WhiteSur-lavender-light icons) and sets the title bar buttons to
-#              close-left, zoom and collapse right. If Platinum is already active,
-#              it can upgrade the global menu in place. Your config files are
-#              copied first, so uninstall.sh puts them back exactly.
+#   --apply    switch to Platinum, setting up its panels, wallpaper, cursors,
+#              icons and title bar buttons. If Platinum is already active,
+#              upgrade an eligible global menu without resetting the panels.
+#              Settings are backed up first. Uninstall restores the original
+#              layout after a full switch or keeps the panel after an in-place swap.
 #   --dry-run  only show what would be done
 #   -h, --help show this help
 #
