@@ -2,6 +2,8 @@
 
 ## Status
 
+**Independent review of the full fallback and Apple-menu icon, 2026-11-26 (Codex GPT-6, working tree).** The seven fallback headings are present. In nested Wayland, Go > Home Folder foregrounded a new Dolphin window and honored a separate default directory handler when selected (#323). Release applet tests passed 9/9. Verified that the Apple-menu option skips the generic icon under Breeze (#325), renders the Apple logo with WhiteSur active, and keeps the previous Kicker settings for an uninstall retry after Plasma restarts (#326). Desktop review is pending. [Audit](AUDIT.md#2026-11-26-codex-gpt-6--fix-apple-menu-icon-lookup-and-undo)
+
 **Platinum Global Menu plan, 2026-11-26 (Codex GPT-6).** Verified Claude's legacy-panel restore fix (#321). Steps 5–6 add runtime compatibility checks and stock-menu recovery after an update, an upstream review command, and packaging and visual checks at 100% and 150%. Installer passed 870/870, nested install and recovery passed 87/87, and Release applet tests passed 9/9. The user's on-screen review is pending. [Bundled global menu plan](#plan-bundled-global-menu)
 
 **Platinum Global Menu installation and panel migration, 2026-11-26 (Codex GPT-6, `98311fe`).** Steps 3–4 are implemented. The installer builds, checks and installs the user-scope applet and catalog (#318). Plasma uses stock before discovery, then can swap a customized panel in place. The installer suite passed 862/862 in a test snapshot. Nested install and undo passed 74/74, including a restart failure and recovery (#320). [Bundled global menu plan](#plan-bundled-global-menu)
@@ -350,12 +352,23 @@ Open decisions need the user. Record the answer here with the date.
    menu) as the Apple menu stand-in with a neutral icon (no Apple logo),
    the global menu (`appmenu`), a spacer, the system tray (kept: network,
    volume), the clock, and the Window List applet as the Application menu.
+   **Apple-menu icon, decided 2026-11-26 (user):** the default stays neutral;
+   `install.sh --apply --apple-menu-icon` opts in to the icon theme's
+   `folder-apple` (Apple's logo, shipped by WhiteSur, not by this theme) on
+   the top bar's single Kicker, set live through Plasma's scripting API.
+   The active icon theme must provide that name. The marker
+   `$state/apple-menu-icon` keeps the previous
+   `useCustomButtonImage`/`customButtonImage`. An in-place uninstall puts
+   them back if the icon is still `folder-apple` and keeps the record for
+   a retry if the shell is unavailable.
    **Global menu, decided 2026-11-26 (user).** Bundle KDE Global Menu 1.1.3
    at `4a24e4dfed7eac640023e1b28d06321f65385e2b` in the theme's default menu
-   slot. Show **File** and **Go** on the desktop and when the focused app
-   has no usable export. Preserve the focused app's native menu when one
-   is available. The user accepted File + Go as close enough to the Mac OS 9
-   Finder bar (#314) and wants Platinum's patches kept small enough to pull
+   slot. Show upstream's **full seven-menu fallback** (File, Edit, View, Go,
+   Tools, Settings, Help) on the desktop and when the focused app has no
+   usable export (user, after seeing File + Go live on 2026-11-26: "lets not
+   trim, thats so bare bones"; this replaces the File + Go trim accepted in
+   #314). Preserve the focused app's native menu when one
+   is available. The user wants Platinum's patches kept small enough to pull
    in upstream fixes. Source kept as a git subtree in `plasma/globalmenu/`
    (decided the same day). Name, decided the same day (user): **Platinum
    Global Menu**, plugin ID `platinum.globalmenu` (matching the theme's
@@ -574,19 +587,13 @@ so that workflow calls for a standalone repo with an upstream remote.
    so it can coexist on disk with the original package. Keep upstream's
    author entry and add the theme alongside it. Keep one global-menu
    widget active in the panel because both use `org.kde.kappmenuview`.
-   Trim the fallback to **File** (New Dolphin Window, New Folder on
-   Desktop…) and **Go** (Home, Desktop Folder, Documents, Downloads, Trash).
-   Use explicit locations and resolve local folders with the XDG directory
-   settings. Reuse upstream's validated folder creation where it fits. Keep
-   the upstream task model, D-Bus import, menu source switching and pop-up
-   behavior unless testing identifies a Platinum-specific change. Retain
-   native menu search for apps that export menus. Keep Platinum's patches
-   and updated tests attributable as separate `globalmenu:` commits (see
-   Source management).
-   **Done 2026-11-26.** `platinum.globalmenu` builds and loads in the
-   sandbox. Go opens a new Dolphin window for each location so it can
-   come to the front under Wayland. Verified all seven commands in a
-   disposable home, including a Documents path with spaces and `#`.
+   **Done 2026-11-26.** Platinum Global Menu keeps upstream's full fallback
+   with File, Edit, View, Go, Tools, Settings, and Help. The applet uses the
+   default file manager for Go locations. A nested Wayland review verified
+   menu switching and found that opening Home can leave an existing Dolphin
+   window in the background (#323). The applet retains native menu search
+   for applications that export menus. Keep Platinum's patches and updated
+   tests attributable as separate `globalmenu:` commits (see Source management).
    [Upstream fallback actions](https://github.com/ChathurangaBW/global-menu-KDE/blob/4a24e4dfed7eac640023e1b28d06321f65385e2b/src/desktopfallback.cpp#L129-L162) · [Upstream source switching](https://github.com/ChathurangaBW/global-menu-KDE/blob/4a24e4dfed7eac640023e1b28d06321f65385e2b/src/appmenumodel.cpp#L386-L454)
 3. **Build and discover it user-scope.** Add the applet to the existing
    `install.sh` build and stage it before any panel changes. Check the
@@ -847,4 +854,16 @@ Kirigami's own components keep Kirigami's shapes.
   public release, and the git history still has the older raw tables.
 - Window shade (collapse) vs minimize: settled for Wayland (KWin 6.8 doesn't
   shade Wayland windows, so the collapse box minimizes; docs/FINDINGS.md).
-  X11 shading is untested.
+  X11 shading is untested. **2026-11-26 (user):** a fake shade (a KWin
+  script that hides the window behind a Platinum title strip) isn't worth
+  the time; the Control Strip and About This Computer come first.
+- Global menu in one `--apply` (noted 2026-11-26, user: "figure something
+  out later"). A first `install.sh --apply` runs in a Plasma that predates
+  the login script, so `layout.js` picks the stock menu and the user must
+  log in and run `--apply` again to get Platinum Global Menu. Idea: when
+  the first switch had to use stock, leave a "swap pending" marker; the
+  login helper (`session.py login`, which already restores stock before
+  the shell starts when the build is incompatible) then swaps that single
+  stock menu to `platinum.globalmenu` in the saved layout when the plugin
+  is installed and compatible, and clears the marker. Needs offscreen and
+  nested install-test coverage. Not started.

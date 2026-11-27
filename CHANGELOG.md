@@ -2,6 +2,36 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-26, Claude Code (Opus 5.5) — commit and push the evening's work
+
+- At the user's request, everything the entries below call uncommitted is now committed and pushed: `2ad16cc` (full seven-menu fallback, #323 Dolphin dispatch, #319 test count and notices), `f9f8636` (#322 private bus for the load check), `b071283` (opt-in `--apple-menu-icon` with Codex's #325/#326 fixes and tests), and the docs commit with this entry (PLAN, AUDIT, CHANGELOG). Reviewed Codex's #325/#326 fixes before committing (AUDIT).
+
+## 2026-11-26, Codex (GPT-6) — fix Apple-menu icon lookup and undo
+
+- #325 requires an exact match from KDE's active icon theme. #326 preserves the saved Kicker icon and install record when uninstall needs Plasma to finish. Added both regressions to the offscreen installer suite.
+- Nested Plasma verified the Breeze skip, the rendered WhiteSur icon, the stopped-shell failure and successful retry, and the full config restore. The focused offscreen installer run passed 15/15. Changes are uncommitted. Desktop review is pending.
+
+## 2026-11-26, Codex (GPT-6) — audit the full fallback follow-up and Apple-menu icon
+
+- Verified #323 under nested Wayland with Dolphin already open and with a separate default directory handler. The seven fallback headings were visible, the Release suite passed 9/9, and the #322 smoke probe left no processes with its temporary HOME.
+- Reproduced #325 and #326 in nested Plasma with prebuilt packages. The Apple-menu option reports success with Breeze while showing a generic folder, and an in-place uninstall with the shell stopped deletes the record of the previous icon. Live-shell in-place undo and full config restore both passed. Audit and status notes are uncommitted. Full installer suites and desktop review are pending.
+
+## 2026-11-26, Claude Code (Opus 5.5) — fix #323, add the opt-in Apple-menu icon
+
+- #323 (Codex's finding on my fallback restore): Go's folder locations open in a new Dolphin window when Dolphin is the default file manager, otherwise the default handler as upstream. New unit test; 9/9 applet tests. Nested Wayland check still to do.
+- New `install.sh --apply --apple-menu-icon` (user's request): sets `folder-apple` from the icon theme on the top bar's single Kicker through Plasma's scripting API; `uninstall.sh` puts the previous icon back after an in-place install. Default stays neutral. README section, PLAN decision 6 note, help text, one offscreen test. Mock-tested; not yet run against a real Plasma. Uncommitted.
+
+## 2026-11-26, Codex (GPT-6) — correct the full fallback plan and test notice
+
+Restored the dated notice in the menu transition test and updated PLAN step 2 to describe the seven-menu fallback and default file-manager dispatch (#324). The Dolphin activation finding (#323) is still open. Changes are uncommitted.
+
+## 2026-11-26, Claude Code (Opus 5.5) — note two later items
+
+- PLAN "Open questions": recorded the user's call that a fake window shade isn't worth the time, and the idea of getting Platinum Global Menu from a single `--apply` (a pending-swap marker the login helper acts on at the next login). Both for later; nothing implemented. Uncommitted.
+- The user's first real `install.sh` worked but ended with an `rm` error. Cause, #322 (P2, open): the menu's load probe leaves `xdg-desktop-portal-kde`, `kactivitymanagerd` and `ksecretd` running on every install. Stopped the five leaked probe daemons on the user's machine (theirs untouched) and removed the leftover temp folder. Reproduced and verified a fix (a bus config with no service directories) in the scratchpad.
+- Fixed #322 at the user's request: new `plasma/probe-bus.conf` and `install.sh` passes it to the load check's `dbus-run-session`. Probe checked twice (passes, nothing left running, folder deletes) and a broken plugin still fails it. Full real-build install and the nested suite not run; a leftover-process assertion in the live tests is still to add. Uncommitted.
+- The user's live `--apply` swapped in Platinum Global Menu (mode `reset`, so #321's fix applied). Seeing File + Go, the user asked for upstream's full seven-menu fallback: reverted `fd0c924` and `e737850` in the working tree, adjusted the #319 test's row count to 7, 9/9 tests pass. PLAN decision 6 and step 2 updated. Needs `install.sh` to reach the desktop; upstream's Go may hit the Dolphin-in-background issue `e737850` had fixed. Uncommitted.
+
 ## 2026-11-26, Codex (GPT-6) — complete the global menu implementation and sandbox review
 
 - Independently verified Claude's #321 fix and committed it as `486264a`. The nested upgrade from a legacy full-layout backup restored the user's original panels and widget settings.
