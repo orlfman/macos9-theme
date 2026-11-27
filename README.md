@@ -134,25 +134,23 @@ has new upstream commits available for review.
 
 ### Big Sur system sounds
 
-Apply Platinum with the optional Big Sur sound theme:
+Want Mac sounds too? Add `--sound-theme` when you apply the theme:
 
 ```bash
 ./install.sh --apply --sound-theme
 ```
 
-If the current user already has the pinned release installed, the installer
-verifies and reuses it. Otherwise it checks for a cached release archive in
-`reference/sounds/` or `build/sound-themes/`, then checks the local upstream
-checkout in `build/upstreams/macos-bigsur-sound-theme-linux/`. If no cached
-archive or matching checkout is available, it downloads the pinned release
-into `build/sound-themes/` for reuse on subsequent runs. The installer selects Big Sur in Plasma's
-System Sounds settings. It includes its own event assignments. See the
-[upstream release and personal-use terms](https://github.com/gxanshu/macos-bigsur-sound-theme-linux/releases/tag/1.0.2).
+This grabs the Big Sur sound pack from
+[its own GitHub page](https://github.com/gxanshu/macos-bigsur-sound-theme-linux/releases/tag/1.0.2)
+and switches your system sounds over to it. It's off unless you ask for it.
+The sounds are Apple's, so they're for personal use only.
 
-Use `--dry-run` to preview the steps. Uninstall restores your previous
-sound selection if Big Sur is still selected and preserves any later choice
-and your current mute setting. It removes the sound files it installed and
-keeps the project cache.
+The download is saved, so running the installer again won't fetch it a
+second time. Add `--dry-run` if you want to see what it'll do first.
+
+`uninstall.sh` takes the sounds back out and puts your old sound theme back.
+If you've already switched to something else, it leaves that alone, and your
+mute setting stays the way you left it.
 
 ### Wallpapers
 
