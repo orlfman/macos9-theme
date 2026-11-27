@@ -2,6 +2,10 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-27, Claude Code (Opus 5.5) — record the user's review of the global menu
+
+- The user installed the full-fallback build (`2ad16cc` and later), ran `--apply --apple-menu-icon` on their desktop and reported "everything looks great". PLAN status and step 6 mark the global menu plan complete. The icon record showed the test icon the user had set just before applying, as intended. No code changes.
+
 ## 2026-11-26, Claude Code (Opus 5.5) — commit and push the evening's work
 
 - At the user's request, everything the entries below call uncommitted is now committed and pushed: `2ad16cc` (full seven-menu fallback, #323 Dolphin dispatch, #319 test count and notices), `f9f8636` (#322 private bus for the load check), `b071283` (opt-in `--apple-menu-icon` with Codex's #325/#326 fixes and tests), and the docs commit with this entry (PLAN, AUDIT, CHANGELOG). Reviewed Codex's #325/#326 fixes before committing (AUDIT).

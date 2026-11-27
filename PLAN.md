@@ -2,6 +2,8 @@
 
 ## Status
 
+**Platinum Global Menu done, 2026-11-27 (user review, recorded by Claude Code Opus 5.5).** On the user's own desktop: the full seven-menu fallback, the #323 Dolphin dispatch and the opt-in Apple-menu icon (`folder-apple`) are installed, and the user's verdict is "everything looks great". All global menu steps are complete. Open later: a single `--apply` for the menu (Open questions). Next up per the user: the Control Strip and About This Computer (`docs/ABOUT-THIS-COMPUTER-PLAN.md`).
+
 **Independent review of the full fallback and Apple-menu icon, 2026-11-26 (Codex GPT-6, working tree).** The seven fallback headings are present. In nested Wayland, Go > Home Folder foregrounded a new Dolphin window and honored a separate default directory handler when selected (#323). Release applet tests passed 9/9. Verified that the Apple-menu option skips the generic icon under Breeze (#325), renders the Apple logo with WhiteSur active, and keeps the previous Kicker settings for an uninstall retry after Plasma restarts (#326). Desktop review is pending. [Audit](AUDIT.md#2026-11-26-codex-gpt-6--fix-apple-menu-icon-lookup-and-undo)
 
 **Platinum Global Menu plan, 2026-11-26 (Codex GPT-6).** Verified Claude's legacy-panel restore fix (#321). Steps 5–6 add runtime compatibility checks and stock-menu recovery after an update, an upstream review command, and packaging and visual checks at 100% and 150%. Installer passed 870/870, nested install and recovery passed 87/87, and Release applet tests passed 9/9. The user's on-screen review is pending. [Bundled global menu plan](#plan-bundled-global-menu)
@@ -670,7 +672,10 @@ so that workflow calls for a standalone repo with an upstream remote.
    an interrupted swap, uninstall, and recovery from a simulated runtime
    mismatch. Tested the focus and export matrix and all seven fallback
    commands at 100% and 150% on two nested outputs. Also tested File and Go
-   and the native Dolphin menu under Breeze. User on-screen review is pending.
+   and the native Dolphin menu under Breeze. **User on-screen review done
+   2026-11-27:** after installing the full-fallback build and applying
+   `--apple-menu-icon` on their own desktop, the user reported "everything
+   looks great". The global menu plan is complete.
 
 ## Plan: Qt Quick menus, tooltips and switches (AUDIT.md finding 3)
 
