@@ -1,211 +1,257 @@
 # macos9-theme
 
-A KDE Plasma 6.8 theme that aims to look as close as possible to Mac OS 9.2.2
-with the Platinum appearance: colors, window decoration, application style,
-menu bar, icons, and cursors. Colors and shapes are measured from the real
-system and drawn pixel for pixel at 1x.
+Mac OS 9 for your KDE Plasma 6 desktop. Specifically 9.2.2 with the default
+Platinum appearance: the gray pinstriped title bars, the beveled buttons and
+the lavender highlights.
 
-Status: early, but usable. Done: the color scheme, the window decoration,
-the application style (Qt Widgets and Qt Quick apps), and the Plasma side
-(the menu bar with a global menu, and a dock designed around the Mac OS 9
-look). The installer also includes the named GTK 3 and GTK 4 widget theme. Details in
-[PLAN.md](PLAN.md); open issues in [AUDIT.md](AUDIT.md).
+I didn't want another theme that's "inspired by" the old Mac look. I wanted
+the actual thing. So the colors, bevels and sizes were measured off a real
+9.2.2 install running in a VM and drawn to match it pixel for pixel at 100%
+scale. Where Plasma just can't do what OS 9 did, I got as close as I could and
+listed the differences [further down](#known-limitations).
 
-The optional [Firefox theme](#firefox-optional) is production-ready on Linux.
+It's a personal project and still being worked on, but I run it as my daily
+desktop.
 
-## Install
+## What's in it
 
-Everything goes into your home; no root. It needs a C++ compiler, Qt 6 and
-KDecoration 3 development files, and the WhiteSur Lavender icon builder tools
-(on Arch: `base-devel`, `qt6-base`, `qt6-declarative`, `kcoreaddons`,
-`kdecoration`, `kconfig`, `util-linux`, `git`, `python`, `libxml2`, `librsvg`,
-`gtk-update-icon-cache`, `python-gobject`, and `gtk3`; plus `python-pillow` if
-you add custom `.png` icons under `icons/custom/`). `install.sh` preflights
-these (including `pkg-config` modules, `moc`, and KDecoration 3 headers/library)
-before taking locks, fetching, or writing files.
+- **Window title bars** with pinstripes, the close box on the left, and the
+  zoom and collapse boxes on the right.
+- **An application style** for Qt apps, so Dolphin, Kate, Konsole, System
+  Settings and friends get Platinum buttons, scroll bars with arrows, tabs,
+  check boxes, menus and so on.
+- **A menu bar** across the top with an Apple menu stand in (no Apple logo),
+  the global menu, the system tray, the clock, and an application menu on the
+  right like OS 9 had.
+- **A dock** along the bottom with Dolphin, Kate and System Settings pinned,
+  and a Trash that fills up when there's something in it.
+- **GTK 3 and GTK 4 themes** so apps like Lutris, Audacious and pavucontrol
+  match, plus an extra layer that gets most libadwaita (GNOME) apps on board.
+- **Lavender icons** built from the WhiteSur icon theme, **black Mac style
+  cursors**, and **seven 4K wallpapers**.
+- **A terminal color scheme** (Platinum Lavender) for Konsole and Kwi.
+- **An optional Firefox theme** laid out like Internet Explorer 5 for Mac.
+
+## What you need
+
+- KDE Plasma 6.8
+- A few build tools, because the window decoration and the application style
+  are small C++ plugins that get compiled on your machine
+
+I built and tested this on Arch (CachyOS), so these are Arch package names. It
+should work on other distros if you can find the equivalents, but I haven't
+tried it.
+
+```bash
+sudo pacman -S --needed base-devel git python qt6-base qt6-declarative kcoreaddons kdecoration kconfig util-linux libxml2 librsvg gtk-update-icon-cache python-gobject gtk3 kimageformats
+```
+
+`kimageformats` is what lets Plasma open the wallpapers (they're JPEG XL).
+You don't need to get the list perfect: the installer checks for everything
+before it touches anything and tells you exactly what's missing.
+
+The first install also needs an internet connection, since it downloads the
+WhiteSur icon theme from GitHub to build the lavender icons from.
+
+**Fonts:** the theme leaves your fonts alone. OS 9's own fonts (Charcoal and
+Geneva) can't be shipped with it. I use SF Pro Text and SF Mono, which are
+in the AUR as `apple-fonts`, and set them in System Settings under Fonts. Use
+whatever you like though.
+
+## Installing
+
+Everything goes into your home folder. No sudo, nothing touched in `/usr`.
+
+1. Grab the theme:
+
+   ```bash
+   git clone https://github.com/orlfman/macos9-theme
+   ```
+
+   ```bash
+   cd macos9-theme
+   ```
+
+2. Install it:
+
+   ```bash
+   ./install.sh
+   ```
+
+   This builds the plugins and puts all the theme files in place. It doesn't
+   change how your desktop looks yet.
+
+3. **Log out and back in.** A small login script is what lets Qt find the
+   new style and window decoration, so this step matters.
+
+4. Switch to it:
+
+   ```bash
+   ./install.sh --apply
+   ```
+
+   Heads up, this **replaces your panels** with the menu bar and the dock. It
+   also sets the wallpaper, icons and cursors, and moves the close box to the
+   left. Your current config gets backed up first, and the uninstaller puts
+   it all back exactly how it was. Only your main screen gets the menu bar
+   and dock, same as OS 9.
+
+5. If you were on Breeze before, log out and back in one more time so apps
+   like System Settings and Discover pick up the Platinum controls.
+
+Want to see what a step will do first? Add `--dry-run` to either command.
+
+You can also skip step 4 and pick **Platinum** in System Settings under
+Global Theme yourself. Your config was already backed up during step 2, so
+that's just as safe. Platinum shows up as a light theme, so if you use
+automatic day and night switching you can set it as your daytime theme.
+
+### Updating
+
+```bash
+git pull
+```
 
 ```bash
 ./install.sh
 ```
 
-If Platinum is already your active global theme, a plain `./install.sh` selects
-`WhiteSur-lavender-light` when it first adopts the icon theme. It also upgrades
-the inherited `WhiteSur-lavender` default from an older managed install.
-During an upgrade, explicit KDE icon choices and later GTK icon choices
-carry forward. The base variant stays available and supplies files shared
-with the light variant.
-Upgrades remove the old managed dark variant when it is unselected and unedited.
+**Run `./install.sh` again after every Plasma update too.** The window
+decoration is built for one specific version of KDE's decoration library.
+Until it gets rebuilt, KWin quietly falls back to Breeze title bars.
 
-The installer makes **Platinum** available to GTK 3 and GTK 4 apps under
-`$XDG_DATA_HOME/themes/Platinum` (normally `~/.local/share/themes/Platinum`).
-To try it for one app, close that app and launch it with `GTK_THEME=Platinum`,
-for example `GTK_THEME=Platinum gtk3-demo` or `GTK_THEME=Platinum
-gtk4-widget-factory` if the GTK demos are installed. This choice lasts for
-that launch. To use it across GTK apps, select **Platinum** in Plasma’s GTK
-application style settings. If Platinum is still selected (for GTK 3 or GTK 4),
-`./uninstall.sh` keeps both toolkits' resources until you choose another GTK
-style and rerun the command. An earlier GTK 3 or GTK 4 theme of the same name
-displaced by installation is restored on removal. A GTK style you chose (or
-cleared) after `./install.sh --apply` is kept when `./uninstall.sh` puts your
-config files back, even if the uninstall is interrupted and run again. An
-exported `GTK_THEME=Platinum` counts as selecting it.
+## Extras and tweaks
 
-GTK 4 apps that draw their own title bar (a header bar) get the Platinum
-window frame and title bar; other GTK 4 windows use the window decoration.
-libadwaita apps (most GNOME apps) ignore GTK themes. While Platinum is the
-global theme (`./install.sh --apply`, or a reinstall after you switched in
-System Settings), the installer adds one marked `@import` line to the top of
-`~/.config/gtk-4.0/gtk.css` so they get Platinum colors and controls too,
-in light mode at normal contrast; dark mode and high contrast keep
-libadwaita's own look. The rest of that file is left alone, and
-`./uninstall.sh` takes the line out. While the line is there, plain GTK 4
-apps also look Platinum whichever GTK theme is selected.
-GTK 4 scroll bars have no arrow buttons, and alert buttons are spread evenly
-across the bottom rather than grouped on the right.
+### Wallpapers
 
-The installer also makes **Platinum Lavender** available as a terminal color
-scheme. Select it under **Settings → Appearance → Terminal Color Scheme** in
-Kwi, or in the **Appearance** tab of a Konsole profile. If a terminal still
-selects the installed palette when you uninstall, the uninstaller keeps it
-until you choose another scheme and rerun `./uninstall.sh` or a usable copy
-is already available through the same scheme name.
+The default is Lavender Desktop Pattern. The other six are Pastel Ribbon
+Landscape, Platinum Waves, Platinum Glass, Platinum Nebula, Finder Waves and
+Retro Lavender Ripples. Pick them the usual way: right click the desktop and
+go to Desktop and Wallpaper. They're all 3840 × 2160.
 
-Then log out and back in once (a Plasma login script lets Qt find the
-style and the window decoration), and switch:
+If they don't show up, you're probably missing `kimageformats`. The
+`--apply` step checks for this and warns you before switching.
+
+### GTK apps
+
+The installer adds **Platinum** as a GTK theme, but it doesn't switch GTK
+apps over on its own yet. To turn it on, go to System Settings, Application
+Style, and use the button for configuring GNOME/GTK application style.
+
+To try it on a single app first, close the app and start it like this:
 
 ```bash
-./install.sh --apply
+GTK_THEME=Platinum lutris
 ```
 
-`--apply` applies the Platinum global theme. It replaces your panels with
-the menu bar and the dock, sets the Lavender Desktop Pattern wallpaper, and
-puts the close box on the left. Only the main screen gets the menu bar and
-the dock (like Mac OS 9). Platinum appears in Plasma's **Choose Light Global
-Theme** picker. Use that picker to assign it as your daytime theme if you use
-automatic switching. The active Platinum palette advertises light appearance
-to portal clients, including Firefox when **Website appearance** is set to
-**System**. `--dry-run` shows what either step would do. On a
-first switch from Breeze, log out and back in after applying so Qt Quick
-apps start with Platinum controls.
+**libadwaita apps** (most GNOME apps) normally ignore GTK themes completely.
+While Platinum is your global theme, the installer adds one marked line to
+the top of `~/.config/gtk-4.0/gtk.css` that gives them Platinum colors and
+controls anyway. The rest of that file is left alone and the uninstaller
+takes the line back out. It only kicks in for light mode at normal contrast.
+One side effect: while that line is there, plain GTK 4 apps look Platinum no
+matter which GTK theme you picked.
 
-To try another wallpaper on an existing installation, rerun `./install.sh`
-and choose **Pastel Ribbon Landscape**, **Lavender Desktop Pattern**,
-**Platinum Waves**, **Platinum Glass**, **Platinum Nebula**, **Finder Waves**
-or **Retro Lavender Ripples** in Plasma's desktop wallpaper settings. All
-seven 3840 × 2160 JPEG XL images use
-Qt's JPEG XL decoder, provided by `kimageformats` on Arch. The
-`--apply` option checks all seven images and warns before switching if Qt
-cannot open them.
+### Terminal colors
 
-Your config files (panels, colors, style, decoration, and the GTK
-settings Plasma rewrites when the colors change) are copied when you
-install and again right before `--apply` switches, so it's safe to switch
-in System Settings > Global Theme instead. If a file or folder is already
-where the theme installs to, it's moved aside and put back on uninstall.
-If one of the copied config files is a symbolic link, install stops
-without changing anything and tells you which. If Platinum is already your
-global theme when you install, your settings are copied as they are then,
-so uninstalling brings back that state, not what you had before Platinum.
-
-Qt Quick apps (System Settings, Discover and other Kirigami apps) get
-Platinum menus, menu bars, pop-up lists, help balloons, check-box
-switches, two-thumb sliders, dialogs in the Mac OS 9 modal frame, and
-slide-out panels framed like menus; their other controls come from KDE's style, which draws through
-the Platinum style already. The login script turns this on only while
-Platinum is your application style, you haven't chosen a Qt Quick style
-yourself, and KDE's Qt Quick style is the version it was checked with; an
-app also goes back to KDE's look by itself when you switch styles.
-
-After a Plasma upgrade, run `./install.sh` again: the window decoration is
-built for one KDecoration version, and until it's rebuilt KWin uses
-Breeze's title bars instead of loading it.
-
-To undo everything and get your previous setup back:
-
-```bash
-./uninstall.sh
-```
-
-It stops Plasma's shell while it puts your panel layout back (the shell
-saves its layout when it quits) and starts it again. Your config files as
-they were just before uninstalling, and the copy that was put back, are
-kept in `~/.local/state/macos9-theme-uninstalled-*`. Log out and back in
-once afterwards. Until you do, launchers from the old session still request
-the Platinum Qt Quick style. Uninstall normally leaves a temporary module
-that forwards those apps to KDE's style and removes itself at the next
-login. If a personal file or folder occupies its location, uninstall keeps
-it and reports that those apps may need a fresh login to start.
-
-If either Platinum wallpaper is still selected when uninstall reaches
-it, that package stays in place. Choose a different wallpaper on the
-affected desktops and run `./uninstall.sh` again to finish.
-
-Files and folders you added to or changed in what the theme installed (an
-extra SVG in its Plasma style, an edited color scheme) are left where they
-are; only the theme's own files, unchanged, are removed. Running
-`./install.sh` again moves such a changed file or folder aside first. If
-that happens more than once to the same place, uninstall puts back what
-was there before the first install and keeps your later versions in the
-dated folder. If something is in the way
-(say you put a file of your own where the theme had one moved aside),
-uninstall leaves it alone, keeps a list of what's left, and exits with an
-error. Sort it out and run `./uninstall.sh` again: it picks up
-where it stopped and never redoes a finished step. Run both scripts with
-the same `XDG_CONFIG_HOME` and `XDG_DATA_HOME` (they refuse otherwise),
-and if a folder link such as `~/.config` was pointed elsewhere since the
-install, point it back first: both scripts stop without changing anything
-rather than follow it. If Plasma's shell can't be started again after
-uninstalling, it says how to start it, and running `./uninstall.sh` again
-starts it.
-
-Not affiliated with Apple. No Apple image files, fonts, or sounds are
-included. The application style's small parts (bevels, arrows, the check
-mark and similar) are pixel tables measured from screenshots of Mac OS 9;
-they'll be redrawn before any public release (AUDIT.md finding 25).
-
-For contributors and AI agents: [AGENTS.md](AGENTS.md).
+Pick **Platinum Lavender** in the Appearance tab of your Konsole profile, or
+in Kwi under Settings, Appearance, Terminal Color Scheme.
 
 ### Cursors
 
-The theme comes with black Mac-style cursors: Apple Cursor v2.0.1 by
-ful1e5 (GPL-3.0, see `cursors/README.md`). `./install.sh` installs them as
-the cursor theme `macOS-cursors`, and `--apply` selects them along with the
-rest of the global theme. Log out and back in after installing so Plasma
-can find the pack. You can also pick **macOS** in Plasma's Cursors
-settings on its own.
-Uninstalling after applying Platinum restores your previous cursor setting.
-If the pack is still selected after that, or you picked it separately in
-Plasma, choose another cursor theme and rerun the uninstaller to remove it.
+The cursors are Apple Cursor v2.0.1 by ful1e5 (GPL 3.0, details in
+[cursors/README.md](cursors/README.md)). `--apply` turns them on with the
+rest of the theme, or you can pick **macOS** in System Settings under
+Cursors. If they don't show up, log out and back in once so Plasma finds
+them.
 
-### Firefox (optional)
+### Firefox
 
-Platinum Lavender gives Firefox an Internet Explorer 5 for Mac layout, with a
-lavender address bar, beveled tabs, and a classic status bar. It is
-production-ready and tested on Firefox 161.0 (and 160.0.1) on Linux. Use Firefox’s
-**System theme** with a light, normal-contrast desktop appearance. Private
-Browsing windows in the same profile use the same styling.
+This one's optional and kept separate from everything else. It gives Firefox
+an Internet Explorer 5 for Mac layout with a lavender address bar, beveled
+tabs and a proper status bar along the bottom. I've tested it on Firefox 160
+and 161.
 
-**Install or update.** Close Firefox completely, then run this from the
-repository root and select the profile you want to theme. Reopen Firefox to
-load the changes.
+Close Firefox completely, then run this and pick the profile you want to
+theme:
 
 ```bash
 ./install.sh --firefox
 ```
 
-**Vertical tabs.** Right-click the toolbar or tab strip and choose **Turn on
-Vertical Tabs**. Collapse the sidebar for an icon-only strip. In both regular
-and Private Browsing windows, the icons stay centered in their frames and
-line up with the new-tab button. Choose **Turn off Vertical Tabs** to return
-the tabs below the Favorites bar.
+Open Firefox again and you're done. Keep Firefox on its **System theme** with
+your desktop in light mode. Vertical tabs work too (right click the tab strip
+and choose Turn on Vertical Tabs), and you can collapse the sidebar down to
+just icons.
 
-**Uninstall.** Close Firefox, then run this command and select the profile to
-restore.
+To take it off, close Firefox and run:
 
 ```bash
 ./uninstall.sh --firefox
 ```
 
-Both commands accept `--list` to list profiles, `--profile "Profile Name"` to
-select one, and `--dry-run` to preview changes. See the [Firefox guide](firefox/README.md)
-for backup details, appearance settings, and compatibility checks.
+Both commands take `--list` to show your profiles, `--profile "Name"` to
+pick one directly, and `--dry-run`. There's more in the
+[Firefox readme](firefox/README.md).
+
+## Uninstalling
+
+```bash
+./uninstall.sh
+```
+
+This puts back your old panels, colors, style, icons and so on. Plasma's
+shell gets restarted while it does that, so don't panic when your panels
+blink out for a second. Log out and back in afterwards.
+
+A few things worth knowing:
+
+- It won't delete something you're still using. If the Platinum wallpaper,
+  cursors, GTK theme or terminal colors are still selected somewhere, it
+  leaves that piece in place and tells you. Switch to something else and run
+  `./uninstall.sh` again.
+- If you edited any of the theme's files (say you tweaked the color scheme),
+  your edited copy is left alone. Only the theme's own untouched files get
+  removed.
+- If it hits a problem halfway, it stops, tells you what's wrong, and picks
+  up where it left off when you run it again.
+- Copies of your config from right before the uninstall are kept in
+  `~/.local/state/macos9-theme-uninstalled-*`, just in case.
+
+## Known limitations
+
+- Only the main screen gets the menu bar and dock. That's on purpose, it's
+  how OS 9 worked.
+- After a Plasma update, title bars go back to Breeze until you run
+  `./install.sh` again.
+- There's no dark version. OS 9 didn't have one either.
+- GTK 4 scroll bars don't have arrow buttons, GTK 4 switches don't show a
+  pressed state, and GTK 4 alert buttons get spread across the bottom instead
+  of grouped on the right. GTK 4 doesn't give themes a way to fix those.
+- libadwaita apps in dark mode or high contrast keep their normal GNOME look.
+- In Qt Quick apps (System Settings, Discover and other Kirigami apps), the
+  menus, pop up lists, help balloons, switches, sliders and dialogs are drawn
+  as Platinum directly. The rest of their controls go through KDE's own
+  style, which draws with Platinum anyway, so it mostly looks right. If you
+  set your own Qt Quick style, the theme leaves it alone.
+- The Firefox theme only works with Firefox's System theme in light mode.
+- The package names above are Arch's. Other distros are untested.
+
+## Credits and legal stuff
+
+Not affiliated with Apple in any way. No Apple images, fonts or sounds are
+included.
+
+The small parts of the application style (bevels, arrows, the check mark and
+similar) are pixel tables measured from screenshots of Mac OS 9. They're going
+to be redrawn from scratch (tracked as finding 25 in [AUDIT.md](AUDIT.md)).
+
+- Icons: built from [WhiteSur](https://github.com/vinceliuice/WhiteSur-icon-theme)
+  by vinceliuice (GPL 3.0), see [icons/README.md](icons/README.md)
+- Cursors: Apple Cursor v2.0.1 by ful1e5 (GPL 3.0), see
+  [cursors/README.md](cursors/README.md)
+
+If you want to dig into how it's put together, [PLAN.md](PLAN.md) has the
+current state of each part and [AUDIT.md](AUDIT.md) has the open issues.
+Notes for contributors (and the AI agents I use on this) are in
+[AGENTS.md](AGENTS.md).

@@ -30,8 +30,8 @@ in `PLAN.md`):
 - GTK 3/4 and terminal colors (Konsole, Alacritty, kitty)
 - Splash, SDDM, lock screen (later)
 
-Personal project first. It may become public later, so the legal rules below
-apply from the start.
+Personal project first, but the repo is public (see below), so the legal rules
+below apply to everything.
 
 ## Read first
 
@@ -74,8 +74,8 @@ install.sh  uninstall.sh   later: user-scope install and full undo
 Create folders when their step starts, not ahead of time.
 
 - This folder is its own git repo, branch `main`, remote `origin` =
-  https://github.com/orlfman/macos9-theme (**private** since 2026-11-19; it
-  stays private until the user says otherwise). The `gh` CLI is logged in as
+  https://github.com/orlfman/macos9-theme (**public**; created private
+  2026-11-19, made public by the user later, confirmed 2026-11-26). The `gh` CLI is logged in as
   `orlfman`, and git uses it for github.com over HTTPS.
 - Nothing from `reference/`, `dev/build/`, or any Apple file ever goes into
   this repo.

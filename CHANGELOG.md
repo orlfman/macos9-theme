@@ -2,6 +2,153 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-26, Claude Code (Opus 5.5) — rewrite README for end users
+
+- Rewrote `README.md` in a plain first person voice for someone who wants to use the theme on their KDE desktop: what's in it, Arch packages, step by step install, extras (wallpapers, GTK, libadwaita, terminal, cursors, Firefox), uninstall, a Known limitations list and credits. Kept every user facing fact from the old README, including #295's GtkSwitch note; the deep install/undo edge cases now live only in the scripts' messages and AUDIT.md.
+- The user says the GitHub repo has been public for a while (gh confirms). Updated AGENTS.md (it said private), the README legal note, and PLAN.md decision 12: #25 was deferred until going public, so it's due now.
+- Uncommitted. No code changed, no suites run.
+
+## 2026-11-26, Claude Code (Opus 5.5) — verify Codex's #313 fix
+
+Verified the separator check now samples through the top bar's edge: under the #307 CSS the opaque duplicate (offset 8) and the transparent one (offset 4) both fail; the current CSS passes 183/183 Broadway and 259/259 nested Plasma. No new findings, no files changed apart from AUDIT.md and this entry.
+
+## 2026-11-26, Codex (GPT-6) — fix the opaque-toolbar pixel check (#313)
+
+- Extended the separator check through the parent toolbar edge. The original duplicate at offset 8 now fails, and the transparent and zero-margin controls still fail their expected assertions.
+- Fresh libadwaita suites passed 183/183 Broadway and 259/259 nested Plasma. The verifier change is uncommitted. Live desktop review is pending.
+
+## 2026-11-26, Codex (GPT-6) — bring the Control Strip design into the theme repo
+
+- Moved the design folder into the theme repository and updated its local reference links. The proposal covers relocating the existing Plasma tray, collapsing the custom strip to a grip, and testing vertical drag on a custom Wayland surface. [Control Strip design](macos9-applet-bar/CONTROL-STRIP-DESIGN.md)
+- Recorded the design status in `PLAN.md` and the source review in `AUDIT.md`. The design is uncommitted. The next step is a nested Plasma tray-move prototype.
+
+Checks passed for all nine local links and all five theme suites. Qt Widgets passed 135/135 pixel comparisons and 12/12 state checks, Plasma 19/19, Qt Quick 32/32, installer 855/855, and nested installer 49/49. The applet and its pop-ups are at the design stage.
+
+## 2026-11-26, Codex (GPT-6) — audit Claude's #312 verifier fix
+
+- Reproduced four failures from the zero-margin mutation. Recorded #313 because the opaque check stops before the far edge of its validated 8 px gap, allowing a doubled separator to pass.
+- Libadwaita passed 183/183 Broadway and 259/259 nested Plasma. GTK 4 passed 178/178 Broadway. Live desktop review is pending.
+
+## 2026-11-26, Claude Code (Opus 5.5) — fix #312
+
+- `dev/adw-check/fixture.py`: reports the last bar's widget margin (`MARGIN extra`) and the top bar's bounds (`BOX topbar`).
+- `dev/adw-check/verify.py`: `bars-opaque` and `bars-margin` must have a 4 px widget margin and the matching gap under the bar (8 px and 4 px), so a fixture without the margin can't pass (#312).
+
+Checks: libadwaita 183/183 Broadway, 259/259 nested Plasma; GTK 4 178/178 Broadway; `git diff --check` clean. Negative control: Codex's zero-margin mutation fails 4 checks. No theme files changed. Uncommitted with the rest of the GTK round.
+
+## 2026-11-26, Codex (GPT-6) — independently verify #311
+
+- Reproduced Gemini's two separators with the previous CSS and confirmed one separator with the current CSS at 4 px and 12 px widget margins. Recorded #312 for the verifier accepting zero-margin evidence from the previous CSS.
+- GTK 4 passed 178/178 Broadway with and without the layer and 253/253 nested Plasma. Libadwaita passed 179/179 Broadway and 255/255 nested Plasma. Live desktop review is pending.
+
+## 2026-11-26, Claude Code (Opus 5.5) — fix #311
+
+- `gtk/Platinum/gtk-4.0/adw-widgets.css`: raised-border top bars draw their one black line only on the last non-header bar, not on the bar itself, so GtkWidget margins (which CSS can't clear) no longer split it into two (#311). Dropped the #309 `margin-bottom: 0` override.
+- `dev/adw-check`: `bars-opaque` gains a 4 px widget margin; new `bars-margin` mode (transparent bar, widget margin only).
+- `docs/FINDINGS.md`: widget margins vs CSS margins; collapsed bars don't count for `:last-child`.
+
+Checks: GTK 4 178/178 Broadway (also with the layer), 253/253 nested Plasma; libadwaita 179/179 Broadway, 255/255 nested Plasma; CSS 0 errors; `git diff --check` clean. Negative control: the #309 CSS fails both margin checks. Uncommitted with the rest of the GTK round. Not seen on the desktop.
+
+## 2026-11-26, Antigravity (Gemini 4 Neon) — audit Claude's #309–310 fixes
+
+- Read-only audit of Claude's `#309–310` fixes in the uncommitted working tree (`gtk/Platinum/gtk-4.0/adw-widgets.css`, `dev/adw-check/{fixture.py,verify.py}`).
+- Verified `#309` for CSS `margin-bottom: 4px` (single `#000000` row at `y=56` with `#DDDDDD` below; opaque bar + closed search bar also ends in one `#000000` row) and `#310` (opaque `#EEEEEE` pixel and 7-row check enforced by `verify.py`).
+- Recorded `#311` (P3, open) in `AUDIT.md`: `GtkWidget:margin-bottom` (layout property, unaffected by CSS `margin-bottom: 0`) still produces two `#000000` separators 4 px apart (`y=56` and `y=60`) on both opaque and transparent last-child top bars.
+- Suites: `dev/check-gtk4.sh broadway` 178/178 (with and without `GTK4_CHECK_ADW_LAYER=1`), `dev/check-adw.sh broadway` 168/168, CSS parse 9/9 (0 errors), `git diff --check` clean. Wayland/Plasma modes and desktop visual review not run.
+
+## 2026-11-26, Claude Code (Opus 5.5) — fix #309–310
+
+- `gtk/Platinum/gtk-4.0/adw-widgets.css`: a raised-border top bar's last non-header child drops its bottom margin, so its separator and the bar's fall on one row (#309).
+- `dev/adw-check/fixture.py`: the `bars-opaque` bar paints #EEEEEE with a 4 px bottom margin. `verify.py`: requires that #EEEEEE and one black row in the seven rows under the bar stack (#310).
+
+Checks: GTK 4 178/178 Broadway (also with the layer), 253/253 nested Plasma; libadwaita 168/168 Broadway, 240/240 nested Plasma; CSS 0 errors; `git diff --check` clean. Negative controls: #307 CSS, #305 CSS and a provider-less fixture each fail. Uncommitted with the rest of the GTK round. Not seen on the desktop.
+
+## 2026-11-26, Codex (GPT-6) — audit Claude's GTK fixes #307–308
+
+- Verified the direct opaque toolbar and the two layout guards. Recorded #309 for a doubled separator on a toolbar with a bottom margin and #310 for the opacity fixture passing without its background provider.
+- GTK 4 passed 178/178 Broadway with and without the layer and 253/253 nested Plasma. Libadwaita passed 167/167 Broadway and 239/239 nested Plasma. Live desktop review is pending.
+
+## 2026-11-26, Claude Code (Opus 5.5) — fix #307–308
+
+- `gtk/Platinum/gtk-4.0/adw-widgets.css`: the last non-header child of a raised-border top bar also draws the inset black line, over its own background. Opaque toolbars and `.view` bars keep their separator (#307).
+- `dev/adw-check/fixture.py`: prints the top bar's real layout (`TOPBAR`) and adds the `bars-opaque` mode. `verify.py`: each `bars-*` mode must render its named layout before its pixels count (#308).
+
+Checks: GTK 4 178/178 Broadway (also with the layer), 253/253 nested Plasma; libadwaita 167/167 Broadway, 239/239 nested Plasma; CSS 0 errors; `git diff --check` clean. Negative controls: the #305 CSS fails `bars-opaque`, and Codex's mutated fixture layouts fail their layout checks. Uncommitted with the rest of the GTK round. Not seen on the desktop.
+
+## 2026-11-26, Codex (GPT-6) — audit Claude's GTK fixes #305–306
+
+- Independently confirmed the original separator layouts and the open-search evidence check. Recorded #307 for a separator lost on an opaque toolbar and #308 for the new fixture checks passing with the target layouts removed.
+- GTK 4 passed 178/178 Broadway with and without the layer and 253/253 nested Plasma. Libadwaita passed 151/151 Broadway and 219/219 nested Plasma. Live desktop review is pending.
+
+## 2026-11-26, Claude Code (Opus 5.5) — fix #305–306
+
+- `gtk/Platinum/gtk-4.0/adw-widgets.css`: raised-border top bars draw one inset black line on their own last row instead of per-bar-type borders. A header's edge covers it, and every other bar shows it, so wrapped, custom and mixed bar stacks keep exactly one line (#305).
+- `dev/adw-check/verify.py`: open and closed search bar heights are asserted before their lines are sampled (#306). New fixture modes `bars-custom` and `bars-wrapped-search`.
+- `docs/FINDINGS.md`: trailing blank line removed.
+
+Checks: GTK 4 178/178 Broadway (also with the layer), 253/253 nested Plasma; libadwaita 151/151 Broadway, 219/219 nested Plasma; CSS 0 errors; `git diff --check` clean. Negative controls: the #303 CSS fails both new bar checks, and Codex's swapped evidence fails the open check. Uncommitted with the rest of the GTK round. Not seen on the desktop.
+
+## 2026-11-26, Codex (GPT-6) — audit Claude's GTK fixes #302–304
+
+- Verified selected-link colors, the wrapped-header fix and removal of collapse padding. Recorded #305 for lost top-bar separators in additional layouts and #306 for the open-search assertion passing with a closed bar.
+- GTK 4 passed 178/178 Broadway with and without the layer and 253/253 nested Plasma. Libadwaita passed 129/129 Broadway and 189/189 nested Plasma. Live desktop review is pending.
+
+## 2026-11-26, Claude Code (Opus 5.5) — fix #302–304
+
+- `gtk/Platinum/gtk-4.0/controls.css`: selected-row links stay #0000FF on hover, press and visit (#302).
+- `gtk/Platinum/gtk-4.0/adw-widgets.css`: replaced the #301 header margin rule. Raised-border top bars drop libadwaita's separator; a non-header bar at the bottom (search, action, view switcher, tab bar, `.toolbar`) draws the line inside its own revealer. This fixes wrapped headers and closed search bars (#303). Also removed libadwaita's 3 px collapse padding, which pushed the title bar off the frame when a top bar holds more than one bar (#304, found while fixing #303).
+- `dev/gtk4-check`: three selected-row link state checks. `dev/adw-check`: `bars-wrapped`, `bars-closed` and `bars-open` modes with header edge, header position and search bar line checks.
+- `docs/FINDINGS.md`: header edge row, closed search bar node and collapse padding facts.
+
+Checks: GTK 4 178/178 Broadway (also with the layer), 253/253 nested Plasma; libadwaita 129/129 Broadway, 189/189 nested Plasma; 0 CSS parse errors. The pre-fix CSS fails 2 GTK 4 and 5 libadwaita new checks. Uncommitted, with the rest of the GTK round. Not seen on the desktop.
+
+## 2026-11-26, Codex (GPT-6) — audit Claude's GTK fixes #300–301
+
+- Confirmed selected-row idle colors and the single separator under a direct header. Found pale selected-row link text on hover and press in the named theme (#302), and a doubled separator under a boxed header (#303). Recorded both with pixel evidence in AUDIT.md.
+- GTK 4 passed 175/175 Broadway with and without the layer and 250/250 nested Plasma. Libadwaita passed 101/101 Broadway and 149/149 nested Plasma. The earlier doubled-line evidence failed the new assertion. Desktop visual review is pending.
+
+## 2026-11-26, Claude Code (Opus 5.5) — fix #300–301
+
+- `gtk/Platinum/gtk-4.0/menus-lists.css`: flat and sidebar buttons in a selected row keep black text and icons, links stay #0000FF, disabled ones #777777. Copies GTK's white-on-selection selectors so Platinum wins by order (#300).
+- `gtk/Platinum/gtk-4.0/adw-widgets.css`: a header bar that is the last widget of a `RAISED_BORDER` top bar hangs 1 px out, so libadwaita's separator lands on the header's own black edge instead of doubling it (#301).
+- `dev/gtk4-check/{fixture.c,verify.py}`: six new selected-row color checks (row link, flat, disabled flat; active and backdrop). `dev/adw-check/verify.py`: the header separator check now includes the header's edge row.
+
+Checks: GTK 4 175/175 Broadway (also with the layer), 250/250 nested Plasma; libadwaita 101/101 Broadway, 149/149 nested Plasma; 0 CSS parse errors. Negative controls: the old `menus-lists.css` fails all six new GTK 4 checks, and the old doubled-line evidence fails the new header check. Uncommitted (along with Gemini's and Codex's GTK work). Not seen on the desktop: next is `./install.sh` and a look at libadwaita apps.
+
+## 2026-11-26, Claude Code (Opus 5.5) — verify Codex's #296–299 fixes
+
+Verified all four fixes in independent Broadway probes: switches hold their size, links stay blue when inactive, raised toolbars keep the separator without soft shadows, and the verifier fails on missing or empty evidence. Two new open P3 findings in AUDIT.md. #300: in the named theme alone, flat buttons and links in a selected list row get GTK's white text. #301: a `RAISED_BORDER` header bar ends in a 2 px black line that the new check skips. Broadway: GTK 4 169/169 (also with the layer), `check-adw` 101/101, CSS parse 0 errors. No theme or test files changed. Next: fixes under a `gtk` claim.
+
+## 2026-11-26, Codex (GPT-6) — fix verified GTK 4 and libadwaita findings #296–299
+
+- Restored stable named-theme switch sizing and transparent disabled fills, preserved Platinum link colors during deactivation, and kept the solid separator on raised-border toolbars while suppressing soft shadows on ordinary raised bars. The libadwaita verifier now requires all expected stock and layer fixture logs and PNGs.
+- GTK 4 passed 169/169 on Broadway with and without the layer and 244/244 on nested Plasma. Libadwaita passed 101/101 and 149/149. Regression checks failed with the prior CSS, and nine evidence mutations failed verification.
+- Changes are uncommitted, the GTK and shared claims are clear, and desktop visual review is pending.
+
+## 2026-11-26, Claude Code (Opus 5.5) — verify Codex's #296–299
+
+Independently reproduced all four of Codex's findings on Gemini's uncommitted GTK 4 / libadwaita fixes, in disposable Broadway probes: #296 named-theme switch grows to 18 × 14 when checked and shows #FAF9F8 when disabled, #297 named-theme link button turns gray when the window is inactive, #298 `RAISED_BORDER` toolbars lose their separator, and #299 `verify.py` passes with the layered selection evidence missing (81 instead of 92 checks). All four are still open. Broadway suites: GTK 4 160/160 (also with the layer), `check-adw` 92/92. No theme or test files changed. Next: fixes under a `gtk` claim.
+
+## 2026-11-26, Codex (GPT-6) — verify Gemini's GTK 4 fixes #292–295
+
+- Independently verified the selection colors, raised-toolbar shadow removal, restyle improvement and removal of dead switch states. Recorded four follow-up findings in AUDIT.md. Named GTK 4 switches resize on toggle (#296), inactive named-theme link buttons turn stock gray (#297), explicitly bordered libadwaita toolbars lose their separator (#298), and the verifier passes when both files for the layered selection case are absent (#299).
+- GTK 4 passed 160/160 on Broadway with and without the layer and 234/234 on Plasma. libadwaita passed 92/92 on Broadway and 136/136 on Plasma. CSS parsing passed for all nine files. The extra GTK 4 Plasma run with the layer enabled reproduced the same two stock-comparison failures on baseline and working tree.
+- Updated the audit and handoff only. The GTK changes are uncommitted, the `gtk` and `shared` claims are clear, and live desktop review is pending.
+
+## 2026-11-26, Antigravity (Gemini 4 Neon) — verify & fix GTK 4 / libadwaita audit findings #292–295
+
+- Verified all four findings from Claude's `7eb391f` GTK 4 / libadwaita audit in a disposable Broadway session and fixed them in the working tree:
+  - **#292 (P2):** `gtk/Platinum/gtk-4.0/{menus-lists,controls}.css` — added explicit `#CCCCFF` / `#DCDCEF` selection rules for `GtkListBox`, `.navigation-sidebar`, `GtkGridView`, `GtkFlowBox`, and `GtkTextView`, `#0000FF` rules for `link` / `button.link`, and moved `switch` check-box styling into `controls.css` so plain GTK 4 named Platinum gets Platinum switches too.
+  - **#293 (P3):** `gtk/Platinum/gtk-4.0/{adw-colors,adw-widgets}.css` — set libadwaita shade variables to `transparent` (and measured Platinum grays for sidebar/header borders) and cleared `toolbarview > .top-bar.raised` / `.bottom-bar.raised` soft drop shadows.
+  - **#294 (P3):** `gtk/Platinum/gtk-4.0/{controls,menubuttons-levels,adw-widgets}.css` — removed inherited `--platinum-push-*` custom properties from `button` and used direct rules on framed push, menu, and destructive buttons, cutting 2,700-control `:backdrop` restyle overhead by 62% (`93.29 ms` → `56.30 ms` median vs `33.48 ms` stock).
+  - **#295 (P3):** dropped dead `switch:active` / `switch:checked:active` rules and documented GTK 4 `GtkSwitch`'s lack of `:active` state in `docs/FINDINGS.md` and `README.md`.
+- Regression tests: added `selections` mode to `dev/adw-check/{fixture.py,session.sh,verify.py}` covering `#292` and `#293`.
+- Results: CSS parse `9/9` (0 errors), `dev/check-gtk4.sh broadway` 160/160, `GTK4_CHECK_ADW_LAYER=1 dev/check-gtk4.sh broadway` 160/160, `dev/check-adw.sh broadway` 92/92. Wayland/plasma modes and live desktop reinstall/visual review pending. Nothing committed; `gtk` and `shared` claims released.
+
+## 2026-11-26, Claude Code (Opus 5.5) — audit GTK 4 and libadwaita
+
+Read-only audit of `gtk/Platinum/gtk-4.0/`, `palette.css`, `gen-assets.py` and the libadwaita import line at `7eb391f` for stability, correctness, accuracy, performance and latency. No theme files changed. Stability is clean: 0 CSS parsing errors, all asset references resolve, `gen-assets.py` reproduces all 316 PNGs, GTK 4 Broadway 160/160 and `check-adw` Broadway 78/78 on GTK 4.24.2. Four new open findings in AUDIT.md: #292 (P2) selections in list boxes, grid views, sidebars and text views are Adwaita blue in plain GTK 4 and nearly invisible lavender tints in libadwaita; #293 (P3) soft libadwaita shadows from unset shade variables; #294 (P3) restyle cost on focus change, mostly the `button` custom-property block in `controls.css` (libadwaita 11 → 48 ms for 2,700 controls); #295 (P3) `switch:active` rules that GTK never triggers. Next: whoever claims `gtk` fixes #292–295 and adds selection sampling to `check-gtk4`/`check-adw`. Not seen on the desktop.
+
 ## 2026-11-26, Claude Code (Opus 5.5) — audit light-theme work, fix #291
 
 Audited Codex's light-theme changes (AUDIT.md, one P3 finding). Fixed #291: `dev/test-install.sh` now runs the palette light check on every run and checks that the installed global theme bundles `colors/Platinum.colors` byte for byte. Fresh runs on the working tree: icons 81/81 and `dev/test-install.sh` 855/855. Deleted the stale, git-ignored `dev/build/icons/WhiteSur-lavender-dark` (32 MB) at the user's request. Not rerun: the nested `--appearance` live test and the GTK, libadwaita, Plasma and Trash suites. Everything is uncommitted. Desktop reinstall and visual review are pending.
