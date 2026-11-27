@@ -2,6 +2,16 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-26, Claude Code (Opus 5.5) — review Platinum Global Menu steps 1–2
+
+- Reviewed Codex's six local commits (`55e2523`–`e737850`): exact subtree import, patches match PLAN step 2, fresh Release build warning-free with 9/9 tests, and the #319 test fails when the fix is removed. Details in `AUDIT.md`; no new findings. Only AUDIT.md and this entry changed. Nothing pushed.
+
+## 2026-11-26, Codex (GPT-6) — build and trial Platinum Global Menu
+
+- Imported the pinned KDE Global Menu 1.1.3 tree into `plasma/globalmenu/` (`1b9a551`) and committed the applet identity, File and Go fallback, and two Wayland trial fixes through `e737850` on local `main`. Go opens new Dolphin windows so location changes come to the front.
+- Tested the upstream and Platinum applets in the 20 px panel on two nested KWin outputs. The Platinum version switches between the fallback and Dolphin, Kate and a delayed native export, and supplies File and Go on the desktop and in Claude Desktop. All seven file commands worked. Both open-title columns match 20/20 reference pixels. Eight applet checks passed in Release and with ASan/UBSan (leak detection disabled).
+- Next is the user-scope build, first-login discovery and installer preflight (#318). The theme layout and desktop installation still need integration. The source commits are local. The plan, changelog and audit updates are uncommitted. [Bundled global menu plan](PLAN.md#plan-bundled-global-menu)
+
 ## 2026-11-26, Claude Code (Opus 5.5) — review Codex's bundled global menu plan
 
 - Checked the new PLAN section against a fresh clone of global-menu-KDE `4a24e4d`: build target, linked libraries, license inventory, menu search and the `install.sh` references hold. Fixed #317 (decision 6 had a 38-character commit hash). `docs/GLOBAL-MENU-HANDOFF.md` was superseded by the PLAN section and the user deleted it before the commit.

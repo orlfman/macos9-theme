@@ -2,7 +2,7 @@
 
 ## Status
 
-**Bundled global menu plan, 2026-11-26 (Codex GPT-6).** Decision 6 records KDE Global Menu 1.1.3 as the base and File + Go as the fallback. The 20 px nested Wayland panel trial comes first. Source workflow decided by the user the same day: git subtree in `plasma/globalmenu/` (#316). [Bundled global menu plan](#plan-bundled-global-menu)
+**Platinum Global Menu prototype, 2026-11-26 (Codex GPT-6).** Steps 1–2 are complete through `e737850`. The pinned subtree and Platinum's File + Go menu passed the 20 px nested Wayland trial on two outputs, including all seven commands. The empty-export regression (#319) is fixed. Eight applet tests passed in Release and under ASan/UBSan. Next is step 3, user-scope installation and discovery. [Bundled global menu plan](#plan-bundled-global-menu)
 
 **Global menu fallback research, 2026-11-26 (Codex GPT-6).** Plasma 6.8.3 has no fallback setting. A replacement applet can show File and Go on the desktop and for apps without menus, then switch to the focused app’s exported menu. The closest existing applet built and passed three focused suites and an offscreen load. The next check is the applet in Platinum’s top panel under nested Wayland. [Research and prototype plan](docs/GLOBAL-MENU-FALLBACK.md)
 
@@ -489,7 +489,8 @@ measurements.
 KDE Global Menu keeps the stock-style `KSvg.FrameSvgItem` delegate, so
 Platinum's `widgets/menubaritem` draws the title states. The pinned applet
 built against Plasma 6.8.3 and passed three focused test suites and an
-offscreen load. The panel trial is the next milestone. Decision 6 makes
+offscreen load. The nested panel trial and the Platinum source patches
+are complete (`1b9a551` through `e737850`). Decision 6 makes
 the applet part of the default layout and supersedes the initial proposal
 to offer it as an optional widget. [Upstream menu delegate](https://github.com/ChathurangaBW/global-menu-KDE/blob/4a24e4dfed7eac640023e1b28d06321f65385e2b/src/qml/MenuDelegate.qml#L45-L68) · [Research and test results](docs/GLOBAL-MENU-FALLBACK.md)
 
@@ -553,6 +554,11 @@ so that workflow calls for a standalone repo with an upstream remote.
    disappearing exports, an open menu during a switch, hover and keyboard
    navigation, and focus on either screen with the panel on the primary.
    Compare the open title with the existing Platinum reference checks.
+   **Done 2026-11-26.** Verified both outputs, Kate, Dolphin, Claude
+   Desktop, desktop click, Show Desktop, focus changes and late exports.
+   The pinned applet showed only Search after a live export cleared.
+   Platinum restores the fallback in that case (#319). The native and
+   fallback open-title columns each match all 20 reference pixels.
    [Plasma test harness](docs/DEVELOPMENT.md#the-plasma-style-and-the-menu-bar)
 2. **Import the subtree, then patch the applet.** **Commits allowed (user,
    2026-11-26):** for this step the agent may commit the `git subtree add`
@@ -575,6 +581,10 @@ so that workflow calls for a standalone repo with an upstream remote.
    native menu search for apps that export menus. Keep Platinum's patches
    and updated tests attributable as separate `globalmenu:` commits (see
    Source management).
+   **Done 2026-11-26.** `platinum.globalmenu` builds and loads in the
+   sandbox. Go opens a new Dolphin window for each location so it can
+   come to the front under Wayland. Verified all seven commands in a
+   disposable home, including a Documents path with spaces and `#`.
    [Upstream fallback actions](https://github.com/ChathurangaBW/global-menu-KDE/blob/4a24e4dfed7eac640023e1b28d06321f65385e2b/src/desktopfallback.cpp#L129-L162) · [Upstream source switching](https://github.com/ChathurangaBW/global-menu-KDE/blob/4a24e4dfed7eac640023e1b28d06321f65385e2b/src/appmenumodel.cpp#L386-L454)
 3. **Build and discover it user-scope.** Add the applet to the existing
    `install.sh` build and stage it before any panel changes. Check the
