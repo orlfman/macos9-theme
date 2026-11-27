@@ -118,12 +118,17 @@ git pull
 
 **Run `./install.sh` again after every Plasma update too.** The window
 decoration and global menu are built against the KDE libraries on your
-machine. Until the decoration is rebuilt, KWin falls back to Breeze title bars.
+machine. KWin falls back to Breeze title bars when its decoration library
+changes. On the next Plasma login after a change to the menu's runtime
+libraries, the panel switches to the stock Global Menu in the same slot.
 
 If your Platinum panel still has the stock Global Menu, log out and back in
 after installing, then run `./install.sh --apply` while Platinum is active.
 Plasma restarts briefly during the swap and keeps the panel layout and widget
 settings.
+
+Run `tools/check-global-menu-upstream.sh` to see whether the bundled applet
+has new upstream commits available for review.
 
 ## Extras and tweaks
 

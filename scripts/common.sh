@@ -134,6 +134,8 @@ plugins=$libdir/style
 deco_plugins=$libdir/decoration
 global_menu_plugins=$libdir/global-menu
 global_menu_plugin=$global_menu_plugins/plasma/applets/platinum.globalmenu.so
+global_menu_helper=$global_menu_plugins/session.py
+global_menu_stamp=$global_menu_plugins/runtime.json
 global_menu_catalog=$data/locale/fr/LC_MESSAGES/plasma_applet_platinum.globalmenu.mo
 # The Qt Quick Controls style (style/quick), and the link Kirigami finds its
 # color and size plugin by (named after the style, pointing at KDE's).
@@ -186,6 +188,8 @@ targets=(
     "file	$plugins/styles/platinumstyle.so"
     "file	$deco_plugins/org.kde.kdecoration3/platinum.so"
     "file	$global_menu_plugin"
+    "file	$global_menu_helper"
+    "file	$global_menu_stamp"
     "file	$global_menu_catalog"
     "file	$env_script"
     "file	$data/color-schemes/$scheme_name.colors"

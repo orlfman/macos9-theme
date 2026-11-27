@@ -260,7 +260,7 @@ check "the Kwi and Konsole palette is installed byte for byte" cmp \
     "$project/extras/terminal/PlatinumLavender.colorscheme" "$terminal_palette"
 check "the global theme bundles the Platinum palette byte for byte" cmp \
     "$project/colors/Platinum.colors" "$data/plasma/look-and-feel/platinum.desktop/contents/colors"
-check "the record lists the 26 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 26
+check "the record lists the 28 targets" test "$(grep -cE '^(file|dir|link)	' "$state/installed")" -eq 28
 check "Kirigami's plugin link for the Qt Quick style points at KDE's" \
     bash -c "[[ \$(readlink '$home/.local/lib/macos9-theme/style/kf6/kirigami/platform/Platinum.so') == */kf6/kirigami/platform/org.kde.desktop.so ]]"
 check "the applet and translation are installed byte for byte" bash -c '
@@ -290,8 +290,8 @@ else
     echo "skip    the installed style plugin loads (build dev/build/styleshot first: dev/check-style.sh)"
 fi
 check "a second plain install exits 0" run install-2 "$project/install.sh"
-check "the record still lists 26 targets, nothing moved aside" \
-    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 26 ]] && ! grep -q '^displaced' '$state/installed'"
+check "the record still lists 28 targets, nothing moved aside" \
+    bash -c "[[ \$(grep -cE '^(file|dir|link)	' '$state/installed') -eq 28 ]] && ! grep -q '^displaced' '$state/installed'"
 
 check "--apply exits 0" run apply env QT_PLUGIN_PATH="$plugins/style:$plugins/decoration" "$project/install.sh" --apply
 check "--apply preserves automatic switching and both assigned themes" bash -c '

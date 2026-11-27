@@ -52,7 +52,7 @@ EOF
         XDG_RUNTIME_DIR="$root/runtime" M9_TEST_INNER="$root" M9_TEST_APPEARANCE="$appearance" LANG=C.UTF-8 \
         M9_PREBUILT="$root/prebuilt" XDG_SESSION_TYPE=wayland KDE_FULL_SESSION=true XDG_CURRENT_DESKTOP=KDE \
         KDE_SESSION_VERSION=6 \
-        timeout 300 dbus-run-session -- kwin_wayland --virtual --output-count 2 --width 1280 --height 800 \
+        timeout 420 dbus-run-session -- kwin_wayland --virtual --output-count 2 --width 1280 --height 800 \
         --no-lockscreen --no-global-shortcuts --no-kactivities --socket macos9-install-live \
         --exit-with-session "bash $0" > "$root/kwin.log" 2>&1 || status=$?
     cat "$root/result.log" 2> /dev/null || { echo "test-install-live: no result (see $root/kwin.log)"; exit 1; }
@@ -313,6 +313,37 @@ check "install.sh again after the switch exits 0 (an update; no links in the cop
     bash -c "'$project/install.sh' > '$root/install-2.log' 2>&1"
 check "restart with the generated login script" restart_plasma_at_login
 check "Plasma discovers the user-scope binary after login" same ready "$(knows_platinum_menu)"
+# Emulate a version that applied the full layout before recording menu modes.
+legacy_menu_slot=$(menu_slot)
+rm "$XDG_STATE_HOME/macos9-theme/global-menu-layout"
+check "legacy full-layout upgrade switches the stock slot" bash -c "'$project/install.sh' --apply > '$root/legacy-menu-upgrade.log' 2>&1"
+check "legacy upgrade keeps the same menu slot" same "${legacy_menu_slot/org.kde.plasma.appmenu/platinum.globalmenu}" "$(menu_slot)"
+check "legacy upgrade retains full layout restore policy (#321)" grep -Fxq reset "$XDG_STATE_HOME/macos9-theme/global-menu-layout"
+
+runtime_stamp=$home/.local/lib/macos9-theme/global-menu/runtime.json
+cp "$runtime_stamp" "$root/runtime-original.json"
+# Simulate the same SONAME with changed contents, without upgrading the host.
+python3 -I - "$runtime_stamp" <<'PYEND'
+import json, sys
+from pathlib import Path
+stamp = Path(sys.argv[1])
+data = json.loads(stamp.read_text())
+key = next(path for path in data["runtime"] if "/libPlasma.so." in path)
+data["runtime"][key] = "0" * 64
+stamp.write_text(json.dumps(data))
+PYEND
+check "login after a Plasma library change starts the shell" restart_plasma_at_login
+check "login hides the stale plugin from Plasma" same missing "$(knows_platinum_menu)"
+check "stale login restores stock in the same applet slot" same "$legacy_menu_slot" "$(menu_slot)"
+check "stock Global Menu owns the service after fallback" wait_bus org.kde.kappmenuview 6
+# Undo the synthetic file edit. A real library update leaves the installed
+# stamp byte-for-byte intact, so the manifest would not displace it.
+cp "$root/runtime-original.json" "$runtime_stamp"
+check "reinstall publishes a compatible applet" bash -c "'$project/install.sh' > '$root/menu-rebuild.log' 2>&1"
+check "next login discovers the rebuilt applet" restart_plasma_at_login
+check "the rebuilt applet is discoverable" same ready "$(knows_platinum_menu)"
+check "reapply enables the rebuilt applet in the same slot" bash -c "'$project/install.sh' --apply > '$root/menu-rebuild-apply.log' 2>&1"
+check "reapply keeps the saved menu settings and position" same "${legacy_menu_slot/org.kde.plasma.appmenu/platinum.globalmenu}" "$(menu_slot)"
 check "a new layout in a ready shell uses Platinum Global Menu" \
     shell_js "$(cat "$project/plasma/layout.js")"
 ready_slot=$(menu_slot)
@@ -344,9 +375,14 @@ fi
 # environment (like Plasma's shell or a terminal), starting a Qt Quick app
 # only afterwards (finding 49).
 rm -f "$root/go"
-sh -c ". '$config/plasma-workspace/env/macos9-theme.sh'; while [ ! -e '$root/go' ]; do sleep 0.2; done
+sh -c ". '$config/plasma-workspace/env/macos9-theme.sh'; touch '$root/launcher-ready'; while [ ! -e '$root/go' ]; do sleep 0.2; done
     QT_FORCE_STDERR_LOGGING=1 exec '$dev/build/quickshot' '$root/quick-probe.qml' '$root/quick-probe-late.png'" > "$root/launcher.log" 2>&1 &
 launcher=$!
+for _ in {1..50}; do
+    [[ ! -e $root/launcher-ready ]] || break
+    sleep 0.1
+done
+check "the test launcher sourced the login hook before uninstall" test -e "$root/launcher-ready"
 old_pid=$(shell_pid)
 check "uninstall exits 0" bash -c "'$project/uninstall.sh' > '$root/uninstall.log' 2>&1"
 check "uninstall put the config files back" grep -q "Put back your config files" "$root/uninstall.log"

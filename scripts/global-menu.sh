@@ -75,9 +75,13 @@ shell_has_panel_menu() {
 }
 
 resume_panel_shell() {
-    if [[ -f $global_menu_plugin ]]; then
+    if [[ -f $global_menu_plugin ]] &&
+        { [[ ! -e $global_menu_stamp ]] || panel_menu compatible --plugin "$global_menu_plugin" --stamp "$global_menu_stamp"; }; then
         QT_PLUGIN_PATH="$global_menu_plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}" shell_resume
     else
+        if [[ -f $shell_marker ]] && ! shell_running_on_bus; then
+            panel_menu restore > /dev/null || return 1
+        fi
         shell_resume
     fi
 }

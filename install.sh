@@ -271,6 +271,8 @@ else
     menu_binary=$build/global-menu/plugins/plasma/applets/platinum.globalmenu.so
     menu_catalog=$build/global-menu/plasma_applet_platinum.globalmenu.mo
     [[ -s $menu_binary && -s $menu_catalog ]] || die "Platinum Global Menu build artifacts are missing; nothing was installed"
+    panel_menu fingerprint --plugin "$menu_binary" > "$build/global-menu/runtime.json" ||
+        die "couldn't record the Platinum Global Menu runtime; nothing was installed"
     if [[ -z ${M9_PREBUILT:-} ]]; then
         if ! ldd -r "$menu_binary" > "$build/global-menu-links.log" 2>&1 ||
             grep -Eq 'not found|undefined symbol' "$build/global-menu-links.log"; then
@@ -323,7 +325,9 @@ macos9_theme_path=$(sh_quote "$plugins")
 if true$guard; then
     macos9_theme_path=\$macos9_theme_path:$(sh_quote "$deco_plugins")
 fi
-if [ -f $(sh_quote "$global_menu_plugin") ]; then
+if [ -f $(sh_quote "$global_menu_helper") ] &&
+    python3 -I $(sh_quote "$global_menu_helper") $(sh_quote "$panel_layout") login \
+        --plugin $(sh_quote "$global_menu_plugin") --stamp $(sh_quote "$global_menu_stamp") --lock $(sh_quote "$state/lock"); then
     macos9_theme_path=\$macos9_theme_path:$(sh_quote "$global_menu_plugins")
 fi
 case ":\${QT_PLUGIN_PATH:-}:" in
@@ -427,6 +431,8 @@ place_file "$build/style/plugins/styles/platinumstyle.so" "$plugins/styles/plati
 place_file "$build/decoration/plugins/org.kde.kdecoration3/platinum.so" "$deco_plugins/org.kde.kdecoration3/platinum.so" 755
 say "Installed the application style and the window decoration into $libdir"
 place_file "$build/global-menu/plugins/plasma/applets/platinum.globalmenu.so" "$global_menu_plugin" 755
+place_file "$here/scripts/global_menu_layout.py" "$global_menu_helper" 644
+place_file "$build/global-menu/runtime.json" "$global_menu_stamp" 644
 place_file "$build/global-menu/plasma_applet_platinum.globalmenu.mo" "$global_menu_catalog" 644
 say "Installed Platinum Global Menu into $global_menu_plugins"
 place_file "$build/env.sh" "$env_script" 644
