@@ -46,6 +46,8 @@ done
 source "$here/scripts/common.sh"
 # shellcheck source=scripts/global-menu.sh
 source "$here/scripts/global-menu.sh"
+# shellcheck source=scripts/apple-menu-icon.sh
+source "$here/scripts/apple-menu-icon.sh"
 dry_run=$dry
 
 refuse_root
@@ -75,12 +77,19 @@ if ! resume_panel_shell; then
     shell_failed=1
 fi
 
+# In-place undo keeps the panel. Restore its icon before removing the
+# install record or anything the current panel may still use.
+if [[ $menu_layout_mode == in-place && -f $apple_icon_marker && ! -L $apple_icon_marker ]]; then
+    restore_apple_menu_icon ||
+        die "couldn't restore the Apple-menu stand-in's previous icon. Start Plasma and run uninstall.sh again"
+fi
+
 if [[ ! -d $backup && ${#manifest_entries[@]} -eq 0 ]]; then
     ((shell_failed)) && exit 1
     ((shell_resumed)) || note "Nothing to remove: there's no install record in $state."
     if ((!dry_run)); then
         # What an earlier run stopped just before removing.
-        rm -f "$state/lock" "$icon_adoption" "$restore_decision_file" "$uninstall_marker" "$gtk_later_file" "$menu_layout_mode_file"
+        rm -f "$state/lock" "$icon_adoption" "$restore_decision_file" "$uninstall_marker" "$gtk_later_file" "$menu_layout_mode_file" "$apple_icon_marker"
         rmdir "$state" 2> /dev/null || true
     fi
     exit 0
@@ -912,7 +921,7 @@ if ((left)); then
 fi
 
 if ((!dry_run)); then
-    rm -f "$manifest" "$state/lock" "$icon_adoption" "$restore_decision_file" "$uninstall_marker" "$gtk_later_file" "$menu_layout_mode_file"
+    rm -f "$manifest" "$state/lock" "$icon_adoption" "$restore_decision_file" "$uninstall_marker" "$gtk_later_file" "$menu_layout_mode_file" "$apple_icon_marker"
     rmdir "$state" 2> /dev/null || true
 else
     plan "remove the install record $manifest"

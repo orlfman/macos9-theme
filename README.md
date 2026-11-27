@@ -167,6 +167,23 @@ matter which GTK theme you picked.
 Pick **Platinum Lavender** in the Appearance tab of your Konsole profile, or
 in Kwi under Settings, Appearance, Terminal Color Scheme.
 
+### Apple logo on the menu
+
+By default the menu in the top left corner (the Apple menu's place) uses a
+neutral icon. If you'd like the Apple logo there for your own desktop, add
+`--apple-menu-icon` when you switch:
+
+```bash
+./install.sh --apply --apple-menu-icon
+```
+
+The logo is `folder-apple` from your icon theme (the WhiteSur icons this
+theme installs have it); the theme itself doesn't ship it. It's only changed
+when your active icon theme provides it and there's exactly one launcher in
+the top bar. Uninstalling puts back the icon you had before, unless you've
+changed it yourself in the meantime. Run uninstall from a Plasma session
+when the previous icon needs to be restored on a panel you are keeping.
+
 ### Cursors
 
 The cursors are Apple Cursor v2.0.1 by ful1e5 (GPL 3.0, details in

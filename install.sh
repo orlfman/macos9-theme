@@ -19,7 +19,7 @@
 # updates preserve any icon theme you pick afterwards). uninstall.sh removes
 # everything this installed and puts back anything it moved aside.
 #
-# usage: install.sh [--apply] [--dry-run]
+# usage: install.sh [--apply [--apple-menu-icon]] [--dry-run]
 #        install.sh --firefox [--profile PROFILE] [--list] [--dry-run]
 #   --firefox  choose Firefox-only mode first, then pass Firefox options
 #   (default)  install or update all theme files. If Platinum is already the
@@ -31,6 +31,10 @@
 #              upgrade an eligible global menu without resetting the panels.
 #              Settings are backed up first. Uninstall restores the original
 #              layout after a full switch or keeps the panel after an in-place swap.
+#   --apple-menu-icon
+#              with --apply: show the icon theme's folder-apple (Apple's logo,
+#              shipped by WhiteSur) on the Apple-menu stand-in instead of the
+#              neutral default. Off unless you ask; uninstall puts the old icon back.
 #   --dry-run  only show what would be done
 #   -h, --help show this help
 #
@@ -54,10 +58,12 @@ usage() {
 }
 
 apply=0
+apple_icon=0
 dry=0
 for arg in "$@"; do
     case $arg in
         --apply) apply=1 ;;
+        --apple-menu-icon) apple_icon=1 ;;
         --dry-run) dry=1 ;;
         -h | --help) usage; exit 0 ;;
         *) usage >&2; exit 2 ;;
@@ -68,7 +74,13 @@ done
 source "$here/scripts/common.sh"
 # shellcheck source=scripts/global-menu.sh
 source "$here/scripts/global-menu.sh"
+# shellcheck source=scripts/apple-menu-icon.sh
+source "$here/scripts/apple-menu-icon.sh"
 dry_run=$dry
+if ((apple_icon && !apply)); then
+    usage >&2
+    die "--apple-menu-icon only works together with --apply; nothing was changed"
+fi
 
 refuse_root
 need_pkg \
@@ -645,6 +657,10 @@ if ((apply)); then
         fi
     elif ((!dry_run)) && [[ $(global_menu_discovery) == missing ]]; then
         note "This session uses the stock Global Menu. Log out and back in, then run install.sh --apply to switch it in place."
+    fi
+    # Opt-in only: the theme's default Apple-menu icon stays neutral.
+    if ((apple_icon)); then
+        set_apple_menu_icon
     fi
     # A global theme can't set the title bar button order (docs/FINDINGS.md).
     plan "set the title bar buttons in kwinrc: close on the left, zoom and collapse on the right"

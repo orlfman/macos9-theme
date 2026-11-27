@@ -2828,6 +2828,30 @@ check "a backup taken with Platinum active keeps the swap in place" same in-plac
 rm -rf "$state/backup"
 check "no backup keeps the swap in place" same in-place "$(first_swap_mode)"
 
+fresh "--apple-menu-icon needs --apply"
+before=$(snapshot)
+if run apple-icon-alone "$project/install.sh" --apple-menu-icon; then
+    fail "--apple-menu-icon without --apply is refused"
+else
+    check "--apple-menu-icon without --apply is refused" grep -Fq 'only works together with --apply' "$root/$n-apple-icon-alone.log"
+fi
+check "the refused option leaves the home alone" same "$before" "$(snapshot)"
+
+fresh "the Apple-menu icon requires an exact active-theme match (#325)"
+mkdir -p "$root/apple-icon-lookup" "$data/icons/Unused/16x16/places"
+touch "$data/icons/Unused/16x16/places/folder-apple.svg" "$root/apple-icon-lookup/folder.svg"
+cat > "$root/apple-icon-lookup/kiconfinder6" <<'EOF'
+#!/bin/bash
+[[ $1 == folder-apple ]] || exit 1
+printf '%s/folder.svg\n' "${0%/*}"
+EOF
+chmod +x "$root/apple-icon-lookup/kiconfinder6"
+check "a generic folder result keeps the apply successful" run apple-icon-generic \
+    env PATH="$root/apple-icon-lookup:$PATH" "$project/install.sh" --apply --apple-menu-icon
+check "the missing exact icon is reported" grep -Fq "the active KDE icon theme doesn't provide folder-apple" \
+    "$root/$n-apple-icon-generic.log"
+check "the unavailable icon creates no undo record" test ! -e "$state/apple-menu-icon"
+
 fresh "in-place menu uninstall preserves a menu removed by the user"
 layout=$config/plasma-org.kde.plasma.desktop-appletsrc
 printf '[Containments][3]\nplugin=org.kde.panel\n[Containments][3][Applets][11]\nplugin=org.kde.plasma.appmenu\n' > "$layout"
@@ -2835,6 +2859,14 @@ check "install with an earlier stock layout to restore" run menu-restore-setup "
 printf 'in-place\n' > "$state/global-menu-layout"
 printf '[Containments][3]\nplugin=org.kde.panel\n[Containments][3][Applets][14]\nplugin=org.kde.plasma.digitalclock\n' > "$layout"
 cp "$layout" "$root/panel-with-menu-removed"
+printf 'false\t\n' > "$state/apple-menu-icon"
+before=$(snapshot)
+check "icon restore with the shell stopped reports a retry (#326)" bash -c '
+    "$1/uninstall.sh" > "$2" 2>&1
+    [[ $? -eq 1 ]] && grep -Fq "Start Plasma and run uninstall.sh again" "$2"
+' _ "$project" "$root/apple-icon-undo-stopped.log"
+check "deferred icon restore keeps the marker, install record and home" same "$before" "$(snapshot)"
+rm "$state/apple-menu-icon"
 check "uninstall with an in-place menu already removed" run menu-removed-undo "$project/uninstall.sh"
 check "uninstall preserves the panel without resurrecting its old menu" cmp "$root/panel-with-menu-removed" "$layout"
 check "uninstall clears the global menu layout marker" test ! -e "$state/global-menu-layout"
