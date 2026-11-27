@@ -85,6 +85,7 @@ PYEND
         XDG_RUNTIME_DIR="$root/runtime" M9_TEST_INNER="$root" M9_PROJECT_BUILD="$dev/build" LANG=C.UTF-8 \
         M9_PREBUILT="$root/prebuilt" M9_PREBUILT_REAL="$root/prebuilt-real" \
         M9_TEST_REMOTE="file://$root/local-remote.git" M9_USTOPS="${M9_USTOPS:-}" QT_QPA_PLATFORM=offscreen \
+        M9_SOUND_ROOT="$root/sound-root" \
         dbus-run-session -- bash "$0"
 fi
 
@@ -2883,6 +2884,121 @@ printf '[Containments][4]\nplugin=org.kde.panel\n' > "$layout"
 check "full restore succeeds when the original applet had the same ID" run menu-previous-undo "$project/uninstall.sh"
 check "full restore keeps the earlier applet" grep -Fxq 'previous applet fixture' "$previous_menu"
 check "full restore puts back the original layout byte for byte" cmp "$root/previous-menu-layout" "$layout"
+
+# --------------------------------------------------------------------------
+# Optional Big Sur sounds (decision 16). Users get the pack by letting the
+# installer download it, so the first scenario does exactly that from the
+# real release URL (needs network access to github.com). Every later
+# scenario reuses that download through a file:// URL. M9_SOUND_ROOT is a
+# throwaway cache root, so the project's own caches and reference/ are
+# never read.
+sound_zip=$root/sound-fixture/bigsur-1.0.2.zip
+sound_digest=$(sed -n 's/^DIGEST = "\([0-9a-f]*\)"$/\1/p' "$project/scripts/sound_theme.py")
+sound_dir=$data/sounds/bigsur
+sound_cache=$M9_SOUND_ROOT/build/sound-themes/bigsur-1.0.2.zip
+fresh_sounds() { # scenario title
+    fresh "$1"
+    rm -rf "$M9_SOUND_ROOT"
+    mkdir -p "$M9_SOUND_ROOT"
+    printf '\n[Sounds]\nTheme=oxygen\nEnable=false\n' >> "$config/kdeglobals"
+    seed=$(config_state)
+}
+
+fresh_sounds "--sound-theme needs --apply"
+before=$(snapshot)
+check "install --sound-theme without --apply fails" bash -c '! "$1/install.sh" --sound-theme > "$2" 2>&1' _ "$project" "$root/sound-no-apply.log"
+check "  and says why" grep -Fq -- "--sound-theme only works together with --apply" "$root/sound-no-apply.log"
+check "  and changes nothing" same "$before" "$(snapshot)"
+
+fresh_sounds "Big Sur sounds: dry run, download from the release, offline repeat, undo"
+before=$(snapshot)
+check "sound dry run succeeds" run sound-dry "$project/install.sh" --apply --sound-theme --dry-run
+check "  says it would download the pinned release" grep -Fq "download Big Sur 1.0.2 from https://github.com/" "$root/$n-sound-dry.log"
+check "  fetches nothing" test ! -e "$sound_cache"
+check "  leaves the home alone" same "$before" "$(snapshot)"
+if run sound-install "$project/install.sh" --apply --sound-theme; then
+    pass "install --apply --sound-theme downloads the release and installs it"
+    mkdir -p "$(dirname "$sound_zip")"
+    cp "$sound_cache" "$sound_zip"
+else
+    fail "install --apply --sound-theme downloads the release and installs it (needs network access to github.com; log $root/$n-sound-install.log)"
+fi
+if [[ ! -f $sound_zip ]]; then
+    fail "the other Big Sur sound scenarios need that download; skipped"
+else
+    check "  caches the archive with the pinned checksum" bash -c '[[ -n $2 && $(sha256sum < "$1") == "$2  -" ]]' _ "$sound_cache" "$sound_digest"
+    check "  installs all 44 sounds" bash -c '[[ $(find "$1/stereo" -name "*.oga" | wc -l) -eq 44 ]]' _ "$sound_dir"
+    check "  selects Big Sur" bash -c '[[ $(kreadconfig6 --file "$1/kdeglobals" --group Sounds --key Theme) == bigsur ]]' _ "$config"
+    check "  keeps the user's mute setting" bash -c '[[ $(kreadconfig6 --file "$1/kdeglobals" --group Sounds --key Enable) == false ]]' _ "$config"
+    check "a repeat works offline from the cache" run sound-again env M9_SOUND_URL="file://$root/sound-fixture/missing.zip" "$project/install.sh" --apply --sound-theme
+    check "  and keeps Big Sur selected" bash -c '[[ $(kreadconfig6 --file "$1/kdeglobals" --group Sounds --key Theme) == bigsur ]]' _ "$config"
+    check "uninstall --dry-run names the earlier sound theme" run sound-undo-dry "$project/uninstall.sh" --dry-run
+    check "  as oxygen" grep -Fq "set the KDE sound theme to 'oxygen'" "$root/$n-sound-undo-dry.log"
+    check "uninstall succeeds" run sound-undo "$project/uninstall.sh"
+    check "  puts back oxygen" bash -c '[[ $(kreadconfig6 --file "$1/kdeglobals" --group Sounds --key Theme) == oxygen ]]' _ "$config"
+    check "  removes the installed sounds" test ! -e "$sound_dir"
+    check "  keeps the project cache" cmp "$sound_zip" "$sound_cache"
+    check "  leaves no record" no_record_left
+
+    fresh_sounds "Big Sur sounds: a later choice and an added file survive undo"
+    check "install with sounds" run sound-later-install env M9_SOUND_URL="file://$sound_zip" "$project/install.sh" --apply --sound-theme
+    kwriteconfig6 --file "$config/kdeglobals" --group Sounds --key Theme freedesktop
+    printf 'mine\n' > "$sound_dir/custom.oga"
+    check "uninstall succeeds" run sound-later-undo "$project/uninstall.sh"
+    check "  keeps the later sound theme" bash -c '[[ $(kreadconfig6 --file "$1/kdeglobals" --group Sounds --key Theme) == freedesktop ]]' _ "$config"
+    check "  keeps the added file" grep -Fxq mine "$sound_dir/custom.oga"
+    check "  removes the release's own files" test ! -e "$sound_dir/stereo/trash-empty.oga"
+
+    fresh_sounds "Big Sur sounds: a different sounds/bigsur is refused first, also in a dry run"
+    mkdir -p "$sound_dir"
+    printf 'not big sur\n' > "$sound_dir/index.theme"
+    before=$(snapshot)
+    check "dry run refuses the different folder" bash -c '! M9_SOUND_URL="file://$2" "$1/install.sh" --apply --sound-theme --dry-run > "$3" 2>&1' _ "$project" "$sound_zip" "$root/sound-differs-dry.log"
+    check "  and says which folder" grep -Fq "$sound_dir isn't the pinned Big Sur release" "$root/sound-differs-dry.log"
+    check "real run refuses it too" bash -c '! M9_SOUND_URL="file://$2" "$1/install.sh" --apply --sound-theme > "$3" 2>&1' _ "$project" "$sound_zip" "$root/sound-differs.log"
+    check "  before fetching anything" test ! -e "$sound_cache"
+    check "  and before changing the home" same "$before" "$(snapshot)"
+
+    fresh_sounds "Big Sur sounds: a pre-installed identical pack is used and kept"
+    mkdir -p "$data/sounds"
+    python3 -I -c 'import sys, zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])' "$sound_zip" "$data/sounds"
+    check "install with sounds" run sound-preinstalled env M9_SOUND_URL="file://$sound_zip" "$project/install.sh" --apply --sound-theme
+    check "  selects Big Sur" bash -c '[[ $(kreadconfig6 --file "$1/kdeglobals" --group Sounds --key Theme) == bigsur ]]' _ "$config"
+    check "uninstall succeeds" run sound-preinstalled-undo "$project/uninstall.sh"
+    check "  keeps the pack that was there first" test -f "$sound_dir/stereo/trash-empty.oga"
+
+    fresh_sounds "Big Sur sounds: an updated upstream clone falls back to the pinned download"
+    clone=$M9_SOUND_ROOT/build/upstreams/macos-bigsur-sound-theme-linux/theme/bigsur
+    mkdir -p "$clone"
+    printf 'newer upstream\n' > "$clone/index.theme"
+    check "dry run plans the download" run sound-clone-dry env M9_SOUND_URL="file://$sound_zip" "$project/install.sh" --apply --sound-theme --dry-run
+    check "  instead of failing on the clone" grep -Fq "download Big Sur 1.0.2" "$root/$n-sound-clone-dry.log"
+    check "install falls back to the pinned release" run sound-clone env M9_SOUND_URL="file://$sound_zip" "$project/install.sh" --apply --sound-theme
+    check "  says it skipped the clone" grep -Fq "isn't Big Sur 1.0.2" "$root/$n-sound-clone.log"
+    check "  and caches the pinned archive" cmp "$sound_zip" "$sound_cache"
+
+    fresh_sounds "Big Sur sounds: a corrupt cached archive is rejected"
+    mkdir -p "$(dirname "$sound_cache")"
+    printf 'corrupt\n' > "$sound_cache"
+    before=$(snapshot)
+    check "install refuses the corrupt archive" bash -c '! "$1/install.sh" --apply --sound-theme > "$2" 2>&1' _ "$project" "$root/sound-corrupt.log"
+    check "  with a checksum error" grep -Fq "checksum mismatch" "$root/sound-corrupt.log"
+    check "  and changes nothing" same "$before" "$(snapshot)"
+fi
+
+fresh "a restored Theme[\$d] marker goes inside the existing [Sounds] group"
+mkdir -p "$state"
+sound_record='{"previous": {"file_exists": true, "present": false, "value": "", "deleted_marker": true}}'
+printf '[Sounds]\nTheme=bigsur\nEnable=false\n' > "$root/sound-marker-kdeglobals"
+printf '%s\n' "$sound_record" > "$root/sound-marker.json"
+check "restore writes the marker" python3 -I "$project/scripts/sound_theme.py" restore "$root/sound-marker-kdeglobals" "$root/sound-marker.json"
+check "  with one [Sounds] heading" bash -c '[[ $(grep -cFx "[Sounds]" "$1") -eq 1 ]]' _ "$root/sound-marker-kdeglobals"
+check "  holding the marker and the mute setting" bash -c 'grep -Fxq "Theme[\$d]" "$1" && grep -Fxq "Enable=false" "$1" && ! grep -q "^Theme=" "$1"' _ "$root/sound-marker-kdeglobals"
+check "  and drops the record" test ! -e "$root/sound-marker.json"
+printf '[KDE]\nwidgetStyle=Breeze\n\n[Sounds]\nTheme=bigsur\n' > "$root/sound-marker-kdeglobals"
+printf '%s\n' "$sound_record" > "$root/sound-marker.json"
+check "restore into a group that empties" python3 -I "$project/scripts/sound_theme.py" restore "$root/sound-marker-kdeglobals" "$root/sound-marker.json"
+check "  still has one [Sounds] heading with the marker" bash -c '[[ $(grep -cFx "[Sounds]" "$1") -eq 1 ]] && grep -Fxq "Theme[\$d]" "$1"' _ "$root/sound-marker-kdeglobals"
 
 echo
 if ((failed)); then
