@@ -2,6 +2,11 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-26, Codex (GPT-6) — research the global menu fallback
+
+- Documented why the stock applet hides, how early QuickBar borrowed a live Dolphin menu, and how an applet-owned File and Go menu can open Dolphin on demand. [Global menu fallback research](docs/GLOBAL-MENU-FALLBACK.md)
+- Built KDE Global Menu 1.1.3 against the local Plasma 6.8.3 libraries in an isolated temporary directory. Three focused suites and an offscreen applet load passed. Nested Wayland panel behavior and Platinum rendering await a prototype. The Markdown changes are uncommitted.
+
 ## 2026-11-26, Claude Code (Opus 5.5) — rewrite README for end users
 
 - Rewrote `README.md` in a plain first person voice for someone who wants to use the theme on their KDE desktop: what's in it, Arch packages, step by step install, extras (wallpapers, GTK, libadwaita, terminal, cursors, Firefox), uninstall, a Known limitations list and credits. Kept every user facing fact from the old README, including #295's GtkSwitch note; the deep install/undo edge cases now live only in the scripts' messages and AUDIT.md.

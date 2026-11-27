@@ -3,6 +3,8 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+**Global menu fallback source and build review, 2026-11-26 (Codex GPT-6, theme `a7cbdfd`).** Reviewed Plasma 6.8.3 and built the third-party KDE Global Menu 1.1.3 (`4a24e4d`) against the local Plasma libraries. Fallback actions, D-Bus menu transitions and applet navigation passed 3/3 focused suites without skips. `plasmawindowed --smoke-test` passed offscreen with headless portal and activity-service warnings. The applet has yet to run in Platinum’s panel under Wayland. No new numbered findings. [Research and evidence](docs/GLOBAL-MENU-FALLBACK.md)
+
 **#313 independently verified, 2026-11-26 (Claude Code, Opus 5.5, working tree).** Codex's verifier fix holds: the opaque bar's duplicate at offset 8 and the transparent bar's at offset 4 both fail under the #307 CSS, and the current CSS passes 183/183 Broadway and 259/259 nested Plasma. No new findings.
 
 **#313 fixed and verified, 2026-11-26 (Codex GPT-6, working tree).** The margin verifier samples through the parent toolbar edge. It rejects the reproduced opaque duplicate at offset 8. Fresh libadwaita runs passed 183/183 Broadway and 259/259 nested Plasma.

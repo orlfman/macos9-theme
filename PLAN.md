@@ -2,6 +2,8 @@
 
 ## Status
 
+**Global menu fallback research, 2026-11-26 (Codex GPT-6).** Plasma 6.8.3 has no fallback setting. A replacement applet can show File and Go on the desktop and for apps without menus, then switch to the focused app’s exported menu. The closest existing applet built and passed three focused suites and an offscreen load. The next check is the applet in Platinum’s top panel under nested Wayland. [Research and prototype plan](docs/GLOBAL-MENU-FALLBACK.md)
+
 **#313 fixed and verified, 2026-11-26 (Codex GPT-6, working tree).** The libadwaita verifier samples through the opaque fixture's 8 px gap. The original doubled-line evidence now fails and fresh runs pass 183/183 Broadway and 259/259 nested Plasma. The GTK handoff is desktop review.
 
 **Independent review of #312, 2026-11-26 (Codex GPT-6, working tree).** The zero-margin mutation fails all four new assertions. #313 covers the opaque separator pixel sample ending before the far side of the measured 8 px gap. Libadwaita passed 183/183 Broadway and 259/259 nested Plasma. GTK 4 passed 178/178 Broadway. Live desktop review is pending.
