@@ -13,6 +13,13 @@ Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 - Reviewed Codex's `98311fe` and `f02cb7d`. Opened #321 (P2): an install upgraded from a version before the menu marker records an in-place swap, so uninstall keeps the Platinum panels instead of restoring the original ones. Install test run stopped early at the user's request.
 - Fixed #321 at the user's request: `scripts/global-menu.sh` gains `backup_lnf` and `first_swap_layout_mode`, so the first in-place swap is recorded as `reset` when the config backup predates Platinum, and uninstall restores the original panels. New `dev/test-install.sh` scenario for it. Function checked on fixture backups; the full suites were not run (next: `dev/test-install.sh` and `dev/test-install-live.sh`). The user confirmed commits are allowed for the whole global menu plan. Committed locally as `486264a`.
 
+## 2026-11-26, Claude Code (Opus 5.5) — plan About This Computer
+
+- The user chose the Control Strip and an About This Computer app over a fake Wayland window shade (KWin removed shading in 2025). Wrote `docs/ABOUT-THIS-COMPUTER-PLAN.md` from `reference/dialog-about-this-computer.png` with the user's two decisions: a distro-agnostic banner (logo and name from os-release) and memory bars as each app's share of RAM. Covers the field mapping, logo fallbacks, per-app grouping by systemd cgroups with PSS (and a non-systemd fallback), the system row, install, tests and order of work.
+- Design only, no claim taken, PLAN.md untouched while Codex held `plasma` for global menu steps 3–4; a PLAN entry and Claims row come when work starts. Committed and pushed with the Tux files at the user's request. Open for the user: executable and desktop file names, banner font.
+- The user then switched the banner logo to a regular bundled Tux (every distro runs the Linux kernel); the distro name stays. The plan drops the os-release logo lookup and records Tux's credit terms (Larry Ewing and The GIMP).
+- Downloaded Larry Ewing's original Tux (`sit3-shine.7.gif`, 327×360, 15,811 bytes) at the user's request into `apps/about-this-computer/tux/` with `CREDITS.md` (source, SHA-256, his permission text). His page at isc.tamu.edu is gone, so it came from the Internet Archive's copy. README credit not added yet.
+
 ## 2026-11-26, Codex (GPT-6) — integrate Platinum Global Menu into install and undo
 
 - Steps 3–4 are in `98311fe`. The installer configures and stages the applet before publishing it and its French catalog in user scope. It checks linked libraries and loads the staged applet offscreen. The README documents first-login discovery and the new build requirements (#318).
