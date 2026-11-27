@@ -3,6 +3,20 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+## 2026-11-27, Codex (GPT-6) — fix #334–#336 in the Big Sur installer
+
+**#334–#336 fixed and verified in the working tree.** Full config restore now saves the current `[Sounds] Enable` choice with the sound undo record. The regression checks verify a later mute and theme choice through a complete uninstall and an absent mute key after a simulated interrupted restore. Install and dry run reuse a verified installed pack with an unavailable release URL and no project cache. An unreadable file in an optional clone now triggers the pinned release fallback, with a message in the log.
+
+All 63 sound-focused assertions passed in disposable homes, including an actual GitHub release download. Shell syntax and diff checks passed. The full installer and nested Plasma suites were skipped. Evidence is in `dev/build/sound-fixes.9cqSFc/`.
+
+## 2026-11-27, Codex (GPT-6) — audit the Big Sur installer follow-up
+
+Reviewed `790742b`, `109a1ba` and `51172cc` at `51172cc`. Claude's sound-only installer scenarios passed 49/49, including the upstream release download, a cache-only repeat, undo, early rejection of a conflicting theme directory, fallback from a readable nonmatching clone, and deletion-marker round trips. Shell syntax and diff checks passed. The public commits contain only code and documentation. The release cache and private reference path are ignored. The full installer and nested Plasma suites were outside this audit. Tests used disposable homes with prebuilt packages. Evidence is under `dev/build/sound-audit*.*/`.
+
+- **#334 · P2 · fixed and verified (working tree) · Full uninstall can re-enable sounds muted after install.** Started with `Enable=true`, applied Big Sur, then set `Enable=false` and selected FreeDesktop. Uninstall kept FreeDesktop and reset `Enable=true`. The full `kdeglobals` restore overwrites the later mute choice, while the sound undo records only `Theme`. Preserve `[Sounds] Enable` across full restore and retries, including an absent key. [Sound undo capture](scripts/sound_theme.py#L150) · [Full restore](uninstall.sh#L263)
+- **#335 · P3 · fixed and verified (working tree) · A verified installed pack still requires a download on a cold project checkout.** With a byte-identical release already in the disposable user's sounds folder and no project cache or clone, the dry run planned a download and the actual apply failed with an unavailable release URL. The existing folder already passed the pin check. Skip staging and fetching when that copy can be reused, while retaining the final check before applying. [Preflight](install.sh#L233) · [Placement](install.sh#L658)
+- **#336 · P3 · fixed and verified (working tree) · An unreadable file in the optional clone prevents release fallback.** With no archive cache and the clone's `index.theme` unreadable to the installer user, the dry-run preparation exited 1 with a permission error. The clone fallback catches validation errors and lets read errors escape. Treat read failures from the optional clone as a reason to use the pinned release. [Clone reader](scripts/sound_theme.py#L48)
+
 ## 2026-11-27, Claude Code (Opus 5.5) — audit and fix the optional Big Sur sounds
 
 Audited Codex's uncommitted `--sound-theme` working tree over `24bc333` (install.sh, uninstall.sh, scripts/common.sh, scripts/sound_theme.py, docs) by reading, then fixed what I found at the user's request. The archive pin holds: the private copy's SHA-256 matches `DIGEST`, it is 740 KB (under the 2 MB read cap), all 47 entries sit under `bigsur/`, and its extracted tree matches `TREE_DIGEST`. The download runs before the install lock like the WhiteSur fetch, uninstall removes only files whose sums still match, and a later sound choice survives the full config restore.

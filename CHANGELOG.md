@@ -2,6 +2,16 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-27, Codex (GPT-6) — fix Big Sur installer findings #334–#336
+
+- Preserve the current mute setting on full uninstall and retry. Reuse an already installed release offline after verifying it. Fall back to the pinned release if the optional clone contains an unreadable file.
+- Added regressions in `dev/test-install.sh`. All 63 sound-focused checks passed. The full installer and nested Plasma suites were skipped. Changes are uncommitted and the live desktop was untouched.
+
+## 2026-11-27, Codex (GPT-6) — audit Claude's Big Sur installer follow-up
+
+- Reviewed the three local commits through `51172cc`. The sound-only installer scenarios passed 49/49. Three additional probes reproduced #334–#336 covering a mute choice reset on uninstall, a needless download for an already installed pack, and blocked fallback from an unreadable local clone.
+- The audit and plan updates are uncommitted. Implementation, live desktop settings and private reference files were untouched. The full installer suite and nested Plasma were outside the audit.
+
 ## 2026-11-27, Claude Code (Opus 5.5) — fix the Big Sur sound audit findings
 
 - Fixed #327–#332 (AUDIT.md) in the uncommitted sound-theme work. `scripts/sound_theme.py`: `check-installed` compares an existing `sounds/bigsur` with the pinned tree digest; an upstream clone that isn't 1.0.2 is skipped and the release is downloaded instead; a restored `Theme[$d]` goes inside the existing `[Sounds]` group; `M9_SOUND_URL` (tests only). `install.sh`: that folder check now runs in preflight (dry runs too, before any download) and again under the lock; `diff` is no longer needed. `scripts/common.sh`: `check_sound_theme_dir` and `sound_theme_root` (`M9_SOUND_ROOT`, tests only). `dev/test-install.sh`: 50 sound checks; the first scenario downloads the release from GitHub through the installer, as users get it (user's request), so the suite needs network for that check.
