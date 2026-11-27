@@ -285,12 +285,3 @@ msgstr "Apparence"
 msgctxt "@info:usagetip"
 msgid "Open a menu"
 msgstr "Ouvrir un menu"
-
-msgid "New Dolphin Window"
-msgstr "Nouvelle fenêtre Dolphin"
-
-msgid "New Folder on Desktop…"
-msgstr "Nouveau dossier sur le bureau…"
-
-msgid "Desktop Folder"
-msgstr "Dossier du bureau"
