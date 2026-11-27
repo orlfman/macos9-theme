@@ -554,7 +554,11 @@ so that workflow calls for a standalone repo with an upstream remote.
    navigation, and focus on either screen with the panel on the primary.
    Compare the open title with the existing Platinum reference checks.
    [Plasma test harness](docs/DEVELOPMENT.md#the-plasma-style-and-the-menu-bar)
-2. **Import the subtree, then patch the applet.** Rename it to the user's
+2. **Import the subtree, then patch the applet.** **Commits allowed (user,
+   2026-11-26):** for this step the agent may commit the `git subtree add`
+   import and the `globalmenu:` patch commits without asking again, an
+   exception to AGENTS.md "Commit and push only when the user asks". Pushing
+   still needs the user's OK. Rename it to the user's
    chosen name: display name **Platinum Global Menu** (`KPlugin.Name` in
    `metadata.json`), plugin ID `platinum.globalmenu` (the
    `plasma_add_applet` target and `KPlugin.Id`), translation domain
