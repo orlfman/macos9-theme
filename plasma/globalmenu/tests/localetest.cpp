@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Modified by the Platinum theme on 2026-11-26.
 #include "desktopfallback.h"
 #include <KLocalizedString>
 #include <QApplication>
@@ -15,7 +16,7 @@ private Q_SLOTS:
         const bool french = qEnvironmentVariable("LANGUAGE") == QStringLiteral("fr");
         if (french) {
             QVERIFY(KLocalizedString::languages().contains(QStringLiteral("fr")));
-            QVERIFY(KLocalizedString::availableDomainTranslations("plasma_applet_org.chathuranga.globalmenu").contains(QStringLiteral("fr")));
+            QVERIFY(KLocalizedString::availableDomainTranslations("plasma_applet_platinum.globalmenu").contains(QStringLiteral("fr")));
         }
         DesktopFallback fallback;
         const auto headings = fallback.menu()->actions();
@@ -33,7 +34,7 @@ private Q_SLOTS:
 int main(int argc, char **argv)
 {
     QApplication application(argc, argv);
-    KLocalizedString::addDomainLocaleDir("plasma_applet_org.chathuranga.globalmenu", QStringLiteral(TEST_LOCALE_DIR));
+    KLocalizedString::addDomainLocaleDir("plasma_applet_platinum.globalmenu", QStringLiteral(TEST_LOCALE_DIR));
     // Minimal CI images do not always generate locale definitions. Mirror the
     // process LANGUAGE value explicitly so the test remains deterministic while
     // production continues to follow Plasma/KI18n's configured language list.
@@ -41,7 +42,7 @@ int main(int argc, char **argv)
     if (!language.isEmpty()) {
         KLocalizedString::setLanguages(QStringList{language});
     }
-    KLocalizedString::setApplicationDomain("plasma_applet_org.chathuranga.globalmenu");
+    KLocalizedString::setApplicationDomain("plasma_applet_platinum.globalmenu");
     LocaleTest test;
     return QTest::qExec(&test, argc, argv);
 }

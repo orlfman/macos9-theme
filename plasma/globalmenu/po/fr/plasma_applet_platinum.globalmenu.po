@@ -1,3 +1,4 @@
+# Modified by the Platinum theme on 2026-11-26.
 # KDE Global Menu French translation.
 # SPDX-License-Identifier: GPL-2.0-or-later
 msgid ""

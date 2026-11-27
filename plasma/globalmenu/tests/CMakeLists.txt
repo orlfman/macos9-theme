@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-add_compile_definitions(TRANSLATION_DOMAIN="plasma_applet_org.chathuranga.globalmenu")
+# Modified by the Platinum theme on 2026-11-26.
+add_compile_definitions(TRANSLATION_DOMAIN="plasma_applet_platinum.globalmenu")
 add_test(NAME installer_preflight_test COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/installertest.sh)
 
 add_executable(desktopfallback_test
@@ -60,7 +61,7 @@ set_tests_properties(appmenumodel_test PROPERTIES
 add_test(NAME translation_catalog_test
     COMMAND ${GETTEXT_MSGFMT_EXECUTABLE} --check
             -o ${CMAKE_CURRENT_BINARY_DIR}/translation-check.mo
-            ${CMAKE_SOURCE_DIR}/po/fr/plasma_applet_org.chathuranga.globalmenu.po
+            ${CMAKE_SOURCE_DIR}/po/fr/plasma_applet_platinum.globalmenu.po
 )
 
 add_executable(appmenuapplet_test
@@ -81,12 +82,12 @@ set_tests_properties(appmenuapplet_test PROPERTIES
     TIMEOUT 30)
 
 set(TEST_LOCALE_DIR "${CMAKE_CURRENT_BINARY_DIR}/locale")
-set(TEST_CATALOG "${TEST_LOCALE_DIR}/fr/LC_MESSAGES/plasma_applet_org.chathuranga.globalmenu.mo")
+set(TEST_CATALOG "${TEST_LOCALE_DIR}/fr/LC_MESSAGES/plasma_applet_platinum.globalmenu.mo")
 add_custom_command(OUTPUT "${TEST_CATALOG}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${TEST_LOCALE_DIR}/fr/LC_MESSAGES"
     COMMAND ${GETTEXT_MSGFMT_EXECUTABLE} --check -o "${TEST_CATALOG}"
-        "${CMAKE_SOURCE_DIR}/po/fr/plasma_applet_org.chathuranga.globalmenu.po"
-    DEPENDS "${CMAKE_SOURCE_DIR}/po/fr/plasma_applet_org.chathuranga.globalmenu.po")
+        "${CMAKE_SOURCE_DIR}/po/fr/plasma_applet_platinum.globalmenu.po"
+    DEPENDS "${CMAKE_SOURCE_DIR}/po/fr/plasma_applet_platinum.globalmenu.po")
 add_custom_target(test_catalog DEPENDS "${TEST_CATALOG}")
 add_executable(locale_test localetest.cpp ${CMAKE_SOURCE_DIR}/src/desktopfallback.cpp)
 add_dependencies(locale_test test_catalog)

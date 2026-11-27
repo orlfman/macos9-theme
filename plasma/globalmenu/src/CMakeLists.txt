@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-add_definitions(-DTRANSLATION_DOMAIN=\"plasma_applet_org.chathuranga.globalmenu\")
+# Modified by the Platinum theme on 2026-11-26.
+add_definitions(-DTRANSLATION_DOMAIN=\"plasma_applet_platinum.globalmenu\")
 
-plasma_add_applet(org.chathuranga.globalmenu
+plasma_add_applet(platinum.globalmenu
     QML_SOURCES
         qml/configGeneral.qml
         qml/config.qml
@@ -16,9 +17,9 @@ plasma_add_applet(org.chathuranga.globalmenu
     QML_ARGS DEPENDENCIES QtCore org.kde.plasma.core
 )
 
-target_compile_features(org.chathuranga.globalmenu PRIVATE cxx_std_20)
+target_compile_features(platinum.globalmenu PRIVATE cxx_std_20)
 
-target_link_libraries(org.chathuranga.globalmenu PRIVATE
+target_link_libraries(platinum.globalmenu PRIVATE
     Qt::Core
     Qt::Widgets
     Qt::Quick

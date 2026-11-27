@@ -4,6 +4,7 @@
     SPDX-FileCopyrightText: 2016 Kai Uwe Broulik <kde@privat.broulik.de>
 
     SPDX-License-Identifier: GPL-2.0-or-later
+// Modified by the Platinum theme on 2026-11-26.
 */
 pragma ComponentBehavior: Bound
 
@@ -16,7 +17,7 @@ import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.private.keyboardindicator as KeyboardIndicator
 import org.kde.plasma.components as PlasmaComponents3
 import org.kde.kirigami as Kirigami
-import plasma.applet.org.chathuranga.globalmenu
+import plasma.applet.platinum.globalmenu
 
 PlasmoidItem {
     id: root
