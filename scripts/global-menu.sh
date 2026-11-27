@@ -25,6 +25,28 @@ set_menu_layout_mode() {
     menu_layout_mode=$1
 }
 
+# The global theme recorded in the config backup, or nothing when the copy
+# has no kdeglobals. A backup taken before Platinum was active holds the
+# user's original panels, which a full uninstall must put back (#321).
+backup_lnf() {
+    local copy=$backup/config/kdeglobals
+    [[ -f $copy && ! -L $copy ]] || return 0
+    awk -F= '/^\[/ { kde = ($0 == "[KDE]") } kde && $1 == "LookAndFeelPackage" { v = substr($0, index($0, "=") + 1) } END { print v }' \
+        "$copy"
+}
+
+# The policy for a first in-place swap. In-place keeps the current panels on
+# uninstall; that is only right when the backup already shows Platinum's
+# panels. An install from before the menu marker whose backup predates
+# Platinum still owns the original layout, so record a full reset.
+first_swap_layout_mode() {
+    if [[ -d $backup && $(backup_lnf) != "$lnf_id" ]]; then
+        printf '%s\n' reset
+    else
+        printf '%s\n' in-place
+    fi
+}
+
 panel_menu() {
     python3 -I "$here/scripts/global_menu_layout.py" "$panel_layout" "$@"
 }
@@ -68,7 +90,7 @@ switch_panel_menu() {
     if [[ $direction == migrate ]]; then
         count=$(panel_menu migrate --check) || status=1
         if ((status == 0)) && [[ $count != 0 && -z $menu_layout_mode ]]; then
-            set_menu_layout_mode in-place || status=1
+            set_menu_layout_mode "$(first_swap_layout_mode)" || status=1
         fi
     fi
     if ((status == 0)); then

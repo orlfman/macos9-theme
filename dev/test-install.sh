@@ -2816,6 +2816,18 @@ else
 fi
 check "global menu configure failure leaves the home alone" same "$before" "$(snapshot)"
 
+fresh "a menu swap after an earlier full switch keeps the original panels restorable (#321)"
+check "full switch from Breeze" run menu-upgrade-apply "$project/install.sh" --apply
+first_swap_mode() {
+    bash -c 'config_home=$1 state=$2 backup=$2/backup lnf_id=platinum.desktop
+        source "$3/scripts/global-menu.sh" && first_swap_layout_mode' _ "$config" "$state" "$project"
+}
+check "a backup from before Platinum makes the first swap a full reset" same reset "$(first_swap_mode)"
+sed -i 's/^LookAndFeelPackage=.*/LookAndFeelPackage=platinum.desktop/' "$state/backup/config/kdeglobals"
+check "a backup taken with Platinum active keeps the swap in place" same in-place "$(first_swap_mode)"
+rm -rf "$state/backup"
+check "no backup keeps the swap in place" same in-place "$(first_swap_mode)"
+
 fresh "in-place menu uninstall preserves a menu removed by the user"
 layout=$config/plasma-org.kde.plasma.desktop-appletsrc
 printf '[Containments][3]\nplugin=org.kde.panel\n[Containments][3][Applets][11]\nplugin=org.kde.plasma.appmenu\n' > "$layout"
