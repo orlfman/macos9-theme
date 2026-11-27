@@ -2,6 +2,8 @@
 
 ## Status
 
+**Bundled global menu plan, 2026-11-26 (Codex GPT-6).** Decision 6 records KDE Global Menu 1.1.3 as the base and File + Go as the fallback. The 20 px nested Wayland panel trial comes first. Source workflow decided by the user the same day: git subtree in `plasma/globalmenu/` (#316). [Bundled global menu plan](#plan-bundled-global-menu)
+
 **Global menu fallback research, 2026-11-26 (Codex GPT-6).** Plasma 6.8.3 has no fallback setting. A replacement applet can show File and Go on the desktop and for apps without menus, then switch to the focused app’s exported menu. The closest existing applet built and passed three focused suites and an offscreen load. The next check is the applet in Platinum’s top panel under nested Wayland. [Research and prototype plan](docs/GLOBAL-MENU-FALLBACK.md)
 
 **#313 fixed and verified, 2026-11-26 (Codex GPT-6, working tree).** The libadwaita verifier samples through the opaque fixture's 8 px gap. The original doubled-line evidence now fails and fresh runs pass 183/183 Broadway and 259/259 nested Plasma. The GTK handoff is desktop review.
@@ -344,6 +346,16 @@ Open decisions need the user. Record the answer here with the date.
    menu) as the Apple menu stand-in with a neutral icon (no Apple logo),
    the global menu (`appmenu`), a spacer, the system tray (kept: network,
    volume), the clock, and the Window List applet as the Application menu.
+   **Global menu, decided 2026-11-26 (user).** Bundle KDE Global Menu 1.1.3
+   at `4a24e4dfed7eac640023e1b28d06321f65385e2b` in the theme's default menu
+   slot. Show **File** and **Go** on the desktop and when the focused app
+   has no usable export. Preserve the focused app's native menu when one
+   is available. The user accepted File + Go as close enough to the Mac OS 9
+   Finder bar (#314) and wants Platinum's patches kept small enough to pull
+   in upstream fixes. Source kept as a git subtree in `plasma/globalmenu/`
+   (decided the same day). Name, decided the same day (user): **Platinum
+   Global Menu**, plugin ID `platinum.globalmenu` (matching the theme's
+   `platinum.*` widget IDs). [Chosen upstream](https://github.com/ChathurangaBW/global-menu-KDE/tree/4a24e4dfed7eac640023e1b28d06321f65385e2b) · [Bundled global menu plan](#plan-bundled-global-menu)
 7. **Icons.** **Decided 2026-11-21 (user):** use an existing icon set
    ("what's out there at the moment"); pick after checking licenses
    (NineIcons Redux, Platinum9, Chi-Nata and others). **Updated 2026-11-22
@@ -465,11 +477,155 @@ measurements.
    (decision 3) by drawing one scroll bar and one title bar each way.
    **Done 2026-11-20** (`spikes/`, docs/FINDINGS.md); both point to C++.
 4. **colors** → **decoration** → **style** (the bulk of the look).
-5. **plasma**: menu bar layout, Plasma style, look-and-feel package.
+5. **plasma**: menu bar layout, Plasma style, look-and-feel package, and the
+   [bundled global menu](#plan-bundled-global-menu).
 6. **icons**, **cursors**, fonts.
 7. **gtk**, **firefox**, **extras**.
 8. **packaging**: install/uninstall to user scope with backups; full audit;
    user's on-screen review.
+
+## Plan: Bundled global menu
+
+KDE Global Menu keeps the stock-style `KSvg.FrameSvgItem` delegate, so
+Platinum's `widgets/menubaritem` draws the title states. The pinned applet
+built against Plasma 6.8.3 and passed three focused test suites and an
+offscreen load. The panel trial is the next milestone. Decision 6 makes
+the applet part of the default layout and supersedes the initial proposal
+to offer it as an optional widget. [Upstream menu delegate](https://github.com/ChathurangaBW/global-menu-KDE/blob/4a24e4dfed7eac640023e1b28d06321f65385e2b/src/qml/MenuDelegate.qml#L45-L68) · [Research and test results](docs/GLOBAL-MENU-FALLBACK.md)
+
+### Source management (#316)
+
+**Decided 2026-11-26 (user): git subtree in `plasma/globalmenu/`.** The
+applet's source lives in this public repo. Platinum's patches are ordinary
+commits on top of it, `git subtree pull` brings in upstream updates, the
+install needs nothing extra downloaded for it, and agents edit it like any
+other part of the theme. No private working repo and no patch files.
+
+- Import: `git subtree add --prefix=plasma/globalmenu
+  https://github.com/ChathurangaBW/global-menu-KDE
+  4a24e4dfed7eac640023e1b28d06321f65385e2b --squash`. The pin is upstream
+  `main`, which is the `v1.1.3` tag (`e52d16e`) plus one release-workflow
+  commit (`.github/workflows/release.yml` only). `--squash` keeps upstream's
+  commits out of this repo's history; the squash commit records the
+  upstream commit, which `git subtree pull` uses as the merge base.
+- Updates: `git subtree pull --prefix=plasma/globalmenu
+  https://github.com/ChathurangaBW/global-menu-KDE <commit> --squash` after
+  reviewing upstream's changes, then rerun the applet tests and the theme
+  checks. Record the new pin here and in decision 6.
+- Our patches: separate commits with a `globalmenu:` subject prefix, never
+  mixed into the import or pull commits, so they stay attributable. Each
+  file we modify also gets a one-line notice next to its copyright header
+  saying the Platinum theme changed it and when (GPL-2.0 section 2a).
+  Upstream's
+  CI, release and packaging files (`.github/`, `packaging/`, `install.sh`,
+  `scripts/`) stay as imported and unused; the theme's `install.sh` builds
+  `plasma/globalmenu/` itself.
+- `plasma/globalmenu/` belongs to the `plasma` claim.
+
+Record the upstream URL and full commit. Keep the upstream `LICENSE`, copyright and
+per-file SPDX notices, including the LGPL importer notices. Publish the
+exact corresponding source and build files for any applet binary the
+project distributes. The fallback additions are GPL-2.0-or-later. The
+component also contains files with their own license terms.
+[Upstream license inventory](https://github.com/ChathurangaBW/global-menu-KDE/blob/4a24e4dfed7eac640023e1b28d06321f65385e2b/LICENSE)
+
+The two options as Codex laid them out before the decision:
+
+| Workflow | How it would work | Tradeoff |
+| --- | --- | --- |
+| **Git subtree (chosen)** | Import the pinned source into `plasma/globalmenu/`. Make Platinum edits as separate commits. Pull reviewed upstream updates with `git subtree pull` and rerun the applet and theme checks. | A single public checkout contains the source and patches. The applet adds no network dependency at install time. The theme repo carries the imported sources. |
+| **Private working repo and public patches (not chosen)** | Use a standalone private repo such as `orlfman/global-menu-KDE` with a public `upstream` remote. Export ordered patches from the working branch. Put them, the source pin and the license record in the public theme repo. The installer fetches and verifies the exact public revision, then applies the patches in a staging checkout. | The theme checkout carries the patch series. Private development stays in a separate repo. A clean install needs network access to fetch the base, and each update adds a patch export and replay step. |
+
+The subtree is preferable for a bundled dependency because a theme checkout
+is sufficient to rebuild the applet against a new Plasma release once the
+build dependencies are installed. The private-repo workflow follows the
+htop-gpu packaging pattern. GitHub makes forks of public repositories public,
+so that workflow calls for a standalone repo with an upstream remote.
+[GitHub fork visibility](https://docs.github.com/en/pull-requests/reference/forks)
+
+### Implementation order
+
+1. **Trial the pinned applet in nested Wayland.** Place it in the stock
+   menu's slot in the 20 px Platinum bar. Check desktop focus at login,
+   a desktop click, Show Desktop, Dolphin, Kate, and a window without an
+   export. Include the Claude desktop app if it is available in the trial
+   and confirmed to export no menu. Check rapid focus changes, delayed or
+   disappearing exports, an open menu during a switch, hover and keyboard
+   navigation, and focus on either screen with the panel on the primary.
+   Compare the open title with the existing Platinum reference checks.
+   [Plasma test harness](docs/DEVELOPMENT.md#the-plasma-style-and-the-menu-bar)
+2. **Import the subtree, then patch the applet.** Rename it to the user's
+   chosen name: display name **Platinum Global Menu** (`KPlugin.Name` in
+   `metadata.json`), plugin ID `platinum.globalmenu` (the
+   `plasma_add_applet` target and `KPlugin.Id`), translation domain
+   `plasma_applet_platinum.globalmenu`, and matching QML/resource paths,
+   so it can coexist on disk with the original package. Keep upstream's
+   author entry and add the theme alongside it. Keep one global-menu
+   widget active in the panel because both use `org.kde.kappmenuview`.
+   Trim the fallback to **File** (New Dolphin Window, New Folder on
+   Desktop…) and **Go** (Home, Desktop Folder, Documents, Downloads, Trash).
+   Use explicit locations and resolve local folders with the XDG directory
+   settings. Reuse upstream's validated folder creation where it fits. Keep
+   the upstream task model, D-Bus import, menu source switching and pop-up
+   behavior unless testing identifies a Platinum-specific change. Retain
+   native menu search for apps that export menus. Keep Platinum's patches
+   and updated tests attributable as separate `globalmenu:` commits (see
+   Source management).
+   [Upstream fallback actions](https://github.com/ChathurangaBW/global-menu-KDE/blob/4a24e4dfed7eac640023e1b28d06321f65385e2b/src/desktopfallback.cpp#L129-L162) · [Upstream source switching](https://github.com/ChathurangaBW/global-menu-KDE/blob/4a24e4dfed7eac640023e1b28d06321f65385e2b/src/appmenumodel.cpp#L386-L454)
+3. **Build and discover it user-scope.** Add the applet to the existing
+   `install.sh` build and stage it before any panel changes. Check the
+   staged `.so` and dependencies. Put it in a dedicated user plugin root,
+   for example `~/.local/lib/macos9-theme/global-menu/plasma/applets/platinum.globalmenu.so`,
+   using the existing install manifest and Plasma login script to expose
+   the root on `QT_PLUGIN_PATH`. At the pinned revision, the `.so` embeds
+   its QML and resources, including the applet package entry points. Stage
+   translation catalogs as needed. Check actual `plasmashell` discovery and
+   loading before enabling the applet. Test a first install with a shell
+   that predates the login hook and after a fresh login. The upstream
+   installation notes call for logging out and back in even with a system
+   install. Passing `QT_PLUGIN_PATH` to `plasma-apply-lookandfeel` alone
+   does not update the environment of an already running shell. The
+   applet builds with CMake, which the theme doesn't use yet (#318): add
+   `cmake`, `extra-cmake-modules`, and checks for `libplasma`,
+   `plasma-workspace` (LibTaskManager), `ki18n`, `kwindowsystem` and
+   `kconfig` to `preflight_plugin_build` (`install.sh:82–102`) so a
+   missing package stops the install before anything changes, and add the
+   new packages to the README's "What you need" line.
+   [Theme plugin installation](install.sh#L263-L291) · [Upstream applet target](https://github.com/ChathurangaBW/global-menu-KDE/blob/4a24e4dfed7eac640023e1b28d06321f65385e2b/src/CMakeLists.txt#L1-L17) · [Native applet layout](https://github.com/KDE/libplasma/blob/v6.8.3/PlasmaMacros.cmake#L54-L70) · [Upstream first-login note](https://github.com/ChathurangaBW/global-menu-KDE/blob/4a24e4dfed7eac640023e1b28d06321f65385e2b/docs/INSTALL.md#L45-L49)
+4. **Switch the panel and make the change reversible.** Change
+   `plasma/layout.js` and regenerate the look-and-feel copy so new layouts
+   choose Platinum's ID once it can load. Use stock as the recovery choice
+   when the build or discovery fails. Keep a working installed applet on a
+   failed rebuild when it is still compatible. For a customized panel,
+   replace the stock widget in place when applying the menu change, with
+   the same containment, index and applicable settings. Save enough state
+   to undo or retry a partial swap. On uninstall, use the existing complete
+   panel restore if it applies. For an in-place migration, restore the
+   stock widget in the current managed slot before removing the plugin.
+   Respect a later choice to move or remove the menu, and leave other
+   applets and their settings alone. Exercise this path without a layout
+   reset. [Theme layout source](plasma/layout.js#L35-L43) · [Plasma widget ordering](https://github.com/KDE/plasma-workspace/blob/v6.8.3/shell/scripting/widget.cpp#L90-L144)
+5. **Rebuild and verify updates.** Build the applet along with the style
+   and decoration on each install or reinstall. Track the Plasma and Qt
+   packages the applet builds against because it links to LibPlasma and
+   Plasma Workspace's `LibTaskManager`. Test how an incompatible build is
+   detected and how an already migrated panel recovers to stock. Hiding a
+   stale binary from Qt's search path alone leaves the saved panel pointing
+   at that binary's plugin ID. Add a read-only `tools/` check that reports
+   new upstream commits relative to the pinned revision. Review updates
+   before merging or repinning. QuickBar's reported Plasma 6.8 rebuild
+   illustrates the kind of compatibility check needed for a compiled
+   menu applet. [Upstream linked libraries](https://github.com/ChathurangaBW/global-menu-KDE/blob/4a24e4dfed7eac640023e1b28d06321f65385e2b/src/CMakeLists.txt#L19-L30) · [QuickBar issue #24](https://github.com/kevinbudz/quickbar/issues/24)
+6. **Verify packaging before on-screen review.** Extend
+   `dev/test-install.sh` for fresh install, in-place migration, reinstall,
+   build or discovery failure, interrupted swap and uninstall. Add nested
+   Plasma coverage for first login, stale-binary recovery, alternate themes
+   and the focus matrix above. Verify the fitted titles at 100% and at a
+   fractional scale, and exercise all File and Go actions in a disposable
+   home. Check that a missing CMake package fails the preflight with
+   nothing changed (#318), and update the README's "run `./install.sh`
+   again after every Plasma update" note to cover the menu as well as the
+   decoration. The final check is the user's on-screen review.
 
 ## Plan: Qt Quick menus, tooltips and switches (AUDIT.md finding 3)
 

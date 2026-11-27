@@ -2,10 +2,30 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-26, Claude Code (Opus 5.5) — review Codex's bundled global menu plan
+
+- Checked the new PLAN section against a fresh clone of global-menu-KDE `4a24e4d`: build target, linked libraries, license inventory, menu search and the `install.sh` references hold. Fixed #317 (decision 6 had a 38-character commit hash). `docs/GLOBAL-MENU-HANDOFF.md` was superseded by the PLAN section and the user deleted it before the commit.
+- Logged #318 (P3, open): the plan doesn't add the applet's CMake build requirements (`cmake`, `extra-cmake-modules`, plus Plasma libraries users normally have) to `install.sh`'s prerequisite check or the README, and the README's rebuild-after-Plasma-update note names only the decoration. For whoever implements the plan's steps 3 and 6.
+- Recorded the user's choice of a git subtree for the global menu source: PLAN "Source management (#316)" now gives the `git subtree add`/`pull` commands with `--squash`, the pin (upstream `main` `4a24e4d` = tag `v1.1.3` `e52d16e` plus one release-workflow commit), `globalmenu:` patch commits with per-file GPL change notices, and upstream's own installer and CI left unused. Updated decision 6, the status line, step 2 of the implementation order, and #316 (fixed, plan only). Nothing imported yet.
+- All of today's global menu docs (this entry, the two below, PLAN.md and AUDIT.md) were committed and pushed together at the user's request; Codex takes steps 1 and 2 next.
+- Recorded the user's name for the applet: **Platinum Global Menu**, plugin ID `platinum.globalmenu` (ID follows the theme's `platinum.*` widgets), in decision 6 and step 2 (display name, ID, translation domain, keep upstream's author entry). Wrote #318 into steps 3 and 6 (CMake packages in the preflight and README, rebuild note).
+
+## 2026-11-26, Codex (GPT-6) — plan the bundled global menu
+
+- Recorded the pinned KDE Global Menu base and the agreed File and Go fallback. Recommended a subtree, with the private working repo and public patch series as the other choice. The source workflow remains open under #316. [Bundled global menu plan](PLAN.md#plan-bundled-global-menu)
+- Added the nested Wayland trial, user-scope installation and discovery checks, in-place migration, uninstall, and recovery after a failed rebuild. Verified the source references and installer paths. The changes are planning only (committed later the same day with Claude Code's follow-ups, at the user's request). The next implementation step is the sandbox trial.
+
+## 2026-11-26, Claude Code (Opus 5.5) — review the global menu fallback research
+
+- Reviewed `docs/GLOBAL-MENU-FALLBACK.md` (Codex, `6e2f21a`). Local facts, repo links and the upstream Plasma 6.8.3 appmenu claims check out. Opened #314 (P2: the File + Go fallback doesn't match the Finder's File/Edit/View/Window/Special/Help bar in `reference/menu-file-open.png`), #315 (P3: Codex's entry calls the committed research uncommitted) and #316 (P3: no maintenance/license weighing for a compiled third-party applet). Details in `AUDIT.md`.
+- Only `AUDIT.md` and this entry changed (committed with the entries above). The doc itself is untouched. The user accepted #314 the same day (close enough beats 1:1), so File + Go stays. Fixed #315 at the user's request by correcting the last sentence of Codex's entry below. #316 remains open.
+- Recorded the user's decision to bundle a fallback global menu in place of the stock `appmenu` rather than offer it as an optional extra: PLAN decision 6 and the status block, plus a note on #316. Nothing built or vendored yet; the sandbox trial of KDE Global Menu in the 20 px bar is next.
+- The user chose global-menu-KDE over QuickBar as the base (QuickBar draws its own rounded titles instead of `widgets/menubaritem`, has no tests, and its fallback is generic). Wrote `docs/GLOBAL-MENU-HANDOFF.md` asking Codex to review and update the PLAN for it, including subtree vs. a private working repo with patch files (user to pick). PLAN decision 6 still names QuickBar as the alternative; Codex's update replaces that.
+
 ## 2026-11-26, Codex (GPT-6) — research the global menu fallback
 
 - Documented why the stock applet hides, how early QuickBar borrowed a live Dolphin menu, and how an applet-owned File and Go menu can open Dolphin on demand. [Global menu fallback research](docs/GLOBAL-MENU-FALLBACK.md)
-- Built KDE Global Menu 1.1.3 against the local Plasma 6.8.3 libraries in an isolated temporary directory. Three focused suites and an offscreen applet load passed. Nested Wayland panel behavior and Platinum rendering await a prototype. The Markdown changes are uncommitted.
+- Built KDE Global Menu 1.1.3 against the local Plasma 6.8.3 libraries in an isolated temporary directory. Three focused suites and an offscreen applet load passed. Nested Wayland panel behavior and Platinum rendering await a prototype. Committed as `6e2f21a`.
 
 ## 2026-11-26, Claude Code (Opus 5.5) — rewrite README for end users
 
