@@ -217,13 +217,20 @@ auditing doesn't give you the right to edit a component you haven't claimed.
 - **Personal use only.** This is a personal recreation of the Mac OS 9 look
   for the user's own desktop. Nothing here may be sold, bundled into a paid
   product, or presented as an official or Apple-endorsed theme.
-- **Recreations, not Apple's files.** Artwork is redrawn, measured, or
-  generated here, supplied by the user as their own recreation, or comes from
-  a third party with a license that allows it (license recorded in the
-  component's folder). Don't copy Apple's original files into the repo, not
-  even "temporarily": icon resources, pixmaps, fonts (Chicago, Charcoal,
-  Geneva), sounds, cursors, desktop pictures, or ROM/system files extracted
-  from Mac OS.
+- **No genuine Apple material in this repo.** What this repo ships is
+  redrawn, measured, or generated here, supplied by the user as their own
+  recreation, or comes from a third party with a license that allows it
+  (license recorded in the component's folder). Never commit official
+  Apple files to this repo, not even "temporarily": icon resources,
+  pixmaps, fonts (Chicago, Charcoal, Geneva), sounds, cursors, desktop
+  pictures, or ROM/system files extracted from Mac OS or macOS. Apple
+  material kept for reference lives only in the private reference repo.
+- **Opt-in fetches are the user's personal choice.** An installer option
+  may download a third-party pack that contains Apple material (e.g. the
+  Big Sur sounds, `install.sh --apply --sound-theme`) straight onto the
+  user's machine for personal use, as long as it is off by default, pins
+  the exact release and its checksum, keeps the download out of git, and
+  the README names the source and its terms (decision 16).
 - **No blatant trademark violations.** Recreated period motifs, such as a
   Finder face in a wallpaper or icon, are fine for this personal theme.
   Descriptive names are fine too: "Mac OS 9", "Platinum", or `macOS-cursors`

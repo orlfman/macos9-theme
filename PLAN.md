@@ -2,6 +2,8 @@
 
 ## Status
 
+**Optional Big Sur system sounds, 2026-11-27 (Codex GPT-6).** `./install.sh --apply --sound-theme` selects Big Sur after applying Platinum. The installer verifies the local archive or checkout and downloads the pinned 1.0.2 release only on a cache miss. The private reference archive was pushed as `7e67a98`. Disposable installs verified first fetch, offline reuse, selection, undo and preservation of later edits. The user has listened to the sounds on their own desktop (2026-11-27). Claude Code fixed audit findings #327–#332 the same day; `dev/test-install.sh` passes 926/926, its first sound scenario downloading the release from GitHub through the installer. #333 (pre-existing nested-suite systemd assertion) is open. The installer changes are uncommitted. [Verification](AUDIT.md#2026-11-27-codex-gpt-6--verify-optional-big-sur-system-sounds) · [Usage](README.md#big-sur-system-sounds)
+
 **Platinum Global Menu done, 2026-11-27 (user review, recorded by Claude Code Opus 5.5).** On the user's own desktop: the full seven-menu fallback, the #323 Dolphin dispatch and the opt-in Apple-menu icon (`folder-apple`) are installed, and the user's verdict is "everything looks great". All global menu steps are complete. Open later: a single `--apply` for the menu (Open questions). Next up per the user: the Control Strip and About This Computer (`docs/ABOUT-THIS-COMPUTER-PLAN.md`).
 
 **Independent review of the full fallback and Apple-menu icon, 2026-11-26 (Codex GPT-6, working tree).** The seven fallback headings are present. In nested Wayland, Go > Home Folder foregrounded a new Dolphin window and honored a separate default directory handler when selected (#323). Release applet tests passed 9/9. Verified that the Apple-menu option skips the generic icon under Breeze (#325), renders the Apple logo with WhiteSur active, and keeps the previous Kicker settings for an uninstall retry after Plasma restarts (#326). Desktop review is pending. [Audit](AUDIT.md#2026-11-26-codex-gpt-6--fix-apple-menu-icon-lookup-and-undo)
@@ -441,6 +443,13 @@ Open decisions need the user. Record the answer here with the date.
     `adw-colors.css` and `adw-widgets.css`). Light, normal-contrast only.
     Consequence: while the import is there, plain GTK 4 apps also look
     Platinum whatever GTK theme is selected (docs/FINDINGS.md).
+16. **System sounds.** **Decided 2026-11-27 (user):** optional, off by
+    default. `install.sh --apply --sound-theme` fetches the pinned Big Sur
+    1.0.2 pack from its own GitHub project (checksum checked) and selects
+    it; nothing Apple-made is committed here. The legal rule was always
+    about keeping genuine Apple material out of this repo, not about an
+    opt-in fetch for the user's own desktop (AGENTS.md "Legal rules",
+    reworded the same day).
 
 ## Components
 
@@ -850,7 +859,6 @@ Kirigami's own components keep Kirigami's shapes.
 
 ## Open questions
 
-- Include Mac OS 9 sound set equivalents? (Can't ship Apple sounds.)
 - Before going public (AUDIT.md finding 25; the user: it waits until
   they're ready to go public): the style's check box and radio sprites and
   button corners (`style/platinum/sprites.h`, `slices.h`) are measured

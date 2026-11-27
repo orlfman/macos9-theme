@@ -2,6 +2,25 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-27, Claude Code (Opus 5.5) — fix the Big Sur sound audit findings
+
+- Fixed #327–#332 (AUDIT.md) in the uncommitted sound-theme work. `scripts/sound_theme.py`: `check-installed` compares an existing `sounds/bigsur` with the pinned tree digest; an upstream clone that isn't 1.0.2 is skipped and the release is downloaded instead; a restored `Theme[$d]` goes inside the existing `[Sounds]` group; `M9_SOUND_URL` (tests only). `install.sh`: that folder check now runs in preflight (dry runs too, before any download) and again under the lock; `diff` is no longer needed. `scripts/common.sh`: `check_sound_theme_dir` and `sound_theme_root` (`M9_SOUND_ROOT`, tests only). `dev/test-install.sh`: 50 sound checks; the first scenario downloads the release from GitHub through the installer, as users get it (user's request), so the suite needs network for that check.
+- `dev/test-install.sh` all 926 passed. Not run: `dev/test-install-live.sh`. #333 (pre-existing live-suite systemd assertion) recorded as open.
+- The user moved `reference/sounds` out of their local reference checkout with `git sparse-checkout` (still in the private repo as the backup). Local installs now use the upstream clone in `build/upstreams/`, or download.
+- Everything is still uncommitted, Codex's sound work included.
+
+## 2026-11-27, Claude Code (Opus 5.5) — reword the legal rule for opt-in fetches
+
+- The user clarified that the "no Apple files" rule was about keeping genuine Apple material out of this public repo. `AGENTS.md` "Legal rules" now says that plainly and allows opt-in installer fetches of third-party packs for personal use (off by default, pinned with a checksum, kept out of git, source and terms named in the README). `PLAN.md` decision 16 records the optional Big Sur sounds; the "Can't ship Apple sounds" open question is removed.
+- Read-only audit of Codex's sound-theme working tree (below): no breaking bugs. Small items not yet in `AUDIT.md`: no sound cases in `dev/test-install.sh`; dry run skips the "sounds folder differs" check; that check runs after the recovery steps; a changed upstream clone blocks install instead of downloading; restoring a deleted key can add a second `[Sounds]` heading; Codex's AUDIT section sits above the #325/#326 review paragraph. Docs only; nothing committed.
+- The user has listened to the Big Sur sounds on their own desktop, so Codex's "live desktop listening is pending" below is done.
+
+## 2026-11-27, Codex (GPT-6) — add optional Big Sur system sounds
+
+- `install.sh --apply --sound-theme` installs and selects the pinned Big Sur 1.0.2 pack. It checks the private release archive, the checkout cache and the upstream clone before fetching. Dry runs preview the source and settings changes. Uninstall restores the previous selection while preserving any later choice and uses the install record to clean up the audio it installed.
+- The upstream clone is in the ignored `build/upstreams/` tree. The original release archive and provenance are in the private reference repository at `7e67a98`, confirmed on its remote. The public checkout has only uncommitted installer and documentation changes for this feature.
+- Sound and uninstall checks passed in disposable homes. The full installer run and focused replay covered all installer checks. The nested suite reproduced an existing assertion failure for a read-only systemd query. Live desktop listening is pending.
+
 ## 2026-11-27, Claude Code (Opus 5.5) — record the user's review of the global menu
 
 - The user installed the full-fallback build (`2ad16cc` and later), ran `--apply --apple-menu-icon` on their desktop and reported "everything looks great". PLAN status and step 6 mark the global menu plan complete. The icon record showed the test icon the user had set just before applying, as intended. No code changes.
