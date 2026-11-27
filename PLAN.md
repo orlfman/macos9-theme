@@ -2,7 +2,9 @@
 
 ## Status
 
-**Platinum Global Menu installation and panel migration, 2026-11-26 (Codex GPT-6, `98311fe`).** Steps 3–4 are implemented. The installer builds, checks and installs the user-scope applet and catalog (#318). Plasma uses stock before discovery, then can swap a customized panel in place. The installer suite passed 862/862 in a test snapshot. Nested install and undo passed 74/74, including a restart failure and recovery (#320). The desktop review is pending. Step 5 covers compatibility after a Plasma update and checking upstream for fixes. [Bundled global menu plan](#plan-bundled-global-menu)
+**Platinum Global Menu plan, 2026-11-26 (Codex GPT-6).** Verified Claude's legacy-panel restore fix (#321). Steps 5–6 add runtime compatibility checks and stock-menu recovery after an update, an upstream review command, and packaging and visual checks at 100% and 150%. Installer passed 870/870, nested install and recovery passed 87/87, and Release applet tests passed 9/9. The user's on-screen review is pending. [Bundled global menu plan](#plan-bundled-global-menu)
+
+**Platinum Global Menu installation and panel migration, 2026-11-26 (Codex GPT-6, `98311fe`).** Steps 3–4 are implemented. The installer builds, checks and installs the user-scope applet and catalog (#318). Plasma uses stock before discovery, then can swap a customized panel in place. The installer suite passed 862/862 in a test snapshot. Nested install and undo passed 74/74, including a restart failure and recovery (#320). [Bundled global menu plan](#plan-bundled-global-menu)
 
 **Platinum Global Menu prototype, 2026-11-26 (Codex GPT-6).** Steps 1–2 are complete through `e737850`. The pinned subtree and Platinum's File + Go menu passed the 20 px nested Wayland trial on two outputs, including all seven commands. The empty-export regression (#319) is fixed. Eight applet tests passed in Release and under ASan/UBSan. [Bundled global menu plan](#plan-bundled-global-menu)
 
@@ -514,7 +516,7 @@ other part of the theme. No private working repo and no patch files.
 - Updates: `git subtree pull --prefix=plasma/globalmenu
   https://github.com/ChathurangaBW/global-menu-KDE <commit> --squash` after
   reviewing upstream's changes, then rerun the applet tests and the theme
-  checks. Record the new pin here and in decision 6.
+  checks. Record the new pin in `plasma/globalmenu-upstream`, here and in decision 6.
 - Our patches: separate commits with a `globalmenu:` subject prefix, never
   mixed into the import or pull commits, so they stay attributable. Each
   file we modify also gets a one-line notice next to its copyright header
@@ -640,7 +642,13 @@ so that workflow calls for a standalone repo with an upstream remote.
    new upstream commits relative to the pinned revision. Review updates
    before merging or repinning. QuickBar's reported Plasma 6.8 rebuild
    illustrates the kind of compatibility check needed for a compiled
-   menu applet. [Upstream linked libraries](https://github.com/ChathurangaBW/global-menu-KDE/blob/4a24e4dfed7eac640023e1b28d06321f65385e2b/src/CMakeLists.txt#L19-L30) · [QuickBar issue #24](https://github.com/kevinbudz/quickbar/issues/24)
+   menu applet. **Done 2026-11-26.** The installer records a fingerprint
+   for the applet, Plasma shell, LibPlasma, LibTaskManager, and the linked Qt
+   runtime libraries. On a fresh login after a mismatch, it restores the
+   stock applet in the same slot before Plasma reads the layout. A nested
+   trial simulated a replacement library with the same name and verified
+   fallback, reinstall, login, and reapply. The read-only upstream checker
+   reports commits since the pin. [Upstream checker](tools/check-global-menu-upstream.sh) · [Upstream linked libraries](https://github.com/ChathurangaBW/global-menu-KDE/blob/4a24e4dfed7eac640023e1b28d06321f65385e2b/src/CMakeLists.txt#L19-L30) · [QuickBar issue #24](https://github.com/kevinbudz/quickbar/issues/24)
 6. **Verify packaging before on-screen review.** Extend
    `dev/test-install.sh` for fresh install, in-place migration, reinstall,
    build or discovery failure, interrupted swap and uninstall. Add nested
@@ -650,7 +658,12 @@ so that workflow calls for a standalone repo with an upstream remote.
    home. Check that a missing CMake package fails the preflight with
    nothing changed (#318), and update the README's "run `./install.sh`
    again after every Plasma update" note to cover the menu as well as the
-   decoration. The final check is the user's on-screen review.
+   decoration. **Implementation and sandbox checks done 2026-11-26.**
+   Verified the legacy-panel restore (#321), clean install, retry after
+   an interrupted swap, uninstall, and recovery from a simulated runtime
+   mismatch. Tested the focus and export matrix and all seven fallback
+   commands at 100% and 150% on two nested outputs. Also tested File and Go
+   and the native Dolphin menu under Breeze. User on-screen review is pending.
 
 ## Plan: Qt Quick menus, tooltips and switches (AUDIT.md finding 3)
 

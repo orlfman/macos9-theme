@@ -2,6 +2,17 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-26, Codex (GPT-6) — complete the global menu implementation and sandbox review
+
+- Independently verified Claude's #321 fix and committed it as `486264a`. The nested upgrade from a legacy full-layout backup restored the user's original panels and widget settings.
+- Added runtime fingerprints, login recovery to the stock menu, and a read-only upstream update checker in `69f6555`. Verified recovery and reactivation after a simulated LibPlasma change. All 870 offscreen installer checks, 87 nested installer checks, and nine Release applet tests passed.
+- Verified menu switching, fitted titles, and all seven File and Go actions at 100% and 150% on two nested displays. Confirmed the fallback and Dolphin export also worked with Breeze. User on-screen review is pending. [Plan](PLAN.md#plan-bundled-global-menu)
+
+## 2026-11-26, Claude Code (Opus 5.5) — review Platinum Global Menu steps 3–4
+
+- Reviewed Codex's `98311fe` and `f02cb7d`. Opened #321 (P2): an install upgraded from a version before the menu marker records an in-place swap, so uninstall keeps the Platinum panels instead of restoring the original ones. Install test run stopped early at the user's request.
+- Fixed #321 at the user's request: `scripts/global-menu.sh` gains `backup_lnf` and `first_swap_layout_mode`, so the first in-place swap is recorded as `reset` when the config backup predates Platinum, and uninstall restores the original panels. New `dev/test-install.sh` scenario for it. Function checked on fixture backups; the full suites were not run (next: `dev/test-install.sh` and `dev/test-install-live.sh`). The user confirmed commits are allowed for the whole global menu plan. Committed locally as `486264a`.
+
 ## 2026-11-26, Codex (GPT-6) — integrate Platinum Global Menu into install and undo
 
 - Steps 3–4 are in `98311fe`. The installer configures and stages the applet before publishing it and its French catalog in user scope. It checks linked libraries and loads the staged applet offscreen. The README documents first-login discovery and the new build requirements (#318).
