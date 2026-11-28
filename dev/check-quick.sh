@@ -7,7 +7,8 @@
 # tooltips and switches", step 7). Then the same pieces after the app is
 # switched to Fusion while running must equal KDE's own style under Fusion.
 # And switches must still toggle with Space and look the same to screen
-# readers (dev/quickkeys.cpp). Sandboxed like dev/run.sh, offscreen,
+# readers (dev/quickkeys.cpp), and scroll bar arrows push in while held
+# like Qt Widgets ones (dev/quickscroll.cpp). Sandboxed like dev/run.sh, offscreen,
 # with Qt Quick's software renderer.
 #
 # usage: check-quick.sh    (exit 1 if a region differs)
@@ -23,12 +24,33 @@ mkdir -p "$out"
 [[ -x $dev/build/quickshot && $dev/build/quickshot -nt $dev/quickshot.cpp ]] || "$dev/build.sh" > /dev/null
 g++ -std=c++17 -O1 -fPIC "$dev/quickref.cpp" -o "$dev/build/quickref" $(pkg-config --cflags --libs Qt6Widgets)
 g++ -std=c++17 -O1 -fPIC "$dev/quickkeys.cpp" -o "$dev/build/quickkeys" $(pkg-config --cflags --libs Qt6Widgets Qt6Quick Qt6Qml Qt6Test) 2> /dev/null
+g++ -std=c++20 -O1 -fPIC "$dev/quickscroll.cpp" -o "$dev/build/quickscroll" $(pkg-config --cflags --libs Qt6Widgets Qt6Quick Qt6Qml Qt6Test)
 
 QSTYLE=Platinum "$dev/run.sh" platinum breeze "$dev/build/quickref" "$out/widget" > "$out/widget.log" 2>&1
 # Switches stay switches: Space toggles them, screen readers see the same
 # role and state as with KDE's style.
 M9_QUICK=1 QSTYLE=Platinum "$dev/run.sh" platinum breeze env QT_QUICK_BACKEND=software "$dev/build/quickkeys" 2>&1 | grep -E 'space-toggles|focus-shows' > "$out/keys-platinum.txt" || true
 QSTYLE=Platinum "$dev/run.sh" platinum breeze env QT_QUICK_BACKEND=software "$dev/build/quickkeys" 2>&1 | grep -E 'space-toggles|focus-shows' > "$out/keys-kde.txt" || true
+# Require all probe assertions and compare the Fusion frames with KDE's.
+scroll_ok=1
+if ! M9_QUICK=1 QSTYLE=Platinum "$dev/run.sh" platinum breeze env QT_QUICK_BACKEND=software \
+    "$dev/build/quickscroll" > "$out/scroll.txt" 2> "$out/scroll.log"; then
+    scroll_ok=0
+fi
+if ! printf '%s passed\n' vertical horizontal attached viewV viewH kirigami custom | cmp -s - "$out/scroll.txt"; then
+    scroll_ok=0
+fi
+if ! M9_QUICK=1 QSTYLE=Platinum "$dev/run.sh" platinum breeze env QT_QUICK_BACKEND=software \
+    "$dev/build/quickscroll" --fusion > "$out/scroll-fusion.txt" 2> "$out/scroll-fusion.log"; then
+    scroll_ok=0
+fi
+if ! QSTYLE=Platinum "$dev/run.sh" platinum breeze env QT_QUICK_BACKEND=software QT_QUICK_CONTROLS_STYLE=org.kde.desktop \
+    "$dev/build/quickscroll" --fusion > "$out/scroll-kde.txt" 2> "$out/scroll-kde.log"; then
+    scroll_ok=0
+fi
+if ! cmp -s "$out/scroll-fusion.txt" "$out/scroll-kde.txt"; then
+    scroll_ok=0
+fi
 M9_QUICK=1 QSTYLE=Platinum "$dev/run.sh" platinum breeze env QT_QUICK_BACKEND=software \
     "$dev/build/quickshot" "$dev/quick-regions.qml" "$out/quick.png" > "$out/quick.log" 2>&1
 
@@ -39,7 +61,7 @@ M9_QUICK=1 QSTYLE=Platinum "$dev/run.sh" platinum breeze env QT_QUICK_BACKEND=so
 QSTYLE=Fusion "$dev/run.sh" platinum breeze env QT_QUICK_BACKEND=software QT_QUICK_CONTROLS_STYLE=org.kde.desktop \
     "$dev/build/quickshot" "$dev/quick-regions.qml" "$out/kde.png" > "$out/kde.log" 2>&1
 
-python3 -I - "$out" << 'PY'
+python3 -I - "$out" "$scroll_ok" << 'PY'
 import re, sys
 from PIL import Image, ImageChops
 out = sys.argv[1]
@@ -185,7 +207,11 @@ keys_ok = keys_p == keys_k and len([l for l in keys_p if "space-toggles=1" in l]
 print(("ok      " if keys_ok else "FAIL    ") + "keyboard: Space toggles switches (role and state as with KDE's style); focus shows on sliders"
       + ("" if keys_ok else f" (Platinum {keys_p}, KDE {keys_k})"))
 failed += 0 if keys_ok else 1
-total = 2 * len(steps) + 1 + len(tab_checks) + len(quick_checks)
+scroll_ok = sys.argv[2] == "1"
+print(("ok      " if scroll_ok else "FAIL    ") + "scrollbar arrow presses in standalone and attached bars, ScrollView, Kirigami and Fusion fallback"
+      + ("" if scroll_ok else f" (see {out}/scroll*.log and scroll*.txt)"))
+failed += 0 if scroll_ok else 1
+total = 2 * len(steps) + 2 + len(tab_checks) + len(quick_checks)
 print(f"\n{total - failed} of {total} Qt Quick checks passed" + (f" (diffs in {out})" if failed else ""))
 sys.exit(1 if failed else 0)
 PY

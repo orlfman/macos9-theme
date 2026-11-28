@@ -11,6 +11,9 @@ MenuBarItem 1.0 MenuBarItem.qml
 MenuItem 1.0 MenuItem.qml
 MenuSeparator 1.0 MenuSeparator.qml
 RangeSlider 1.0 RangeSlider.qml
+ScrollBar 1.0 ScrollBar.qml
+internal ScrollBarPress ScrollBarPress.qml
+ScrollView 1.0 ScrollView.qml
 Switch 1.0 Switch.qml
 SwitchDelegate 1.0 SwitchDelegate.qml
 ToolButton 1.0 ToolButton.qml

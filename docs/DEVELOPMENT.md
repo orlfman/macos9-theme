@@ -189,7 +189,7 @@ plugin for it (`style/build/plugins/kf6/kirigami/platform/Platinum.so`).
 `M9_QUICK=1` with `QSTYLE=Platinum` makes `dev/run.sh` use it.
 `dev/check-tabs.sh` (50 checks) checks that bottom tabs are the top tabs upside down: tab faces in every state, the tab bar base, the pane, and whole tab widgets, plain and in document mode, at 1x to 2x (at 1.25x and 1.5x against the 1x mirror scaled the way Qt scales whole pixels), that tab titles stay out of close buttons top and bottom in both directions, that every tab part ignores an antialiasing painter at 1.25x to 1.75x, and that a Qt Quick footer TabBar (Kwi) is the header upside down.
 
-`dev/check-quick.sh` (29 checks) renders the Qt Quick menus (first and last row
+`dev/check-quick.sh` (33 checks) renders the Qt Quick menus (first and last row
 selected), combo box list, menu bar, switch indicator, tooltip, dialog
 frame, range slider (and where KDE's hidden handles sit), drawer edge and a
 combo box whose longest label changes while its item count stays the same
@@ -201,6 +201,13 @@ still toggle with Space and look the same to screen readers as with KDE's
 style, and that keyboard focus shows on Qt Quick sliders and range sliders
 and on a QSlider. The tab close checks cover compact geometry, selected,
 disabled and pressed states, custom icon size and tint, and fallback to KDE.
+`dev/quickscroll.cpp` compares both arrows with the Qt Widgets drawing in
+standalone horizontal and vertical bars, a Flickable, default and custom
+ScrollView bars, and Kirigami. It checks pointer movement across arrows,
+paging, middle click, release and cancellation. The suite requires the
+probe to exit successfully and compares screenshots after switching to
+Fusion with stock KDE's screenshots. `M9_SCROLL_DUMP=DIR` saves the
+standalone vertical crops.
 `dev/quick-live.qml` is a visible window for `dev/app-test.sh` that
 opens its own pop-up (`-- popup=menu|combo|tooltip|menubar|windowmenu|
 windowclick`; `windowclick` needs a real click: chain
