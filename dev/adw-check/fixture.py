@@ -8,6 +8,7 @@
 #          focus    gallery with keyboard focus on the suggested button
 #          disabled gallery with every control insensitive
 #          live     gallery that stays open (dev/live-adw.sh; out.png unused)
+#          segments grouped toggles and page switchers
 #          prefs    floating AdwPreferencesDialog (header bar, close box)
 #          msgdialog the deprecated AdwMessageDialog (zenity 4)
 #          alertwin AdwAlertDialog with no parent (its own window, as zenity)
@@ -291,6 +292,58 @@ def selections_body():
                      "tv": tv, "link": link}
 
 
+def segment_controls():
+    body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16,
+                   margin_top=16, margin_start=16, margin_end=16)
+    linked = Gtk.Box(halign=Gtk.Align.CENTER)
+    linked.add_css_class("linked")
+    browse = Gtk.ToggleButton(label="Browse", active=True)
+    installed = Gtk.ToggleButton(label="Installed", group=browse)
+    linked.append(browse)
+    linked.append(installed)
+    body.append(linked)
+
+    units = Adw.ToggleGroup(homogeneous=True, halign=Gtk.Align.CENTER)
+    units.add(Adw.Toggle(label="Bytes"))
+    units.add(Adw.Toggle(label="Bits"))
+    units.add(Adw.Toggle(label="Unavailable", enabled=False))
+    units.set_active(0)
+    body.append(units)
+
+    stack = Adw.ViewStack()
+    stack.add_titled_with_icon(Gtk.Label(label="General page"), "general",
+                              "General", "preferences-system-symbolic")
+    stack.add_titled_with_icon(Gtk.Label(label="Units page"), "units",
+                              "Units", "system-run-symbolic")
+    switcher = Adw.ViewSwitcher(stack=stack, policy=Adw.ViewSwitcherPolicy.WIDE,
+                               halign=Gtk.Align.CENTER)
+    body.append(switcher)
+    body.append(stack)
+
+    def buttons(widget):
+        child = widget.get_first_child()
+        while child is not None:
+            if isinstance(child, Gtk.ToggleButton):
+                yield child
+            child = child.get_next_sibling()
+
+    first_unit, second_unit, disabled_unit = buttons(units)
+    general, units_page = buttons(switcher)
+    widgets = {
+        "browse": browse, "installed": installed,
+        "bytes": first_unit, "bits": second_unit, "unavailable": disabled_unit,
+        "general": general, "units": units_page,
+    }
+
+    def exercise():
+        for button in (installed, second_unit, units_page):
+            button.emit("clicked")
+        print(f"SEGMENTS linked={int(installed.get_active() and not browse.get_active())} "
+              f"toggle={units.get_active()} page={stack.get_visible_child_name()}", flush=True)
+
+    return body, widgets, exercise
+
+
 def activate(app):
     win = Adw.ApplicationWindow(application=app, title="Adw Fixture",
                                 default_width=WIDTH, default_height=HEIGHT)
@@ -299,7 +352,12 @@ def activate(app):
     menu = Gtk.MenuButton(icon_name="open-menu-symbolic")
     header.pack_end(menu)
     sel_widgets = {}
-    if SELECTIONS:
+    if MODE == "segments":
+        body, sel_widgets, exercise_segments = segment_controls()
+        view = Adw.ToolbarView(content=body)
+        view.add_top_bar(header)
+        win.set_content(view)
+    elif SELECTIONS:
         body, focus_tv, sel_widgets = selections_body()
         suggested = selected = None
         view = Adw.ToolbarView(content=body)
@@ -373,7 +431,10 @@ def activate(app):
         state(app)
         if MODE == "live":
             return False
-        if SELECTIONS:
+        if MODE == "segments":
+            exercise_segments()
+            win.set_focus(None)
+        elif SELECTIONS:
             focus_tv.grab_focus()
         else:
             if MODE == "focus":
@@ -444,7 +505,7 @@ def activate(app):
         def painted(_clock):
             clock.disconnect(handler)
             try:
-                if MODE in ("gallery", "dialog", "alertwin", "msgdialog", "prefs"):
+                if MODE in ("gallery", "dialog", "alertwin", "msgdialog", "prefs", "segments"):
                     print("\n".join(dump(shown)), flush=True)
                 if SELECTIONS:
                     print("TOPBAR " + top_bar_layout(shown), flush=True)
@@ -456,6 +517,7 @@ def activate(app):
                     if "extra" in sel_widgets:
                         print("MARGIN extra %d" % sel_widgets["extra"].get_margin_bottom(),
                               flush=True)
+                if SELECTIONS or MODE == "segments":
                     for name, widget in sel_widgets.items():
                         ok, b = widget.compute_bounds(shown)
                         if ok:

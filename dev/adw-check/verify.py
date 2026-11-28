@@ -27,7 +27,7 @@ def finish():
 
 states = {}
 modes = ("gallery", "narrow", "dialog", "focus", "disabled", "alertwin",
-         "msgdialog", "prefs", "selections", "selections-border",
+         "msgdialog", "prefs", "segments", "segments-hc", "selections", "selections-border",
          "bars-wrapped", "bars-closed", "bars-open", "bars-custom",
          "bars-wrapped-search", "bars-opaque", "bars-margin", "hc")
 for prefix in ("stock", "layer"):
@@ -193,6 +193,62 @@ def widget_boxes(name):
             (root / f"{name}.log").read_text(), re.M)
     }
 
+
+def verify_segments():
+    stock = widget_boxes("stock-segments")
+    layer = widget_boxes("layer-segments")
+    expected = {"browse", "installed", "bytes", "bits", "unavailable", "general", "units"}
+    check(stock.keys() == layer.keys() == expected, "all segmented button allocations recorded")
+    image = Image.open(root / "layer-segments.png").convert("RGB")
+    for name in sorted(expected):
+        if name not in stock or name not in layer:
+            continue
+        x, y, w, h = layer[name]
+        check((w, h) == stock[name][2:], f"{name} retains stock button size")
+        background = ((102, 102, 102) if name in ("installed", "bits", "units")
+                      else (238, 238, 238) if name == "unavailable" else (221, 221, 221))
+        pixels = image.crop((x + 3, y + 3, x + w - 3, y + h - 3))
+        colors = pixels.getcolors(w * h) or []
+        check(any(color == background and n > pixels.width * pixels.height / 2
+                  for n, color in colors), f"{name} draws its Platinum face")
+
+    # The three straight edge rows of BevelNormal and BevelPressed (slices.h).
+    # Sample across the middle third so rounded reference corners and button
+    # labels do not enter the comparison. The edge rows run from outside in.
+    bevels = {
+        "browse": ((0x00, 0xDD, 0xFF), (0x00, 0x77, 0xAA)),
+        "installed": ((0x00, 0x44, 0x55), (0x00, 0x88, 0x77)),
+    }
+    for name, (top, bottom) in bevels.items():
+        if name not in layer:
+            continue
+        x, y, w, h = layer[name]
+        # The PNG includes the window's 1 px top frame. Widget bounds are
+        # relative to the window contents, so account for it in the row probes.
+        y += 1
+        left, right = x + w // 3, x + 2 * w // 3
+        for side, rows, shades in (
+            ("top", range(y, y + 3), top),
+            ("bottom", range(y + h - 1, y + h - 4, -1), bottom),
+        ):
+            observed = [image.crop((left, row, right, row + 1)).tobytes() for row in rows]
+            want = [bytes([shade]) * (3 * (right - left)) for shade in shades]
+            sample = " ".join(row[:3].hex() for row in observed)
+            check(observed == want, f"{name} {side} bevel rows (observed {sample})")
+
+    for prefix in ("stock", "layer"):
+        log = (root / f"{prefix}-segments.log").read_text()
+        check("SEGMENTS linked=1 toggle=1 page=units" in log,
+              f"{prefix} grouped buttons activate their choice or page")
+    hc_images = [Image.open(root / f"{prefix}-segments-hc.png").convert("RGBA")
+                 for prefix in ("stock", "layer")]
+    check(all(states[f"{prefix}-segments-hc"]["adw_hc"] == "1" for prefix in ("stock", "layer"))
+          and hc_images[0].size == hc_images[1].size
+          and hc_images[0].tobytes() == hc_images[1].tobytes(),
+          "segmented controls keep stock high contrast")
+
+
+verify_segments()
 
 lim = Image.open(root / "layer-selections.png").convert("RGB")
 boxes = widget_boxes("layer-selections")

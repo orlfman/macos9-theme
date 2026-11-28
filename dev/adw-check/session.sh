@@ -87,7 +87,7 @@ JS
 fi
 
 # 1. Stock: Platinum desktop settings, no user CSS beyond what exists.
-modes=(gallery narrow dialog focus disabled alertwin msgdialog prefs selections selections-border
+modes=(gallery narrow dialog focus disabled alertwin msgdialog prefs segments selections selections-border
     bars-wrapped bars-closed bars-open bars-custom bars-wrapped-search bars-opaque bars-margin)
 for m in "${modes[@]}"; do
     fixture "stock-$m" "$m"
@@ -96,6 +96,7 @@ done
 # 2. High contrast through the a11y key the GTK portal backend forwards.
 gsettings set org.gnome.desktop.a11y.interface high-contrast true
 fixture stock-hc gallery
+fixture stock-segments-hc segments
 gsettings set org.gnome.desktop.a11y.interface high-contrast false
 
 capture_apps stock
@@ -109,6 +110,7 @@ for m in "${modes[@]}"; do
 done
 gsettings set org.gnome.desktop.a11y.interface high-contrast true
 fixture layer-hc gallery
+fixture layer-segments-hc segments
 gsettings set org.gnome.desktop.a11y.interface high-contrast false
 capture_apps layer
 rm "$XDG_CONFIG_HOME/gtk-4.0/gtk.css"
