@@ -849,3 +849,28 @@ Platinum's ScrollView wrapper applies the same helper to those bars in
 place, which also covers Kirigami ScrollablePage. Explicit Platinum
 scrollbars already carry the helper. `dev/quickscroll.cpp` exercises all
 of these paths and compares the runtime Fusion fallback with stock KDE.
+
+## Kirigami NavigationTabButton ignores the QStyle (2026-11-27, Claude Code Opus 5.5, #342)
+
+The icon-over-text page buttons in Kirigami's `NavigationTabBar` (System
+Settings > Window Behavior: Focus, Titlebar Actions, ...) are Kirigami's
+own `controls/NavigationTabButton.qml` (kirigami 6.32.0). Its background is
+two Rectangles: 20% highlight on hover or checked, 30% when down, rounded
+corners, highlight border. No StyleItem and no QStyle call, and it isn't a
+Qt Quick Controls type, so `style/quick/Platinum` can't replace it. Measured
+in the sandbox: pressing changes only that tint, while flat QQC2 ToolButtons
+and flat Buttons do push in through the Platinum QStyle. Kirigami's official
+per-style hook is `styles/<Qt Quick Controls style>/NavigationTabButton.qml`
+inside Kirigami's own install folder (`/usr/lib/qt6/qml/org/kde/kirigami/styles/`,
+used by Material and Union), found through `StyleSelector` relative to that
+folder; a user-scope install can't place a file there.
+
+
+### Kirigami 6.32 lookup verified (2026-11-27, Codex, #343)
+
+[StyleSelector](https://github.com/KDE/kirigami/blob/v6.32.0/src/platform/styleselector.cpp)
+uses the first Kirigami root from the executable path, QML import
+environment paths, Qt's QML paths or resources. A user-owned root
+with links to the installed files resolved both stock controls and
+`controls/styles/Platinum/NavigationTabButton.qml` in Window Behavior.
+An override-only root left 41 stock component lookups unresolved.

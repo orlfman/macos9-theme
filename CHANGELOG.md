@@ -2,6 +2,20 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-27, Codex (GPT-6) — document the Kirigami navigation tab limitation
+
+- The user chose to keep KDE’s Window Behavior page buttons. Documented the limitation in the README, accepted #342, and deferred the plan findings #343–345.
+
+## 2026-11-27, Codex (GPT-6) — review the Kirigami navigation tab plan
+
+- Recorded #343–345 for install-root selection, runtime fallback and tab layout. Kirigami selected the user-owned linked root in the sandbox probe and the actual Window Behavior KCM, which instantiated all four tab overrides. A sparse root lost 41 component lookups.
+- The plan is awaiting revision and a delivery decision. The review was limited to the plan and a disposable discovery probe.
+
+## 2026-11-27, Claude Code (Opus 5.5) — Kirigami navigation tabs: finding #342 and a plan
+
+- The user asked why the Window Behavior page's Focus / Titlebar Actions / Window Actions buttons don't push in. They are Kirigami's `NavigationTabButton`, which draws its own tint and never calls the QStyle; flat QQC2 tool buttons and flat buttons already push in (sandbox probe). Recorded AUDIT #342 (P3, open) and the platform fact in `docs/FINDINGS.md`.
+- Wrote `docs/KIRIGAMI-NAVTAB-PLAN.md` for Codex to review: Kirigami's per-style hook lives in its system folder, so options are a small package, a root step in `install.sh`, or leaving it; Monitors-style bevel buttons as the look (`reference/controls-monitors.png`, already measured and drawn by the QStyle; my first draft wrongly said no bevel capture existed); five questions for the reviewer. Nothing built. Uncommitted.
+
 ## 2026-11-27, Claude Code (Opus 5.5) — verify #338–#341 and commit the scrollbar work
 
 - Reviewed Codex's ScrollBarPress helper, ScrollView wrapper and probe; no new findings. `check-quick` 33/33, `check-tabs` 51/51, `check-style` 135/135 + 12/12, `check-plasma` 19/19, `test-install` 940/940. Removing the ScrollView override makes `quickscroll` fail on the default ScrollView bars, as expected.

@@ -3,6 +3,28 @@
 Rules: AGENTS.md "Audits". Newest sections first. Finding numbers run across
 the whole project and are never reused.
 
+## 2026-11-27, Codex (GPT-6) — record the Kirigami navigation tab decision
+
+The user accepted KDE’s stock Window Behavior tab styling as a known limitation (#342) and chose option 3. The [README](README.md#known-limitations) records what users will see. The plan review findings #343–345 are deferred.
+
+## 2026-11-27, Codex (GPT-6) — review the Kirigami navigation tab plan
+
+Reviewed `docs/KIRIGAMI-NAVTAB-PLAN.md` in the working tree over `2f19f59`, the installed Kirigami 6.32.0 QML, the Window Behavior KCM, and [Kirigami 6.32.0 StyleSelector](https://github.com/KDE/kirigami/blob/v6.32.0/src/platform/styleselector.cpp).
+
+- **#343 · P2 · deferred (user decision) · The deployment premise omits a working user-scope lookup and its failure mode.** `installRoot()` caches the first Kirigami directory from the executable directory, `QML_IMPORT_PATH`, `QML2_IMPORT_PATH`, Qt's QML paths, or resources. `setBaseUrl()` does nothing in this release. A sparse user root selected the override but logged 41 missing component lookups. A user-owned tree of symlinks to the installed components selected the override in the probe and instantiated all four tabs in the real Window Behavior KCM. This establishes an app-scoped sandbox route. A global user-scope install would also need to handle missing or newly added upstream files and remove its import root on undo. For a system package on 6.32 use `controls/styles/Platinum/`, the first lookup location, and prove behavior after updating Kirigami and uninstalling the add-on. The old root-level directory is still supported. [Hook and options](docs/KIRIGAMI-NAVTAB-PLAN.md#the-official-hook)
+- **#344 · P2 · deferred (user decision) · The proposed template has no stock appearance to restore.** `KT.NavigationTabButton` carries the TabButton behavior, tooltip, accessibility and mnemonics. The stock control supplies its icon/label layout, background, and focus ring. The selector uses the startup Qt Quick Controls style name and registers a QML type URL. A later QWidget style change can flip `PlatinumItem.active` without replacing that URL. Specify where the stock visuals come from under the same tab control, and compare both startup without Platinum and a running switch to and from Fusion. Verify the `QGuiApplication` path, where `PlatinumItem.active` is false. On desktop, the selector normally tries the exact Qt Quick Controls style name, `org.kde.desktop.plasma`, and `org.kde.desktop`, then the stock file. [Appearance and fallback](docs/KIRIGAMI-NAVTAB-PLAN.md#what-it-should-look-like)
+- **#345 · P2 · deferred (user decision) · The Monitors button geometry conflicts with reusing the stock content unchanged.** The reference measures the bevel alone at 38×40 and places the label outside it. Kirigami's stock content has its own icon dimensions, margins and wrapping inside a full-button grid, with distinct modes for icon-only, text-only and beside-icon labels. The KCM sets no beside-icon breakpoint. In the normal under-icon case, specify a separate icon well and label layout, use the large bevel explicitly (the existing widget-less `CC_ToolButton` path picks the small bevel), and preserve display modes and caller-provided icons. Add an actual KCM test that changes all four pages via click, keyboard and mnemonics, plus narrow and translated labels, RTL, header/footer and focus checks. A tab-bar override should have its own demonstrated need. [Layout and implementation steps](docs/KIRIGAMI-NAVTAB-PLAN.md#steps-if-option-1)
+
+The measured Monitors bevel is the right visual reference for the default icon-over-text layout. If shipping a global add-on, prefer an optional package that owns its files. The user-owned linked root was tested for discovery in a disposable session. Production appearance, package lifecycle, and live desktop behavior were outside this plan review. Probe and KCM logs are under `dev/build/navtab-plan-audit.gCP53Z/`.
+
+## 2026-11-27, Claude Code (Opus 5.5) — Kirigami navigation tabs don't push in
+
+Investigated the user's screenshot of System Settings > Window Behavior (`~/Pictures/Screenshots/Screenshot_20261126_220546.png`, not yet copied to `reference/testing/`).
+
+- **#342 · P3 · accepted (user decision) · Kirigami NavigationTabBar buttons aren't Platinum and don't push in.** `kcm_kwinoptions` (kwin 6.8.3) uses `Kirigami.NavigationTabBar`; its buttons draw their own tinted, rounded rectangles (`docs/FINDINGS.md`), so they look KDE-styled and pressing only darkens the tint. Fixable only through a file in Kirigami's system `styles/Platinum/` folder, i.e. root or a package (user decision). Plan for review: `docs/KIRIGAMI-NAVTAB-PLAN.md`.
+
+Checks: sandbox probe (offscreen, software renderer): flat QQC2 ToolButton and flat Button change from idle to the Platinum pressed bevel; NavigationTabButton changes only its tint and border. Not seen on the desktop beyond the user's screenshot.
+
 ## 2026-11-27, Claude Code (Opus 5.5) — verify Codex's fixes for #338–#341
 
 Reviewed Codex's working tree over `f27e17d` (`style/quick/Platinum/{ScrollBar,ScrollBarPress,ScrollView}.qml`, `qmldir`, `dev/quickscroll.cpp`, `dev/check-quick.sh`). The helper records the arrow under the pointer on a left press, binds `sunken` only on that painter while that arrow is active, the grab holds, and the QStyle is Platinum, and restores KDE's binding on release or cancel. The ScrollView wrapper skips bars that already are Platinum ScrollBars, so there's no double helper. #337–#341 verified; no new findings.

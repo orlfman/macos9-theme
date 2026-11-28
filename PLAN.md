@@ -2,6 +2,8 @@
 
 ## Status
 
+**Kirigami navigation tabs, 2026-11-27.** The user accepted KDE’s stock styling in Window Behavior as a known limitation (#342). The proposal is closed and the plan review findings #343–345 are deferred. [Draft and decision](docs/KIRIGAMI-NAVTAB-PLAN.md) · [Audit](AUDIT.md#2026-11-27-codex-gpt-6--review-the-kirigami-navigation-tab-plan)
+
 **Qt Quick scrollbar fixes, 2026-11-27 (Codex GPT-6, working tree).** #338–341 are fixed and verified. The default ScrollView and Kirigami bars now draw the held arrow, the press stays with the initiating arrow, and Fusion matches KDE. Qt Quick passed 33/33, tabs passed 51/51, and Qt Widgets passed 135/135 pixel crops and 12/12 state checks. Nested Wayland and the focused sanitizer runs passed. Live desktop review is pending. [Audit](AUDIT.md#2026-11-27-codex-gpt-6--fix-qt-quick-scrollbar-findings-338341)
 
 **Optional Big Sur system sounds, 2026-11-27.** `./install.sh --apply --sound-theme` selects Big Sur after applying Platinum. The user reviewed the sound pack on their desktop. The private reference archive was pushed at `7e67a98`. The installer, tests and docs are committed locally through `51172cc`. Claude reported 926 installer checks passed. Codex fixed #334–#336 in the working tree. The 63 sound-focused checks passed, covering later mute preservation, offline reuse of an installed pack and unreadable clone fallback. #333 remains open from the nested suite. [Audit](AUDIT.md#2026-11-27-codex-gpt-6--fix-334336-in-the-big-sur-installer) · [Usage](README.md#big-sur-system-sounds)
