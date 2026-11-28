@@ -283,8 +283,13 @@ A few things worth knowing:
   as Platinum directly. The rest of their controls go through KDE's own
   style, which draws with Platinum anyway, so it mostly looks right. If you
   set your own Qt Quick style, the theme leaves it alone.
-- In System Settings under Window Behavior, the page buttons keep KDE’s
-  rounded highlight when selected or pressed.
+- A few things in Kirigami apps are drawn by Kirigami itself, not by the
+  app's style. That's a Kirigami limitation: it doesn't give themes a
+  simple way to restyle those parts. The one you'll notice is the
+  row of big icon buttons at the top of System Settings > Window Behavior
+  (Focus, Titlebar Actions and so on). They keep KDE's soft rounded
+  highlight and don't push in when you click them. Ordinary buttons in the
+  same apps do look and press like Platinum.
 - The Firefox theme only works with Firefox's System theme in light mode.
 - The package names above are Arch's. Other distros are untested.
 

@@ -2,6 +2,10 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-28, Claude Code (Opus 5.5) — explain the Kirigami limitation in the README
+
+- Rewrote the README's Known limitations line on the Window Behavior page buttons (user's request: it was vague). It now says Kirigami draws those buttons itself, so the theme can't reach them, and that ordinary buttons in Kirigami apps are Platinum. README only; uncommitted.
+
 ## 2026-11-27, Claude Code (Opus 5.5) — verify #347–#349 and commit the GTK 4 segmented buttons
 
 - Verified Codex's bevel fix: all four edges match the measured Monitors bevel in a fresh capture. libadwaita Broadway 219/219, nested Plasma 0 fails, GTK 4 Broadway 178/178. Committed and pushed at the user's request. Desktop review pending.
