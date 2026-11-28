@@ -2,6 +2,30 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-27, Claude Code (Opus 5.5) — verify #338–#341 and commit the scrollbar work
+
+- Reviewed Codex's ScrollBarPress helper, ScrollView wrapper and probe; no new findings. `check-quick` 33/33, `check-tabs` 51/51, `check-style` 135/135 + 12/12, `check-plasma` 19/19, `test-install` 940/940. Removing the ScrollView override makes `quickscroll` fail on the default ScrollView bars, as expected.
+- Committed and pushed at the user's request. Not run: `test-install-live`. Desktop review pending (`./install.sh`, then restart a Qt Quick app).
+
+## 2026-11-27, Codex (GPT-6) — fix Qt Quick scrollbar findings #338–#341
+
+- Default ScrollView and Kirigami bars now use the Platinum pressed state. Only the arrow that received the left press can show it while held. The idle painter and runtime Fusion behavior follow KDE.
+- The probe checks both arrows in seven fixtures, requires a complete successful run, and compares the Fusion captures with KDE. Deliberately reintroduced regressions and invalid probe results failed as expected.
+- Qt Quick passed 33/33, tabs passed 51/51, and Qt Widgets passed 135/135 pixel comparisons and 12/12 state checks. Nested Wayland and the focused ASan/UBSan runs passed. The changes are uncommitted and desktop review is pending.
+
+## 2026-11-27, Codex (GPT-6) — audit Qt Quick scrollbar arrows
+
+- Verified the pressed pixels for standalone and explicitly attached bars, including a direct Mac OS 9 comparison and nested Wayland. Recorded four open findings (#338–341) for default ScrollView bars, the pressed state during pointer movement, the runtime Fusion fallback, and probe validation.
+- Qt Quick passed 33/33. Qt Widgets passed 135/135 pixel comparisons and 12/12 state checks. The focused sanitizer runs reported no diagnostics. The audit includes latency and creation benchmarks. Live desktop review is pending.
+- Updated the audit and handoff. Claude's scrollbar implementation and test changes remain uncommitted.
+
+## 2026-11-27, Claude Code (Opus 5.5) — push in Qt Quick scroll bar arrows (#337)
+
+- The user noticed Qt Widgets scroll bar arrows push in while held but Qt Quick ones don't. Cause: KDE's qqc2-desktop-style ScrollBar takes the arrow press in its own mouse area, so the style never gets `State_Sunken` (`docs/FINDINGS.md`, AUDIT #337).
+- New `style/quick/Platinum/ScrollBar.qml` (in `qmldir`): wraps KDE's ScrollBar and binds its style item's `sunken` to `pressed` or the mouse area's `pressed`. No copy of KDE's file.
+- New `dev/quickscroll.cpp`, run by `dev/check-quick.sh`: both arrows equal the QStyle's idle and pressed drawing, lift off the arrow, idle after release. Fails without the override. `check-quick` 33/33. `docs/DEVELOPMENT.md` updated.
+- Not checked: the user's desktop (needs `./install.sh` and a restart of the Qt Quick app), horizontal bars, other suites (C++ style and installer unchanged). Uncommitted.
+
 ## 2026-11-27, Codex (GPT-6) — fix Big Sur installer findings #334–#336
 
 - Preserve the current mute setting on full uninstall and retry. Reuse an already installed release offline after verifying it. Fall back to the pinned release if the optional clone contains an unreadable file.

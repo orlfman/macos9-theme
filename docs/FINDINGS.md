@@ -827,3 +827,25 @@ Verified on libadwaita 1.10.0, GTK 4.24.2, Broadway and nested KWin.
 - GTK's `*:selected button.link:hover|:active` (0,3,1) and `row:selected button.flat:not(…)` (0,5,2) selected-row colors outrank plain Platinum rules in the named theme; the user-stylesheet layer wins regardless.
 - (2026-11-26, #311) `GtkWidget:margin-*` (set in code or UI files) is applied on top of CSS margins and CSS can't clear it; a stylesheet rule that needs a widget's edge to meet its parent's edge must not depend on margins being zero.
 - (2026-11-26, #311) In a `RAISED_BORDER` top bar, a closed `GtkSearchBar`, an `AdwBanner` with `revealed=False` and an auto-hidden `AdwTabBar` don't count for `:last-child`; the bar above them matches it (verified by line probes, libadwaita 1.10.0). The top bar doesn't clip its children: an outset shadow on an open bar shows below it.
+
+## qqc2-desktop-style scroll bar arrows never get State_Sunken (2026-11-27, Claude Code Opus 5.5, #337)
+
+In qqc2-desktop-style 6.32.0 `org/kde/desktop/ScrollBar.qml`, the
+background `MouseArea` accepts the press on an arrow (and on the track when
+it pages a step at a time) and runs its own repeat timer, so
+`T.ScrollBar.pressed` stays false. The `StyleItem` gets
+`sunken: controlRoot.pressed`, so the QStyle sees the held arrow as the
+active sub-control but never `State_Sunken`: any QStyle that draws pressed
+arrows shows them idle in Qt Quick apps (Breeze barely shows it). Only a
+thumb drag, which the mouse area passes on, reaches `pressed`.
+Platinum uses `ScrollBarPress.qml` to remember the arrow that received the
+left press. It sets `sunken` only on KDE's interactive painter while that
+arrow is under the pointer and Platinum is the active widget style.
+Release or cancellation restores KDE's binding. KDE continues to handle
+the scroll action and repeat.
+
+KDE's ScrollView creates its default scrollbars inside its own module.
+Platinum's ScrollView wrapper applies the same helper to those bars in
+place, which also covers Kirigami ScrollablePage. Explicit Platinum
+scrollbars already carry the helper. `dev/quickscroll.cpp` exercises all
+of these paths and compares the runtime Fusion fallback with stock KDE.
