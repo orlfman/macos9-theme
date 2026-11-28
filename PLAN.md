@@ -2,6 +2,8 @@
 
 ## Status
 
+**GTK 4 grouped buttons and libadwaita page switchers, 2026-11-27 (Codex GPT-6, working tree).** #346–349 are fixed and verified. The black outline and measured bevel rows draw at stock button sizes. The four new edge checks reject the previous CSS. Libadwaita passed 219/219 Broadway and 303/303 nested Plasma. GTK 4 passed 178/178 Broadway and 253/253 nested Plasma. Desktop review is pending. [Audit](AUDIT.md#2026-11-27-codex-gpt-6--fix-gtk-4-segmented-button-bevels-347349)
+
 **Kirigami navigation tabs, 2026-11-27.** The user accepted KDE’s stock styling in Window Behavior as a known limitation (#342). The proposal is closed and the plan review findings #343–345 are deferred. [Draft and decision](docs/KIRIGAMI-NAVTAB-PLAN.md) · [Audit](AUDIT.md#2026-11-27-codex-gpt-6--review-the-kirigami-navigation-tab-plan)
 
 **Qt Quick scrollbar fixes, 2026-11-27 (Codex GPT-6, working tree).** #338–341 are fixed and verified. The default ScrollView and Kirigami bars now draw the held arrow, the press stays with the initiating arrow, and Fusion matches KDE. Qt Quick passed 33/33, tabs passed 51/51, and Qt Widgets passed 135/135 pixel crops and 12/12 state checks. Nested Wayland and the focused sanitizer runs passed. Live desktop review is pending. [Audit](AUDIT.md#2026-11-27-codex-gpt-6--fix-qt-quick-scrollbar-findings-338341)

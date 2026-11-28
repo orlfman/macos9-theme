@@ -2,6 +2,24 @@
 
 Newest first. Format and rules: AGENTS.md "CHANGELOG entries".
 
+## 2026-11-27, Claude Code (Opus 5.5) — verify #347–#349 and commit the GTK 4 segmented buttons
+
+- Verified Codex's bevel fix: all four edges match the measured Monitors bevel in a fresh capture. libadwaita Broadway 219/219, nested Plasma 0 fails, GTK 4 Broadway 178/178. Committed and pushed at the user's request. Desktop review pending.
+
+## 2026-11-27, Codex (GPT-6) — fix GTK 4 segmented button bevels
+
+- Restored the black outline and measured Monitors bevel rows without changing button sizes. The four new edge checks failed against the original CSS and passed after the fix.
+- Libadwaita passed 219/219 on Broadway and 303/303 in nested Plasma. GTK 4 passed 178/178 on Broadway and 253/253 in nested Plasma. The fixes are uncommitted and desktop review is pending.
+
+## 2026-11-27, Claude Code (Opus 5.5) — audit the GTK 4 segmented buttons
+
+- Reviewed Codex's #346 work (`segments.css`, adw-check). Suites pass (libadwaita Broadway 0 fails, GTK 4 Broadway 178/178), but the rendered segments have no black outline (#347, P2: GTK paints the last box-shadow on top, so the ring listed first is covered), the bevel rows differ from the measured Monitors bevel (#348, P3), and the check only samples the fill (#349, P3). Suggested CSS in AUDIT, untested. No theme files changed; uncommitted.
+
+## 2026-11-27, Codex (GPT-6) — theme GTK 4 grouped buttons and libadwaita page switchers
+
+- Added inset Platinum bevels for linked text toggles, libadwaita toggle groups and libadwaita page switchers. Active choices stay recessed and keyboard focus has its own outline.
+- Verified stock button sizes, native selection and page changes, and high-contrast parity. Libadwaita passed 215/215 Broadway and 299/299 nested Plasma. GTK 4 passed 178/178 Broadway with the layer and 253/253 nested Plasma with the named theme. The changes are uncommitted and desktop review is pending.
+
 ## 2026-11-27, Codex (GPT-6) — document the Kirigami navigation tab limitation
 
 - The user chose to keep KDE’s Window Behavior page buttons. Documented the limitation in the README, accepted #342, and deferred the plan findings #343–345.
